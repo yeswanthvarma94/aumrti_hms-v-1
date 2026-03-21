@@ -41,7 +41,7 @@ interface NavGroup {
 }
 
 const navGroups: NavGroup[] = [
-  { label: "Dashboard", icon: Home, path: "/" },
+  { label: "Dashboard", icon: Home, path: "/dashboard" },
   {
     label: "Clinical",
     icon: Stethoscope,
