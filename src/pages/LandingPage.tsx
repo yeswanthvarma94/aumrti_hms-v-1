@@ -197,5 +197,6 @@ const LandingPage: React.FC = () => {
       <LoginModal open={loginOpen} onOpenChange={setLoginOpen} />
     </div>
   );
+};
 
 export default LandingPage;
