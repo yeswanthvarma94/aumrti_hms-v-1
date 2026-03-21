@@ -3,9 +3,11 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import Index from "./pages/Index.tsx";
-import NotFound from "./pages/NotFound.tsx";
-import DesignSystem from "./pages/DesignSystem.tsx";
+import AppShell from "@/components/layout/AppShell";
+import Dashboard from "./pages/Dashboard";
+import ComingSoon from "./pages/ComingSoon";
+import DesignSystem from "./pages/DesignSystem";
+import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
@@ -16,9 +18,29 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Index />} />
+          {/* Standalone routes */}
           <Route path="/design-system" element={<DesignSystem />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+
+          {/* App shell routes */}
+          <Route element={<AppShell />}>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/opd" element={<ComingSoon />} />
+            <Route path="/ipd" element={<ComingSoon />} />
+            <Route path="/emergency" element={<ComingSoon />} />
+            <Route path="/ot" element={<ComingSoon />} />
+            <Route path="/nursing" element={<ComingSoon />} />
+            <Route path="/lab" element={<ComingSoon />} />
+            <Route path="/radiology" element={<ComingSoon />} />
+            <Route path="/pharmacy" element={<ComingSoon />} />
+            <Route path="/billing" element={<ComingSoon />} />
+            <Route path="/insurance" element={<ComingSoon />} />
+            <Route path="/payments" element={<ComingSoon />} />
+            <Route path="/hr" element={<ComingSoon />} />
+            <Route path="/inventory" element={<ComingSoon />} />
+            <Route path="/quality" element={<ComingSoon />} />
+            <Route path="/settings" element={<ComingSoon />} />
+          </Route>
+
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
