@@ -14,16 +14,284 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      branches: {
+        Row: {
+          address: string | null
+          created_at: string
+          hospital_id: string
+          id: string
+          is_active: boolean
+          is_main_branch: boolean
+          name: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          hospital_id: string
+          id?: string
+          is_active?: boolean
+          is_main_branch?: boolean
+          name: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          hospital_id?: string
+          id?: string
+          is_active?: boolean
+          is_main_branch?: boolean
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "branches_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      departments: {
+        Row: {
+          created_at: string
+          head_doctor_id: string | null
+          hospital_id: string
+          id: string
+          is_active: boolean
+          name: string
+          type: Database["public"]["Enums"]["department_type"]
+        }
+        Insert: {
+          created_at?: string
+          head_doctor_id?: string | null
+          hospital_id: string
+          id?: string
+          is_active?: boolean
+          name: string
+          type?: Database["public"]["Enums"]["department_type"]
+        }
+        Update: {
+          created_at?: string
+          head_doctor_id?: string | null
+          hospital_id?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          type?: Database["public"]["Enums"]["department_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "departments_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hospitals: {
+        Row: {
+          address: string | null
+          beds_count: number | null
+          country: string | null
+          created_at: string
+          gstin: string | null
+          id: string
+          is_active: boolean
+          logo_url: string | null
+          nabh_number: string | null
+          name: string
+          pincode: string | null
+          primary_color: string | null
+          state: string | null
+          subscription_tier: Database["public"]["Enums"]["subscription_tier"]
+          type: Database["public"]["Enums"]["hospital_type"]
+        }
+        Insert: {
+          address?: string | null
+          beds_count?: number | null
+          country?: string | null
+          created_at?: string
+          gstin?: string | null
+          id?: string
+          is_active?: boolean
+          logo_url?: string | null
+          nabh_number?: string | null
+          name: string
+          pincode?: string | null
+          primary_color?: string | null
+          state?: string | null
+          subscription_tier?: Database["public"]["Enums"]["subscription_tier"]
+          type?: Database["public"]["Enums"]["hospital_type"]
+        }
+        Update: {
+          address?: string | null
+          beds_count?: number | null
+          country?: string | null
+          created_at?: string
+          gstin?: string | null
+          id?: string
+          is_active?: boolean
+          logo_url?: string | null
+          nabh_number?: string | null
+          name?: string
+          pincode?: string | null
+          primary_color?: string | null
+          state?: string | null
+          subscription_tier?: Database["public"]["Enums"]["subscription_tier"]
+          type?: Database["public"]["Enums"]["hospital_type"]
+        }
+        Relationships: []
+      }
+      patients: {
+        Row: {
+          abha_id: string | null
+          address: string | null
+          blood_group: string | null
+          created_at: string
+          dob: string | null
+          emergency_contact: Json | null
+          full_name: string
+          gender: Database["public"]["Enums"]["gender_type"] | null
+          hospital_id: string
+          id: string
+          phone: string | null
+          uhid: string
+        }
+        Insert: {
+          abha_id?: string | null
+          address?: string | null
+          blood_group?: string | null
+          created_at?: string
+          dob?: string | null
+          emergency_contact?: Json | null
+          full_name: string
+          gender?: Database["public"]["Enums"]["gender_type"] | null
+          hospital_id: string
+          id?: string
+          phone?: string | null
+          uhid: string
+        }
+        Update: {
+          abha_id?: string | null
+          address?: string | null
+          blood_group?: string | null
+          created_at?: string
+          dob?: string | null
+          emergency_contact?: Json | null
+          full_name?: string
+          gender?: Database["public"]["Enums"]["gender_type"] | null
+          hospital_id?: string
+          id?: string
+          phone?: string | null
+          uhid?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patients_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      users: {
+        Row: {
+          branch_id: string | null
+          created_at: string
+          department_id: string | null
+          email: string
+          employee_id: string | null
+          full_name: string
+          hospital_id: string
+          id: string
+          is_active: boolean
+          last_login: string | null
+          phone: string | null
+          role: Database["public"]["Enums"]["app_role"]
+        }
+        Insert: {
+          branch_id?: string | null
+          created_at?: string
+          department_id?: string | null
+          email: string
+          employee_id?: string | null
+          full_name: string
+          hospital_id: string
+          id: string
+          is_active?: boolean
+          last_login?: string | null
+          phone?: string | null
+          role?: Database["public"]["Enums"]["app_role"]
+        }
+        Update: {
+          branch_id?: string | null
+          created_at?: string
+          department_id?: string | null
+          email?: string
+          employee_id?: string | null
+          full_name?: string
+          hospital_id?: string
+          id?: string
+          is_active?: boolean
+          last_login?: string | null
+          phone?: string | null
+          role?: Database["public"]["Enums"]["app_role"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "users_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "users_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "users_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_hospital_id: { Args: never; Returns: string }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role:
+        | "super_admin"
+        | "hospital_admin"
+        | "doctor"
+        | "nurse"
+        | "receptionist"
+        | "pharmacist"
+        | "lab_tech"
+        | "accountant"
+      department_type: "clinical" | "administrative" | "support"
+      gender_type: "male" | "female" | "other"
+      hospital_type: "general" | "specialty" | "clinic" | "nursing_home"
+      subscription_tier: "basic" | "professional" | "enterprise"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +418,21 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: [
+        "super_admin",
+        "hospital_admin",
+        "doctor",
+        "nurse",
+        "receptionist",
+        "pharmacist",
+        "lab_tech",
+        "accountant",
+      ],
+      department_type: ["clinical", "administrative", "support"],
+      gender_type: ["male", "female", "other"],
+      hospital_type: ["general", "specialty", "clinic", "nursing_home"],
+      subscription_tier: ["basic", "professional", "enterprise"],
+    },
   },
 } as const
