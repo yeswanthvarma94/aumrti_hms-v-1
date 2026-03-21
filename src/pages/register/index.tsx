@@ -140,8 +140,8 @@ const Register: React.FC = () => {
           throw new Error(res.data?.error || res.error?.message || "Registration failed");
         }
 
-        toast({ title: "Welcome! 🎉", description: "Your hospital account is live." });
-        navigate("/dashboard", { replace: true });
+        toast({ title: "Welcome! 🎉", description: "Let's set up your hospital." });
+        navigate("/setup/onboarding", { replace: true });
       } catch (err: any) {
         setOtpPhase("sent");
         setOtp(["", "", "", "", "", ""]);

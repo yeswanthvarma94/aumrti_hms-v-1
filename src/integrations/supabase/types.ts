@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      beds: {
+        Row: {
+          bed_number: string
+          created_at: string
+          hospital_id: string
+          id: string
+          is_active: boolean
+          status: Database["public"]["Enums"]["bed_status"]
+          ward_id: string
+        }
+        Insert: {
+          bed_number: string
+          created_at?: string
+          hospital_id: string
+          id?: string
+          is_active?: boolean
+          status?: Database["public"]["Enums"]["bed_status"]
+          ward_id: string
+        }
+        Update: {
+          bed_number?: string
+          created_at?: string
+          hospital_id?: string
+          id?: string
+          is_active?: boolean
+          status?: Database["public"]["Enums"]["bed_status"]
+          ward_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "beds_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "beds_ward_id_fkey"
+            columns: ["ward_id"]
+            isOneToOne: false
+            referencedRelation: "wards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       branches: {
         Row: {
           address: string | null
@@ -102,11 +147,16 @@ export type Database = {
           logo_url: string | null
           nabh_number: string | null
           name: string
+          payment_methods: string[]
           pincode: string | null
           primary_color: string | null
+          razorpay_key_id: string | null
+          setup_complete: boolean
           state: string | null
           subscription_tier: Database["public"]["Enums"]["subscription_tier"]
           type: Database["public"]["Enums"]["hospital_type"]
+          wati_api_url: string | null
+          whatsapp_enabled: boolean
         }
         Insert: {
           address?: string | null
@@ -119,11 +169,16 @@ export type Database = {
           logo_url?: string | null
           nabh_number?: string | null
           name: string
+          payment_methods?: string[]
           pincode?: string | null
           primary_color?: string | null
+          razorpay_key_id?: string | null
+          setup_complete?: boolean
           state?: string | null
           subscription_tier?: Database["public"]["Enums"]["subscription_tier"]
           type?: Database["public"]["Enums"]["hospital_type"]
+          wati_api_url?: string | null
+          whatsapp_enabled?: boolean
         }
         Update: {
           address?: string | null
@@ -136,11 +191,16 @@ export type Database = {
           logo_url?: string | null
           nabh_number?: string | null
           name?: string
+          payment_methods?: string[]
           pincode?: string | null
           primary_color?: string | null
+          razorpay_key_id?: string | null
+          setup_complete?: boolean
           state?: string | null
           subscription_tier?: Database["public"]["Enums"]["subscription_tier"]
           type?: Database["public"]["Enums"]["hospital_type"]
+          wati_api_url?: string | null
+          whatsapp_enabled?: boolean
         }
         Relationships: []
       }
@@ -197,6 +257,50 @@ export type Database = {
           },
         ]
       }
+      service_master: {
+        Row: {
+          category: string
+          created_at: string
+          fee: number
+          follow_up_fee: number | null
+          gst_applicable: boolean
+          hospital_id: string
+          id: string
+          is_active: boolean
+          name: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          fee?: number
+          follow_up_fee?: number | null
+          gst_applicable?: boolean
+          hospital_id: string
+          id?: string
+          is_active?: boolean
+          name: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          fee?: number
+          follow_up_fee?: number | null
+          gst_applicable?: boolean
+          hospital_id?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_master_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       users: {
         Row: {
           branch_id: string | null
@@ -210,6 +314,7 @@ export type Database = {
           is_active: boolean
           last_login: string | null
           phone: string | null
+          registration_number: string | null
           role: Database["public"]["Enums"]["app_role"]
         }
         Insert: {
@@ -224,6 +329,7 @@ export type Database = {
           is_active?: boolean
           last_login?: string | null
           phone?: string | null
+          registration_number?: string | null
           role?: Database["public"]["Enums"]["app_role"]
         }
         Update: {
@@ -238,6 +344,7 @@ export type Database = {
           is_active?: boolean
           last_login?: string | null
           phone?: string | null
+          registration_number?: string | null
           role?: Database["public"]["Enums"]["app_role"]
         }
         Relationships: [
@@ -257,6 +364,44 @@ export type Database = {
           },
           {
             foreignKeyName: "users_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wards: {
+        Row: {
+          created_at: string
+          hospital_id: string
+          id: string
+          is_active: boolean
+          name: string
+          total_beds: number
+          type: Database["public"]["Enums"]["ward_type"]
+        }
+        Insert: {
+          created_at?: string
+          hospital_id: string
+          id?: string
+          is_active?: boolean
+          name: string
+          total_beds?: number
+          type?: Database["public"]["Enums"]["ward_type"]
+        }
+        Update: {
+          created_at?: string
+          hospital_id?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          total_beds?: number
+          type?: Database["public"]["Enums"]["ward_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wards_hospital_id_fkey"
             columns: ["hospital_id"]
             isOneToOne: false
             referencedRelation: "hospitals"
@@ -288,10 +433,28 @@ export type Database = {
         | "pharmacist"
         | "lab_tech"
         | "accountant"
+      bed_status:
+        | "available"
+        | "occupied"
+        | "reserved"
+        | "maintenance"
+        | "cleaning"
       department_type: "clinical" | "administrative" | "support"
       gender_type: "male" | "female" | "other"
       hospital_type: "general" | "specialty" | "clinic" | "nursing_home"
       subscription_tier: "basic" | "professional" | "enterprise"
+      ward_type:
+        | "general"
+        | "private"
+        | "semi_private"
+        | "icu"
+        | "nicu"
+        | "picu"
+        | "hdu"
+        | "surgical"
+        | "maternity"
+        | "emergency"
+        | "daycare"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -429,10 +592,30 @@ export const Constants = {
         "lab_tech",
         "accountant",
       ],
+      bed_status: [
+        "available",
+        "occupied",
+        "reserved",
+        "maintenance",
+        "cleaning",
+      ],
       department_type: ["clinical", "administrative", "support"],
       gender_type: ["male", "female", "other"],
       hospital_type: ["general", "specialty", "clinic", "nursing_home"],
       subscription_tier: ["basic", "professional", "enterprise"],
+      ward_type: [
+        "general",
+        "private",
+        "semi_private",
+        "icu",
+        "nicu",
+        "picu",
+        "hdu",
+        "surgical",
+        "maternity",
+        "emergency",
+        "daycare",
+      ],
     },
   },
 } as const
