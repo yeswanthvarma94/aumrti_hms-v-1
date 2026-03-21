@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import AppShell from "@/components/layout/AppShell";
 import LandingPage from "./pages/LandingPage";
+import Register from "./pages/register";
 import Dashboard from "./pages/Dashboard";
 import ComingSoon from "./pages/ComingSoon";
 import DesignSystem from "./pages/DesignSystem";
@@ -21,6 +22,7 @@ const App = () => (
         <Routes>
           {/* Public routes */}
           <Route path="/" element={<LandingPage />} />
+          <Route path="/register" element={<Register />} />
           <Route path="/design-system" element={<DesignSystem />} />
 
           {/* App shell routes */}
