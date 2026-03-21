@@ -1,36 +1,55 @@
 
 
-## HMS Platform v9.0 — Core Schema Setup
+## HMS Platform v9.0 — Global Design System
 
-### 1. Create Core Database Tables (with migrations)
+### Overview
+Replace the default shadcn color palette with the HMS clinical design system. Add Inter font, custom semantic colors, and create a `/design-system` showcase page.
 
-**hospitals** — Multi-tenant root table
-- id (uuid, PK), name, type (enum: general/specialty/clinic/nursing_home), address, state, pincode, country, gstin, nabh_number, beds_count, logo_url, primary_color, subscription_tier (enum: basic/professional/enterprise), is_active, created_at
+### 1. Update `index.html`
+- Add Google Fonts link for Inter (weights 400, 500, 600, 700)
 
-**branches** — Multi-branch support
-- id (uuid, PK), hospital_id (FK → hospitals), name, address, is_main_branch, is_active, created_at
+### 2. Update `src/index.css`
+- Convert all specified hex colors to HSL and set as CSS custom variables:
+  - `--primary`: #1A2F5A → 220 54% 23%
+  - `--secondary` (teal): #0E7B7B → 180 80% 27%
+  - `--accent`: #F59E0B → 38 92% 50%
+  - `--success`: #10B981 → 160 84% 39%
+  - `--destructive`: #EF4444 → 0 84% 60%
+  - `--background`: #F0F4F8 → 210 33% 96%
+  - `--card`/`--surface`: #FFFFFF → 0 0% 100%
+  - `--foreground`: #1E293B → 215 28% 17%
+  - `--muted-foreground`: #64748B → 215 16% 47%
+  - `--sidebar-background`: #1A2F5A (deep navy sidebar)
+- Set `font-family: 'Inter', sans-serif` on body
+- Set base font-size 14px, line-height 1.6
+- Add global styles: no scrollbar on content area, card/button/input border-radius overrides
+- Set `--radius: 0.5rem` (8px for cards)
 
-**departments** — Hospital departments
-- id (uuid, PK), hospital_id (FK → hospitals), name, type (enum: clinical/administrative/support), head_doctor_id (uuid, nullable), is_active, created_at
+### 3. Update `tailwind.config.ts`
+- Add `hms-teal`, `hms-amber`, `hms-success` semantic color tokens
+- Add `fontFamily: { sans: ['Inter', ...defaultTheme.fontFamily.sans] }`
+- Add custom `boxShadow: { card: '0 1px 3px rgba(0,0,0,0.08)' }`
 
-**users** — Staff/system users (references auth.users via id)
-- id (uuid, PK, FK → auth.users), hospital_id (FK → hospitals), branch_id (FK → branches), full_name, email, phone, role (enum: super_admin/hospital_admin/doctor/nurse/receptionist/pharmacist/lab_tech/accountant), department_id (FK → departments), employee_id, is_active, last_login, created_at
+### 4. Update `src/App.css`
+- Remove default Vite boilerplate styles (logo-spin, .card, .read-the-docs)
 
-**patients** — Patient master
-- id (uuid, PK), hospital_id (FK → hospitals), uhid (unique per hospital), full_name, dob, gender (enum: male/female/other), phone, address, blood_group, abha_id, emergency_contact (jsonb), created_at
+### 5. Create `src/pages/DesignSystem.tsx`
+- Showcase page at `/design-system` displaying:
+  - Color palette swatches (all 9 colors with hex + name)
+  - Typography scale (h1-h4, body, muted, small)
+  - Buttons (all variants: primary, secondary/teal, outline, ghost, destructive, accent)
+  - Inputs, badges, cards, alerts
+  - Layout spec reference (sidebar 240px, header 56px, content rules)
+- All rendered using existing shadcn components with the new theme
 
-### 2. Enable Row Level Security on All Tables
-- All data isolated by `hospital_id` — no cross-hospital access
-- Create a `get_user_hospital_id()` security definer function to safely retrieve the current user's hospital_id without recursive RLS
-- Policies: authenticated users can only SELECT/INSERT/UPDATE/DELETE rows matching their own hospital_id
+### 6. Update `src/App.tsx`
+- Add route `/design-system` → DesignSystem page
 
-### 3. Enable Realtime
-- Enable Supabase Realtime on `hospitals` table (beds data will be in a future `beds` table; `opd_tokens` and `ipd_admissions` tables will be added in subsequent modules)
-
-### 4. Create Supabase Client Integration
-- Update the generated types file after migration
-- Set up the client integration for use in the React frontend
-
-### 5. Build a Minimal Landing/Dashboard Page
-- Replace the placeholder Index page with an HMS-branded landing showing "HMS Platform v9.0 — Connected" status, confirming Supabase connectivity
+### Files Modified
+- `index.html` — Inter font
+- `src/index.css` — CSS variables, base styles
+- `tailwind.config.ts` — semantic colors, font, shadow
+- `src/App.css` — clean up
+- `src/App.tsx` — new route
+- `src/pages/DesignSystem.tsx` — new showcase page
 
