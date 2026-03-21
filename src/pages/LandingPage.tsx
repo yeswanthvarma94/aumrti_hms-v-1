@@ -67,7 +67,7 @@ const LandingPage: React.FC = () => {
         </div>
         <div className="flex items-center gap-3">
           <button
-            onClick={() => navigate("/login")}
+            onClick={() => setLoginOpen(true)}
             className="border-[1.5px] border-primary text-primary bg-transparent px-5 py-2 rounded-md text-sm font-medium hover:bg-primary hover:text-primary-foreground transition-colors active:scale-[0.97]"
           >
             Sign In
