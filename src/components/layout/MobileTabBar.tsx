@@ -4,7 +4,7 @@ import { Home, Stethoscope, FlaskConical, Pill, MoreHorizontal } from "lucide-re
 import { cn } from "@/lib/utils";
 
 const tabs = [
-  { label: "Dashboard", icon: Home, path: "/" },
+  { label: "Dashboard", icon: Home, path: "/dashboard" },
   { label: "Clinical", icon: Stethoscope, path: "/opd" },
   { label: "Diagnostics", icon: FlaskConical, path: "/lab" },
   { label: "Pharmacy", icon: Pill, path: "/pharmacy" },

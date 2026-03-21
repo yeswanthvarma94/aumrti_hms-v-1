@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import AppShell from "@/components/layout/AppShell";
+import LandingPage from "./pages/LandingPage";
 import Dashboard from "./pages/Dashboard";
 import ComingSoon from "./pages/ComingSoon";
 import DesignSystem from "./pages/DesignSystem";
@@ -18,12 +19,13 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          {/* Standalone routes */}
+          {/* Public routes */}
+          <Route path="/" element={<LandingPage />} />
           <Route path="/design-system" element={<DesignSystem />} />
 
           {/* App shell routes */}
           <Route element={<AppShell />}>
-            <Route path="/" element={<Dashboard />} />
+            <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/opd" element={<ComingSoon />} />
             <Route path="/ipd" element={<ComingSoon />} />
             <Route path="/emergency" element={<ComingSoon />} />
