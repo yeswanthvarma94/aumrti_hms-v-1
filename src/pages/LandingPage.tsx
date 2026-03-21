@@ -36,6 +36,7 @@ const floatingBadges = [
 const LandingPage: React.FC = () => {
   const navigate = useNavigate();
   const [demoOpen, setDemoOpen] = useState(false);
+  const [loginOpen, setLoginOpen] = useState(false);
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
