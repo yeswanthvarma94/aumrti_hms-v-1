@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import AppShell from "@/components/layout/AppShell";
 import LandingPage from "./pages/LandingPage";
 import Register from "./pages/register";
+import OnboardingWizard from "./pages/setup/OnboardingWizard";
 import Dashboard from "./pages/Dashboard";
 import ComingSoon from "./pages/ComingSoon";
 import DesignSystem from "./pages/DesignSystem";
