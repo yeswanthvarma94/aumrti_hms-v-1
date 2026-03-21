@@ -7,6 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import LoginModal from "@/components/auth/LoginModal";
 
 const trustPills = [
   "NABH Ready",
