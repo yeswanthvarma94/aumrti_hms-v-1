@@ -25,6 +25,8 @@ const Register: React.FC = () => {
   const [data, setData] = useState<RegistrationData>(initialData);
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true);
+  const [otpPhase, setOtpPhase] = useState<"idle" | "sent" | "verifying">("idle");
+  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -45,8 +47,6 @@ const Register: React.FC = () => {
           data.fullName &&
           data.email &&
           /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email) &&
-          data.password.length >= 8 &&
-          data.password === data.confirmPassword &&
           data.designation
         );
       case 2:
@@ -68,56 +68,89 @@ const Register: React.FC = () => {
   ];
 
   const handleLaunch = async () => {
-    if (!data.termsAccepted) return;
-    setLoading(true);
-    try {
-      const res = await supabase.functions.invoke("register-hospital", {
-        body: {
-          hospital: {
-            name: data.hospitalName,
-            type: data.hospitalType,
-            state: data.state,
-            bedCount: data.bedCount,
-            address1: data.address1,
-            address2: data.address2,
-            pincode: data.pincode,
-            gstin: data.gstin || null,
-            nabhNumber: data.nabhAccredited ? data.nabhNumber : null,
-            plan: data.plan,
-          },
-          admin: {
-            full_name: data.fullName,
-            email: data.email,
-            password: data.password,
-            phone: data.phone,
-          },
-        },
-      });
-
-      if (res.error || res.data?.error) {
-        throw new Error(res.data?.error || res.error?.message || "Registration failed");
+    if (otpPhase === "idle") {
+      // Send OTP
+      if (!data.termsAccepted) return;
+      setLoading(true);
+      try {
+        const { error } = await supabase.auth.signInWithOtp({ email: data.email });
+        if (error) throw error;
+        setOtpPhase("sent");
+        setOtp(["", "", "", "", "", ""]);
+        toast({ title: "OTP sent!", description: `Check your inbox at ${data.email}` });
+      } catch (err: any) {
+        toast({ title: "Failed to send OTP", description: err.message, variant: "destructive" });
+      } finally {
+        setLoading(false);
       }
+      return;
+    }
 
-      // Sign in the new user
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: data.email,
-        password: data.password,
-      });
-
-      if (signInError) throw signInError;
-
-      toast({ title: "Welcome! 🎉", description: "Your hospital account is live." });
-      navigate("/dashboard", { replace: true });
-    } catch (err: any) {
-      toast({
-        title: "Something went wrong",
-        description: err.message || "Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
+    if (otpPhase === "sent") {
+      // This is a resend
+      setLoading(true);
+      try {
+        const { error } = await supabase.auth.signInWithOtp({ email: data.email });
+        if (error) throw error;
+        setOtp(["", "", "", "", "", ""]);
+        toast({ title: "OTP resent!", description: `Check your inbox at ${data.email}` });
+      } catch (err: any) {
+        toast({ title: "Failed to resend OTP", description: err.message, variant: "destructive" });
+      } finally {
+        setLoading(false);
+      }
     }
   };
+
+  // Auto-verify OTP when all 6 digits entered
+  useEffect(() => {
+    if (otpPhase !== "sent" || !otp.every((d) => d !== "")) return;
+
+    const verify = async () => {
+      setOtpPhase("verifying");
+      try {
+        const token = otp.join("");
+        const { error } = await supabase.auth.verifyOtp({ email: data.email, token, type: "email" });
+        if (error) throw error;
+
+        // User is now authenticated — create hospital via edge function
+        const res = await supabase.functions.invoke("setup-hospital", {
+          body: {
+            hospital: {
+              name: data.hospitalName,
+              type: data.hospitalType,
+              state: data.state,
+              bedCount: data.bedCount,
+              address1: data.address1,
+              address2: data.address2,
+              pincode: data.pincode,
+              gstin: data.gstin || null,
+              nabhNumber: data.nabhAccredited ? data.nabhNumber : null,
+              plan: data.plan,
+            },
+            admin: {
+              full_name: data.fullName,
+              email: data.email,
+              phone: data.phone,
+            },
+          },
+        });
+
+        if (res.error || res.data?.error) {
+          throw new Error(res.data?.error || res.error?.message || "Registration failed");
+        }
+
+        toast({ title: "Welcome! 🎉", description: "Your hospital account is live." });
+        navigate("/dashboard", { replace: true });
+      } catch (err: any) {
+        setOtpPhase("sent");
+        setOtp(["", "", "", "", "", ""]);
+        toast({ title: "Verification failed", description: err.message, variant: "destructive" });
+      }
+    };
+
+    verify();
+  }, [otp, otpPhase]);
 
   if (checking) return null;
 
@@ -178,7 +211,7 @@ const Register: React.FC = () => {
 
         <div className="text-[13px] text-muted-foreground">
           Already registered?{" "}
-          <button onClick={() => navigate("/login")} className="text-secondary font-medium hover:underline">
+          <button onClick={() => navigate("/")} className="text-secondary font-medium hover:underline">
             Sign In →
           </button>
         </div>
@@ -186,7 +219,6 @@ const Register: React.FC = () => {
 
       {/* RIGHT PANEL */}
       <div className="flex-1 bg-card flex flex-col overflow-hidden">
-        {/* Progress bar */}
         <div className="h-1 bg-border shrink-0">
           <div
             className="h-full bg-primary transition-[width] duration-400 ease-out rounded-r-sm"
@@ -194,7 +226,6 @@ const Register: React.FC = () => {
           />
         </div>
 
-        {/* Form area */}
         <div className="flex-1 overflow-y-auto px-8 md:px-14 py-8">
           {step === 0 && <Step1HospitalIdentity data={data} onChange={update} />}
           {step === 1 && <Step2AdminAccount data={data} onChange={update} />}
@@ -207,11 +238,13 @@ const Register: React.FC = () => {
               onEditStep={setStep}
               loading={loading}
               onLaunch={handleLaunch}
+              otpPhase={otpPhase}
+              otp={otp}
+              onOtpChange={setOtp}
             />
           )}
         </div>
 
-        {/* Bottom navigation */}
         {step < 4 && (
           <div className="shrink-0 flex items-center justify-between px-8 md:px-14 py-4 border-t border-border">
             {step > 0 ? (
@@ -233,7 +266,7 @@ const Register: React.FC = () => {
             </button>
           </div>
         )}
-        {step === 4 && (
+        {step === 4 && otpPhase === "idle" && (
           <div className="shrink-0 flex items-center px-8 md:px-14 py-4 border-t border-border">
             <button
               onClick={() => setStep(3)}
