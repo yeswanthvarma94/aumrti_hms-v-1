@@ -24,6 +24,7 @@ const App = () => (
           {/* Public routes */}
           <Route path="/" element={<LandingPage />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/setup/onboarding" element={<OnboardingWizard />} />
           <Route path="/design-system" element={<DesignSystem />} />
 
           {/* App shell routes */}
