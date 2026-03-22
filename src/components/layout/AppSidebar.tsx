@@ -88,7 +88,15 @@ const navGroups: NavGroup[] = [
 const AppSidebar: React.FC = () => {
   const { collapsed } = useSidebar();
   const location = useLocation();
+  const navigate = useNavigate();
+  const { toast } = useToast();
   const [hoveredGroup, setHoveredGroup] = useState<string | null>(null);
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    toast({ title: "Signed out successfully" });
+    navigate("/login", { replace: true });
+  };
 
   const isActive = (group: NavGroup) => {
     if (group.path) return location.pathname === group.path;
