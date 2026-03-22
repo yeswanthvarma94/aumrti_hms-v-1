@@ -576,73 +576,116 @@ const LabResultWorkspace: React.FC<Props> = ({ order, onRefresh }) => {
         {/* TAB 2: Sample */}
         <TabsContent value="sample" className="flex-1 overflow-auto m-0 p-4 space-y-3">
           {samples.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">No samples recorded</p>}
-          {samples.map(sample => (
-            <div key={sample.id} className="bg-card border border-border rounded-lg p-4">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold bg-muted px-2 py-1 rounded capitalize">{sample.sample_type}</span>
-                  {sample.barcode && (
-                    <span className="text-xs font-mono bg-muted/50 px-2 py-1 rounded text-muted-foreground">{sample.barcode}</span>
-                  )}
+          {samples.map(sample => {
+            const fullSteps = ["pending", "collected", "received", "processing"];
+            const sampleIdx = fullSteps.indexOf(sample.status);
+            // Derive higher-level workflow status
+            const allEntered = items.length > 0 && items.every(i => i.result_value);
+            const allReported = items.length > 0 && items.every(i => i.status === "reported" || i.status === "validated");
+            const workflowSteps = [
+              { key: "pending", label: "Ordered" },
+              { key: "collected", label: "Collected" },
+              { key: "received", label: "Received" },
+              { key: "processing", label: "Processing" },
+              { key: "results", label: "Results Entered" },
+              { key: "reported", label: "Reported" },
+            ];
+            const workflowIdx = allReported ? 5 : allEntered ? 4 : sampleIdx >= 0 ? sampleIdx : 0;
+
+            return (
+              <div key={sample.id} className="bg-card border border-border rounded-lg p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold bg-muted px-2 py-1 rounded capitalize">{sample.sample_type}</span>
+                    {sample.barcode && (
+                      <span className="text-xs font-mono bg-muted/50 px-2 py-1 rounded text-muted-foreground">{sample.barcode}</span>
+                    )}
+                  </div>
+                  <span className={cn("text-[10px] font-medium px-2 py-0.5 rounded-full capitalize",
+                    allReported ? "bg-emerald-100 text-emerald-700" :
+                    allEntered ? "bg-blue-100 text-blue-700" :
+                    sample.status === "processing" ? "bg-violet-100 text-violet-700" :
+                    sample.status === "received" ? "bg-blue-100 text-blue-700" :
+                    sample.status === "collected" ? "bg-amber-100 text-amber-700" :
+                    "bg-muted text-muted-foreground"
+                  )}>
+                    {allReported ? "reported" : allEntered ? "results entered" : sample.status}
+                  </span>
                 </div>
-                <span className={cn("text-[10px] font-medium px-2 py-0.5 rounded-full capitalize",
-                  sample.status === "collected" ? "bg-amber-100 text-amber-700" :
-                  sample.status === "received" ? "bg-blue-100 text-blue-700" :
-                  sample.status === "processing" ? "bg-violet-100 text-violet-700" :
-                  "bg-muted text-muted-foreground"
-                )}>
-                  {sample.status}
-                </span>
-              </div>
 
-              {/* Stepper */}
-              <div className="flex items-center gap-1 mb-3">
-                {["pending", "collected", "received", "processing"].map((step, i) => {
-                  const stepOrder = ["pending", "collected", "received", "processing"];
-                  const currentIdx = stepOrder.indexOf(sample.status);
-                  const isComplete = i <= currentIdx;
-                  return (
-                    <React.Fragment key={step}>
-                      {i > 0 && <div className={cn("flex-1 h-0.5 rounded", isComplete ? "bg-emerald-500" : "bg-border")} />}
-                      <div className={cn("w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0",
-                        isComplete ? "bg-emerald-500 text-white" : "bg-muted text-muted-foreground border border-border"
-                      )}>
-                        {isComplete ? "✓" : i + 1}
-                      </div>
-                    </React.Fragment>
-                  );
-                })}
-              </div>
-              <div className="flex justify-between text-[10px] text-muted-foreground px-1">
-                <span>Ordered</span><span>Collected</span><span>Received</span><span>Processing</span>
-              </div>
+                {/* Full Workflow Stepper */}
+                <div className="flex items-center gap-0.5 mb-2">
+                  {workflowSteps.map((step, i) => {
+                    const isComplete = i <= workflowIdx;
+                    const isCurrent = i === workflowIdx;
+                    return (
+                      <React.Fragment key={step.key}>
+                        {i > 0 && <div className={cn("flex-1 h-0.5 rounded", isComplete ? "bg-emerald-500" : "bg-border")} />}
+                        <div className={cn("w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0",
+                          isComplete ? "bg-emerald-500 text-white" : "bg-muted text-muted-foreground border border-border",
+                          isCurrent && !isComplete && "ring-2 ring-blue-300"
+                        )}>
+                          {isComplete ? "✓" : i + 1}
+                        </div>
+                      </React.Fragment>
+                    );
+                  })}
+                </div>
+                <div className="flex justify-between text-[9px] text-muted-foreground px-0">
+                  {workflowSteps.map(s => <span key={s.key} className="text-center w-12">{s.label.split(" ")[0]}</span>)}
+                </div>
 
-              {sample.collected_at && (
-                <p className="text-[11px] text-muted-foreground mt-2">
-                  Collected: {new Date(sample.collected_at).toLocaleString()}
-                </p>
-              )}
+                {sample.collected_at && (
+                  <p className="text-[11px] text-muted-foreground mt-2">
+                    Collected: {new Date(sample.collected_at).toLocaleString()}
+                  </p>
+                )}
+                {sample.received_at && (
+                  <p className="text-[11px] text-muted-foreground">
+                    Received: {new Date(sample.received_at).toLocaleString()}
+                  </p>
+                )}
 
-              {sample.status === "pending" && (
-                <button onClick={handleMarkCollected}
-                  className="w-full mt-3 h-9 rounded-lg bg-amber-500 text-white text-xs font-semibold hover:bg-amber-600 active:scale-[0.97] transition-all">
-                  📦 Mark Sample Collected
-                </button>
-              )}
-              {sample.status === "collected" && (
-                <button onClick={handleMarkReceived}
-                  className="w-full mt-3 h-9 rounded-lg bg-blue-500 text-white text-xs font-semibold hover:bg-blue-600 active:scale-[0.97] transition-all">
-                  📥 Mark Sample Received
-                </button>
-              )}
-              {sample.status === "received" && (
-                <button onClick={handleMarkProcessing}
-                  className="w-full mt-3 h-9 rounded-lg bg-violet-500 text-white text-xs font-semibold hover:bg-violet-600 active:scale-[0.97] transition-all">
-                  🔬 Start Processing
-                </button>
-              )}
-            </div>
-          ))}
+                {/* Workflow action buttons */}
+                {sample.status === "pending" && (
+                  <button onClick={handleMarkCollected}
+                    className="w-full mt-3 h-9 rounded-lg bg-amber-500 text-white text-xs font-semibold hover:bg-amber-600 active:scale-[0.97] transition-all">
+                    📦 Mark Sample Collected
+                  </button>
+                )}
+                {sample.status === "collected" && (
+                  <button onClick={handleMarkReceived}
+                    className="w-full mt-3 h-9 rounded-lg bg-blue-500 text-white text-xs font-semibold hover:bg-blue-600 active:scale-[0.97] transition-all">
+                    📥 Mark Sample Received
+                  </button>
+                )}
+                {sample.status === "received" && (
+                  <button onClick={handleMarkProcessing}
+                    className="w-full mt-3 h-9 rounded-lg bg-violet-500 text-white text-xs font-semibold hover:bg-violet-600 active:scale-[0.97] transition-all">
+                    🔬 Start Processing
+                  </button>
+                )}
+                {sample.status === "processing" && !allEntered && (
+                  <div className="mt-3 bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
+                    <p className="text-xs font-semibold text-blue-700">🧪 Sample is being processed</p>
+                    <p className="text-[11px] text-blue-600 mt-1">Switch to the <strong>Results</strong> tab to enter test results</p>
+                  </div>
+                )}
+                {sample.status === "processing" && allEntered && !allReported && (
+                  <div className="mt-3 bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-center">
+                    <p className="text-xs font-semibold text-emerald-700">✓ All results entered</p>
+                    <p className="text-[11px] text-emerald-600 mt-1">Click <strong>Validate & Release</strong> to finalize the report</p>
+                  </div>
+                )}
+                {allReported && (
+                  <div className="mt-3 bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-center">
+                    <p className="text-xs font-semibold text-emerald-700">✓ Report released</p>
+                    <p className="text-[11px] text-emerald-600 mt-1">Use <strong>Print Report</strong> or <strong>WhatsApp</strong> to deliver results</p>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </TabsContent>
 
         {/* TAB 3: History */}
@@ -687,32 +730,54 @@ const LabResultWorkspace: React.FC<Props> = ({ order, onRefresh }) => {
 
       {/* Action Bar */}
       <div className="h-14 shrink-0 bg-card border-t border-border px-5 flex items-center gap-2">
+        <button onClick={() => {
+          // Save all currently entered but unsaved results
+          const unsaved = items.filter(i => localValues[i.id] && localValues[i.id] !== i.result_value);
+          if (unsaved.length === 0) { toast({ title: "All results already saved" }); return; }
+          Promise.all(unsaved.map(i => saveResult(i, localValues[i.id]))).then(() => {
+            toast({ title: `💾 ${unsaved.length} result(s) saved` });
+          });
+        }}
+          className="px-4 py-2 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-muted transition-colors flex items-center gap-1.5">
+          <Save size={14} /> Save All
+        </button>
         <button onClick={handleValidateAll}
           disabled={!allResultsEntered || hasUnacknowledgedCritical || order.status === "completed"}
           className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 active:scale-[0.97] transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5">
           <CheckCircle2 size={14} /> Validate & Release
         </button>
         <div className="flex-1" />
-        <button className="px-3 py-2 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-muted transition-colors flex items-center gap-1.5">
+        <button onClick={() => {
+          // Print lab report
+          const p = order.patients;
+          const testRows = items.map(i => {
+            const flagLabel = i.result_flag && FLAG_STYLES[i.result_flag]?.label ? ` (${FLAG_STYLES[i.result_flag].label})` : "";
+            const ref = i.normal_min != null && i.normal_max != null ? `${i.normal_min} – ${i.normal_max}` : i.normal_max != null ? `< ${i.normal_max}` : "—";
+            return `<tr><td style="padding:6px 10px;border-bottom:1px solid #eee">${i.test_name}</td><td style="padding:6px 10px;border-bottom:1px solid #eee;font-weight:600;${i.result_flag === 'H' || i.result_flag === 'CH' ? 'color:#B45309' : i.result_flag === 'L' || i.result_flag === 'CL' ? 'color:#1D4ED8' : ''}">${i.result_value || "—"}${flagLabel}</td><td style="padding:6px 10px;border-bottom:1px solid #eee">${i.unit || ""}</td><td style="padding:6px 10px;border-bottom:1px solid #eee;color:#6B7280">${ref}</td></tr>`;
+          }).join("");
+          const printHtml = `<html><head><title>Lab Report - ${p?.full_name}</title><style>body{font-family:Arial,sans-serif;padding:40px}table{width:100%;border-collapse:collapse}th{background:#F3F4F6;padding:8px 10px;text-align:left;font-size:12px;text-transform:uppercase;color:#6B7280}td{font-size:13px}@media print{body{padding:20px}}</style></head><body><h2 style="margin:0 0 4px">Lab Report</h2><p style="color:#6B7280;margin:0 0 16px">Order: LAB-${order.id.slice(0, 8).toUpperCase()} | Date: ${new Date(order.order_date).toLocaleDateString("en-IN")}</p><p><strong>Patient:</strong> ${p?.full_name || "—"} | <strong>UHID:</strong> ${p?.uhid || "—"} | <strong>Age/Gender:</strong> ${getAge(p?.dob || null)} ${p?.gender || ""}</p><table style="margin-top:16px"><thead><tr><th>Test</th><th>Result</th><th>Unit</th><th>Reference Range</th></tr></thead><tbody>${testRows}</tbody></table><p style="margin-top:24px;font-size:11px;color:#9CA3AF">Report generated on ${new Date().toLocaleString()}</p></body></html>`;
+          const w = window.open("", "_blank");
+          if (w) { w.document.write(printHtml); w.document.close(); w.print(); }
+        }}
+          className="px-3 py-2 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-muted transition-colors flex items-center gap-1.5">
           <Printer size={13} /> Print Report
         </button>
-        {order.status === "completed" && (
-          <button
-            onClick={() => {
-              const p = order.patients;
-              if (!p?.phone) { toast({ title: "Patient phone not available", variant: "destructive" }); return; }
-              const testLines = items.map(i => {
-                const emoji = i.result_flag === "CH" || i.result_flag === "CL" ? "🔴" : i.result_flag === "H" || i.result_flag === "L" ? "🟡" : "✅";
-                return `• ${i.test_name}: *${i.result_value} ${i.unit || ""}* ${emoji}`;
-              }).join("\n");
-              const msg = `🏥 *Lab Report*\n*Patient:* ${p.full_name}\n\n📋 *Results:*\n${testLines}`;
-              const phone = p.phone?.replace(/\D/g, "");
-              window.open(`https://wa.me/91${phone}?text=${encodeURIComponent(msg)}`, "_blank");
-            }}
-            className="px-3 py-2 rounded-lg border border-emerald-300 text-xs font-medium text-emerald-700 hover:bg-emerald-50 transition-colors flex items-center gap-1.5">
-            <MessageSquare size={13} /> WhatsApp
-          </button>
-        )}
+        <button
+          onClick={() => {
+            const p = order.patients;
+            if (!p?.phone) { toast({ title: "Patient phone not available", variant: "destructive" }); return; }
+            if (order.status !== "completed") { toast({ title: "Validate & release report first", variant: "destructive" }); return; }
+            const testLines = items.map(i => {
+              const emoji = i.result_flag === "CH" || i.result_flag === "CL" ? "🔴" : i.result_flag === "H" || i.result_flag === "L" ? "🟡" : "✅";
+              return `• ${i.test_name}: *${i.result_value} ${i.unit || ""}* ${emoji}`;
+            }).join("\n");
+            const msg = `🏥 *Lab Report*\n*Patient:* ${p.full_name}\n\n📋 *Results:*\n${testLines}`;
+            const phone = p.phone?.replace(/\D/g, "");
+            window.open(`https://wa.me/91${phone}?text=${encodeURIComponent(msg)}`, "_blank");
+          }}
+          className="px-3 py-2 rounded-lg border border-emerald-300 text-xs font-medium text-emerald-700 hover:bg-emerald-50 transition-colors flex items-center gap-1.5">
+          <MessageSquare size={13} /> WhatsApp
+        </button>
       </div>
     </div>
   );
