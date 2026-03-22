@@ -30,9 +30,27 @@ const EmergencyRegistrationModal: React.FC<Props> = ({ open, onClose, hospitalId
   const [complaint, setComplaint] = useState("");
   const [mlc, setMlc] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [phoneSearch, setPhoneSearch] = useState("");
+  const [linkedPatient, setLinkedPatient] = useState<{ id: string; full_name: string; uhid: string } | null>(null);
+  const [phoneResults, setPhoneResults] = useState<{ id: string; full_name: string; uhid: string; phone: string | null }[]>([]);
+
+  // Phone search for existing patients
+  useEffect(() => {
+    if (phoneSearch.length < 3 || !hospitalId) { setPhoneResults([]); return; }
+    const t = setTimeout(async () => {
+      const { data } = await supabase.from("patients")
+        .select("id, full_name, uhid, phone")
+        .eq("hospital_id", hospitalId)
+        .or(`phone.ilike.%${phoneSearch}%,full_name.ilike.%${phoneSearch}%`)
+        .limit(3);
+      setPhoneResults(data || []);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [phoneSearch, hospitalId]);
 
   const reset = () => {
     setName("Unknown"); setAge(""); setGender("male"); setTriage(""); setComplaint(""); setMlc(false);
+    setPhoneSearch(""); setLinkedPatient(null); setPhoneResults([]);
   };
 
   const handleSubmit = async () => {
