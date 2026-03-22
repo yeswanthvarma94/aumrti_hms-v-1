@@ -39,7 +39,7 @@ const Register: React.FC = () => {
   const canProceed = (s: number): boolean => {
     switch (s) {
       case 0:
-        return !!(data.hospitalName && data.hospitalType && data.state && data.bedCount && data.phoneVerified);
+        return !!(data.hospitalName && data.hospitalType && data.state && data.bedCount && data.phone);
       case 1:
         return !!(
           data.fullName &&
