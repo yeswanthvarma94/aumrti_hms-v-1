@@ -12,6 +12,7 @@ interface Props {
   hospitalId: string | null;
   loading: boolean;
   onRefresh: () => void;
+  onNewAdmission: () => void;
 }
 
 const statusColors: Record<string, { bg: string; border: string; hoverBorder: string }> = {
