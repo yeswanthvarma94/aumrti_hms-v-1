@@ -730,32 +730,54 @@ const LabResultWorkspace: React.FC<Props> = ({ order, onRefresh }) => {
 
       {/* Action Bar */}
       <div className="h-14 shrink-0 bg-card border-t border-border px-5 flex items-center gap-2">
+        <button onClick={() => {
+          // Save all currently entered but unsaved results
+          const unsaved = items.filter(i => localValues[i.id] && localValues[i.id] !== i.result_value);
+          if (unsaved.length === 0) { toast({ title: "All results already saved" }); return; }
+          Promise.all(unsaved.map(i => saveResult(i, localValues[i.id]))).then(() => {
+            toast({ title: `💾 ${unsaved.length} result(s) saved` });
+          });
+        }}
+          className="px-4 py-2 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-muted transition-colors flex items-center gap-1.5">
+          <Save size={14} /> Save All
+        </button>
         <button onClick={handleValidateAll}
           disabled={!allResultsEntered || hasUnacknowledgedCritical || order.status === "completed"}
           className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 active:scale-[0.97] transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5">
           <CheckCircle2 size={14} /> Validate & Release
         </button>
         <div className="flex-1" />
-        <button className="px-3 py-2 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-muted transition-colors flex items-center gap-1.5">
+        <button onClick={() => {
+          // Print lab report
+          const p = order.patients;
+          const testRows = items.map(i => {
+            const flagLabel = i.result_flag && FLAG_STYLES[i.result_flag]?.label ? ` (${FLAG_STYLES[i.result_flag].label})` : "";
+            const ref = i.normal_min != null && i.normal_max != null ? `${i.normal_min} – ${i.normal_max}` : i.normal_max != null ? `< ${i.normal_max}` : "—";
+            return `<tr><td style="padding:6px 10px;border-bottom:1px solid #eee">${i.test_name}</td><td style="padding:6px 10px;border-bottom:1px solid #eee;font-weight:600;${i.result_flag === 'H' || i.result_flag === 'CH' ? 'color:#B45309' : i.result_flag === 'L' || i.result_flag === 'CL' ? 'color:#1D4ED8' : ''}">${i.result_value || "—"}${flagLabel}</td><td style="padding:6px 10px;border-bottom:1px solid #eee">${i.unit || ""}</td><td style="padding:6px 10px;border-bottom:1px solid #eee;color:#6B7280">${ref}</td></tr>`;
+          }).join("");
+          const printHtml = `<html><head><title>Lab Report - ${p?.full_name}</title><style>body{font-family:Arial,sans-serif;padding:40px}table{width:100%;border-collapse:collapse}th{background:#F3F4F6;padding:8px 10px;text-align:left;font-size:12px;text-transform:uppercase;color:#6B7280}td{font-size:13px}@media print{body{padding:20px}}</style></head><body><h2 style="margin:0 0 4px">Lab Report</h2><p style="color:#6B7280;margin:0 0 16px">Order: LAB-${order.id.slice(0, 8).toUpperCase()} | Date: ${new Date(order.order_date).toLocaleDateString("en-IN")}</p><p><strong>Patient:</strong> ${p?.full_name || "—"} | <strong>UHID:</strong> ${p?.uhid || "—"} | <strong>Age/Gender:</strong> ${getAge(p?.dob || null)} ${p?.gender || ""}</p><table style="margin-top:16px"><thead><tr><th>Test</th><th>Result</th><th>Unit</th><th>Reference Range</th></tr></thead><tbody>${testRows}</tbody></table><p style="margin-top:24px;font-size:11px;color:#9CA3AF">Report generated on ${new Date().toLocaleString()}</p></body></html>`;
+          const w = window.open("", "_blank");
+          if (w) { w.document.write(printHtml); w.document.close(); w.print(); }
+        }}
+          className="px-3 py-2 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-muted transition-colors flex items-center gap-1.5">
           <Printer size={13} /> Print Report
         </button>
-        {order.status === "completed" && (
-          <button
-            onClick={() => {
-              const p = order.patients;
-              if (!p?.phone) { toast({ title: "Patient phone not available", variant: "destructive" }); return; }
-              const testLines = items.map(i => {
-                const emoji = i.result_flag === "CH" || i.result_flag === "CL" ? "🔴" : i.result_flag === "H" || i.result_flag === "L" ? "🟡" : "✅";
-                return `• ${i.test_name}: *${i.result_value} ${i.unit || ""}* ${emoji}`;
-              }).join("\n");
-              const msg = `🏥 *Lab Report*\n*Patient:* ${p.full_name}\n\n📋 *Results:*\n${testLines}`;
-              const phone = p.phone?.replace(/\D/g, "");
-              window.open(`https://wa.me/91${phone}?text=${encodeURIComponent(msg)}`, "_blank");
-            }}
-            className="px-3 py-2 rounded-lg border border-emerald-300 text-xs font-medium text-emerald-700 hover:bg-emerald-50 transition-colors flex items-center gap-1.5">
-            <MessageSquare size={13} /> WhatsApp
-          </button>
-        )}
+        <button
+          onClick={() => {
+            const p = order.patients;
+            if (!p?.phone) { toast({ title: "Patient phone not available", variant: "destructive" }); return; }
+            if (order.status !== "completed") { toast({ title: "Validate & release report first", variant: "destructive" }); return; }
+            const testLines = items.map(i => {
+              const emoji = i.result_flag === "CH" || i.result_flag === "CL" ? "🔴" : i.result_flag === "H" || i.result_flag === "L" ? "🟡" : "✅";
+              return `• ${i.test_name}: *${i.result_value} ${i.unit || ""}* ${emoji}`;
+            }).join("\n");
+            const msg = `🏥 *Lab Report*\n*Patient:* ${p.full_name}\n\n📋 *Results:*\n${testLines}`;
+            const phone = p.phone?.replace(/\D/g, "");
+            window.open(`https://wa.me/91${phone}?text=${encodeURIComponent(msg)}`, "_blank");
+          }}
+          className="px-3 py-2 rounded-lg border border-emerald-300 text-xs font-medium text-emerald-700 hover:bg-emerald-50 transition-colors flex items-center gap-1.5">
+          <MessageSquare size={13} /> WhatsApp
+        </button>
       </div>
     </div>
   );
