@@ -281,6 +281,7 @@ export type Database = {
           hospital_id: string
           id: string
           is_acknowledged: boolean
+          lab_order_item_id: string | null
           patient_id: string | null
           severity: string
           ward_name: string | null
@@ -295,6 +296,7 @@ export type Database = {
           hospital_id: string
           id?: string
           is_acknowledged?: boolean
+          lab_order_item_id?: string | null
           patient_id?: string | null
           severity?: string
           ward_name?: string | null
@@ -309,6 +311,7 @@ export type Database = {
           hospital_id?: string
           id?: string
           is_acknowledged?: boolean
+          lab_order_item_id?: string | null
           patient_id?: string | null
           severity?: string
           ward_name?: string | null
@@ -326,6 +329,13 @@ export type Database = {
             columns: ["hospital_id"]
             isOneToOne: false
             referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clinical_alerts_lab_order_item_id_fkey"
+            columns: ["lab_order_item_id"]
+            isOneToOne: false
+            referencedRelation: "lab_order_items"
             referencedColumns: ["id"]
           },
           {
@@ -718,6 +728,354 @@ export type Database = {
             columns: ["recorded_by"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lab_order_items: {
+        Row: {
+          created_at: string | null
+          critical_acknowledged: boolean | null
+          critical_acknowledged_at: string | null
+          critical_acknowledged_by: string | null
+          delta_flag: boolean | null
+          hospital_id: string
+          id: string
+          lab_order_id: string
+          notes: string | null
+          previous_value: number | null
+          reference_range: string | null
+          result_entered_at: string | null
+          result_entered_by: string | null
+          result_flag: string | null
+          result_numeric: number | null
+          result_unit: string | null
+          result_value: string | null
+          sample_barcode: string | null
+          sample_collected_at: string | null
+          sample_collected_by: string | null
+          status: string
+          test_id: string
+          validated_at: string | null
+          validated_by: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          critical_acknowledged?: boolean | null
+          critical_acknowledged_at?: string | null
+          critical_acknowledged_by?: string | null
+          delta_flag?: boolean | null
+          hospital_id: string
+          id?: string
+          lab_order_id: string
+          notes?: string | null
+          previous_value?: number | null
+          reference_range?: string | null
+          result_entered_at?: string | null
+          result_entered_by?: string | null
+          result_flag?: string | null
+          result_numeric?: number | null
+          result_unit?: string | null
+          result_value?: string | null
+          sample_barcode?: string | null
+          sample_collected_at?: string | null
+          sample_collected_by?: string | null
+          status?: string
+          test_id: string
+          validated_at?: string | null
+          validated_by?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          critical_acknowledged?: boolean | null
+          critical_acknowledged_at?: string | null
+          critical_acknowledged_by?: string | null
+          delta_flag?: boolean | null
+          hospital_id?: string
+          id?: string
+          lab_order_id?: string
+          notes?: string | null
+          previous_value?: number | null
+          reference_range?: string | null
+          result_entered_at?: string | null
+          result_entered_by?: string | null
+          result_flag?: string | null
+          result_numeric?: number | null
+          result_unit?: string | null
+          result_value?: string | null
+          sample_barcode?: string | null
+          sample_collected_at?: string | null
+          sample_collected_by?: string | null
+          status?: string
+          test_id?: string
+          validated_at?: string | null
+          validated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lab_order_items_critical_acknowledged_by_fkey"
+            columns: ["critical_acknowledged_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lab_order_items_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lab_order_items_lab_order_id_fkey"
+            columns: ["lab_order_id"]
+            isOneToOne: false
+            referencedRelation: "lab_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lab_order_items_result_entered_by_fkey"
+            columns: ["result_entered_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lab_order_items_sample_collected_by_fkey"
+            columns: ["sample_collected_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lab_order_items_test_id_fkey"
+            columns: ["test_id"]
+            isOneToOne: false
+            referencedRelation: "lab_test_master"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lab_order_items_validated_by_fkey"
+            columns: ["validated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lab_orders: {
+        Row: {
+          admission_id: string | null
+          clinical_notes: string | null
+          created_at: string | null
+          encounter_id: string | null
+          hospital_id: string
+          id: string
+          order_date: string
+          order_time: string
+          ordered_by: string
+          patient_id: string
+          priority: string
+          status: string
+        }
+        Insert: {
+          admission_id?: string | null
+          clinical_notes?: string | null
+          created_at?: string | null
+          encounter_id?: string | null
+          hospital_id: string
+          id?: string
+          order_date?: string
+          order_time?: string
+          ordered_by: string
+          patient_id: string
+          priority?: string
+          status?: string
+        }
+        Update: {
+          admission_id?: string | null
+          clinical_notes?: string | null
+          created_at?: string | null
+          encounter_id?: string | null
+          hospital_id?: string
+          id?: string
+          order_date?: string
+          order_time?: string
+          ordered_by?: string
+          patient_id?: string
+          priority?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lab_orders_admission_id_fkey"
+            columns: ["admission_id"]
+            isOneToOne: false
+            referencedRelation: "admissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lab_orders_encounter_id_fkey"
+            columns: ["encounter_id"]
+            isOneToOne: false
+            referencedRelation: "opd_encounters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lab_orders_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lab_orders_ordered_by_fkey"
+            columns: ["ordered_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lab_orders_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lab_samples: {
+        Row: {
+          barcode: string | null
+          collected_at: string | null
+          collected_by: string | null
+          created_at: string | null
+          hospital_id: string
+          id: string
+          lab_order_id: string
+          received_at: string | null
+          received_by: string | null
+          rejection_reason: string | null
+          sample_type: string
+          status: string
+        }
+        Insert: {
+          barcode?: string | null
+          collected_at?: string | null
+          collected_by?: string | null
+          created_at?: string | null
+          hospital_id: string
+          id?: string
+          lab_order_id: string
+          received_at?: string | null
+          received_by?: string | null
+          rejection_reason?: string | null
+          sample_type: string
+          status?: string
+        }
+        Update: {
+          barcode?: string | null
+          collected_at?: string | null
+          collected_by?: string | null
+          created_at?: string | null
+          hospital_id?: string
+          id?: string
+          lab_order_id?: string
+          received_at?: string | null
+          received_by?: string | null
+          rejection_reason?: string | null
+          sample_type?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lab_samples_collected_by_fkey"
+            columns: ["collected_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lab_samples_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lab_samples_lab_order_id_fkey"
+            columns: ["lab_order_id"]
+            isOneToOne: false
+            referencedRelation: "lab_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lab_samples_received_by_fkey"
+            columns: ["received_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lab_test_master: {
+        Row: {
+          category: string
+          created_at: string | null
+          critical_high: number | null
+          critical_low: number | null
+          hospital_id: string
+          id: string
+          is_active: boolean | null
+          method: string | null
+          normal_max: number | null
+          normal_min: number | null
+          sample_type: string
+          tat_minutes: number | null
+          test_code: string | null
+          test_name: string
+          unit: string | null
+        }
+        Insert: {
+          category?: string
+          created_at?: string | null
+          critical_high?: number | null
+          critical_low?: number | null
+          hospital_id: string
+          id?: string
+          is_active?: boolean | null
+          method?: string | null
+          normal_max?: number | null
+          normal_min?: number | null
+          sample_type?: string
+          tat_minutes?: number | null
+          test_code?: string | null
+          test_name: string
+          unit?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          critical_high?: number | null
+          critical_low?: number | null
+          hospital_id?: string
+          id?: string
+          is_active?: boolean | null
+          method?: string | null
+          normal_max?: number | null
+          normal_min?: number | null
+          sample_type?: string
+          tat_minutes?: number | null
+          test_code?: string | null
+          test_name?: string
+          unit?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lab_test_master_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
             referencedColumns: ["id"]
           },
         ]
