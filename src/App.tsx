@@ -13,6 +13,7 @@ import ComingSoon from "./pages/ComingSoon";
 import OPDPage from "./pages/opd/OPDPage";
 import OTPage from "./pages/ot/OTPage";
 import LabPage from "./pages/lab/LabPage";
+import RadiologyPage from "./pages/radiology/RadiologyPage";
 import IPDPage from "./pages/ipd/IPDPage";
 import EmergencyPage from "./pages/emergency/EmergencyPage";
 import PatientsPage from "./pages/patients/PatientsPage";
