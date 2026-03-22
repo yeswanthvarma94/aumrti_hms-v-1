@@ -15,6 +15,7 @@ interface VitalRow {
 }
 
 const PatientSummary: React.FC<Props> = ({ token, hospitalId }) => {
+  const navigate = useNavigate();
   const [pastVitals, setPastVitals] = useState<VitalRow[]>([]);
   const [pendingLabs, setPendingLabs] = useState<string[]>([]);
 
