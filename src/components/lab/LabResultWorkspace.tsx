@@ -336,7 +336,7 @@ const LabResultWorkspace: React.FC<Props> = ({ order, onRefresh }) => {
       status: "reported",
       validated_at: new Date().toISOString(),
       validated_by: currentUserId,
-    }).eq("lab_order_id", order.id).in("status", ["result_entered"]);
+    }).eq("lab_order_id", order.id).neq("status", "cancelled");
 
     await supabase.from("lab_orders").update({ status: "completed" }).eq("id", order.id);
     fetchItems(); onRefresh();
