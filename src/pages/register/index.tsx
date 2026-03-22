@@ -71,18 +71,8 @@ const Register: React.FC = () => {
     if (!data.termsAccepted) return;
     setLoading(true);
     try {
-      // Sign up with email + password
-      const { error: signUpError } = await supabase.auth.signUp({
-        email: data.email,
-        password: data.password,
-        options: {
-          data: { full_name: data.fullName },
-        },
-      });
-      if (signUpError) throw signUpError;
-
-      // User is now authenticated — create hospital via edge function
-      const res = await supabase.functions.invoke("setup-hospital", {
+      // Use register-hospital edge function which creates auth user + hospital server-side
+      const res = await supabase.functions.invoke("register-hospital", {
         body: {
           hospital: {
             name: data.hospitalName,
@@ -99,6 +89,7 @@ const Register: React.FC = () => {
           admin: {
             full_name: data.fullName,
             email: data.email,
+            password: data.password,
             phone: data.phone,
           },
         },
@@ -107,6 +98,13 @@ const Register: React.FC = () => {
       if (res.error || res.data?.error) {
         throw new Error(res.data?.error || res.error?.message || "Registration failed");
       }
+
+      // Sign in with the newly created account
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: data.email,
+        password: data.password,
+      });
+      if (signInError) throw signInError;
 
       toast({ title: "Welcome! 🎉", description: "Let's set up your hospital." });
       navigate("/setup/onboarding", { replace: true });
