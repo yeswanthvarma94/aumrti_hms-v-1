@@ -385,16 +385,95 @@ export type Database = {
           },
         ]
       }
+      drug_batches: {
+        Row: {
+          batch_number: string
+          cost_price: number
+          created_at: string | null
+          drug_id: string
+          expiry_date: string
+          gst_percent: number | null
+          hospital_id: string
+          hsn_code: string | null
+          id: string
+          is_active: boolean | null
+          manufacturer: string | null
+          mrp: number
+          purchase_date: string | null
+          quantity_available: number
+          quantity_received: number
+          sale_price: number
+          supplier_name: string | null
+        }
+        Insert: {
+          batch_number: string
+          cost_price: number
+          created_at?: string | null
+          drug_id: string
+          expiry_date: string
+          gst_percent?: number | null
+          hospital_id: string
+          hsn_code?: string | null
+          id?: string
+          is_active?: boolean | null
+          manufacturer?: string | null
+          mrp: number
+          purchase_date?: string | null
+          quantity_available: number
+          quantity_received: number
+          sale_price: number
+          supplier_name?: string | null
+        }
+        Update: {
+          batch_number?: string
+          cost_price?: number
+          created_at?: string | null
+          drug_id?: string
+          expiry_date?: string
+          gst_percent?: number | null
+          hospital_id?: string
+          hsn_code?: string | null
+          id?: string
+          is_active?: boolean | null
+          manufacturer?: string | null
+          mrp?: number
+          purchase_date?: string | null
+          quantity_available?: number
+          quantity_received?: number
+          sale_price?: number
+          supplier_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drug_batches_drug_id_fkey"
+            columns: ["drug_id"]
+            isOneToOne: false
+            referencedRelation: "drug_master"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "drug_batches_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       drug_master: {
         Row: {
           category: string | null
           dosage_forms: string[] | null
           drug_name: string
+          drug_schedule: string | null
           generic_name: string | null
+          gst_percent: number | null
           hospital_id: string
+          hsn_code: string | null
           id: string
           is_active: boolean | null
           is_ndps: boolean | null
+          reorder_level: number | null
           routes: string[] | null
           standard_doses: string[] | null
         }
@@ -402,11 +481,15 @@ export type Database = {
           category?: string | null
           dosage_forms?: string[] | null
           drug_name: string
+          drug_schedule?: string | null
           generic_name?: string | null
+          gst_percent?: number | null
           hospital_id: string
+          hsn_code?: string | null
           id?: string
           is_active?: boolean | null
           is_ndps?: boolean | null
+          reorder_level?: number | null
           routes?: string[] | null
           standard_doses?: string[] | null
         }
@@ -414,11 +497,15 @@ export type Database = {
           category?: string | null
           dosage_forms?: string[] | null
           drug_name?: string
+          drug_schedule?: string | null
           generic_name?: string | null
+          gst_percent?: number | null
           hospital_id?: string
+          hsn_code?: string | null
           id?: string
           is_active?: boolean | null
           is_ndps?: boolean | null
+          reorder_level?: number | null
           routes?: string[] | null
           standard_doses?: string[] | null
         }
@@ -1076,6 +1163,114 @@ export type Database = {
             columns: ["hospital_id"]
             isOneToOne: false
             referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ndps_register: {
+        Row: {
+          balance_after: number
+          created_at: string | null
+          dispensing_id: string | null
+          drug_id: string
+          drug_name: string
+          drug_schedule: string
+          hospital_id: string
+          id: string
+          invoice_number: string | null
+          patient_address: string | null
+          patient_name: string | null
+          pharmacist_id: string
+          prescriber_name: string | null
+          prescriber_reg_no: string | null
+          prescription_number: string | null
+          quantity: number
+          remarks: string | null
+          second_pharmacist_id: string | null
+          supplier_name: string | null
+          transaction_date: string | null
+          transaction_type: string
+        }
+        Insert: {
+          balance_after: number
+          created_at?: string | null
+          dispensing_id?: string | null
+          drug_id: string
+          drug_name: string
+          drug_schedule: string
+          hospital_id: string
+          id?: string
+          invoice_number?: string | null
+          patient_address?: string | null
+          patient_name?: string | null
+          pharmacist_id: string
+          prescriber_name?: string | null
+          prescriber_reg_no?: string | null
+          prescription_number?: string | null
+          quantity: number
+          remarks?: string | null
+          second_pharmacist_id?: string | null
+          supplier_name?: string | null
+          transaction_date?: string | null
+          transaction_type: string
+        }
+        Update: {
+          balance_after?: number
+          created_at?: string | null
+          dispensing_id?: string | null
+          drug_id?: string
+          drug_name?: string
+          drug_schedule?: string
+          hospital_id?: string
+          id?: string
+          invoice_number?: string | null
+          patient_address?: string | null
+          patient_name?: string | null
+          pharmacist_id?: string
+          prescriber_name?: string | null
+          prescriber_reg_no?: string | null
+          prescription_number?: string | null
+          quantity?: number
+          remarks?: string | null
+          second_pharmacist_id?: string | null
+          supplier_name?: string | null
+          transaction_date?: string | null
+          transaction_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ndps_register_dispensing_id_fkey"
+            columns: ["dispensing_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacy_dispensing"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ndps_register_drug_id_fkey"
+            columns: ["drug_id"]
+            isOneToOne: false
+            referencedRelation: "drug_master"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ndps_register_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ndps_register_pharmacist_id_fkey"
+            columns: ["pharmacist_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ndps_register_second_pharmacist_id_fkey"
+            columns: ["second_pharmacist_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -1914,6 +2109,288 @@ export type Database = {
             columns: ["signed_by"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pharmacy_dispensing: {
+        Row: {
+          admission_id: string | null
+          bill_linked: boolean | null
+          created_at: string | null
+          discount_amount: number | null
+          discount_percent: number | null
+          dispensed_at: string | null
+          dispensed_by: string
+          dispensing_number: string | null
+          dispensing_type: string | null
+          encounter_id: string | null
+          gst_amount: number | null
+          hospital_id: string
+          id: string
+          net_amount: number | null
+          patient_id: string
+          payment_mode: string | null
+          prescription_id: string | null
+          status: string | null
+          total_amount: number | null
+          whatsapp_sent: boolean | null
+        }
+        Insert: {
+          admission_id?: string | null
+          bill_linked?: boolean | null
+          created_at?: string | null
+          discount_amount?: number | null
+          discount_percent?: number | null
+          dispensed_at?: string | null
+          dispensed_by: string
+          dispensing_number?: string | null
+          dispensing_type?: string | null
+          encounter_id?: string | null
+          gst_amount?: number | null
+          hospital_id: string
+          id?: string
+          net_amount?: number | null
+          patient_id: string
+          payment_mode?: string | null
+          prescription_id?: string | null
+          status?: string | null
+          total_amount?: number | null
+          whatsapp_sent?: boolean | null
+        }
+        Update: {
+          admission_id?: string | null
+          bill_linked?: boolean | null
+          created_at?: string | null
+          discount_amount?: number | null
+          discount_percent?: number | null
+          dispensed_at?: string | null
+          dispensed_by?: string
+          dispensing_number?: string | null
+          dispensing_type?: string | null
+          encounter_id?: string | null
+          gst_amount?: number | null
+          hospital_id?: string
+          id?: string
+          net_amount?: number | null
+          patient_id?: string
+          payment_mode?: string | null
+          prescription_id?: string | null
+          status?: string | null
+          total_amount?: number | null
+          whatsapp_sent?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pharmacy_dispensing_admission_id_fkey"
+            columns: ["admission_id"]
+            isOneToOne: false
+            referencedRelation: "admissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pharmacy_dispensing_dispensed_by_fkey"
+            columns: ["dispensed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pharmacy_dispensing_encounter_id_fkey"
+            columns: ["encounter_id"]
+            isOneToOne: false
+            referencedRelation: "opd_encounters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pharmacy_dispensing_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pharmacy_dispensing_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pharmacy_dispensing_prescription_id_fkey"
+            columns: ["prescription_id"]
+            isOneToOne: false
+            referencedRelation: "prescriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pharmacy_dispensing_items: {
+        Row: {
+          batch_id: string
+          batch_number: string
+          created_at: string | null
+          dispensing_id: string
+          drug_id: string
+          drug_name: string
+          expiry_date: string
+          five_rights_verified: boolean | null
+          gst_percent: number | null
+          hospital_id: string
+          id: string
+          is_ndps: boolean | null
+          ndps_second_pharmacist_id: string | null
+          quantity_dispensed: number
+          quantity_requested: number
+          return_quantity: number | null
+          return_reason: string | null
+          total_price: number
+          unit_price: number
+        }
+        Insert: {
+          batch_id: string
+          batch_number: string
+          created_at?: string | null
+          dispensing_id: string
+          drug_id: string
+          drug_name: string
+          expiry_date: string
+          five_rights_verified?: boolean | null
+          gst_percent?: number | null
+          hospital_id: string
+          id?: string
+          is_ndps?: boolean | null
+          ndps_second_pharmacist_id?: string | null
+          quantity_dispensed?: number
+          quantity_requested: number
+          return_quantity?: number | null
+          return_reason?: string | null
+          total_price: number
+          unit_price: number
+        }
+        Update: {
+          batch_id?: string
+          batch_number?: string
+          created_at?: string | null
+          dispensing_id?: string
+          drug_id?: string
+          drug_name?: string
+          expiry_date?: string
+          five_rights_verified?: boolean | null
+          gst_percent?: number | null
+          hospital_id?: string
+          id?: string
+          is_ndps?: boolean | null
+          ndps_second_pharmacist_id?: string | null
+          quantity_dispensed?: number
+          quantity_requested?: number
+          return_quantity?: number | null
+          return_reason?: string | null
+          total_price?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pharmacy_dispensing_items_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "drug_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pharmacy_dispensing_items_dispensing_id_fkey"
+            columns: ["dispensing_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacy_dispensing"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pharmacy_dispensing_items_drug_id_fkey"
+            columns: ["drug_id"]
+            isOneToOne: false
+            referencedRelation: "drug_master"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pharmacy_dispensing_items_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pharmacy_dispensing_items_ndps_second_pharmacist_id_fkey"
+            columns: ["ndps_second_pharmacist_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pharmacy_stock_alerts: {
+        Row: {
+          acknowledged_by: string | null
+          alert_type: string
+          batch_id: string | null
+          created_at: string | null
+          drug_id: string
+          expiry_date: string | null
+          hospital_id: string
+          id: string
+          is_acknowledged: boolean | null
+          quantity: number | null
+        }
+        Insert: {
+          acknowledged_by?: string | null
+          alert_type: string
+          batch_id?: string | null
+          created_at?: string | null
+          drug_id: string
+          expiry_date?: string | null
+          hospital_id: string
+          id?: string
+          is_acknowledged?: boolean | null
+          quantity?: number | null
+        }
+        Update: {
+          acknowledged_by?: string | null
+          alert_type?: string
+          batch_id?: string | null
+          created_at?: string | null
+          drug_id?: string
+          expiry_date?: string | null
+          hospital_id?: string
+          id?: string
+          is_acknowledged?: boolean | null
+          quantity?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pharmacy_stock_alerts_acknowledged_by_fkey"
+            columns: ["acknowledged_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pharmacy_stock_alerts_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "drug_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pharmacy_stock_alerts_drug_id_fkey"
+            columns: ["drug_id"]
+            isOneToOne: false
+            referencedRelation: "drug_master"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pharmacy_stock_alerts_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
             referencedColumns: ["id"]
           },
         ]

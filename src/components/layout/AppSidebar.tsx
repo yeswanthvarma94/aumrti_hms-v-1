@@ -79,7 +79,17 @@ const navGroups: NavGroup[] = [
       { label: "Radiology", path: "/radiology", icon: ScanLine, subtitle: "Imaging & reports" },
     ],
   },
-  { label: "Pharmacy", icon: Pill, path: "/pharmacy", comingSoon: true },
+  {
+    label: "Pharmacy",
+    icon: Pill,
+    path: "/pharmacy",
+    subItems: [
+      { label: "IP Dispensing", path: "/pharmacy", icon: Pill, subtitle: "Dispense for admitted patients" },
+      { label: "Retail Counter", path: "/pharmacy?mode=retail", icon: Pill, subtitle: "Walk-in OTC & Rx sales" },
+      { label: "Stock", path: "/pharmacy?tab=stock", icon: Pill, subtitle: "Inventory & batches" },
+      { label: "NDPS Register", path: "/pharmacy?tab=ndps", icon: Pill, subtitle: "Schedule H/H1/X register" },
+    ],
+  },
   {
     label: "Finance",
     icon: IndianRupee,
