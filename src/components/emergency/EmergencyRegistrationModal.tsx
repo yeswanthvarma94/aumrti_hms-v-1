@@ -88,7 +88,7 @@ const EmergencyRegistrationModal: React.FC<Props> = ({ open, onClose, hospitalId
     // Create ED visit
     const { error: vErr } = await supabase.from("ed_visits").insert({
       hospital_id: hospitalId,
-      patient_id: patient.id,
+      patient_id: patientId,
       triage_category: triage,
       chief_complaint: complaint || null,
       mlc,
