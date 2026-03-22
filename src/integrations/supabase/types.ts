@@ -422,6 +422,91 @@ export type Database = {
           },
         ]
       }
+      ed_visits: {
+        Row: {
+          ample_history: Json | null
+          arrival_mode: string
+          arrival_time: string
+          chief_complaint: string | null
+          created_at: string | null
+          disposition: string | null
+          disposition_time: string | null
+          doctor_id: string | null
+          gcs_score: number | null
+          hospital_id: string
+          id: string
+          is_active: boolean | null
+          mlc: boolean | null
+          mlc_details: Json | null
+          patient_id: string
+          triage_category: string
+          vitals_snapshot: Json | null
+          working_diagnosis: string | null
+        }
+        Insert: {
+          ample_history?: Json | null
+          arrival_mode?: string
+          arrival_time?: string
+          chief_complaint?: string | null
+          created_at?: string | null
+          disposition?: string | null
+          disposition_time?: string | null
+          doctor_id?: string | null
+          gcs_score?: number | null
+          hospital_id: string
+          id?: string
+          is_active?: boolean | null
+          mlc?: boolean | null
+          mlc_details?: Json | null
+          patient_id: string
+          triage_category?: string
+          vitals_snapshot?: Json | null
+          working_diagnosis?: string | null
+        }
+        Update: {
+          ample_history?: Json | null
+          arrival_mode?: string
+          arrival_time?: string
+          chief_complaint?: string | null
+          created_at?: string | null
+          disposition?: string | null
+          disposition_time?: string | null
+          doctor_id?: string | null
+          gcs_score?: number | null
+          hospital_id?: string
+          id?: string
+          is_active?: boolean | null
+          mlc?: boolean | null
+          mlc_details?: Json | null
+          patient_id?: string
+          triage_category?: string
+          vitals_snapshot?: Json | null
+          working_diagnosis?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ed_visits_doctor_id_fkey"
+            columns: ["doctor_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ed_visits_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ed_visits_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hospitals: {
         Row: {
           address: string | null

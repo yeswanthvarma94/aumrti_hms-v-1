@@ -12,6 +12,7 @@ import Dashboard from "./pages/Dashboard";
 import ComingSoon from "./pages/ComingSoon";
 import OPDPage from "./pages/opd/OPDPage";
 import IPDPage from "./pages/ipd/IPDPage";
+import EmergencyPage from "./pages/emergency/EmergencyPage";
 import DesignSystem from "./pages/DesignSystem";
 import NotFound from "./pages/NotFound";
 
@@ -36,7 +37,7 @@ const App = () => (
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/opd" element={<OPDPage />} />
             <Route path="/ipd" element={<IPDPage />} />
-            <Route path="/emergency" element={<ComingSoon />} />
+            <Route path="/emergency" element={<EmergencyPage />} />
             <Route path="/ot" element={<ComingSoon />} />
             <Route path="/nursing" element={<ComingSoon />} />
             <Route path="/lab" element={<ComingSoon />} />
