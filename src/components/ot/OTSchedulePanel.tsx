@@ -56,17 +56,6 @@ const OTSchedulePanel: React.FC<Props> = ({
   const [weekSchedules, setWeekSchedules] = useState<OTSchedule[]>([]);
   const [monthSchedules, setMonthSchedules] = useState<OTSchedule[]>([]);
 
-  // Close date picker on outside click
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (datePickerRef.current && !datePickerRef.current.contains(e.target as Node)) {
-        setShowDatePicker(false);
-      }
-    };
-    if (showDatePicker) document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [showDatePicker]);
-
   // Fetch week/month data
   useEffect(() => {
     if (!hospitalId || viewMode === "day") return;
