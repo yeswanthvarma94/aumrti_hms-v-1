@@ -129,7 +129,7 @@ const BedMap: React.FC<Props> = ({ beds, selectedBedId, onSelectBed, hospitalId,
 
       {/* Footer */}
       <div className="flex-shrink-0 border-t border-slate-100 p-2">
-        <button className="w-full h-9 bg-[#1A2F5A] text-white rounded-lg text-[13px] font-semibold hover:bg-[#152647] active:scale-[0.98] transition-all">
+        <button onClick={onNewAdmission} className="w-full h-9 bg-[#1A2F5A] text-white rounded-lg text-[13px] font-semibold hover:bg-[#152647] active:scale-[0.98] transition-all">
           + New Admission
         </button>
       </div>
