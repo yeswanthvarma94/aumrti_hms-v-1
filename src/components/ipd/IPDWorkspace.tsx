@@ -34,6 +34,7 @@ export interface PatientDetails {
 }
 
 const IPDWorkspace: React.FC<Props> = ({ bed, hospitalId, onRefresh }) => {
+  const navigate = useNavigate();
   const [patient, setPatient] = useState<PatientDetails | null>(null);
   const [activeTab, setActiveTab] = useState("overview");
   const [userId, setUserId] = useState<string | null>(null);
