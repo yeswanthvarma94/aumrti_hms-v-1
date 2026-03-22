@@ -59,7 +59,13 @@ const App = () => (
             <Route path="/hr" element={<ComingSoon />} />
             <Route path="/inventory" element={<ComingSoon />} />
             <Route path="/quality" element={<ComingSoon />} />
-            <Route path="/settings" element={<ComingSoon />} />
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/settings/staff" element={<SettingsStaffPage />} />
+            <Route path="/settings/departments" element={<SettingsDepartmentsPage />} />
+            <Route path="/settings/wards" element={<SettingsWardsPage />} />
+            <Route path="/settings/services" element={<SettingsServicesPage />} />
+            <Route path="/settings/drugs" element={<SettingsDrugsPage />} />
+            <Route path="/settings/profile" element={<SettingsProfilePage />} />
           </Route>
 
           <Route path="*" element={<NotFound />} />
