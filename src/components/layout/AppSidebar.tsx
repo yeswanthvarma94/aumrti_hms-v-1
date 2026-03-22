@@ -127,6 +127,17 @@ const AppSidebar: React.FC = () => {
           const active = isActive(group);
           const hasSubmenu = !!group.subItems;
 
+          const handleGroupClick = (e: React.MouseEvent) => {
+            if (group.comingSoon && !hasSubmenu) {
+              e.preventDefault();
+              toast({ title: "This module will be available in the next build phase" });
+              return;
+            }
+            if (group.path && !group.comingSoon) {
+              navigate(group.path);
+            }
+          };
+
           return (
             <div
               key={group.label}
@@ -134,38 +145,24 @@ const AppSidebar: React.FC = () => {
               onMouseEnter={() => hasSubmenu && setHoveredGroup(group.label)}
               onMouseLeave={() => setHoveredGroup(null)}
             >
-              {group.path ? (
-                <Link
-                  to={group.path}
-                  className={cn(
-                    "flex items-center gap-3 h-12 rounded-md px-3 text-sm font-medium transition-colors",
-                    active
-                      ? "bg-sidebar-accent text-white"
-                      : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-white"
-                  )}
-                >
-                  <Icon size={20} className="shrink-0" />
-                  {!collapsed && <span>{group.label}</span>}
-                </Link>
-              ) : (
-                <button
-                  className={cn(
-                    "flex items-center gap-3 h-12 w-full rounded-md px-3 text-sm font-medium transition-colors text-left",
-                    active
-                      ? "bg-sidebar-accent text-white"
-                      : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-white"
-                  )}
-                >
-                  <Icon size={20} className="shrink-0" />
-                  {!collapsed && <span>{group.label}</span>}
-                </button>
-              )}
+              <button
+                onClick={handleGroupClick}
+                className={cn(
+                  "flex items-center gap-3 h-12 w-full rounded-md px-3 text-sm font-medium transition-colors text-left",
+                  active
+                    ? "bg-sidebar-accent text-white"
+                    : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-white"
+                )}
+              >
+                <Icon size={20} className="shrink-0" />
+                {!collapsed && <span>{group.label}</span>}
+              </button>
 
               {/* Mega-menu panel */}
               {hasSubmenu && hoveredGroup === group.label && (
                 <div
                   className={cn(
-                    "absolute top-0 z-50 bg-card border border-border rounded-lg shadow-card-hover py-2 min-w-[180px]",
+                    "absolute top-0 z-50 bg-card border border-border rounded-lg shadow-lg py-2 min-w-[220px]",
                     collapsed ? "left-16" : "left-56"
                   )}
                 >
@@ -175,20 +172,44 @@ const AppSidebar: React.FC = () => {
                   {group.subItems!.map((sub) => {
                     const SubIcon = sub.icon;
                     const subActive = location.pathname.startsWith(sub.path);
+
+                    const handleSubClick = (e: React.MouseEvent) => {
+                      if (sub.comingSoon) {
+                        e.preventDefault();
+                        toast({ title: "This module will be available in the next build phase" });
+                        return;
+                      }
+                      navigate(sub.path);
+                      setHoveredGroup(null);
+                    };
+
                     return (
-                      <Link
-                        key={sub.path}
-                        to={sub.path}
+                      <button
+                        key={sub.path + sub.label}
+                        onClick={handleSubClick}
                         className={cn(
-                          "flex items-center gap-3 px-4 py-2.5 text-sm transition-colors",
-                          subActive
+                          "flex items-center gap-3 px-4 py-2.5 text-sm transition-colors w-full text-left",
+                          subActive && !sub.comingSoon
                             ? "bg-primary/10 text-primary font-medium"
-                            : "text-foreground hover:bg-muted"
+                            : "text-foreground hover:bg-muted",
+                          sub.comingSoon && "opacity-60"
                         )}
                       >
-                        <SubIcon size={16} />
-                        <span>{sub.label}</span>
-                      </Link>
+                        <SubIcon size={16} className="shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span>{sub.label}</span>
+                            {sub.comingSoon && (
+                              <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">
+                                Soon
+                              </span>
+                            )}
+                          </div>
+                          {sub.subtitle && (
+                            <p className="text-[11px] text-muted-foreground truncate">{sub.subtitle}</p>
+                          )}
+                        </div>
+                      </button>
                     );
                   })}
                 </div>
