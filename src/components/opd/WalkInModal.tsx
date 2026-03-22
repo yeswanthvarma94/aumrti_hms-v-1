@@ -121,7 +121,16 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated }) => {
         const seq = String((count || 0) + 1).padStart(4, "0");
         const uhid = `UHID-${dateStr}-${seq}`;
 
-        const patientData: Record<string, unknown> = {
+        const patientData: {
+          hospital_id: string;
+          full_name: string;
+          uhid: string;
+          phone: string | null;
+          gender: "male" | "female" | "other";
+          dob?: string;
+          blood_group?: string;
+          address?: string;
+        } = {
           hospital_id: hospitalId,
           full_name: fullName.trim(),
           uhid,
@@ -136,7 +145,7 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated }) => {
         if (bloodGroup) patientData.blood_group = bloodGroup;
         if (address) patientData.address = address;
 
-        const { data: newPatient, error } = await supabase.from("patients").insert(patientData).select("id").single();
+        const { data: newPatient, error } = await supabase.from("patients").insert([patientData]).select("id").single();
         if (error) throw error;
         patientId = newPatient.id;
       }
