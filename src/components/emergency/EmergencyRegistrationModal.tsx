@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { Search } from "lucide-react";
 
 interface Props {
   open: boolean;
@@ -29,9 +30,27 @@ const EmergencyRegistrationModal: React.FC<Props> = ({ open, onClose, hospitalId
   const [complaint, setComplaint] = useState("");
   const [mlc, setMlc] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [phoneSearch, setPhoneSearch] = useState("");
+  const [linkedPatient, setLinkedPatient] = useState<{ id: string; full_name: string; uhid: string } | null>(null);
+  const [phoneResults, setPhoneResults] = useState<{ id: string; full_name: string; uhid: string; phone: string | null }[]>([]);
+
+  // Phone search for existing patients
+  useEffect(() => {
+    if (phoneSearch.length < 3 || !hospitalId) { setPhoneResults([]); return; }
+    const t = setTimeout(async () => {
+      const { data } = await supabase.from("patients")
+        .select("id, full_name, uhid, phone")
+        .eq("hospital_id", hospitalId)
+        .or(`phone.ilike.%${phoneSearch}%,full_name.ilike.%${phoneSearch}%`)
+        .limit(3);
+      setPhoneResults(data || []);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [phoneSearch, hospitalId]);
 
   const reset = () => {
     setName("Unknown"); setAge(""); setGender("male"); setTriage(""); setComplaint(""); setMlc(false);
+    setPhoneSearch(""); setLinkedPatient(null); setPhoneResults([]);
   };
 
   const handleSubmit = async () => {
@@ -41,27 +60,35 @@ const EmergencyRegistrationModal: React.FC<Props> = ({ open, onClose, hospitalId
     }
     setSubmitting(true);
 
-    // Create patient
-    const dob = age ? new Date(Date.now() - parseInt(age) * 31557600000).toISOString().split("T")[0] : null;
-    const uhid = `ED-${Date.now().toString(36).toUpperCase()}`;
-    const { data: patient, error: pErr } = await supabase.from("patients").insert({
-      hospital_id: hospitalId,
-      full_name: name || "Unknown",
-      dob,
-      gender: gender as any,
-      uhid,
-    }).select("id").single();
+    let patientId: string;
 
-    if (pErr || !patient) {
-      toast({ title: "Error", description: pErr?.message || "Failed to create patient", variant: "destructive" });
-      setSubmitting(false);
-      return;
+    if (linkedPatient) {
+      // Use existing patient record
+      patientId = linkedPatient.id;
+    } else {
+      // Create new patient
+      const dob = age ? new Date(Date.now() - parseInt(age) * 31557600000).toISOString().split("T")[0] : null;
+      const uhid = `ED-${Date.now().toString(36).toUpperCase()}`;
+      const { data: patient, error: pErr } = await supabase.from("patients").insert({
+        hospital_id: hospitalId,
+        full_name: name || "Unknown",
+        dob,
+        gender: gender as any,
+        uhid,
+      }).select("id").single();
+
+      if (pErr || !patient) {
+        toast({ title: "Error", description: pErr?.message || "Failed to create patient", variant: "destructive" });
+        setSubmitting(false);
+        return;
+      }
+      patientId = patient.id;
     }
 
     // Create ED visit
     const { error: vErr } = await supabase.from("ed_visits").insert({
       hospital_id: hospitalId,
-      patient_id: patient.id,
+      patient_id: patientId,
       triage_category: triage,
       chief_complaint: complaint || null,
       mlc,
@@ -95,6 +122,36 @@ const EmergencyRegistrationModal: React.FC<Props> = ({ open, onClose, hospitalId
             <Input value={name} onChange={e => setName(e.target.value)} placeholder="Unknown"
               className="h-10 text-sm mt-1 text-white border-slate-600"
               style={{ background: "#0F172A" }} />
+
+            {/* Optional phone search */}
+            {!linkedPatient && (
+              <div className="mt-2">
+                <p className="text-[11px] text-slate-500 mb-1">Know their phone? Search existing records:</p>
+                <div className="relative">
+                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-500" />
+                  <Input value={phoneSearch} onChange={e => setPhoneSearch(e.target.value)}
+                    placeholder="Search by phone or name..."
+                    className="h-7 text-[11px] pl-7 text-white border-slate-600"
+                    style={{ background: "#0F172A" }} />
+                </div>
+                {phoneResults.length > 0 && (
+                  <div className="mt-1 border border-slate-600 rounded-md overflow-hidden">
+                    {phoneResults.map(p => (
+                      <button key={p.id} onClick={() => { setLinkedPatient(p); setName(p.full_name); setPhoneResults([]); setPhoneSearch(""); }}
+                        className="w-full text-left px-2 py-1.5 text-[11px] text-slate-300 hover:bg-slate-700 border-b border-slate-700 last:border-0">
+                        {p.full_name} · {p.uhid} · {p.phone || "—"}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            {linkedPatient && (
+              <div className="mt-2 p-2 rounded-md border border-emerald-600/40" style={{ background: "rgba(16,185,129,0.1)" }}>
+                <p className="text-[11px] text-emerald-400 font-medium">✓ Linked to: {linkedPatient.full_name} ({linkedPatient.uhid})</p>
+                <button onClick={() => { setLinkedPatient(null); setName("Unknown"); }} className="text-[10px] text-slate-500 hover:text-slate-300 mt-0.5">Unlink</button>
+              </div>
+            )}
           </div>
 
           {/* Age + Gender */}

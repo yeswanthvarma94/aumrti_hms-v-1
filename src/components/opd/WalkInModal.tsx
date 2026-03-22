@@ -82,17 +82,20 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated }) => {
       });
   }, [hospitalId]);
 
-  // Phone search
+  // Phone/name/UHID search
+  const [searchResults, setSearchResults] = useState<FoundPatient[]>([]);
   const searchPatient = useCallback(async (val: string) => {
-    if (val.length < 3) { setFoundPatient(null); return; }
+    if (val.length < 3) { setFoundPatient(null); setSearchResults([]); return; }
     setSearching(true);
     const { data } = await supabase
       .from("patients")
       .select("id, full_name, uhid, phone")
       .eq("hospital_id", hospitalId)
-      .ilike("phone", `%${val}%`)
-      .limit(1);
-    setFoundPatient(data && data.length > 0 ? data[0] : null);
+      .or(`phone.ilike.%${val}%,full_name.ilike.%${val}%,uhid.ilike.%${val}%`)
+      .limit(5);
+    const results = data || [];
+    setSearchResults(results);
+    setFoundPatient(results.length === 1 ? results[0] : null);
     setSearching(false);
   }, [hospitalId]);
 
@@ -181,29 +184,41 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated }) => {
         <h2 className="text-lg font-bold text-slate-900">Quick Registration</h2>
         <p className="text-[13px] text-slate-500 mt-0.5">Register patient in under 30 seconds</p>
 
-        {/* Phone search */}
+        {/* Search */}
         <div className="mt-5">
-          <label className="text-xs font-medium text-slate-600">Mobile Number</label>
+          <label className="text-xs font-medium text-slate-600">Search Patient (Name, Phone, or UHID)</label>
           <div className="relative mt-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input
-              type="tel"
+              type="text"
               value={phone}
-              onChange={(e) => { setPhone(e.target.value); setUseExisting(false); }}
-              placeholder="Enter patient's phone number"
+              onChange={(e) => { setPhone(e.target.value); setUseExisting(false); setFoundPatient(null); }}
+              placeholder="Search by name, phone, or UHID..."
               className="w-full h-10 pl-9 pr-3 border border-slate-200 rounded-lg text-sm focus:border-[#1A2F5A] focus:ring-2 focus:ring-[#1A2F5A]/10 outline-none"
             />
           </div>
-          {foundPatient && !useExisting && (
+          {searchResults.length > 0 && !useExisting && (
+            <div className="mt-2 border border-slate-200 rounded-lg overflow-hidden">
+              {searchResults.map((p) => (
+                <button key={p.id} onClick={() => { setFoundPatient(p); setUseExisting(true); setSearchResults([]); }}
+                  className="w-full text-left px-3 py-2 hover:bg-emerald-50 border-b border-slate-100 last:border-0 flex items-center gap-2">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-slate-800">{p.full_name}</p>
+                    <p className="text-[11px] text-slate-500">{p.uhid} · {p.phone || "No phone"}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+          {useExisting && foundPatient && (
             <div className="mt-2 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                <span className="text-xs font-medium text-emerald-700">Returning patient found</span>
+                <span className="text-xs font-medium text-emerald-700">Patient selected</span>
               </div>
               <p className="text-sm font-medium text-slate-800 mt-1">{foundPatient.full_name} · {foundPatient.uhid}</p>
-              <button onClick={() => setUseExisting(true)} className="mt-2 text-xs font-semibold text-emerald-700 bg-emerald-100 px-3 py-1 rounded-md hover:bg-emerald-200 transition-colors">
-                Select This Patient
-              </button>
+              <button onClick={() => { setUseExisting(false); setFoundPatient(null); }} className="mt-1 text-[11px] text-slate-500 hover:underline">Change</button>
             </div>
           )}
         </div>
@@ -238,11 +253,16 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated }) => {
               </div>
             </div>
 
-            {!showOptional && (
-              <button onClick={() => setShowOptional(true)} className="text-xs text-[#1A2F5A] font-medium hover:underline">
-                + Add more details (optional)
-              </button>
-            )}
+            <div className="flex items-center gap-3">
+              {!showOptional && (
+                <button onClick={() => setShowOptional(true)} className="text-xs text-[#1A2F5A] font-medium hover:underline">
+                  + Add more details (optional)
+                </button>
+              )}
+              <a href="/patients?register=true" target="_blank" rel="noopener noreferrer" className="text-xs text-slate-500 hover:text-[#1A2F5A] hover:underline">
+                Need full registration? →
+              </a>
+            </div>
             {showOptional && (
               <div className="space-y-3 pt-1">
                 <div className="flex gap-3">

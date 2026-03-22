@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { BedDouble, FileText, Pill, ClipboardList, StickyNote, FolderOpen, Phone, Activity } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { BedDouble, FileText, Pill, ClipboardList, StickyNote, FolderOpen, Phone, Activity, ExternalLink } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -33,6 +34,7 @@ export interface PatientDetails {
 }
 
 const IPDWorkspace: React.FC<Props> = ({ bed, hospitalId, onRefresh }) => {
+  const navigate = useNavigate();
   const [patient, setPatient] = useState<PatientDetails | null>(null);
   const [activeTab, setActiveTab] = useState("overview");
   const [userId, setUserId] = useState<string | null>(null);
@@ -192,6 +194,14 @@ const IPDWorkspace: React.FC<Props> = ({ bed, hospitalId, onRefresh }) => {
           <Button size="sm" variant="outline" onClick={() => setActiveTab("medications")} className="text-xs h-8">
             💊 Add Medication
           </Button>
+          {patient && (
+            <button
+              onClick={() => navigate(`/patients?id=${patient.id}`)}
+              className="flex items-center gap-1 text-[12px] text-[#1A2F5A] font-medium hover:underline h-8 px-2"
+            >
+              View Patient Record <ExternalLink className="h-3 w-3" />
+            </button>
+          )}
         </div>
         <div className="flex gap-2">
           <Button size="sm" variant="outline" className="text-xs h-8 border-amber-300 text-amber-700 hover:bg-amber-50"

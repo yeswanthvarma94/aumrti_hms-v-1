@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { ExternalLink } from "lucide-react";
 import type { EDVisit } from "@/pages/emergency/EmergencyPage";
 
 interface Props {
@@ -15,6 +17,7 @@ interface Props {
 }
 
 const EmergencyWorkspace: React.FC<Props> = ({ visit, hospitalId, userId, onRefresh }) => {
+  const navigate = useNavigate();
   const [vitals, setVitals] = useState({ bp_s: "", bp_d: "", pulse: "", spo2: "", gcs: "" });
   const [complaint, setComplaint] = useState("");
   const [ample, setAmple] = useState({ a: "", m: "", p: "", l: "", e: "" });
@@ -176,6 +179,13 @@ const EmergencyWorkspace: React.FC<Props> = ({ visit, hospitalId, userId, onRefr
         <ActionBtn label="📟 Call Specialist" bg="#F59E0B" onClick={() => toast({ title: "Specialist Alert", description: "Specialist notification coming in Phase 5" })} />
         <ActionBtn label="🏠 Discharge" bg="#10B981" onClick={() => handleDisposition("discharged")} />
         {mlc && <ActionBtn label="📄 MLC Register" bg="#7C3AED" onClick={() => toast({ title: "MLC", description: "MLC register coming in Phase 5" })} />}
+
+        <button
+          onClick={() => navigate(`/patients?id=${visit.patient_id}`)}
+          className="flex items-center gap-1 text-[11px] text-blue-400 font-medium hover:underline mt-2"
+        >
+          View Patient Record <ExternalLink className="h-3 w-3" />
+        </button>
 
         <div className="mt-auto pt-2 border-t border-slate-700">
           <p className="text-[10px] text-slate-500 uppercase font-bold">Status</p>

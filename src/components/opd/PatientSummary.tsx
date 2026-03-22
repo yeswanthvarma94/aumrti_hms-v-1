@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Stethoscope, Phone } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Stethoscope, Phone, ExternalLink } from "lucide-react";
 import type { OpdToken } from "@/pages/opd/OPDPage";
 
 interface Props {
@@ -14,6 +15,7 @@ interface VitalRow {
 }
 
 const PatientSummary: React.FC<Props> = ({ token, hospitalId }) => {
+  const navigate = useNavigate();
   const [pastVitals, setPastVitals] = useState<VitalRow[]>([]);
   const [pendingLabs, setPendingLabs] = useState<string[]>([]);
 
@@ -140,6 +142,16 @@ const PatientSummary: React.FC<Props> = ({ token, hospitalId }) => {
           </div>
         ) : <span className="text-xs text-slate-400">No pending orders</span>}
       </Section>
+
+      {/* View full patient record link */}
+      <div className="px-4 py-3 mt-auto">
+        <button
+          onClick={() => navigate(`/patients?id=${token.patient_id}`)}
+          className="flex items-center gap-1 text-[13px] text-[#1A2F5A] font-medium hover:underline"
+        >
+          View Full Patient Record <ExternalLink className="h-3 w-3" />
+        </button>
+      </div>
     </div>
   );
 };
