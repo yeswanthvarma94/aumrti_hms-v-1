@@ -1,8 +1,10 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, LayoutGrid, CalendarDays } from "lucide-react";
 import { format, startOfWeek, endOfWeek, addDays, startOfMonth, endOfMonth, isSameDay, isToday, addMonths, subMonths } from "date-fns";
 import { Progress } from "@/components/ui/progress";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { supabase } from "@/integrations/supabase/client";
 import type { OTRoom, OTSchedule } from "@/pages/ot/OTPage";
 import { formatDateForQuery } from "@/pages/ot/OTPage";
@@ -51,20 +53,8 @@ const OTSchedulePanel: React.FC<Props> = ({
   viewMode, onSetViewMode, hospitalId,
 }) => {
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const datePickerRef = useRef<HTMLDivElement>(null);
   const [weekSchedules, setWeekSchedules] = useState<OTSchedule[]>([]);
   const [monthSchedules, setMonthSchedules] = useState<OTSchedule[]>([]);
-
-  // Close date picker on outside click
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (datePickerRef.current && !datePickerRef.current.contains(e.target as Node)) {
-        setShowDatePicker(false);
-      }
-    };
-    if (showDatePicker) document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [showDatePicker]);
 
   // Fetch week/month data
   useEffect(() => {
@@ -165,7 +155,7 @@ const OTSchedulePanel: React.FC<Props> = ({
         </div>
 
         {/* Date navigation */}
-        <div className="flex items-center gap-2 mt-2 relative">
+        <div className="flex items-center gap-2 mt-2">
           <button onClick={() => {
             if (viewMode === "month") onSetSelectedDate(subMonths(selectedDate, 1));
             else if (viewMode === "week") onSetSelectedDate(addDays(selectedDate, -7));
@@ -173,38 +163,27 @@ const OTSchedulePanel: React.FC<Props> = ({
           }} className="h-7 w-7 rounded-full bg-muted flex items-center justify-center hover:bg-accent transition-colors active:scale-95">
             <ChevronLeft size={14} />
           </button>
-          <button
-            onClick={() => setShowDatePicker(!showDatePicker)}
-            className="text-[13px] font-medium text-foreground flex-1 text-center hover:text-primary transition-colors cursor-pointer"
-          >
-            {viewMode === "month"
-              ? format(selectedDate, "MMMM yyyy")
-              : viewMode === "week"
-                ? `${format(startOfWeek(selectedDate, { weekStartsOn: 1 }), "dd MMM")} — ${format(endOfWeek(selectedDate, { weekStartsOn: 1 }), "dd MMM yyyy")}`
-                : dateLabel}
-          </button>
-          <button onClick={() => {
-            if (viewMode === "month") onSetSelectedDate(addMonths(selectedDate, 1));
-            else if (viewMode === "week") onSetSelectedDate(addDays(selectedDate, 7));
-            else onDateChange(1);
-          }} className="h-7 w-7 rounded-full bg-muted flex items-center justify-center hover:bg-accent transition-colors active:scale-95">
-            <ChevronRight size={14} />
-          </button>
-          <button onClick={onSetToday} className="text-[11px] text-primary font-medium hover:underline">Today</button>
 
-          {/* Date picker dropdown */}
-          {showDatePicker && (
-            <div ref={datePickerRef} className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-card border border-border rounded-xl shadow-lg p-4 z-50 w-[260px]">
-              <input
-                type="date"
-                value={formatDateForQuery(selectedDate)}
-                onChange={(e) => {
-                  onSetSelectedDate(new Date(e.target.value + "T00:00:00"));
-                  setShowDatePicker(false);
-                }}
-                className="w-full px-3 py-2 border border-border rounded-lg text-sm text-foreground bg-background cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary"
+          <Popover open={showDatePicker} onOpenChange={setShowDatePicker}>
+            <PopoverTrigger asChild>
+              <button className="text-[13px] font-medium text-foreground flex-1 text-center hover:text-primary transition-colors cursor-pointer flex items-center justify-center gap-1.5">
+                <CalendarIcon size={13} className="text-muted-foreground" />
+                {viewMode === "month"
+                  ? format(selectedDate, "MMMM yyyy")
+                  : viewMode === "week"
+                    ? `${format(startOfWeek(selectedDate, { weekStartsOn: 1 }), "dd MMM")} — ${format(endOfWeek(selectedDate, { weekStartsOn: 1 }), "dd MMM yyyy")}`
+                    : dateLabel}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="center">
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={(d) => { if (d) { onSetSelectedDate(d); setShowDatePicker(false); } }}
+                initialFocus
+                className={cn("p-3 pointer-events-auto")}
               />
-              <div className="flex gap-2 mt-3">
+              <div className="flex gap-2 px-3 pb-3">
                 {[
                   { label: "Yesterday", offset: -1 },
                   { label: "Today", offset: 0 },
@@ -224,8 +203,17 @@ const OTSchedulePanel: React.FC<Props> = ({
                   </button>
                 ))}
               </div>
-            </div>
-          )}
+            </PopoverContent>
+          </Popover>
+
+          <button onClick={() => {
+            if (viewMode === "month") onSetSelectedDate(addMonths(selectedDate, 1));
+            else if (viewMode === "week") onSetSelectedDate(addDays(selectedDate, 7));
+            else onDateChange(1);
+          }} className="h-7 w-7 rounded-full bg-muted flex items-center justify-center hover:bg-accent transition-colors active:scale-95">
+            <ChevronRight size={14} />
+          </button>
+          <button onClick={onSetToday} className="text-[11px] text-primary font-medium hover:underline">Today</button>
         </div>
       </div>
 
