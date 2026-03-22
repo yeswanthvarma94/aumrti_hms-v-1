@@ -35,7 +35,7 @@ const App = () => (
           <Route element={<AppShell />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/opd" element={<OPDPage />} />
-            <Route path="/ipd" element={<ComingSoon />} />
+            <Route path="/ipd" element={<IPDPage />} />
             <Route path="/emergency" element={<ComingSoon />} />
             <Route path="/ot" element={<ComingSoon />} />
             <Route path="/nursing" element={<ComingSoon />} />
