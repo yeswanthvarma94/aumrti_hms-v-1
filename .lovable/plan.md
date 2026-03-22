@@ -1,44 +1,57 @@
 
 
-## Add Password Sign-In Option
+## Patient Registration Page — `/patients`
 
 ### What We're Building
-Add a "Password" tab to the login modal alongside the existing Email OTP and Mobile OTP tabs. Also add password fields to registration Step 2 so admins can set a password during registration (used with `signUp` instead of pure OTP).
+A dedicated Patient Registration page positioned in the sidebar between Dashboard and Clinical, providing a full-featured patient management view with search, registration, and patient list.
 
-### Changes
+### Sidebar Change
+Add a new top-level nav item **"Patients"** with `UserPlus` icon at index 1 (after Dashboard, before Clinical) in `AppSidebar.tsx`.
 
-**1. `src/components/auth/LoginModal.tsx`** — Add a 3rd tab "Password"
-- Change TabsList from `grid-cols-2` to `grid-cols-3`
-- Add new tab with Lock icon: "Password"
-- Tab content: Email input + Password input + "Sign In" button
-- Uses `supabase.auth.signInWithPassword({ email, password })`
-- On success: redirect to `/dashboard`
-- Below password field: "Forgot password?" link that triggers `supabase.auth.resetPasswordForEmail(email)` and shows a toast
-- Keep existing Email OTP and Mobile OTP tabs unchanged
+### Route
+`/patients` inside `AppShell` routes in `App.tsx`.
 
-**2. `src/pages/register/Step2AdminAccount.tsx`** — Add password fields
-- Add Password + Confirm Password fields (2-column grid) below email
-- Show/hide toggle (eye icon) on each
-- Password strength meter (4 segments: 8+ chars, uppercase, number, special char)
-- Strength label: Weak / Fair / Strong / Very Strong
+### Page Layout — Single Full Page
+Height: `calc(100vh - 56px)`, no page scroll.
 
-**3. `src/pages/register/constants.ts`** — Add `password` field
-- Add `password: string` and `confirmPassword: string` to `RegistrationData` interface and `initialData`
+**Header Bar (56px):**
+- Left: "Patient Registry" title + total patient count badge
+- Right: `[+ Register New Patient]` primary button → opens registration modal
 
-**4. `src/pages/register/index.tsx`** — Use `signUp` with password instead of OTP
-- In `handleLaunch`, replace `signInWithOtp` with `supabase.auth.signUp({ email, password })` when a password is set
-- Remove the OTP verification phase entirely — after `signUp` the user is authenticated
-- Then call `setup-hospital` edge function as before
-- Keep the OTP flow as fallback if password is empty (backward compat)
+**Search & Filter Bar (48px):**
+- Search input (by name, phone, UHID) with debounced query
+- Filter pills: All | Today | This Week | This Month
 
-**5. `src/pages/register/Step5Confirm.tsx`** — Simplify
-- Remove the Email/Phone OTP verification method chooser since registration now uses password-based signup
-- The "Launch" button directly creates the account (no OTP step)
-- Remove `otpPhase`, `otp`, `onOtpChange` props
+**Patient Table (fills remaining height, internally scrollable):**
+- Columns: UHID | Name | Age/Gender | Phone | Blood Group | Last Visit | Actions
+- Rows fetched from `patients` table, sorted by `created_at DESC`
+- Click row → expands inline or opens detail drawer showing demographics, allergies, chronic conditions, visit history
+- Actions column: View, Edit (inline modal)
+- Empty state if no patients
 
-### Technical Notes
-- `signInWithPassword` and `signUp` are built-in Supabase Auth methods — no migration needed
-- Registration validation: password must match confirmPassword, minimum 8 chars
-- Login modal password tab reuses the same modal layout, just different form content
-- `canProceed(1)` in register/index.tsx updated to require password fields filled + matching + 8+ chars
+**Registration Modal (reuse pattern from WalkInModal):**
+- Full patient form: Name, Phone, Age, Gender, DOB, Blood Group, Address, Allergies, Chronic Conditions, Insurance ID, ABHA ID, Emergency Contact
+- Auto-generates UHID on submit
+- Inserts into `patients` table
+- Toast on success, refreshes list
+
+### Technical Details
+
+**Files to create:**
+1. `src/pages/patients/PatientsPage.tsx` — main page with search, table, modal state
+2. `src/components/patients/PatientRegistrationModal.tsx` — full registration form
+3. `src/components/patients/PatientDetailDrawer.tsx` — slide-out panel for patient details + visit history
+
+**Files to edit:**
+1. `src/App.tsx` — add `/patients` route inside AppShell
+2. `src/components/layout/AppSidebar.tsx` — add "Patients" nav item between Dashboard and Clinical (line 46-47)
+3. `src/components/layout/MobileTabBar.tsx` — no change needed (keep existing tabs)
+
+**Queries:**
+- Patient list: `SELECT * FROM patients WHERE hospital_id = [current] ORDER BY created_at DESC`
+- Search: `WHERE full_name ILIKE '%q%' OR phone ILIKE '%q%' OR uhid ILIKE '%q%'`
+- Visit history: `SELECT * FROM opd_encounters WHERE patient_id = [id] ORDER BY visit_date DESC LIMIT 5`
+- Today filter: `WHERE created_at::date = CURRENT_DATE`
+
+**No new tables needed** — uses existing `patients` table which already has all required columns.
 
