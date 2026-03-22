@@ -201,7 +201,11 @@ const AppSidebar: React.FC = () => {
             <p className="text-xs text-sidebar-foreground/60 truncate">Admin</p>
           </div>
         )}
-        <button className="text-sidebar-foreground/60 hover:text-white transition-colors p-1">
+        <button
+          onClick={handleSignOut}
+          className="text-sidebar-foreground/60 hover:text-white transition-colors p-1 active:scale-95"
+          title="Sign out"
+        >
           <LogOut size={18} />
         </button>
       </div>
