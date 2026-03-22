@@ -295,6 +295,9 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated }) => {
               <option value="">Select...</option>
               {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
             </select>
+            {departments.length === 0 && (
+              <a href="/settings/departments" className="text-[10px] text-amber-600 hover:underline mt-0.5 block">No departments — add in Settings →</a>
+            )}
           </div>
           <div className="flex-1">
             <label className="text-xs font-medium text-slate-600">Doctor</label>
@@ -302,6 +305,9 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated }) => {
               <option value="">Select...</option>
               {filteredDoctors.map((d) => <option key={d.id} value={d.id}>Dr. {d.full_name}</option>)}
             </select>
+            {doctors.length === 0 && (
+              <a href="/settings/staff" className="text-[10px] text-amber-600 hover:underline mt-0.5 block">No doctors — add in Settings →</a>
+            )}
           </div>
         </div>
 

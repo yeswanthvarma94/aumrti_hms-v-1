@@ -91,7 +91,10 @@ const BedMap: React.FC<Props> = ({ beds, selectedBedId, onSelectBed, hospitalId,
             {Array.from({ length: 12 }).map((_, i) => <Skeleton key={i} className="h-14 rounded-lg" />)}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-sm text-slate-400">No beds found</div>
+          <div className="flex flex-col items-center justify-center h-full text-center gap-2">
+            <span className="text-sm text-slate-400">No wards or beds configured</span>
+            <a href="/settings/wards" className="text-xs text-[#1A2F5A] font-medium hover:underline">Go to Settings → Wards & Beds</a>
+          </div>
         ) : (
           <div className="grid grid-cols-3 gap-2">
             {filtered.map((bed) => {

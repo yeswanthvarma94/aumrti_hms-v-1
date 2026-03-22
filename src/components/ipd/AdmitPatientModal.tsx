@@ -266,6 +266,9 @@ const AdmitPatientModal: React.FC<Props> = ({ open, onClose, hospitalId, presele
                   <option value="">Select...</option>
                   {doctors.map((d) => <option key={d.id} value={d.id}>{d.full_name}</option>)}
                 </select>
+                {doctors.length === 0 && (
+                  <a href="/settings/staff" className="text-[10px] text-amber-600 hover:underline mt-0.5 block">No doctors — add in Settings →</a>
+                )}
               </div>
             </div>
 

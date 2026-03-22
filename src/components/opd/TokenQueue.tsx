@@ -106,6 +106,9 @@ const TokenQueue: React.FC<Props> = ({ tokens, selectedTokenId, onSelectToken, h
               </button>
             ))}
           </div>
+          {departments.length === 0 && (
+            <p className="text-[10px] text-slate-400 mt-1.5">Add departments in <a href="/settings/departments" className="text-[#1A2F5A] underline">Settings</a></p>
+          )}
         </div>
 
         {/* Stats bar */}
