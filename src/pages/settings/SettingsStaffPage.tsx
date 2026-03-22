@@ -185,6 +185,8 @@ const SettingsStaffPage: React.FC = () => {
         department_id: r.dept_id || null,
         registration_number: null,
         is_active: true,
+        can_login: false,
+        auth_user_id: null,
       }));
       const { error } = await supabase.from("users").insert(rows as any);
       if (error) throw error;
