@@ -33,7 +33,7 @@ const ComplaintTab: React.FC<Props> = ({ encounter, onChange }) => {
     recognition.continuous = false;
     recognition.interimResults = false;
     setRecording(true);
-    recognition.onresult = (e: SpeechRecognitionEvent) => {
+    recognition.onresult = (e) => {
       const text = e.results[0][0].transcript;
       onChange({ chief_complaint: encounter.chief_complaint + (encounter.chief_complaint ? " " : "") + text });
       setRecording(false);

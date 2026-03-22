@@ -36,7 +36,7 @@ const ExaminationTab: React.FC<Props> = ({ encounter, onChange }) => {
     recognition.lang = "en-IN";
     recognition.continuous = false;
     setRecording(true);
-    recognition.onresult = (e: SpeechRecognitionEvent) => {
+    recognition.onresult = (e) => {
       const text = e.results[0][0].transcript;
       const cur = field === "examination_notes" ? encounter.examination_notes : encounter.soap_objective;
       onChange({ [field]: cur + (cur ? " " : "") + text });

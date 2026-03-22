@@ -219,9 +219,9 @@ const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onT
       };
 
       if (prescriptionId) {
-        await supabase.from("prescriptions").update(payload).eq("id", prescriptionId);
+        await supabase.from("prescriptions").update(payload as never).eq("id", prescriptionId);
       } else {
-        const { data: newRx } = await supabase.from("prescriptions").insert(payload).select("id").single();
+        const { data: newRx } = await supabase.from("prescriptions").insert([payload] as never).select("id").single();
         if (newRx) setPrescriptionId(newRx.id);
       }
     } catch (err) {
