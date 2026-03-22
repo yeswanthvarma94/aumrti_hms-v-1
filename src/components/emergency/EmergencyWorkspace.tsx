@@ -17,6 +17,7 @@ interface Props {
 }
 
 const EmergencyWorkspace: React.FC<Props> = ({ visit, hospitalId, userId, onRefresh }) => {
+  const navigate = useNavigate();
   const [vitals, setVitals] = useState({ bp_s: "", bp_d: "", pulse: "", spo2: "", gcs: "" });
   const [complaint, setComplaint] = useState("");
   const [ample, setAmple] = useState({ a: "", m: "", p: "", l: "", e: "" });
