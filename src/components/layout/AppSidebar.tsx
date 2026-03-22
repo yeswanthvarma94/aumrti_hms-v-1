@@ -60,7 +60,7 @@ const navGroups: NavGroup[] = [
       { label: "IPD / Wards", path: "/ipd", icon: BedDouble, subtitle: "Admitted patients & beds" },
       { label: "Emergency", path: "/emergency", icon: Siren, subtitle: "Emergency triage & treatment" },
       { label: "Operation Theatre", path: "/ot", icon: Scissors, subtitle: "OT scheduling & checklists", comingSoon: true },
-      { label: "Nursing", path: "/nursing", icon: HeartPulse, subtitle: "MAR, vitals & handover", comingSoon: true },
+      { label: "Nursing", path: "/nursing", icon: HeartPulse, subtitle: "MAR, vitals & handover" },
     ],
   },
   {
