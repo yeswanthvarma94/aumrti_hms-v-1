@@ -51,8 +51,16 @@ const routeLabels: Record<string, string> = {
 const AppHeader: React.FC = () => {
   const { toggle } = useSidebar();
   const location = useLocation();
+  const navigate = useNavigate();
+  const { toast } = useToast();
   const [searchOpen, setSearchOpen] = useState(false);
   const [online, setOnline] = useState(navigator.onLine);
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    toast({ title: "Signed out successfully" });
+    navigate("/login", { replace: true });
+  };
 
   useEffect(() => {
     const onOnline = () => setOnline(true);
