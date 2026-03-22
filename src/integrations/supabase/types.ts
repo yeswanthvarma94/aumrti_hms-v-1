@@ -153,6 +153,7 @@ export type Database = {
           razorpay_key_id: string | null
           setup_complete: boolean
           state: string | null
+          subdomain: string | null
           subscription_tier: Database["public"]["Enums"]["subscription_tier"]
           type: Database["public"]["Enums"]["hospital_type"]
           wati_api_url: string | null
@@ -175,6 +176,7 @@ export type Database = {
           razorpay_key_id?: string | null
           setup_complete?: boolean
           state?: string | null
+          subdomain?: string | null
           subscription_tier?: Database["public"]["Enums"]["subscription_tier"]
           type?: Database["public"]["Enums"]["hospital_type"]
           wati_api_url?: string | null
@@ -197,6 +199,7 @@ export type Database = {
           razorpay_key_id?: string | null
           setup_complete?: boolean
           state?: string | null
+          subdomain?: string | null
           subscription_tier?: Database["public"]["Enums"]["subscription_tier"]
           type?: Database["public"]["Enums"]["hospital_type"]
           wati_api_url?: string | null
