@@ -96,7 +96,11 @@ const Register: React.FC = () => {
       });
 
       if (res.error || res.data?.error) {
-        throw new Error(res.data?.error || res.error?.message || "Registration failed");
+        const errMsg = res.data?.error || res.error?.message || "Registration failed";
+        if (errMsg.toLowerCase().includes("already been registered")) {
+          throw new Error("This email is already registered. Please use a different email address or sign in to your existing account.");
+        }
+        throw new Error(errMsg);
       }
 
       // Sign in with the newly created account
