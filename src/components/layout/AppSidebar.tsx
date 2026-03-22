@@ -34,14 +34,19 @@ interface SubItem {
   label: string;
   path: string;
   icon: React.ElementType;
+  subtitle?: string;
+  comingSoon?: boolean;
 }
 
 interface NavGroup {
   label: string;
   icon: React.ElementType;
   path?: string;
+  comingSoon?: boolean;
   subItems?: SubItem[];
 }
+
+const READY_ROUTES = new Set(["/dashboard", "/patients", "/opd", "/ipd", "/emergency"]);
 
 const navGroups: NavGroup[] = [
   { label: "Dashboard", icon: Home, path: "/dashboard" },
@@ -49,40 +54,43 @@ const navGroups: NavGroup[] = [
   {
     label: "Clinical",
     icon: Stethoscope,
+    path: "/opd",
     subItems: [
-      { label: "OPD", path: "/opd", icon: Activity },
-      { label: "IPD", path: "/ipd", icon: BedDouble },
-      { label: "Emergency", path: "/emergency", icon: Siren },
-      { label: "OT", path: "/ot", icon: Scissors },
-      { label: "Nursing", path: "/nursing", icon: HeartPulse },
+      { label: "OPD Queue", path: "/opd", icon: Activity, subtitle: "Outpatient consultations" },
+      { label: "IPD / Wards", path: "/ipd", icon: BedDouble, subtitle: "Admitted patients & beds" },
+      { label: "Emergency", path: "/emergency", icon: Siren, subtitle: "Emergency triage & treatment" },
+      { label: "Operation Theatre", path: "/ot", icon: Scissors, subtitle: "OT scheduling & checklists", comingSoon: true },
+      { label: "Nursing", path: "/nursing", icon: HeartPulse, subtitle: "MAR, vitals & handover", comingSoon: true },
     ],
   },
   {
     label: "Diagnostics",
     icon: FlaskConical,
     subItems: [
-      { label: "Lab", path: "/lab", icon: TestTube },
-      { label: "Radiology", path: "/radiology", icon: ScanLine },
+      { label: "Lab", path: "/lab", icon: TestTube, subtitle: "Lab orders & results", comingSoon: true },
+      { label: "Radiology", path: "/radiology", icon: ScanLine, subtitle: "Imaging & reports", comingSoon: true },
     ],
   },
-  { label: "Pharmacy", icon: Pill, path: "/pharmacy" },
+  { label: "Pharmacy", icon: Pill, path: "/pharmacy", comingSoon: true },
   {
     label: "Finance",
     icon: IndianRupee,
+    path: "/billing",
+    comingSoon: true,
     subItems: [
-      { label: "Billing", path: "/billing", icon: Receipt },
-      { label: "Insurance", path: "/insurance", icon: Shield },
-      { label: "Payments", path: "/payments", icon: CreditCard },
+      { label: "Billing", path: "/billing", icon: Receipt, subtitle: "Patient billing", comingSoon: true },
+      { label: "Insurance", path: "/insurance", icon: Shield, subtitle: "TPA & claims", comingSoon: true },
+      { label: "Payments", path: "/payments", icon: CreditCard, subtitle: "Collections & receipts", comingSoon: true },
     ],
   },
   {
     label: "More",
     icon: MoreHorizontal,
     subItems: [
-      { label: "HR", path: "/hr", icon: Users },
-      { label: "Inventory", path: "/inventory", icon: Package },
-      { label: "Quality", path: "/quality", icon: Award },
-      { label: "Settings", path: "/settings", icon: Settings },
+      { label: "HR", path: "/hr", icon: Users, comingSoon: true },
+      { label: "Inventory", path: "/inventory", icon: Package, comingSoon: true },
+      { label: "Quality", path: "/quality", icon: Award, comingSoon: true },
+      { label: "Settings", path: "/settings", icon: Settings, comingSoon: true },
     ],
   },
 ];
