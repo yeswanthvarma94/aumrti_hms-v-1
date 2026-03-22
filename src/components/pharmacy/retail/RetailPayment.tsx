@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Banknote, Smartphone, CreditCard, Building2, Printer, MessageSquare, FileText, RotateCcw, Check, Loader2 } from "lucide-react";
 import type { CartItem } from "./RetailCart";
+import { createPatientRecord, findPatientByPhone } from "@/lib/patient-records";
 
 type PaymentMode = "cash" | "upi" | "card" | "credit";
 
@@ -29,6 +30,7 @@ interface ReceiptData {
 interface Props {
   hospitalId: string;
   items: CartItem[];
+  customerId: string | null;
   subtotal: number;
   discountPercent: number;
   discountAmount: number;
@@ -40,7 +42,7 @@ interface Props {
 }
 
 const RetailPayment: React.FC<Props> = ({
-  hospitalId, items, subtotal, discountPercent, discountAmount, gstAmount, netTotal,
+  hospitalId, items, customerId, subtotal, discountPercent, discountAmount, gstAmount, netTotal,
   customerPhone, customerName, onSaleComplete,
 }) => {
   const { toast } = useToast();
@@ -67,27 +69,36 @@ const RetailPayment: React.FC<Props> = ({
         .maybeSingle();
       if (!userData) throw new Error("User not found");
 
-      // Find or create patient if phone provided
-      let patientId: string | null = null;
-      if (customerPhone.length >= 10) {
-        const { data: existing } = await supabase
-          .from("patients")
-          .select("id")
-          .eq("hospital_id", hospitalId)
-          .eq("phone", customerPhone)
-          .maybeSingle();
-        patientId = existing?.id || null;
+      let patientId = customerId;
+      let resolvedCustomerName = customerName.trim() || "Walk-in Customer";
+
+      if (!patientId && customerPhone.length >= 10) {
+        const existing = await findPatientByPhone(hospitalId, customerPhone);
+        if (existing) {
+          patientId = existing.id;
+          resolvedCustomerName = existing.full_name;
+        }
+      }
+
+      if (!patientId) {
+        const createdPatient = await createPatientRecord({
+          hospitalId,
+          fullName: resolvedCustomerName,
+          phone: customerPhone || undefined,
+        });
+
+        patientId = createdPatient.id;
+        resolvedCustomerName = createdPatient.full_name;
       }
 
       const dispNum = `RET-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${Math.floor(Math.random() * 9000) + 1000}`;
 
-      // Create dispensing record - use a dummy patient_id if no customer linked
       const { data: disp, error: dispErr } = await supabase
         .from("pharmacy_dispensing")
         .insert({
           hospital_id: hospitalId,
           dispensing_number: dispNum,
-          patient_id: patientId || "00000000-0000-0000-0000-000000000000",
+          patient_id: patientId,
           dispensed_by: userData.id,
           dispensing_type: "retail",
           status: "dispensed",
@@ -154,7 +165,7 @@ const RetailPayment: React.FC<Props> = ({
             transaction_type: "issue",
             quantity: item.qty,
             balance_after: Math.max(0, Number(lastEntry?.balance_after || 0) - item.qty),
-            patient_name: customerName || "Walk-in Customer",
+            patient_name: resolvedCustomerName,
             pharmacist_id: userData.id,
           });
         }
@@ -170,7 +181,7 @@ const RetailPayment: React.FC<Props> = ({
         paymentMode,
         amountReceived: paymentMode === "cash" ? amountReceived : netTotal,
         change: paymentMode === "cash" ? change : 0,
-        customerName: customerName || "Walk-in Customer",
+        customerName: resolvedCustomerName,
         date: new Date().toLocaleString("en-IN"),
       });
 

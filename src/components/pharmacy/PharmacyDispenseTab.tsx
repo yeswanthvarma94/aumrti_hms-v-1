@@ -3,6 +3,7 @@ import PrescriptionQueue, { type PrescriptionItem } from "./ip/PrescriptionQueue
 import DispensingWorkspace from "./ip/DispensingWorkspace";
 import PatientStockPanel from "./ip/PatientStockPanel";
 import RetailPOS from "./retail/RetailPOS";
+import ManualDispenseModal from "./ip/ManualDispenseModal";
 
 interface Props {
   hospitalId: string;
@@ -14,6 +15,7 @@ const PharmacyDispenseTab: React.FC<Props> = ({ hospitalId, mode }) => {
   const [patientInfo, setPatientInfo] = useState<any>(null);
   const [stockItems, setStockItems] = useState<{ drug_name: string; available: number; nearest_expiry?: string }[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [manualOpen, setManualOpen] = useState(false);
 
   const handleSelect = useCallback((item: PrescriptionItem) => {
     setSelectedPrescription(item);
@@ -34,6 +36,11 @@ const PharmacyDispenseTab: React.FC<Props> = ({ hospitalId, mode }) => {
     setStockItems(drugs);
   }, []);
 
+  const handleManualCreated = useCallback((item: PrescriptionItem) => {
+    setSelectedPrescription(item);
+    setManualOpen(false);
+  }, []);
+
   if (mode === "retail") {
     return <RetailPOS hospitalId={hospitalId} />;
   }
@@ -45,7 +52,7 @@ const PharmacyDispenseTab: React.FC<Props> = ({ hospitalId, mode }) => {
         hospitalId={hospitalId}
         selectedId={selectedPrescription?.id || null}
         onSelect={handleSelect}
-        onManualDispense={() => {}}
+        onManualDispense={() => setManualOpen(true)}
       />
       <DispensingWorkspace
         hospitalId={hospitalId}
@@ -59,6 +66,12 @@ const PharmacyDispenseTab: React.FC<Props> = ({ hospitalId, mode }) => {
         stockItems={stockItems}
         todayDispensed={[]}
         todayTotal={0}
+      />
+      <ManualDispenseModal
+        hospitalId={hospitalId}
+        open={manualOpen}
+        onClose={() => setManualOpen(false)}
+        onCreate={handleManualCreated}
       />
     </div>
   );

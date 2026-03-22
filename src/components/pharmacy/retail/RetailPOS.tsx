@@ -4,6 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import RetailDrugSearch, { type DrugSearchResult } from "./RetailDrugSearch";
 import RetailCart, { type CartItem } from "./RetailCart";
 import RetailPayment from "./RetailPayment";
+import { findPatientByPhone } from "@/lib/patient-records";
 
 interface Props {
   hospitalId: string;
@@ -12,6 +13,7 @@ interface Props {
 const RetailPOS: React.FC<Props> = ({ hospitalId }) => {
   const { toast } = useToast();
   const [items, setItems] = useState<CartItem[]>([]);
+  const [customerId, setCustomerId] = useState<string | null>(null);
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerName, setCustomerName] = useState("");
   const [discountPercent, setDiscountPercent] = useState(0);
@@ -20,18 +22,31 @@ const RetailPOS: React.FC<Props> = ({ hospitalId }) => {
 
   // Look up customer by phone
   useEffect(() => {
-    if (customerPhone.length < 10) { setCustomerName(""); return; }
+    if (customerPhone.length < 10) {
+      setCustomerId(null);
+      return;
+    }
+
     const timer = setTimeout(async () => {
-      const { data } = await supabase
-        .from("patients")
-        .select("full_name")
-        .eq("hospital_id", hospitalId)
-        .eq("phone", customerPhone)
-        .maybeSingle();
-      setCustomerName(data?.full_name || "");
+      try {
+        const patient = await findPatientByPhone(hospitalId, customerPhone);
+        if (patient) {
+          setCustomerId(patient.id);
+          setCustomerName(patient.full_name);
+        } else {
+          setCustomerId(null);
+        }
+      } catch {
+        setCustomerId(null);
+      }
     }, 500);
     return () => clearTimeout(timer);
   }, [customerPhone, hospitalId]);
+
+  const handleCustomerNameChange = useCallback((name: string) => {
+    setCustomerName(name);
+    setCustomerId(null);
+  }, []);
 
   const handleAddToCart = useCallback((drug: DrugSearchResult) => {
     if (!drug.best_batch) {
@@ -104,12 +119,19 @@ const RetailPOS: React.FC<Props> = ({ hospitalId }) => {
 
   const handleSaleComplete = useCallback(() => {
     setItems([]);
+    setCustomerId(null);
     setCustomerPhone("");
     setCustomerName("");
     setDiscountPercent(0);
     setDiscountFixed(0);
     setDiscountMode("percent");
   }, []);
+
+  const customerStatusLabel = customerId
+    ? `${customerName || "Patient found"}`
+    : customerPhone.length >= 10
+      ? "New walk-in customer"
+      : "Enter phone to fetch from database or type a new customer name";
 
   // Calculations
   const subtotal = items.reduce((s, i) => s + i.unit_price * i.qty, 0);
@@ -130,8 +152,10 @@ const RetailPOS: React.FC<Props> = ({ hospitalId }) => {
       <RetailDrugSearch hospitalId={hospitalId} onAddToCart={handleAddToCart} />
       <RetailCart
         items={items}
+        customerId={customerId}
         customerPhone={customerPhone}
         customerName={customerName}
+        customerStatusLabel={customerStatusLabel}
         discountPercent={discountPercent}
         discountMode={discountMode}
         discountFixed={discountFixed}
@@ -139,7 +163,7 @@ const RetailPOS: React.FC<Props> = ({ hospitalId }) => {
         onRemoveItem={handleRemoveItem}
         onClearAll={handleClearAll}
         onSetCustomerPhone={setCustomerPhone}
-        onSetCustomerName={setCustomerName}
+        onSetCustomerName={handleCustomerNameChange}
         onSetDiscountPercent={setDiscountPercent}
         onSetDiscountMode={setDiscountMode}
         onSetDiscountFixed={setDiscountFixed}
@@ -151,6 +175,7 @@ const RetailPOS: React.FC<Props> = ({ hospitalId }) => {
       <RetailPayment
         hospitalId={hospitalId}
         items={items}
+        customerId={customerId}
         subtotal={subtotal}
         discountPercent={discountPercent}
         discountAmount={discountAmount}

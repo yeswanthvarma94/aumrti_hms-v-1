@@ -25,8 +25,10 @@ export interface CartItem {
 
 interface Props {
   items: CartItem[];
+  customerId: string | null;
   customerPhone: string;
   customerName: string;
+  customerStatusLabel: string;
   discountPercent: number;
   discountMode: "percent" | "fixed";
   discountFixed: number;
@@ -45,7 +47,7 @@ interface Props {
 }
 
 const RetailCart: React.FC<Props> = ({
-  items, customerPhone, customerName, discountPercent, discountMode, discountFixed,
+  items, customerId, customerPhone, customerName, customerStatusLabel, discountPercent, discountMode, discountFixed,
   onUpdateQty, onRemoveItem, onClearAll, onSetCustomerPhone, onSetCustomerName,
   onSetDiscountPercent, onSetDiscountMode, onSetDiscountFixed,
   subtotal, discountAmount, gstAmount, netTotal,
@@ -77,16 +79,24 @@ const RetailCart: React.FC<Props> = ({
       </div>
 
       {/* Customer */}
-      <div className="flex-shrink-0 bg-card border-b border-border/50 px-3.5 py-1.5 flex items-center gap-2">
-        <Input
-          value={customerPhone}
-          onChange={e => onSetCustomerPhone(e.target.value)}
-          placeholder="Customer phone (optional)..."
-          className="h-7 text-xs bg-muted/30 flex-1"
-        />
-        {customerName && (
-          <span className="text-[11px] text-foreground font-medium truncate max-w-[120px]">{customerName}</span>
-        )}
+      <div className="flex-shrink-0 bg-card border-b border-border/50 px-3.5 py-2 space-y-2">
+        <div className="grid grid-cols-2 gap-2">
+          <Input
+            value={customerPhone}
+            onChange={e => onSetCustomerPhone(e.target.value)}
+            placeholder="Customer phone"
+            className="h-8 text-xs bg-muted/30"
+          />
+          <Input
+            value={customerName}
+            onChange={e => onSetCustomerName(e.target.value)}
+            placeholder="Customer name"
+            className="h-8 text-xs bg-muted/30"
+          />
+        </div>
+        <p className="text-[11px] text-muted-foreground">
+          {customerId ? `Linked patient: ${customerStatusLabel}` : customerStatusLabel}
+        </p>
       </div>
 
       {/* Items */}
