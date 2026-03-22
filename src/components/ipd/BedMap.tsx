@@ -23,7 +23,7 @@ const statusColors: Record<string, { bg: string; border: string; hoverBorder: st
   maintenance: { bg: "bg-slate-100", border: "border-slate-300", hoverBorder: "" },
 };
 
-const BedMap: React.FC<Props> = ({ beds, selectedBedId, onSelectBed, hospitalId, loading, onRefresh }) => {
+const BedMap: React.FC<Props> = ({ beds, selectedBedId, onSelectBed, hospitalId, loading, onRefresh, onNewAdmission }) => {
   const [wards, setWards] = useState<{ id: string; name: string }[]>([]);
   const [activeWard, setActiveWard] = useState<string>("all");
 
