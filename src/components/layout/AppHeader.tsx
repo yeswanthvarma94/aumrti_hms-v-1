@@ -147,7 +147,10 @@ const AppHeader: React.FC = () => {
           </div>
 
           {/* Notification bell */}
-          <button className="relative p-2 rounded-md hover:bg-muted transition-colors active:scale-95">
+          <button
+            onClick={() => toast({ title: "Notifications", description: "No new notifications right now." })}
+            className="relative p-2 rounded-md hover:bg-muted transition-colors active:scale-95"
+          >
             <Bell size={20} />
             <Badge className="absolute -top-0.5 -right-0.5 h-[18px] min-w-[18px] px-1 text-[10px] font-bold bg-destructive text-destructive-foreground border-2 border-card rounded-full flex items-center justify-center">
               3
