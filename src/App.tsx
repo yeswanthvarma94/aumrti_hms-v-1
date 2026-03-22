@@ -12,6 +12,7 @@ import Dashboard from "./pages/Dashboard";
 import ComingSoon from "./pages/ComingSoon";
 import OPDPage from "./pages/opd/OPDPage";
 import OTPage from "./pages/ot/OTPage";
+import LabPage from "./pages/lab/LabPage";
 import IPDPage from "./pages/ipd/IPDPage";
 import EmergencyPage from "./pages/emergency/EmergencyPage";
 import PatientsPage from "./pages/patients/PatientsPage";
