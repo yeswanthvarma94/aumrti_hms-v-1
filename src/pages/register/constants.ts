@@ -78,6 +78,8 @@ export interface RegistrationData {
   phoneVerified: boolean;
   fullName: string;
   email: string;
+  password: string;
+  confirmPassword: string;
   designation: string;
   address1: string;
   address2: string;
@@ -101,6 +103,8 @@ export const initialData: RegistrationData = {
   phoneVerified: false,
   fullName: "",
   email: "",
+  password: "",
+  confirmPassword: "",
   designation: "",
   address1: "",
   address2: "",

@@ -25,8 +25,6 @@ const Register: React.FC = () => {
   const [data, setData] = useState<RegistrationData>(initialData);
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true);
-  const [otpPhase, setOtpPhase] = useState<"idle" | "sent" | "verifying">("idle");
-  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -47,7 +45,9 @@ const Register: React.FC = () => {
           data.fullName &&
           data.email &&
           /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email) &&
-          data.designation
+          data.designation &&
+          data.password.length >= 8 &&
+          data.password === data.confirmPassword
         );
       case 2:
         return !!(data.address1 && data.pincode?.length === 6 && data.city);
@@ -68,100 +68,54 @@ const Register: React.FC = () => {
   ];
 
   const handleLaunch = async () => {
-    if (otpPhase === "idle") {
-      if (!data.termsAccepted) return;
-      setLoading(true);
-      try {
-        const otpPayload =
-          data.verificationMethod === "phone"
-            ? { phone: data.phone }
-            : { email: data.email };
-        const { error } = await supabase.auth.signInWithOtp(otpPayload);
-        if (error) throw error;
-        setOtpPhase("sent");
-        setOtp(["", "", "", "", "", ""]);
-        const target = data.verificationMethod === "phone" ? data.phone : data.email;
-        toast({ title: "OTP sent!", description: `Check ${target}` });
-      } catch (err: any) {
-        toast({ title: "Failed to send OTP", description: err.message, variant: "destructive" });
-      } finally {
-        setLoading(false);
-      }
-      return;
-    }
+    if (!data.termsAccepted) return;
+    setLoading(true);
+    try {
+      // Sign up with email + password
+      const { error: signUpError } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+        options: {
+          data: { full_name: data.fullName },
+        },
+      });
+      if (signUpError) throw signUpError;
 
-    if (otpPhase === "sent") {
-      setLoading(true);
-      try {
-        const otpPayload =
-          data.verificationMethod === "phone"
-            ? { phone: data.phone }
-            : { email: data.email };
-        const { error } = await supabase.auth.signInWithOtp(otpPayload);
-        if (error) throw error;
-        setOtp(["", "", "", "", "", ""]);
-        toast({ title: "OTP resent!" });
-      } catch (err: any) {
-        toast({ title: "Failed to resend OTP", description: err.message, variant: "destructive" });
-      } finally {
-        setLoading(false);
+      // User is now authenticated — create hospital via edge function
+      const res = await supabase.functions.invoke("setup-hospital", {
+        body: {
+          hospital: {
+            name: data.hospitalName,
+            type: data.hospitalType,
+            state: data.state,
+            bedCount: data.bedCount,
+            address1: data.address1,
+            address2: data.address2,
+            pincode: data.pincode,
+            gstin: data.gstin || null,
+            nabhNumber: data.nabhAccredited ? data.nabhNumber : null,
+            plan: data.plan,
+          },
+          admin: {
+            full_name: data.fullName,
+            email: data.email,
+            phone: data.phone,
+          },
+        },
+      });
+
+      if (res.error || res.data?.error) {
+        throw new Error(res.data?.error || res.error?.message || "Registration failed");
       }
+
+      toast({ title: "Welcome! 🎉", description: "Let's set up your hospital." });
+      navigate("/setup/onboarding", { replace: true });
+    } catch (err: any) {
+      toast({ title: "Registration failed", description: err.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
     }
   };
-
-  // Auto-verify OTP when all 6 digits entered
-  useEffect(() => {
-    if (otpPhase !== "sent" || !otp.every((d) => d !== "")) return;
-
-    const verify = async () => {
-      setOtpPhase("verifying");
-      try {
-        const token = otp.join("");
-        const verifyPayload =
-          data.verificationMethod === "phone"
-            ? { phone: data.phone, token, type: "sms" as const }
-            : { email: data.email, token, type: "email" as const };
-        const { error } = await supabase.auth.verifyOtp(verifyPayload);
-        if (error) throw error;
-
-        // User is now authenticated — create hospital via edge function
-        const res = await supabase.functions.invoke("setup-hospital", {
-          body: {
-            hospital: {
-              name: data.hospitalName,
-              type: data.hospitalType,
-              state: data.state,
-              bedCount: data.bedCount,
-              address1: data.address1,
-              address2: data.address2,
-              pincode: data.pincode,
-              gstin: data.gstin || null,
-              nabhNumber: data.nabhAccredited ? data.nabhNumber : null,
-              plan: data.plan,
-            },
-            admin: {
-              full_name: data.fullName,
-              email: data.email,
-              phone: data.phone,
-            },
-          },
-        });
-
-        if (res.error || res.data?.error) {
-          throw new Error(res.data?.error || res.error?.message || "Registration failed");
-        }
-
-        toast({ title: "Welcome! 🎉", description: "Let's set up your hospital." });
-        navigate("/setup/onboarding", { replace: true });
-      } catch (err: any) {
-        setOtpPhase("sent");
-        setOtp(["", "", "", "", "", ""]);
-        toast({ title: "Verification failed", description: err.message, variant: "destructive" });
-      }
-    };
-
-    verify();
-  }, [otp, otpPhase]);
 
   if (checking) return null;
 
@@ -249,9 +203,6 @@ const Register: React.FC = () => {
               onEditStep={setStep}
               loading={loading}
               onLaunch={handleLaunch}
-              otpPhase={otpPhase}
-              otp={otp}
-              onOtpChange={setOtp}
             />
           )}
         </div>
@@ -277,7 +228,7 @@ const Register: React.FC = () => {
             </button>
           </div>
         )}
-        {step === 4 && otpPhase === "idle" && (
+        {step === 4 && (
           <div className="shrink-0 flex items-center px-8 md:px-14 py-4 border-t border-border">
             <button
               onClick={() => setStep(3)}
