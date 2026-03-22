@@ -4,6 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ScanLine } from "lucide-react";
 import RadiologyWorklist from "@/components/radiology/RadiologyWorklist";
 import NewRadiologyOrderModal from "@/components/radiology/NewRadiologyOrderModal";
+import RadiologyReportingWorkspace from "@/components/radiology/RadiologyReportingWorkspace";
 
 export interface RadiologyOrder {
   id: string;
