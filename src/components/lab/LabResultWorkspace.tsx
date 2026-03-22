@@ -336,7 +336,7 @@ const LabResultWorkspace: React.FC<Props> = ({ order, onRefresh }) => {
       status: "reported",
       validated_at: new Date().toISOString(),
       validated_by: currentUserId,
-    }).eq("lab_order_id", order.id).in("status", ["result_entered"]);
+    }).eq("lab_order_id", order.id).neq("status", "cancelled");
 
     await supabase.from("lab_orders").update({ status: "completed" }).eq("id", order.id);
     fetchItems(); onRefresh();
@@ -742,7 +742,7 @@ const LabResultWorkspace: React.FC<Props> = ({ order, onRefresh }) => {
           <Save size={14} /> Save All
         </button>
         <button onClick={handleValidateAll}
-          disabled={!allResultsEntered || hasUnacknowledgedCritical || order.status === "completed"}
+          disabled={!allResultsEntered || hasUnacknowledgedCritical}
           className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 active:scale-[0.97] transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5">
           <CheckCircle2 size={14} /> Validate & Release
         </button>
