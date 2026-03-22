@@ -343,7 +343,7 @@ const LabResultWorkspace: React.FC<Props> = ({ order, onRefresh }) => {
     toast({ title: "✓ Report released" });
   };
 
-  const allResultsEntered = items.length > 0 && items.every(i => i.result_value);
+  const allResultsEntered = items.length > 0 && items.every(i => i.result_value || localValues[i.id]);
   const hasUnacknowledgedCritical = items.some(i => (i.result_flag === "CH" || i.result_flag === "CL") && !i.critical_acknowledged);
 
   // Group items by category
