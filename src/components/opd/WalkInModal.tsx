@@ -184,29 +184,41 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated }) => {
         <h2 className="text-lg font-bold text-slate-900">Quick Registration</h2>
         <p className="text-[13px] text-slate-500 mt-0.5">Register patient in under 30 seconds</p>
 
-        {/* Phone search */}
+        {/* Search */}
         <div className="mt-5">
-          <label className="text-xs font-medium text-slate-600">Mobile Number</label>
+          <label className="text-xs font-medium text-slate-600">Search Patient (Name, Phone, or UHID)</label>
           <div className="relative mt-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input
-              type="tel"
+              type="text"
               value={phone}
-              onChange={(e) => { setPhone(e.target.value); setUseExisting(false); }}
-              placeholder="Enter patient's phone number"
+              onChange={(e) => { setPhone(e.target.value); setUseExisting(false); setFoundPatient(null); }}
+              placeholder="Search by name, phone, or UHID..."
               className="w-full h-10 pl-9 pr-3 border border-slate-200 rounded-lg text-sm focus:border-[#1A2F5A] focus:ring-2 focus:ring-[#1A2F5A]/10 outline-none"
             />
           </div>
-          {foundPatient && !useExisting && (
+          {searchResults.length > 0 && !useExisting && (
+            <div className="mt-2 border border-slate-200 rounded-lg overflow-hidden">
+              {searchResults.map((p) => (
+                <button key={p.id} onClick={() => { setFoundPatient(p); setUseExisting(true); setSearchResults([]); }}
+                  className="w-full text-left px-3 py-2 hover:bg-emerald-50 border-b border-slate-100 last:border-0 flex items-center gap-2">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-slate-800">{p.full_name}</p>
+                    <p className="text-[11px] text-slate-500">{p.uhid} · {p.phone || "No phone"}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+          {useExisting && foundPatient && (
             <div className="mt-2 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                <span className="text-xs font-medium text-emerald-700">Returning patient found</span>
+                <span className="text-xs font-medium text-emerald-700">Patient selected</span>
               </div>
               <p className="text-sm font-medium text-slate-800 mt-1">{foundPatient.full_name} · {foundPatient.uhid}</p>
-              <button onClick={() => setUseExisting(true)} className="mt-2 text-xs font-semibold text-emerald-700 bg-emerald-100 px-3 py-1 rounded-md hover:bg-emerald-200 transition-colors">
-                Select This Patient
-              </button>
+              <button onClick={() => { setUseExisting(false); setFoundPatient(null); }} className="mt-1 text-[11px] text-slate-500 hover:underline">Change</button>
             </div>
           )}
         </div>
