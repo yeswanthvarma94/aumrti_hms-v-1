@@ -15,6 +15,13 @@ import IPDPage from "./pages/ipd/IPDPage";
 import EmergencyPage from "./pages/emergency/EmergencyPage";
 import PatientsPage from "./pages/patients/PatientsPage";
 import NursingPage from "./pages/nursing/NursingPage";
+import SettingsPage from "./pages/settings/SettingsPage";
+import SettingsStaffPage from "./pages/settings/SettingsStaffPage";
+import SettingsDepartmentsPage from "./pages/settings/SettingsDepartmentsPage";
+import SettingsWardsPage from "./pages/settings/SettingsWardsPage";
+import SettingsServicesPage from "./pages/settings/SettingsServicesPage";
+import SettingsDrugsPage from "./pages/settings/SettingsDrugsPage";
+import SettingsProfilePage from "./pages/settings/SettingsProfilePage";
 import DesignSystem from "./pages/DesignSystem";
 import NotFound from "./pages/NotFound";
 
