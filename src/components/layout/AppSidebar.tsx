@@ -98,7 +98,7 @@ const navGroups: NavGroup[] = [
       { label: "HR", path: "/hr", icon: Users, comingSoon: true },
       { label: "Inventory", path: "/inventory", icon: Package, comingSoon: true },
       { label: "Quality", path: "/quality", icon: Award, comingSoon: true },
-      { label: "Settings", path: "/settings", icon: Settings, comingSoon: true },
+      { label: "Settings", path: "/settings", icon: Settings },
     ],
   },
 ];
