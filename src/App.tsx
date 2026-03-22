@@ -10,6 +10,7 @@ import Register from "./pages/register";
 import OnboardingWizard from "./pages/setup/OnboardingWizard";
 import Dashboard from "./pages/Dashboard";
 import ComingSoon from "./pages/ComingSoon";
+import OPDPage from "./pages/opd/OPDPage";
 import DesignSystem from "./pages/DesignSystem";
 import NotFound from "./pages/NotFound";
 
@@ -32,7 +33,7 @@ const App = () => (
           {/* App shell routes */}
           <Route element={<AppShell />}>
             <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/opd" element={<ComingSoon />} />
+            <Route path="/opd" element={<OPDPage />} />
             <Route path="/ipd" element={<ComingSoon />} />
             <Route path="/emergency" element={<ComingSoon />} />
             <Route path="/ot" element={<ComingSoon />} />

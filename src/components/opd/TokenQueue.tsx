@@ -1,0 +1,193 @@
+import React, { useState, useEffect, useMemo } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
+import WalkInModal from "./WalkInModal";
+import type { OpdToken } from "@/pages/opd/OPDPage";
+
+interface Props {
+  tokens: OpdToken[];
+  selectedTokenId: string | null;
+  onSelectToken: (id: string) => void;
+  hospitalId: string | null;
+  loading: boolean;
+  onTokenCreated: () => void;
+}
+
+const statusOrder: Record<string, number> = {
+  called: 0,
+  in_consultation: 1,
+  waiting: 2,
+  completed: 3,
+  no_show: 4,
+  cancelled: 5,
+};
+
+const priorityBadge: Record<string, { label: string; bg: string; text: string }> = {
+  urgent: { label: "URGENT", bg: "bg-red-100", text: "text-red-600" },
+  elderly: { label: "ELDER", bg: "bg-amber-100", text: "text-amber-700" },
+  pregnant: { label: "PREG", bg: "bg-pink-100", text: "text-pink-700" },
+  disabled: { label: "ASSIST", bg: "bg-violet-100", text: "text-violet-700" },
+};
+
+const statusStyles: Record<string, string> = {
+  waiting: "bg-white border-slate-100",
+  called: "bg-orange-50 border-orange-200",
+  in_consultation: "bg-blue-50 border-blue-200",
+  completed: "bg-green-50 border-green-200 opacity-70",
+  no_show: "bg-slate-50 border-slate-200 opacity-50",
+  cancelled: "bg-slate-50 border-slate-200 opacity-50",
+};
+
+const statusPill: Record<string, { label: string; bg: string }> = {
+  called: { label: "📢 Called", bg: "bg-amber-100 text-amber-800" },
+  in_consultation: { label: "👨‍⚕️ With Doctor", bg: "bg-blue-100 text-blue-800" },
+  completed: { label: "✓ Completed", bg: "bg-green-100 text-green-800" },
+};
+
+function getWaitMinutes(createdAt: string): string {
+  const diff = Math.floor((Date.now() - new Date(createdAt).getTime()) / 60000);
+  if (diff < 1) return "< 1 min";
+  return `${diff} min`;
+}
+
+const TokenQueue: React.FC<Props> = ({ tokens, selectedTokenId, onSelectToken, hospitalId, loading, onTokenCreated }) => {
+  const [departments, setDepartments] = useState<{ id: string; name: string }[]>([]);
+  const [activeDept, setActiveDept] = useState<string>("all");
+  const [showModal, setShowModal] = useState(false);
+
+  useEffect(() => {
+    if (!hospitalId) return;
+    supabase.from("departments").select("id, name").eq("hospital_id", hospitalId).eq("is_active", true)
+      .then(({ data }) => setDepartments(data || []));
+  }, [hospitalId]);
+
+  const filtered = useMemo(() => {
+    let list = [...tokens];
+    if (activeDept !== "all") list = list.filter((t) => t.department_id === activeDept);
+    list.sort((a, b) => (statusOrder[a.status] ?? 9) - (statusOrder[b.status] ?? 9));
+    return list;
+  }, [tokens, activeDept]);
+
+  const waitingCount = tokens.filter((t) => t.status === "waiting").length;
+  const inRoomCount = tokens.filter((t) => t.status === "in_consultation").length;
+  const doneCount = tokens.filter((t) => t.status === "completed").length;
+  const today = new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+
+  return (
+    <>
+      <div className="w-[280px] flex-shrink-0 bg-white border-r border-slate-200 flex flex-col h-full">
+        {/* Header */}
+        <div className="flex-shrink-0 p-3 border-b border-slate-100">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-bold text-slate-900">OPD Queue</span>
+            <span className="text-xs text-slate-500">{today}</span>
+          </div>
+          <div className="flex gap-1.5 mt-2 overflow-x-auto no-scrollbar">
+            <button
+              className={cn(
+                "text-[11px] font-medium px-3 py-0.5 rounded-full whitespace-nowrap transition-colors",
+                activeDept === "all" ? "bg-[#1A2F5A] text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+              )}
+              onClick={() => setActiveDept("all")}
+            >
+              All
+            </button>
+            {departments.map((d) => (
+              <button
+                key={d.id}
+                className={cn(
+                  "text-[11px] font-medium px-3 py-0.5 rounded-full whitespace-nowrap transition-colors",
+                  activeDept === d.id ? "bg-[#1A2F5A] text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                )}
+                onClick={() => setActiveDept(d.id)}
+              >
+                {d.name}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Stats bar */}
+        <div className="flex-shrink-0 h-8 bg-slate-50 border-b border-slate-100 flex items-center gap-4 px-4">
+          <span className="text-[11px] text-amber-500 font-medium">● {waitingCount} Waiting</span>
+          <span className="text-[11px] text-blue-500 font-medium">● {inRoomCount} In Room</span>
+          <span className="text-[11px] text-emerald-500 font-medium">✓ {doneCount} Done</span>
+        </div>
+
+        {/* Token list */}
+        <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
+          {loading
+            ? Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-20 rounded-lg" />)
+            : filtered.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-slate-400">
+                <span className="text-sm">No tokens yet</span>
+                <span className="text-xs mt-1">Register a walk-in to start</span>
+              </div>
+            ) : filtered.map((token) => {
+              const isSelected = token.id === selectedTokenId;
+              return (
+                <button
+                  key={token.id}
+                  onClick={() => onSelectToken(token.id)}
+                  className={cn(
+                    "w-full text-left p-2.5 rounded-lg border transition-all duration-100",
+                    statusStyles[token.status] || "bg-white border-slate-100",
+                    isSelected && "!bg-blue-50 !border-[#1A2F5A] border-[1.5px]",
+                    "hover:shadow-sm hover:border-slate-300"
+                  )}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-lg font-bold text-[#1A2F5A]">{token.token_number}</span>
+                    {token.priority !== "normal" && priorityBadge[token.priority] && (
+                      <span className={cn("text-[9px] px-1.5 py-px rounded-full font-bold", priorityBadge[token.priority].bg, priorityBadge[token.priority].text)}>
+                        {priorityBadge[token.priority].label}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between mt-1">
+                    <span className="text-[13px] font-medium text-slate-900 truncate max-w-[140px]">{token.patient?.full_name || "—"}</span>
+                    <span className="text-[11px] text-slate-400">{getWaitMinutes(token.created_at)}</span>
+                  </div>
+                  <div className="flex items-center justify-between mt-0.5">
+                    <span className="text-[11px] text-slate-400 truncate max-w-[120px]">{token.department?.name || "—"}</span>
+                    <span className="text-[11px] text-slate-500">{token.doctor?.full_name ? `Dr. ${token.doctor.full_name.split(" ")[0]}` : "—"}</span>
+                  </div>
+                  {token.status !== "waiting" && statusPill[token.status] && (
+                    <div className="mt-1.5">
+                      <span className={cn("text-[10px] px-2 py-0.5 rounded-full", statusPill[token.status].bg)}>
+                        {statusPill[token.status].label}
+                      </span>
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+        </div>
+
+        {/* Footer */}
+        <div className="flex-shrink-0 border-t border-slate-100 p-2">
+          <button
+            onClick={() => setShowModal(true)}
+            className="w-full h-10 bg-[#1A2F5A] text-white rounded-lg text-[13px] font-semibold hover:bg-[#152647] active:scale-[0.98] transition-all"
+          >
+            + Register Walk-in
+          </button>
+        </div>
+      </div>
+
+      {showModal && hospitalId && (
+        <WalkInModal
+          hospitalId={hospitalId}
+          onClose={() => setShowModal(false)}
+          onCreated={() => {
+            onTokenCreated();
+            setShowModal(false);
+          }}
+        />
+      )}
+    </>
+  );
+};
+
+export default TokenQueue;
