@@ -722,6 +722,130 @@ export type Database = {
           },
         ]
       }
+      nursing_handovers: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          flags: Json | null
+          hospital_id: string
+          id: string
+          incoming_nurse_id: string | null
+          outgoing_nurse_id: string
+          sbar_data: Json | null
+          shift_type: string
+          ward_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          flags?: Json | null
+          hospital_id: string
+          id?: string
+          incoming_nurse_id?: string | null
+          outgoing_nurse_id: string
+          sbar_data?: Json | null
+          shift_type: string
+          ward_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          flags?: Json | null
+          hospital_id?: string
+          id?: string
+          incoming_nurse_id?: string | null
+          outgoing_nurse_id?: string
+          sbar_data?: Json | null
+          shift_type?: string
+          ward_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nursing_handovers_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nursing_handovers_ward_id_fkey"
+            columns: ["ward_id"]
+            isOneToOne: false
+            referencedRelation: "wards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nursing_mar: {
+        Row: {
+          administered_at: string | null
+          administered_by: string | null
+          admission_id: string
+          created_at: string | null
+          five_rights_verified: boolean | null
+          hospital_id: string
+          id: string
+          medication_id: string
+          omission_reason: string | null
+          outcome: string
+          scheduled_date: string
+          scheduled_time: string
+          second_nurse_id: string | null
+        }
+        Insert: {
+          administered_at?: string | null
+          administered_by?: string | null
+          admission_id: string
+          created_at?: string | null
+          five_rights_verified?: boolean | null
+          hospital_id: string
+          id?: string
+          medication_id: string
+          omission_reason?: string | null
+          outcome?: string
+          scheduled_date?: string
+          scheduled_time: string
+          second_nurse_id?: string | null
+        }
+        Update: {
+          administered_at?: string | null
+          administered_by?: string | null
+          admission_id?: string
+          created_at?: string | null
+          five_rights_verified?: boolean | null
+          hospital_id?: string
+          id?: string
+          medication_id?: string
+          omission_reason?: string | null
+          outcome?: string
+          scheduled_date?: string
+          scheduled_time?: string
+          second_nurse_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nursing_mar_admission_id_fkey"
+            columns: ["admission_id"]
+            isOneToOne: false
+            referencedRelation: "admissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nursing_mar_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nursing_mar_medication_id_fkey"
+            columns: ["medication_id"]
+            isOneToOne: false
+            referencedRelation: "ipd_medications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       opd_encounters: {
         Row: {
           chief_complaint: string | null
