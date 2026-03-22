@@ -26,6 +26,8 @@ import {
 import { cn } from "@/lib/utils";
 import { useSidebar } from "./SidebarContext";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface SubItem {
   label: string;
