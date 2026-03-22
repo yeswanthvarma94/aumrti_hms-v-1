@@ -626,7 +626,19 @@ const LabResultWorkspace: React.FC<Props> = ({ order, onRefresh }) => {
               {sample.status === "pending" && (
                 <button onClick={handleMarkCollected}
                   className="w-full mt-3 h-9 rounded-lg bg-amber-500 text-white text-xs font-semibold hover:bg-amber-600 active:scale-[0.97] transition-all">
-                  Mark Sample Collected
+                  📦 Mark Sample Collected
+                </button>
+              )}
+              {sample.status === "collected" && (
+                <button onClick={handleMarkReceived}
+                  className="w-full mt-3 h-9 rounded-lg bg-blue-500 text-white text-xs font-semibold hover:bg-blue-600 active:scale-[0.97] transition-all">
+                  📥 Mark Sample Received
+                </button>
+              )}
+              {sample.status === "received" && (
+                <button onClick={handleMarkProcessing}
+                  className="w-full mt-3 h-9 rounded-lg bg-violet-500 text-white text-xs font-semibold hover:bg-violet-600 active:scale-[0.97] transition-all">
+                  🔬 Start Processing
                 </button>
               )}
             </div>
