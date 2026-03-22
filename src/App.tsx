@@ -11,6 +11,7 @@ import OnboardingWizard from "./pages/setup/OnboardingWizard";
 import Dashboard from "./pages/Dashboard";
 import ComingSoon from "./pages/ComingSoon";
 import OPDPage from "./pages/opd/OPDPage";
+import IPDPage from "./pages/ipd/IPDPage";
 import DesignSystem from "./pages/DesignSystem";
 import NotFound from "./pages/NotFound";
 
