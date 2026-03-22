@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Stethoscope, Phone } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Stethoscope, Phone, ExternalLink } from "lucide-react";
 import type { OpdToken } from "@/pages/opd/OPDPage";
 
 interface Props {
