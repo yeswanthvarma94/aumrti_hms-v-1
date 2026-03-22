@@ -13,6 +13,7 @@ import ComingSoon from "./pages/ComingSoon";
 import OPDPage from "./pages/opd/OPDPage";
 import IPDPage from "./pages/ipd/IPDPage";
 import EmergencyPage from "./pages/emergency/EmergencyPage";
+import PatientsPage from "./pages/patients/PatientsPage";
 import DesignSystem from "./pages/DesignSystem";
 import NotFound from "./pages/NotFound";
 
