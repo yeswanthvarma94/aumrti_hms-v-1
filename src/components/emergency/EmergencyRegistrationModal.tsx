@@ -122,6 +122,36 @@ const EmergencyRegistrationModal: React.FC<Props> = ({ open, onClose, hospitalId
             <Input value={name} onChange={e => setName(e.target.value)} placeholder="Unknown"
               className="h-10 text-sm mt-1 text-white border-slate-600"
               style={{ background: "#0F172A" }} />
+
+            {/* Optional phone search */}
+            {!linkedPatient && (
+              <div className="mt-2">
+                <p className="text-[11px] text-slate-500 mb-1">Know their phone? Search existing records:</p>
+                <div className="relative">
+                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-500" />
+                  <Input value={phoneSearch} onChange={e => setPhoneSearch(e.target.value)}
+                    placeholder="Search by phone or name..."
+                    className="h-7 text-[11px] pl-7 text-white border-slate-600"
+                    style={{ background: "#0F172A" }} />
+                </div>
+                {phoneResults.length > 0 && (
+                  <div className="mt-1 border border-slate-600 rounded-md overflow-hidden">
+                    {phoneResults.map(p => (
+                      <button key={p.id} onClick={() => { setLinkedPatient(p); setName(p.full_name); setPhoneResults([]); setPhoneSearch(""); }}
+                        className="w-full text-left px-2 py-1.5 text-[11px] text-slate-300 hover:bg-slate-700 border-b border-slate-700 last:border-0">
+                        {p.full_name} · {p.uhid} · {p.phone || "—"}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            {linkedPatient && (
+              <div className="mt-2 p-2 rounded-md border border-emerald-600/40" style={{ background: "rgba(16,185,129,0.1)" }}>
+                <p className="text-[11px] text-emerald-400 font-medium">✓ Linked to: {linkedPatient.full_name} ({linkedPatient.uhid})</p>
+                <button onClick={() => { setLinkedPatient(null); setName("Unknown"); }} className="text-[10px] text-slate-500 hover:text-slate-300 mt-0.5">Unlink</button>
+              </div>
+            )}
           </div>
 
           {/* Age + Gender */}

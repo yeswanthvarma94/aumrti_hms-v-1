@@ -180,6 +180,13 @@ const EmergencyWorkspace: React.FC<Props> = ({ visit, hospitalId, userId, onRefr
         <ActionBtn label="🏠 Discharge" bg="#10B981" onClick={() => handleDisposition("discharged")} />
         {mlc && <ActionBtn label="📄 MLC Register" bg="#7C3AED" onClick={() => toast({ title: "MLC", description: "MLC register coming in Phase 5" })} />}
 
+        <button
+          onClick={() => navigate(`/patients?id=${visit.patient_id}`)}
+          className="flex items-center gap-1 text-[11px] text-blue-400 font-medium hover:underline mt-2"
+        >
+          View Patient Record <ExternalLink className="h-3 w-3" />
+        </button>
+
         <div className="mt-auto pt-2 border-t border-slate-700">
           <p className="text-[10px] text-slate-500 uppercase font-bold">Status</p>
           <p className="text-xs text-slate-300 capitalize font-medium mt-0.5">{visit.disposition}</p>

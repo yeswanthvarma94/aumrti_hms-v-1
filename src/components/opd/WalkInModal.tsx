@@ -253,11 +253,16 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated }) => {
               </div>
             </div>
 
-            {!showOptional && (
-              <button onClick={() => setShowOptional(true)} className="text-xs text-[#1A2F5A] font-medium hover:underline">
-                + Add more details (optional)
-              </button>
-            )}
+            <div className="flex items-center gap-3">
+              {!showOptional && (
+                <button onClick={() => setShowOptional(true)} className="text-xs text-[#1A2F5A] font-medium hover:underline">
+                  + Add more details (optional)
+                </button>
+              )}
+              <a href="/patients?register=true" target="_blank" rel="noopener noreferrer" className="text-xs text-slate-500 hover:text-[#1A2F5A] hover:underline">
+                Need full registration? →
+              </a>
+            </div>
             {showOptional && (
               <div className="space-y-3 pt-1">
                 <div className="flex gap-3">

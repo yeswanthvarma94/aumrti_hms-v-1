@@ -50,7 +50,15 @@ const READY_ROUTES = new Set(["/dashboard", "/patients", "/opd", "/ipd", "/emerg
 
 const navGroups: NavGroup[] = [
   { label: "Dashboard", icon: Home, path: "/dashboard" },
-  { label: "Patients", icon: UserPlus, path: "/patients" },
+  {
+    label: "Patients",
+    icon: UserPlus,
+    path: "/patients",
+    subItems: [
+      { label: "All Patients", path: "/patients", icon: Users, subtitle: "Patient registry & search" },
+      { label: "New Patient", path: "/patients?register=true", icon: UserPlus, subtitle: "Register a new patient" },
+    ],
+  },
   {
     label: "Clinical",
     icon: Stethoscope,
