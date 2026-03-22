@@ -53,7 +53,6 @@ const OTSchedulePanel: React.FC<Props> = ({
   viewMode, onSetViewMode, hospitalId,
 }) => {
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const datePickerRef = useRef<HTMLDivElement>(null);
   const [weekSchedules, setWeekSchedules] = useState<OTSchedule[]>([]);
   const [monthSchedules, setMonthSchedules] = useState<OTSchedule[]>([]);
 
