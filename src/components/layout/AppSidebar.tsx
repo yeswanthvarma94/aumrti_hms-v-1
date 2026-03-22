@@ -67,7 +67,7 @@ const navGroups: NavGroup[] = [
       { label: "OPD Queue", path: "/opd", icon: Activity, subtitle: "Outpatient consultations" },
       { label: "IPD / Wards", path: "/ipd", icon: BedDouble, subtitle: "Admitted patients & beds" },
       { label: "Emergency", path: "/emergency", icon: Siren, subtitle: "Emergency triage & treatment" },
-      { label: "Operation Theatre", path: "/ot", icon: Scissors, subtitle: "OT scheduling & checklists", comingSoon: true },
+      { label: "Operation Theatre", path: "/ot", icon: Scissors, subtitle: "OT scheduling & checklists" },
       { label: "Nursing", path: "/nursing", icon: HeartPulse, subtitle: "MAR, vitals & handover" },
     ],
   },

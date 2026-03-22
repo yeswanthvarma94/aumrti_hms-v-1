@@ -11,6 +11,7 @@ import OnboardingWizard from "./pages/setup/OnboardingWizard";
 import Dashboard from "./pages/Dashboard";
 import ComingSoon from "./pages/ComingSoon";
 import OPDPage from "./pages/opd/OPDPage";
+import OTPage from "./pages/ot/OTPage";
 import IPDPage from "./pages/ipd/IPDPage";
 import EmergencyPage from "./pages/emergency/EmergencyPage";
 import PatientsPage from "./pages/patients/PatientsPage";
@@ -48,7 +49,7 @@ const App = () => (
             <Route path="/opd" element={<OPDPage />} />
             <Route path="/ipd" element={<IPDPage />} />
             <Route path="/emergency" element={<EmergencyPage />} />
-            <Route path="/ot" element={<ComingSoon />} />
+            <Route path="/ot" element={<OTPage />} />
             <Route path="/nursing" element={<NursingPage />} />
             <Route path="/lab" element={<ComingSoon />} />
             <Route path="/radiology" element={<ComingSoon />} />
