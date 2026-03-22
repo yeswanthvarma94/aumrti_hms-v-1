@@ -14,6 +14,7 @@ import OPDPage from "./pages/opd/OPDPage";
 import IPDPage from "./pages/ipd/IPDPage";
 import EmergencyPage from "./pages/emergency/EmergencyPage";
 import PatientsPage from "./pages/patients/PatientsPage";
+import NursingPage from "./pages/nursing/NursingPage";
 import DesignSystem from "./pages/DesignSystem";
 import NotFound from "./pages/NotFound";
 
