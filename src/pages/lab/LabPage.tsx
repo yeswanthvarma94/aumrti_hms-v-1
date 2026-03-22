@@ -1,0 +1,156 @@
+import React, { useState, useEffect, useCallback } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { Microscope } from "lucide-react";
+import LabQueuePanel from "@/components/lab/LabQueuePanel";
+import LabInfoPanel from "@/components/lab/LabInfoPanel";
+import NewLabOrderModal from "@/components/lab/NewLabOrderModal";
+
+interface LabOrder {
+  id: string;
+  priority: string;
+  status: string;
+  order_date: string;
+  order_time: string;
+  clinical_notes: string | null;
+  patient_id: string;
+  ordered_by: string;
+  patients: { full_name: string; uhid: string; gender: string | null; dob: string | null } | null;
+  ordered_by_user: { full_name: string } | null;
+  lab_order_items: { id: string; status: string; test_id: string; lab_test_master: { tat_minutes: number } | null }[];
+}
+
+const LabPage: React.FC = () => {
+  const { toast } = useToast();
+  const [orders, setOrders] = useState<LabOrder[]>([]);
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [filterTab, setFilterTab] = useState("all");
+  const [showNewOrder, setShowNewOrder] = useState(false);
+  const [hospitalId, setHospitalId] = useState<string | null>(null);
+
+  const fetchHospitalId = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data } = await supabase
+      .from("users")
+      .select("hospital_id")
+      .eq("auth_user_id", user.id)
+      .limit(1)
+      .single();
+    if (data) setHospitalId(data.hospital_id);
+  }, []);
+
+  const fetchOrders = useCallback(async () => {
+    if (!hospitalId) return;
+    const today = new Date().toISOString().split("T")[0];
+    const { data, error } = await supabase
+      .from("lab_orders")
+      .select(`
+        id, priority, status, order_date, order_time, clinical_notes, patient_id, ordered_by,
+        patients (full_name, uhid, gender, dob),
+        ordered_by_user:users!lab_orders_ordered_by_fkey (full_name),
+        lab_order_items (id, status, test_id, lab_test_master:lab_test_master!lab_order_items_test_id_fkey (tat_minutes))
+      `)
+      .eq("hospital_id", hospitalId)
+      .eq("order_date", today)
+      .neq("status", "cancelled")
+      .order("order_time", { ascending: true });
+
+    if (error) {
+      console.error("Lab orders fetch error:", error);
+    } else {
+      // Sort: stat first, then urgent, then routine
+      const sorted = (data || []).sort((a: any, b: any) => {
+        const p: Record<string, number> = { stat: 0, urgent: 1, routine: 2 };
+        return (p[a.priority] ?? 2) - (p[b.priority] ?? 2);
+      });
+      setOrders(sorted as any);
+    }
+  }, [hospitalId]);
+
+  useEffect(() => { fetchHospitalId(); }, [fetchHospitalId]);
+  useEffect(() => { fetchOrders(); }, [fetchOrders]);
+
+  // Realtime
+  useEffect(() => {
+    if (!hospitalId) return;
+    const channel = supabase
+      .channel("lab-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "lab_orders", filter: `hospital_id=eq.${hospitalId}` }, () => fetchOrders())
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "lab_order_items", filter: `hospital_id=eq.${hospitalId}` }, () => fetchOrders())
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [hospitalId, fetchOrders]);
+
+  const filteredOrders = orders.filter((o) => {
+    if (filterTab === "all") return true;
+    if (filterTab === "pending") return ["ordered", "sample_collected"].includes(o.status);
+    if (filterTab === "in_process") return o.status === "in_process";
+    if (filterTab === "ready") return o.status === "partial_results";
+    if (filterTab === "completed") return o.status === "completed";
+    return true;
+  });
+
+  const selectedOrder = orders.find((o) => o.id === selectedOrderId) || null;
+
+  const statCount = orders.filter((o) => o.priority === "stat").length;
+  const urgentCount = orders.filter((o) => o.priority === "urgent").length;
+  const routineCount = orders.filter((o) => o.priority === "routine").length;
+
+  return (
+    <div className="flex h-full overflow-hidden">
+      {/* Left: Queue */}
+      <LabQueuePanel
+        orders={filteredOrders}
+        selectedOrderId={selectedOrderId}
+        onSelectOrder={setSelectedOrderId}
+        filterTab={filterTab}
+        onFilterChange={setFilterTab}
+        statCount={statCount}
+        urgentCount={urgentCount}
+        routineCount={routineCount}
+        onNewOrder={() => setShowNewOrder(true)}
+      />
+
+      {/* Center: Workspace */}
+      <div className="flex-1 bg-muted/30 flex items-center justify-center overflow-hidden">
+        {selectedOrder ? (
+          <div className="text-center space-y-2">
+            <p className="text-lg font-semibold text-foreground">
+              {(selectedOrder.patients as any)?.full_name}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Order: {selectedOrder.id.slice(0, 8).toUpperCase()}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Result entry workspace — coming in next phase
+            </p>
+          </div>
+        ) : (
+          <div className="text-center space-y-3">
+            <Microscope size={48} className="mx-auto text-muted-foreground/40" />
+            <p className="text-base text-muted-foreground">Select a test order from the queue</p>
+            <p className="text-sm text-muted-foreground/60">or create a new lab order</p>
+          </div>
+        )}
+      </div>
+
+      {/* Right: Info */}
+      <LabInfoPanel selectedOrder={selectedOrder} />
+
+      {/* New Order Modal */}
+      {showNewOrder && hospitalId && (
+        <NewLabOrderModal
+          hospitalId={hospitalId}
+          onClose={() => setShowNewOrder(false)}
+          onCreated={() => {
+            fetchOrders();
+            setShowNewOrder(false);
+          }}
+        />
+      )}
+    </div>
+  );
+};
+
+export default LabPage;
