@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { BedDouble, FileText, Pill, ClipboardList, StickyNote, FolderOpen, Phone, Activity } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { BedDouble, FileText, Pill, ClipboardList, StickyNote, FolderOpen, Phone, Activity, ExternalLink } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
