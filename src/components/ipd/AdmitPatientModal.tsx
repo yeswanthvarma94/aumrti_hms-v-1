@@ -1,0 +1,365 @@
+import React, { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { toast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
+
+interface Props {
+  open: boolean;
+  onClose: () => void;
+  hospitalId: string | null;
+  preselectedBedId?: string | null;
+  preselectedWardId?: string | null;
+  preselectedBedNumber?: string | null;
+  onAdmitted: () => void;
+}
+
+interface PatientResult {
+  id: string;
+  full_name: string;
+  uhid: string;
+  phone: string | null;
+  dob: string | null;
+  gender: string | null;
+  blood_group: string | null;
+  chronic_conditions: string[] | null;
+}
+
+const admissionTypes = ["elective", "emergency", "transfer", "daycare"] as const;
+const insuranceTypes = ["self_pay", "insurance", "pmjay", "cghs", "echs"] as const;
+
+const AdmitPatientModal: React.FC<Props> = ({ open, onClose, hospitalId, preselectedBedId, preselectedWardId, preselectedBedNumber, onAdmitted }) => {
+  const [step, setStep] = useState(1);
+  const [search, setSearch] = useState("");
+  const [results, setResults] = useState<PatientResult[]>([]);
+  const [selectedPatient, setSelectedPatient] = useState<PatientResult | null>(null);
+
+  // Step 2 fields
+  const [admissionType, setAdmissionType] = useState<string>("elective");
+  const [departments, setDepartments] = useState<{ id: string; name: string }[]>([]);
+  const [doctors, setDoctors] = useState<{ id: string; full_name: string }[]>([]);
+  const [deptId, setDeptId] = useState("");
+  const [doctorId, setDoctorId] = useState("");
+  const [diagnosis, setDiagnosis] = useState("");
+  const [insuranceType, setInsuranceType] = useState("self_pay");
+  const [insuranceId, setInsuranceId] = useState("");
+  const [expectedDischarge, setExpectedDischarge] = useState("");
+  const [bedId, setBedId] = useState(preselectedBedId || "");
+  const [wardId, setWardId] = useState(preselectedWardId || "");
+  const [bedLabel, setBedLabel] = useState(preselectedBedNumber || "");
+
+  // Wards + beds for selection
+  const [availableBeds, setAvailableBeds] = useState<{ id: string; bed_number: string; ward_id: string; ward_name: string }[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+
+  // New patient fields
+  const [showNewPatient, setShowNewPatient] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newPhone, setNewPhone] = useState("");
+  const [newAge, setNewAge] = useState("");
+  const [newGender, setNewGender] = useState("male");
+
+  useEffect(() => {
+    if (!open) { resetForm(); return; }
+    if (!hospitalId) return;
+    supabase.from("departments").select("id, name").eq("hospital_id", hospitalId).eq("is_active", true)
+      .then(({ data }) => setDepartments(data || []));
+    supabase.from("users").select("id, full_name").eq("hospital_id", hospitalId).eq("role", "doctor").eq("is_active", true)
+      .then(({ data }) => setDoctors(data || []));
+
+    if (!preselectedBedId) {
+      supabase.from("beds").select("id, bed_number, ward_id, ward:wards(name)")
+        .eq("hospital_id", hospitalId).eq("status", "available").eq("is_active", true)
+        .then(({ data }) => {
+          setAvailableBeds((data || []).map((b: any) => ({
+            id: b.id, bed_number: b.bed_number, ward_id: b.ward_id, ward_name: b.ward?.name || "—"
+          })));
+        });
+    }
+  }, [open, hospitalId, preselectedBedId]);
+
+  useEffect(() => {
+    if (preselectedBedId) { setBedId(preselectedBedId); setWardId(preselectedWardId || ""); setBedLabel(preselectedBedNumber || ""); }
+  }, [preselectedBedId, preselectedWardId, preselectedBedNumber]);
+
+  const resetForm = () => {
+    setStep(1); setSearch(""); setResults([]); setSelectedPatient(null);
+    setAdmissionType("elective"); setDeptId(""); setDoctorId(""); setDiagnosis("");
+    setInsuranceType("self_pay"); setInsuranceId(""); setExpectedDischarge("");
+    setShowNewPatient(false); setNewName(""); setNewPhone(""); setNewAge(""); setNewGender("male");
+  };
+
+  // Search patients
+  useEffect(() => {
+    if (search.length < 2 || !hospitalId) { setResults([]); return; }
+    const t = setTimeout(() => {
+      supabase.from("patients").select("id, full_name, uhid, phone, dob, gender, blood_group, chronic_conditions")
+        .eq("hospital_id", hospitalId)
+        .or(`full_name.ilike.%${search}%,phone.ilike.%${search}%,uhid.ilike.%${search}%`)
+        .limit(5)
+        .then(({ data }) => setResults((data as unknown as PatientResult[]) || []));
+    }, 250);
+    return () => clearTimeout(t);
+  }, [search, hospitalId]);
+
+  const handleCreatePatient = async () => {
+    if (!newName || !hospitalId) return;
+    const dob = newAge ? new Date(Date.now() - parseInt(newAge) * 31557600000).toISOString().split("T")[0] : null;
+    const uhid = `UHID-${Date.now().toString(36).toUpperCase()}`;
+    const { data, error } = await supabase.from("patients").insert({
+      hospital_id: hospitalId,
+      full_name: newName,
+      phone: newPhone || null,
+      dob, gender: newGender as any, uhid,
+    }).select().single();
+    if (error || !data) { toast({ title: "Error", description: error?.message || "Failed", variant: "destructive" }); return; }
+    setSelectedPatient(data as unknown as PatientResult);
+    setShowNewPatient(false);
+    toast({ title: `Patient ${newName} registered` });
+  };
+
+  const handleAdmit = async () => {
+    if (!selectedPatient || !doctorId || !bedId || !hospitalId) {
+      toast({ title: "Missing fields", description: "Patient, doctor, and bed are required", variant: "destructive" });
+      return;
+    }
+    setSubmitting(true);
+    const seq = Date.now().toString().slice(-4);
+    const admNum = `IPD-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${seq}`;
+
+    const { error } = await supabase.from("admissions").insert({
+      hospital_id: hospitalId,
+      patient_id: selectedPatient.id,
+      bed_id: bedId,
+      ward_id: wardId,
+      admission_number: admNum,
+      admission_type: admissionType,
+      admitting_doctor_id: doctorId,
+      department_id: deptId || null,
+      admitting_diagnosis: diagnosis || null,
+      insurance_type: insuranceType,
+      insurance_id: insuranceType !== "self_pay" ? insuranceId : null,
+      expected_discharge_date: expectedDischarge || null,
+    });
+
+    if (error) {
+      toast({ title: "Admission failed", description: error.message, variant: "destructive" });
+      setSubmitting(false);
+      return;
+    }
+
+    // Update bed status
+    await supabase.from("beds").update({ status: "occupied" as any }).eq("id", bedId);
+
+    setSubmitting(false);
+    toast({ title: `${selectedPatient.full_name} admitted`, description: `Bed ${bedLabel} · ${admNum}` });
+    onClose();
+    onAdmitted();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-[520px] max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-lg">New Admission</DialogTitle>
+          <div className="flex gap-1 mt-2">
+            {[1, 2, 3].map((s) => (
+              <div key={s} className={cn("h-1.5 flex-1 rounded-full", step >= s ? "bg-[#1A2F5A]" : "bg-slate-200")} />
+            ))}
+          </div>
+        </DialogHeader>
+
+        {/* STEP 1 — Patient */}
+        {step === 1 && (
+          <div className="space-y-3 mt-2">
+            <Input value={search} onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by name, phone, or UHID..." className="h-10" />
+
+            {results.length > 0 && (
+              <div className="border border-slate-200 rounded-lg overflow-hidden">
+                {results.map((p) => (
+                  <button key={p.id} onClick={() => { setSelectedPatient(p); setResults([]); setSearch(p.full_name); }}
+                    className="w-full text-left px-3 py-2 hover:bg-slate-50 border-b border-slate-100 last:border-0 flex justify-between items-center">
+                    <div>
+                      <p className="text-sm font-medium text-slate-900">{p.full_name}</p>
+                      <p className="text-[11px] text-slate-500">{p.uhid} · {p.phone || "No phone"}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {selectedPatient && (
+              <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+                <p className="text-xs text-emerald-700 font-medium mb-1">✓ Patient selected</p>
+                <p className="text-sm font-bold text-slate-900">{selectedPatient.full_name}</p>
+                <p className="text-[11px] text-slate-600">{selectedPatient.uhid} · {selectedPatient.gender} · {selectedPatient.blood_group || "—"}</p>
+              </div>
+            )}
+
+            {!showNewPatient && !selectedPatient && (
+              <button onClick={() => setShowNewPatient(true)} className="text-xs text-blue-600 hover:underline">
+                Not found? Register new patient →
+              </button>
+            )}
+
+            {showNewPatient && (
+              <div className="border border-slate-200 rounded-lg p-3 space-y-2">
+                <p className="text-xs font-bold text-slate-600">New Patient</p>
+                <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Full Name *" className="h-9 text-sm" />
+                <Input value={newPhone} onChange={(e) => setNewPhone(e.target.value)} placeholder="Phone" className="h-9 text-sm" type="tel" />
+                <div className="flex gap-2">
+                  <Input value={newAge} onChange={(e) => setNewAge(e.target.value)} placeholder="Age" className="h-9 text-sm w-20" type="number" />
+                  <div className="flex gap-1 flex-1">
+                    {(["male", "female", "other"] as const).map((g) => (
+                      <button key={g} onClick={() => setNewGender(g)}
+                        className={cn("flex-1 h-9 rounded-md text-xs font-medium border transition-colors capitalize",
+                          newGender === g ? "bg-[#1A2F5A] text-white border-[#1A2F5A]" : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                        )}>{g}</button>
+                    ))}
+                  </div>
+                </div>
+                <Button size="sm" onClick={handleCreatePatient} disabled={!newName} className="w-full h-8 text-xs bg-emerald-600 hover:bg-emerald-700">
+                  Register Patient
+                </Button>
+              </div>
+            )}
+
+            <div className="flex justify-end pt-2">
+              <Button onClick={() => setStep(2)} disabled={!selectedPatient} className="bg-[#1A2F5A] hover:bg-[#152647]">
+                Next →
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* STEP 2 — Details */}
+        {step === 2 && (
+          <div className="space-y-3 mt-2">
+            {/* Admission type */}
+            <div>
+              <label className="text-xs font-bold text-slate-600 uppercase tracking-wider block mb-1">Admission Type</label>
+              <div className="flex gap-1.5">
+                {admissionTypes.map((t) => (
+                  <button key={t} onClick={() => setAdmissionType(t)}
+                    className={cn("flex-1 h-9 rounded-md text-xs font-medium border capitalize transition-colors",
+                      admissionType === t ? "bg-[#1A2F5A] text-white border-[#1A2F5A]" : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                    )}>{t}</button>
+                ))}
+              </div>
+            </div>
+
+            {/* Dept + Doctor */}
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs font-bold text-slate-600 block mb-1">Department</label>
+                <select value={deptId} onChange={(e) => setDeptId(e.target.value)} className="w-full h-9 text-sm border rounded-md px-2 bg-white">
+                  <option value="">Select...</option>
+                  {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-600 block mb-1">Admitting Doctor *</label>
+                <select value={doctorId} onChange={(e) => setDoctorId(e.target.value)} className="w-full h-9 text-sm border rounded-md px-2 bg-white">
+                  <option value="">Select...</option>
+                  {doctors.map((d) => <option key={d.id} value={d.id}>{d.full_name}</option>)}
+                </select>
+              </div>
+            </div>
+
+            {/* Diagnosis */}
+            <div>
+              <label className="text-xs font-bold text-slate-600 block mb-1">Primary Diagnosis</label>
+              <Input value={diagnosis} onChange={(e) => setDiagnosis(e.target.value)} placeholder="Admitting diagnosis..." className="h-9 text-sm" />
+            </div>
+
+            {/* Bed selection */}
+            {preselectedBedId ? (
+              <div>
+                <label className="text-xs font-bold text-slate-600 block mb-1">Bed</label>
+                <span className="text-sm bg-blue-50 text-blue-700 px-2 py-1 rounded">{bedLabel}</span>
+              </div>
+            ) : (
+              <div>
+                <label className="text-xs font-bold text-slate-600 block mb-1">Select Bed *</label>
+                <select value={bedId} onChange={(e) => {
+                  setBedId(e.target.value);
+                  const b = availableBeds.find((x) => x.id === e.target.value);
+                  if (b) { setWardId(b.ward_id); setBedLabel(`${b.ward_name} - ${b.bed_number}`); }
+                }} className="w-full h-9 text-sm border rounded-md px-2 bg-white">
+                  <option value="">Select available bed...</option>
+                  {availableBeds.map((b) => <option key={b.id} value={b.id}>{b.ward_name} — {b.bed_number}</option>)}
+                </select>
+              </div>
+            )}
+
+            {/* Insurance */}
+            <div>
+              <label className="text-xs font-bold text-slate-600 block mb-1">Insurance</label>
+              <div className="flex gap-1 flex-wrap">
+                {insuranceTypes.map((t) => (
+                  <button key={t} onClick={() => setInsuranceType(t)}
+                    className={cn("h-8 px-3 rounded-md text-[11px] font-medium border capitalize transition-colors",
+                      insuranceType === t ? "bg-[#1A2F5A] text-white border-[#1A2F5A]" : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                    )}>{t.replace("_", " ")}</button>
+                ))}
+              </div>
+              {insuranceType !== "self_pay" && (
+                <Input value={insuranceId} onChange={(e) => setInsuranceId(e.target.value)}
+                  placeholder={insuranceType === "pmjay" ? "PMJAY Card Number" : "Insurance ID"}
+                  className="h-9 text-sm mt-2" />
+              )}
+            </div>
+
+            {/* Expected discharge */}
+            <div>
+              <label className="text-xs font-bold text-slate-600 block mb-1">Expected Discharge (optional)</label>
+              <Input type="date" value={expectedDischarge} onChange={(e) => setExpectedDischarge(e.target.value)}
+                min={new Date().toISOString().split("T")[0]} className="h-9 text-sm w-48" />
+            </div>
+
+            <div className="flex justify-between pt-2">
+              <Button variant="outline" onClick={() => setStep(1)}>← Back</Button>
+              <Button onClick={() => setStep(3)} disabled={!doctorId || !bedId} className="bg-[#1A2F5A] hover:bg-[#152647]">Next →</Button>
+            </div>
+          </div>
+        )}
+
+        {/* STEP 3 — Confirm */}
+        {step === 3 && (
+          <div className="space-y-3 mt-2">
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-2">
+              <p className="text-sm font-bold text-slate-900">{selectedPatient?.full_name}</p>
+              <p className="text-xs text-slate-500">{selectedPatient?.uhid}</p>
+              <div className="h-px bg-slate-200 my-2" />
+              <Row label="Type" value={admissionType} />
+              <Row label="Bed" value={bedLabel} />
+              <Row label="Doctor" value={doctors.find((d) => d.id === doctorId)?.full_name || "—"} />
+              <Row label="Diagnosis" value={diagnosis || "—"} />
+              <Row label="Insurance" value={insuranceType.replace("_", " ")} />
+              {expectedDischarge && <Row label="Expected Discharge" value={expectedDischarge} />}
+            </div>
+
+            <div className="flex justify-between pt-2">
+              <Button variant="outline" onClick={() => setStep(2)}>← Back</Button>
+              <Button onClick={handleAdmit} disabled={submitting} className="bg-[#1A2F5A] hover:bg-[#152647] w-40">
+                {submitting ? "Admitting..." : "✓ Confirm Admission"}
+              </Button>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+const Row = ({ label, value }: { label: string; value: string }) => (
+  <div className="flex justify-between text-xs">
+    <span className="text-slate-500">{label}</span>
+    <span className="text-slate-800 font-medium capitalize">{value}</span>
+  </div>
+);
+
+export default AdmitPatientModal;
