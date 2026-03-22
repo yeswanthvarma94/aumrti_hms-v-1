@@ -13,6 +13,7 @@ import {
   Siren,
   Scissors,
   HeartPulse,
+  UserPlus,
   TestTube,
   ScanLine,
   Receipt,
@@ -44,6 +45,7 @@ interface NavGroup {
 
 const navGroups: NavGroup[] = [
   { label: "Dashboard", icon: Home, path: "/dashboard" },
+  { label: "Patients", icon: UserPlus, path: "/patients" },
   {
     label: "Clinical",
     icon: Stethoscope,

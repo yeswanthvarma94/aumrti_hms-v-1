@@ -1,0 +1,228 @@
+import React, { useState, useEffect, useCallback } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
+import { Search, UserPlus, Eye, Users } from "lucide-react";
+import PatientRegistrationModal from "@/components/patients/PatientRegistrationModal";
+import PatientDetailDrawer from "@/components/patients/PatientDetailDrawer";
+
+type Patient = {
+  id: string;
+  uhid: string;
+  full_name: string;
+  phone: string | null;
+  gender: string | null;
+  dob: string | null;
+  blood_group: string | null;
+  allergies: string | null;
+  chronic_conditions: string[] | null;
+  insurance_id: string | null;
+  abha_id: string | null;
+  address: string | null;
+  emergency_contact_name: string | null;
+  emergency_contact_phone: string | null;
+  created_at: string;
+};
+
+type FilterPeriod = "all" | "today" | "week" | "month";
+
+const filterLabels: { key: FilterPeriod; label: string }[] = [
+  { key: "all", label: "All" },
+  { key: "today", label: "Today" },
+  { key: "week", label: "This Week" },
+  { key: "month", label: "This Month" },
+];
+
+function getAge(dob: string | null): string {
+  if (!dob) return "—";
+  const diff = Date.now() - new Date(dob).getTime();
+  const years = Math.floor(diff / (365.25 * 24 * 60 * 60 * 1000));
+  return `${years}y`;
+}
+
+const PatientsPage: React.FC = () => {
+  const { toast } = useToast();
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<FilterPeriod>("all");
+  const [showRegister, setShowRegister] = useState(false);
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+
+  const fetchPatients = useCallback(async () => {
+    setLoading(true);
+    let query = supabase
+      .from("patients")
+      .select("*", { count: "exact" })
+      .order("created_at", { ascending: false });
+
+    if (search.trim()) {
+      const q = `%${search.trim()}%`;
+      query = query.or(`full_name.ilike.${q},phone.ilike.${q},uhid.ilike.${q}`);
+    }
+
+    if (filter === "today") {
+      query = query.gte("created_at", new Date(new Date().setHours(0, 0, 0, 0)).toISOString());
+    } else if (filter === "week") {
+      const d = new Date();
+      d.setDate(d.getDate() - 7);
+      query = query.gte("created_at", d.toISOString());
+    } else if (filter === "month") {
+      const d = new Date();
+      d.setMonth(d.getMonth() - 1);
+      query = query.gte("created_at", d.toISOString());
+    }
+
+    const { data, count, error } = await query.limit(200);
+    if (error) {
+      toast({ title: "Error loading patients", description: error.message, variant: "destructive" });
+    } else {
+      setPatients((data as Patient[]) || []);
+      setTotalCount(count ?? 0);
+    }
+    setLoading(false);
+  }, [search, filter, toast]);
+
+  useEffect(() => {
+    const t = setTimeout(fetchPatients, 300);
+    return () => clearTimeout(t);
+  }, [fetchPatients]);
+
+  return (
+    <div className="h-full flex flex-col overflow-hidden bg-background">
+      {/* Header */}
+      <div className="flex items-center justify-between px-5 h-14 flex-shrink-0 border-b border-border bg-card">
+        <div className="flex items-center gap-3">
+          <Users size={20} className="text-primary" />
+          <h1 className="text-base font-bold text-foreground">Patient Registry</h1>
+          <Badge variant="secondary" className="text-xs">{totalCount}</Badge>
+        </div>
+        <Button size="sm" onClick={() => setShowRegister(true)}>
+          <UserPlus size={16} />
+          Register New Patient
+        </Button>
+      </div>
+
+      {/* Search + Filters */}
+      <div className="flex items-center gap-3 px-5 h-12 flex-shrink-0 border-b border-border bg-card">
+        <div className="relative flex-1 max-w-md">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search by name, phone, or UHID..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9 h-8 text-sm"
+          />
+        </div>
+        <div className="flex gap-1.5">
+          {filterLabels.map((f) => (
+            <button
+              key={f.key}
+              onClick={() => setFilter(f.key)}
+              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                filter === f.key
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="flex-1 overflow-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[120px]">UHID</TableHead>
+              <TableHead>Name</TableHead>
+              <TableHead className="w-[100px]">Age / Gender</TableHead>
+              <TableHead className="w-[120px]">Phone</TableHead>
+              <TableHead className="w-[90px]">Blood Group</TableHead>
+              <TableHead className="w-[120px]">Registered</TableHead>
+              <TableHead className="w-[60px]">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-16 text-muted-foreground">
+                  Loading…
+                </TableCell>
+              </TableRow>
+            ) : patients.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-16">
+                  <Users size={40} className="mx-auto text-muted-foreground/40 mb-2" />
+                  <p className="text-sm text-muted-foreground">No patients found</p>
+                  <Button variant="link" size="sm" onClick={() => setShowRegister(true)} className="mt-1">
+                    Register your first patient
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ) : (
+              patients.map((p) => (
+                <TableRow
+                  key={p.id}
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() => setSelectedPatient(p)}
+                >
+                  <TableCell className="font-mono text-xs">{p.uhid}</TableCell>
+                  <TableCell className="font-medium">{p.full_name}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">
+                    {getAge(p.dob)} {p.gender ? `/ ${p.gender.charAt(0).toUpperCase()}` : ""}
+                  </TableCell>
+                  <TableCell className="text-sm">{p.phone || "—"}</TableCell>
+                  <TableCell>
+                    {p.blood_group ? (
+                      <Badge variant="outline" className="text-[10px] border-destructive/30 text-destructive">
+                        {p.blood_group}
+                      </Badge>
+                    ) : "—"}
+                  </TableCell>
+                  <TableCell className="text-xs text-muted-foreground">
+                    {new Date(p.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={(e) => { e.stopPropagation(); setSelectedPatient(p); }}
+                    >
+                      <Eye size={14} />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      {showRegister && (
+        <PatientRegistrationModal
+          onClose={() => setShowRegister(false)}
+          onSuccess={() => { setShowRegister(false); fetchPatients(); }}
+        />
+      )}
+
+      {selectedPatient && (
+        <PatientDetailDrawer
+          patient={selectedPatient}
+          onClose={() => setSelectedPatient(null)}
+        />
+      )}
+    </div>
+  );
+};
+
+export default PatientsPage;
