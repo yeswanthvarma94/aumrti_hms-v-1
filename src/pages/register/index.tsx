@@ -117,7 +117,11 @@ const Register: React.FC = () => {
       setOtpPhase("verifying");
       try {
         const token = otp.join("");
-        const { error } = await supabase.auth.verifyOtp({ email: data.email, token, type: "email" });
+        const verifyPayload =
+          data.verificationMethod === "phone"
+            ? { phone: data.phone, token, type: "sms" as const }
+            : { email: data.email, token, type: "email" as const };
+        const { error } = await supabase.auth.verifyOtp(verifyPayload);
         if (error) throw error;
 
         // User is now authenticated — create hospital via edge function
