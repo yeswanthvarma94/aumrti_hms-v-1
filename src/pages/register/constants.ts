@@ -112,4 +112,5 @@ export const initialData: RegistrationData = {
   website: "",
   plan: "professional",
   termsAccepted: false,
+  verificationMethod: "email",
 };
