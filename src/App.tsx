@@ -14,6 +14,7 @@ import OPDPage from "./pages/opd/OPDPage";
 import IPDPage from "./pages/ipd/IPDPage";
 import EmergencyPage from "./pages/emergency/EmergencyPage";
 import PatientsPage from "./pages/patients/PatientsPage";
+import NursingPage from "./pages/nursing/NursingPage";
 import DesignSystem from "./pages/DesignSystem";
 import NotFound from "./pages/NotFound";
 
@@ -41,7 +42,7 @@ const App = () => (
             <Route path="/ipd" element={<IPDPage />} />
             <Route path="/emergency" element={<EmergencyPage />} />
             <Route path="/ot" element={<ComingSoon />} />
-            <Route path="/nursing" element={<ComingSoon />} />
+            <Route path="/nursing" element={<NursingPage />} />
             <Route path="/lab" element={<ComingSoon />} />
             <Route path="/radiology" element={<ComingSoon />} />
             <Route path="/pharmacy" element={<ComingSoon />} />
