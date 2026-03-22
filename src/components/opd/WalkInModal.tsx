@@ -82,17 +82,20 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated }) => {
       });
   }, [hospitalId]);
 
-  // Phone search
+  // Phone/name/UHID search
+  const [searchResults, setSearchResults] = useState<FoundPatient[]>([]);
   const searchPatient = useCallback(async (val: string) => {
-    if (val.length < 3) { setFoundPatient(null); return; }
+    if (val.length < 3) { setFoundPatient(null); setSearchResults([]); return; }
     setSearching(true);
     const { data } = await supabase
       .from("patients")
       .select("id, full_name, uhid, phone")
       .eq("hospital_id", hospitalId)
-      .ilike("phone", `%${val}%`)
-      .limit(1);
-    setFoundPatient(data && data.length > 0 ? data[0] : null);
+      .or(`phone.ilike.%${val}%,full_name.ilike.%${val}%,uhid.ilike.%${val}%`)
+      .limit(5);
+    const results = data || [];
+    setSearchResults(results);
+    setFoundPatient(results.length === 1 ? results[0] : null);
     setSearching(false);
   }, [hospitalId]);
 
