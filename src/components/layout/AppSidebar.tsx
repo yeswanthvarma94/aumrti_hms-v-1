@@ -13,6 +13,7 @@ import {
   Siren,
   Scissors,
   HeartPulse,
+  UserPlus,
   TestTube,
   ScanLine,
   Receipt,
