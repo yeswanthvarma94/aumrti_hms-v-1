@@ -173,7 +173,7 @@ const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onT
         visit_date: new Date().toISOString().split("T")[0],
         chief_complaint: data.chief_complaint || null,
         history_of_present_illness: data.history_of_present_illness || null,
-        vitals: data.vitals,
+        vitals: data.vitals as unknown as import("@/integrations/supabase/types").Json,
         examination_notes: data.examination_notes || null,
         soap_subjective: data.soap_subjective || null,
         soap_objective: data.soap_objective || null,
