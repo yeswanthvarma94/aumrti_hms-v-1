@@ -72,6 +72,9 @@ const NursingTaskList: React.FC<Props> = ({
             ))}
           </select>
         </div>
+        {wards.length === 0 && (
+          <a href="/settings/wards" className="text-[10px] text-amber-600 hover:underline mt-1 block">No wards configured — add in Settings →</a>
+        )}
         <div className="mt-2 flex gap-1 flex-wrap">
           {filters.map((f) => (
             <button
