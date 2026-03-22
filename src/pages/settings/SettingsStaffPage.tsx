@@ -148,7 +148,9 @@ const SettingsStaffPage: React.FC = () => {
           department_id: form.department_id || null,
           registration_number: form.registration_number || null,
           is_active: true,
-        });
+          can_login: false,
+          auth_user_id: null,
+        } as any);
         if (error) throw error;
       }
     },
