@@ -2,7 +2,7 @@ import React, { useState, useCallback } from "react";
 import PrescriptionQueue, { type PrescriptionItem } from "./ip/PrescriptionQueue";
 import DispensingWorkspace from "./ip/DispensingWorkspace";
 import PatientStockPanel from "./ip/PatientStockPanel";
-import { ShoppingCart } from "lucide-react";
+import RetailPOS from "./retail/RetailPOS";
 
 interface Props {
   hospitalId: string;
@@ -35,15 +35,7 @@ const PharmacyDispenseTab: React.FC<Props> = ({ hospitalId, mode }) => {
   }, []);
 
   if (mode === "retail") {
-    return (
-      <div className="h-full flex items-center justify-center bg-muted/30">
-        <div className="text-center space-y-3">
-          <ShoppingCart size={48} className="mx-auto text-muted-foreground/40" />
-          <p className="text-base font-semibold text-foreground">Retail Counter</p>
-          <p className="text-sm text-muted-foreground">Walk-in OTC & Rx sales workspace</p>
-        </div>
-      </div>
-    );
+    return <RetailPOS hospitalId={hospitalId} />;
   }
 
   return (
