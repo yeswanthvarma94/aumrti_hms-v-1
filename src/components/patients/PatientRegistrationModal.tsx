@@ -1,11 +1,8 @@
 import React, { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { X } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface Props {
   onClose: () => void;
@@ -51,7 +48,6 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess }) => {
     }
     const hospitalId = userData.hospital_id;
 
-    // Generate UHID
     const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
     const { count } = await supabase
       .from("patients")
@@ -60,7 +56,6 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess }) => {
     const seq = String((count ?? 0) + 1).padStart(4, "0");
     const uhid = `UHID-${dateStr}-${seq}`;
 
-    // Compute DOB from age if no DOB given
     let dob = form.dob || null;
     if (!dob && form.age) {
       const d = new Date();
@@ -99,130 +94,150 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess }) => {
     }
   };
 
+  const inputClass = "w-full h-[38px] px-3 border border-border rounded-lg text-sm bg-background text-foreground focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none";
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={onClose}>
       <div
-        className="bg-card rounded-2xl shadow-lg w-full max-w-lg max-h-[90vh] overflow-y-auto p-7 relative"
+        className="bg-card rounded-2xl shadow-lg flex flex-col overflow-hidden"
+        style={{ width: "min(640px, calc(100vw - 48px))", maxHeight: "calc(100vh - 80px)" }}
         onClick={(e) => e.stopPropagation()}
       >
-        <button onClick={onClose} className="absolute top-4 right-4 text-muted-foreground hover:text-foreground">
-          <X size={18} />
-        </button>
-
-        <h2 className="text-lg font-bold text-foreground">Register New Patient</h2>
-        <p className="text-xs text-muted-foreground mb-5">Fill in patient details below</p>
-
-        <div className="space-y-4">
-          {/* Name */}
+        {/* Header */}
+        <div className="flex items-center justify-between px-7 pt-5 pb-3 flex-shrink-0">
           <div>
-            <Label>Full Name *</Label>
-            <Input value={form.full_name} onChange={(e) => set("full_name", e.target.value)} placeholder="Patient's full name" />
+            <h2 className="text-lg font-bold text-foreground">Register New Patient</h2>
+            <p className="text-[12px] text-muted-foreground">Fill in patient details below</p>
           </div>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground p-1">
+            <X size={18} />
+          </button>
+        </div>
 
-          {/* Phone */}
-          <div>
-            <Label>Phone</Label>
-            <Input type="tel" value={form.phone} onChange={(e) => set("phone", e.target.value)} placeholder="Mobile number" />
-          </div>
+        {/* Form body */}
+        <div className="px-7 pb-2 flex-1 overflow-hidden flex flex-col gap-2.5">
 
-          {/* Age + Gender + DOB */}
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <Label>Age</Label>
-              <Input type="number" min={0} max={120} value={form.age} onChange={(e) => set("age", e.target.value)} placeholder="Age" />
+          {/* ROW 1: Name + Phone + DOB */}
+          <div className="flex gap-3">
+            <div className="flex-[2] min-w-0">
+              <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Full Name *</label>
+              <input value={form.full_name} onChange={(e) => set("full_name", e.target.value)}
+                placeholder="Patient's full name" className={inputClass} />
             </div>
-            <div>
-              <Label>Gender</Label>
-              <div className="flex gap-1 mt-1">
+            <div className="flex-1 min-w-0">
+              <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Phone</label>
+              <input type="tel" value={form.phone} onChange={(e) => set("phone", e.target.value)}
+                placeholder="Mobile number" className={inputClass} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <label className="text-[11px] font-medium text-muted-foreground mb-1 block">DOB</label>
+              <input type="date" value={form.dob} onChange={(e) => set("dob", e.target.value)}
+                className={inputClass} />
+            </div>
+          </div>
+
+          {/* ROW 2: Age + Gender + Blood Group */}
+          <div className="flex gap-4 items-end">
+            <div className="w-[72px] flex-shrink-0">
+              <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Age</label>
+              <input type="number" min={0} max={120} value={form.age} onChange={(e) => set("age", e.target.value)}
+                placeholder="—" className={inputClass} />
+            </div>
+            <div className="flex-shrink-0">
+              <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Gender</label>
+              <div className="flex gap-1">
                 {genders.map((g) => (
-                  <button
-                    key={g}
-                    type="button"
-                    onClick={() => set("gender", g)}
-                    className={`flex-1 py-1.5 rounded-md text-xs font-medium transition-colors border ${
+                  <button key={g} type="button" onClick={() => set("gender", g)}
+                    className={cn(
+                      "h-[32px] px-3.5 rounded-full text-[11px] font-medium border transition-colors capitalize",
                       form.gender === g
-                        ? "bg-primary text-primary-foreground border-primary"
+                        ? "bg-[hsl(222,55%,23%)] text-white border-[hsl(222,55%,23%)]"
                         : "bg-muted text-muted-foreground border-border hover:bg-muted/80"
-                    }`}
-                  >
-                    {g.charAt(0).toUpperCase() + g.slice(1)}
+                    )}>
+                    {g}
                   </button>
                 ))}
               </div>
             </div>
-            <div>
-              <Label>DOB</Label>
-              <Input type="date" value={form.dob} onChange={(e) => set("dob", e.target.value)} />
+            <div className="flex-1 min-w-0">
+              <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Blood Group</label>
+              <div className="flex gap-1 flex-wrap">
+                {bloodGroups.map((bg) => (
+                  <button key={bg} type="button"
+                    onClick={() => set("blood_group", form.blood_group === bg ? "" : bg)}
+                    className={cn(
+                      "h-[32px] px-2.5 rounded-full text-[11px] font-medium border transition-colors",
+                      form.blood_group === bg
+                        ? "bg-destructive/10 text-destructive border-destructive/30"
+                        : "bg-muted text-muted-foreground border-border"
+                    )}>
+                    {bg}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
-          {/* Blood Group */}
+          {/* ROW 3: Address (single line) */}
           <div>
-            <Label>Blood Group</Label>
-            <div className="flex flex-wrap gap-1.5 mt-1">
-              {bloodGroups.map((bg) => (
-                <button
-                  key={bg}
-                  type="button"
-                  onClick={() => set("blood_group", form.blood_group === bg ? "" : bg)}
-                  className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
-                    form.blood_group === bg
-                      ? "bg-destructive/10 text-destructive border-destructive/30"
-                      : "bg-muted text-muted-foreground border-border"
-                  }`}
-                >
-                  {bg}
-                </button>
-              ))}
-            </div>
+            <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Address</label>
+            <input value={form.address} onChange={(e) => set("address", e.target.value)}
+              placeholder="Door no, Street, Area, City, Pincode" className={inputClass} />
           </div>
 
-          {/* Address */}
-          <div>
-            <Label>Address</Label>
-            <Textarea rows={2} value={form.address} onChange={(e) => set("address", e.target.value)} placeholder="Patient address" />
-          </div>
-
-          {/* Allergies + Chronic */}
+          {/* ROW 4: Allergies + Chronic Conditions */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label>Allergies</Label>
-              <Input value={form.allergies} onChange={(e) => set("allergies", e.target.value)} placeholder="e.g. Penicillin" />
+              <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Allergies</label>
+              <input value={form.allergies} onChange={(e) => set("allergies", e.target.value)}
+                placeholder="e.g. Penicillin" className={inputClass} />
             </div>
             <div>
-              <Label>Chronic Conditions</Label>
-              <Input value={form.chronic_conditions} onChange={(e) => set("chronic_conditions", e.target.value)} placeholder="Comma-separated" />
-            </div>
-          </div>
-
-          {/* Insurance + ABHA */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label>Insurance ID</Label>
-              <Input value={form.insurance_id} onChange={(e) => set("insurance_id", e.target.value)} placeholder="Insurance / TPA ID" />
-            </div>
-            <div>
-              <Label>ABHA ID</Label>
-              <Input value={form.abha_id} onChange={(e) => set("abha_id", e.target.value)} placeholder="ABHA number" />
+              <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Chronic Conditions</label>
+              <input value={form.chronic_conditions} onChange={(e) => set("chronic_conditions", e.target.value)}
+                placeholder="DM, HTN (comma-separated)" className={inputClass} />
             </div>
           </div>
 
-          {/* Emergency Contact */}
+          {/* ROW 5: Insurance + ABHA */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label>Emergency Contact Name</Label>
-              <Input value={form.emergency_contact_name} onChange={(e) => set("emergency_contact_name", e.target.value)} />
+              <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Insurance / TPA ID <span className="text-muted-foreground/60">(Optional)</span></label>
+              <input value={form.insurance_id} onChange={(e) => set("insurance_id", e.target.value)}
+                placeholder="Insurance / TPA ID" className={inputClass} />
             </div>
             <div>
-              <Label>Emergency Contact Phone</Label>
-              <Input type="tel" value={form.emergency_contact_phone} onChange={(e) => set("emergency_contact_phone", e.target.value)} />
+              <label className="text-[11px] font-medium text-muted-foreground mb-1 block">ABHA ID <span className="text-muted-foreground/60">(Optional)</span></label>
+              <input value={form.abha_id} onChange={(e) => set("abha_id", e.target.value)}
+                placeholder="ABHA number" className={inputClass} />
+            </div>
+          </div>
+
+          {/* ROW 6: Emergency Contact */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Emergency Contact Name</label>
+              <input value={form.emergency_contact_name} onChange={(e) => set("emergency_contact_name", e.target.value)}
+                placeholder="Contact name" className={inputClass} />
+            </div>
+            <div>
+              <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Emergency Contact Phone</label>
+              <input type="tel" value={form.emergency_contact_phone} onChange={(e) => set("emergency_contact_phone", e.target.value)}
+                placeholder="Contact phone" className={inputClass} />
             </div>
           </div>
         </div>
 
-        <Button className="w-full mt-6 h-11" onClick={handleSubmit} disabled={saving}>
-          {saving ? "Registering…" : "Register Patient"}
-        </Button>
+        {/* Footer */}
+        <div className="px-7 py-4 flex-shrink-0 border-t border-border">
+          <button
+            onClick={handleSubmit}
+            disabled={saving}
+            className="w-full h-[44px] bg-[hsl(222,55%,23%)] text-white rounded-lg text-[14px] font-semibold hover:bg-[hsl(222,55%,18%)] active:scale-[0.98] transition-all disabled:opacity-60"
+          >
+            {saving ? "Registering…" : "Register Patient →"}
+          </button>
+        </div>
       </div>
     </div>
   );
