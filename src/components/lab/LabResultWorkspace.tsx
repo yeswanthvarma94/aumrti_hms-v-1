@@ -298,6 +298,32 @@ const LabResultWorkspace: React.FC<Props> = ({ order, onRefresh }) => {
     toast({ title: "📦 Sample collected" });
   };
 
+  const handleMarkReceived = async () => {
+    if (!currentUserId) return;
+    await supabase.from("lab_samples").update({
+      status: "received",
+      received_at: new Date().toISOString(),
+      received_by: currentUserId,
+    }).eq("lab_order_id", order.id).eq("status", "collected");
+    fetchSamples(); onRefresh();
+    toast({ title: "📥 Sample received at lab" });
+  };
+
+  const handleMarkProcessing = async () => {
+    if (!currentUserId) return;
+    await supabase.from("lab_samples").update({
+      status: "processing",
+    }).eq("lab_order_id", order.id).eq("status", "received");
+
+    await supabase.from("lab_order_items").update({
+      status: "in_process",
+    }).eq("lab_order_id", order.id).in("status", ["ordered", "sample_collected"]);
+
+    await supabase.from("lab_orders").update({ status: "in_process" }).eq("id", order.id);
+    fetchItems(); fetchSamples(); onRefresh();
+    toast({ title: "🔬 Sample processing started" });
+  };
+
   const handleValidateAll = async () => {
     if (!currentUserId) return;
     const unacknowledgedCritical = items.filter(i => (i.result_flag === "CH" || i.result_flag === "CL") && !i.critical_acknowledged);
