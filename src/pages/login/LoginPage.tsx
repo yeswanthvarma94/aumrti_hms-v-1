@@ -73,14 +73,14 @@ const LoginPage: React.FC = () => {
     const subdomain = parts.length >= 3 ? parts[0] : null;
 
     if (subdomain && subdomain !== "www" && subdomain !== "localhost") {
-      supabase
+      (supabase
         .from("hospitals")
         .select("name, logo_url, primary_color")
-        .eq("subdomain" as any, subdomain)
+        .eq("subdomain", subdomain as any)
         .eq("is_active", true)
-        .maybeSingle()
-        .then(({ data }) => {
-          if (data) setBrand(data as HospitalBrand);
+        .maybeSingle() as any)
+        .then(({ data }: { data: HospitalBrand | null }) => {
+          if (data) setBrand(data);
         });
     }
   }, []);
