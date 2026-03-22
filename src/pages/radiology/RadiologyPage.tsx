@@ -4,6 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ScanLine } from "lucide-react";
 import RadiologyWorklist from "@/components/radiology/RadiologyWorklist";
 import NewRadiologyOrderModal from "@/components/radiology/NewRadiologyOrderModal";
+import RadiologyReportingWorkspace from "@/components/radiology/RadiologyReportingWorkspace";
 
 export interface RadiologyOrder {
   id: string;
@@ -141,16 +142,13 @@ const RadiologyPage: React.FC = () => {
         onNewOrder={() => setShowNewOrder(true)}
       />
 
-      {/* Right: Workspace placeholder */}
-      {selectedOrder ? (
-        <div className="flex-1 bg-muted/30 flex items-center justify-center overflow-hidden">
-          <div className="text-center space-y-3">
-            <ScanLine size={48} className="mx-auto text-primary/60" />
-            <p className="text-base font-semibold text-foreground">{selectedOrder.study_name}</p>
-            <p className="text-sm text-muted-foreground">{selectedOrder.patients?.full_name} · {selectedOrder.patients?.uhid}</p>
-            <p className="text-xs text-muted-foreground/60">Reporting workspace coming in next build</p>
-          </div>
-        </div>
+      {/* Right: Workspace */}
+      {selectedOrder && hospitalId ? (
+        <RadiologyReportingWorkspace
+          order={selectedOrder}
+          hospitalId={hospitalId}
+          onStatusChange={fetchOrders}
+        />
       ) : (
         <div className="flex-1 bg-muted/30 flex items-center justify-center overflow-hidden">
           <div className="text-center space-y-3">
