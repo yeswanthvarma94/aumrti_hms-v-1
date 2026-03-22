@@ -60,21 +60,29 @@ const EmergencyRegistrationModal: React.FC<Props> = ({ open, onClose, hospitalId
     }
     setSubmitting(true);
 
-    // Create patient
-    const dob = age ? new Date(Date.now() - parseInt(age) * 31557600000).toISOString().split("T")[0] : null;
-    const uhid = `ED-${Date.now().toString(36).toUpperCase()}`;
-    const { data: patient, error: pErr } = await supabase.from("patients").insert({
-      hospital_id: hospitalId,
-      full_name: name || "Unknown",
-      dob,
-      gender: gender as any,
-      uhid,
-    }).select("id").single();
+    let patientId: string;
 
-    if (pErr || !patient) {
-      toast({ title: "Error", description: pErr?.message || "Failed to create patient", variant: "destructive" });
-      setSubmitting(false);
-      return;
+    if (linkedPatient) {
+      // Use existing patient record
+      patientId = linkedPatient.id;
+    } else {
+      // Create new patient
+      const dob = age ? new Date(Date.now() - parseInt(age) * 31557600000).toISOString().split("T")[0] : null;
+      const uhid = `ED-${Date.now().toString(36).toUpperCase()}`;
+      const { data: patient, error: pErr } = await supabase.from("patients").insert({
+        hospital_id: hospitalId,
+        full_name: name || "Unknown",
+        dob,
+        gender: gender as any,
+        uhid,
+      }).select("id").single();
+
+      if (pErr || !patient) {
+        toast({ title: "Error", description: pErr?.message || "Failed to create patient", variant: "destructive" });
+        setSubmitting(false);
+        return;
+      }
+      patientId = patient.id;
     }
 
     // Create ED visit
