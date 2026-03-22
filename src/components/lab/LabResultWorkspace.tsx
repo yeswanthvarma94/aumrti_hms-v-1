@@ -1,0 +1,683 @@
+import React, { useState, useEffect, useCallback } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
+import { Clock, Save, CheckCircle2, FileText, Printer, MessageSquare, AlertTriangle, Pencil } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+
+interface LabOrder {
+  id: string;
+  priority: string;
+  status: string;
+  order_date: string;
+  order_time: string;
+  clinical_notes: string | null;
+  patient_id: string;
+  ordered_by: string;
+  patients: { full_name: string; uhid: string; gender: string | null; dob: string | null; phone?: string | null } | null;
+  ordered_by_user: { full_name: string } | null;
+  lab_order_items: any[];
+}
+
+interface TestItem {
+  id: string;
+  test_id: string;
+  status: string;
+  result_value: string | null;
+  result_numeric: number | null;
+  result_unit: string | null;
+  result_flag: string | null;
+  reference_range: string | null;
+  sample_barcode: string | null;
+  sample_collected_at: string | null;
+  critical_acknowledged: boolean;
+  notes: string | null;
+  test_name: string;
+  test_code: string | null;
+  category: string;
+  unit: string | null;
+  normal_min: number | null;
+  normal_max: number | null;
+  critical_low: number | null;
+  critical_high: number | null;
+  tat_minutes: number | null;
+  sample_type: string;
+}
+
+interface Props {
+  order: LabOrder;
+  onRefresh: () => void;
+}
+
+function getInitials(name: string) {
+  return name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
+}
+
+function getAge(dob: string | null): string {
+  if (!dob) return "";
+  return `${Math.floor((Date.now() - new Date(dob).getTime()) / (365.25 * 24 * 60 * 60 * 1000))}y`;
+}
+
+function calcFlag(value: number, item: TestItem): string | null {
+  if (item.critical_low != null && value < item.critical_low) return "CL";
+  if (item.critical_high != null && value > item.critical_high) return "CH";
+  if (item.normal_min != null && value < item.normal_min) return "L";
+  if (item.normal_max != null && value > item.normal_max) return "H";
+  if (item.normal_min != null || item.normal_max != null) return "N";
+  return null;
+}
+
+const FLAG_STYLES: Record<string, { bg: string; text: string; label: string; border?: string }> = {
+  N: { bg: "", text: "", label: "" },
+  H: { bg: "bg-amber-50", text: "text-amber-700", label: "↑ H" },
+  L: { bg: "bg-blue-50", text: "text-blue-700", label: "↓ L" },
+  CH: { bg: "bg-red-50", text: "text-red-700", label: "↑↑ CH", border: "border-l-[3px] border-l-destructive" },
+  CL: { bg: "bg-indigo-50", text: "text-indigo-700", label: "↓↓ CL", border: "border-l-[3px] border-l-indigo-500" },
+  A: { bg: "bg-purple-50", text: "text-purple-700", label: "A" },
+};
+
+const STATUS_PILLS: Record<string, { bg: string; text: string; label: string }> = {
+  ordered: { bg: "bg-muted", text: "text-muted-foreground", label: "Ordered" },
+  sample_collected: { bg: "bg-amber-100", text: "text-amber-700", label: "Collected" },
+  in_process: { bg: "bg-blue-100", text: "text-blue-700", label: "Processing" },
+  result_entered: { bg: "bg-blue-100", text: "text-blue-700", label: "Entered" },
+  validated: { bg: "bg-emerald-100", text: "text-emerald-700", label: "✓ Validated" },
+  reported: { bg: "bg-emerald-200", text: "text-emerald-800", label: "✓ Reported" },
+};
+
+const LabResultWorkspace: React.FC<Props> = ({ order, onRefresh }) => {
+  const { toast } = useToast();
+  const [items, setItems] = useState<TestItem[]>([]);
+  const [localValues, setLocalValues] = useState<Record<string, string>>({});
+  const [labNotes, setLabNotes] = useState(order.clinical_notes || "");
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [samples, setSamples] = useState<any[]>([]);
+  const [history, setHistory] = useState<any[]>([]);
+
+  // Get current user id
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      supabase.from("users").select("id").eq("auth_user_id", user.id).limit(1).single()
+        .then(({ data }) => { if (data) setCurrentUserId(data.id); });
+    });
+  }, []);
+
+  // Fetch items with test master details
+  const fetchItems = useCallback(async () => {
+    const { data, error } = await supabase
+      .from("lab_order_items")
+      .select(`
+        id, test_id, status, result_value, result_numeric, result_unit,
+        result_flag, reference_range, sample_barcode, sample_collected_at,
+        critical_acknowledged, notes,
+        lab_test_master!lab_order_items_test_id_fkey (
+          test_name, test_code, category, unit, normal_min, normal_max,
+          critical_low, critical_high, tat_minutes, sample_type
+        )
+      `)
+      .eq("lab_order_id", order.id)
+      .order("created_at", { ascending: true });
+
+    if (error) { console.error("Fetch items error:", error); return; }
+
+    const mapped = (data || []).map((d: any) => ({
+      ...d,
+      test_name: d.lab_test_master?.test_name || "",
+      test_code: d.lab_test_master?.test_code || null,
+      category: d.lab_test_master?.category || "other",
+      unit: d.lab_test_master?.unit || d.result_unit,
+      normal_min: d.lab_test_master?.normal_min,
+      normal_max: d.lab_test_master?.normal_max,
+      critical_low: d.lab_test_master?.critical_low,
+      critical_high: d.lab_test_master?.critical_high,
+      tat_minutes: d.lab_test_master?.tat_minutes,
+      sample_type: d.lab_test_master?.sample_type || "blood",
+    }));
+
+    // Sort by category then test_name
+    mapped.sort((a: TestItem, b: TestItem) => a.category.localeCompare(b.category) || a.test_name.localeCompare(b.test_name));
+    setItems(mapped);
+
+    // Init local values
+    const vals: Record<string, string> = {};
+    mapped.forEach((m: TestItem) => { if (m.result_value) vals[m.id] = m.result_value; });
+    setLocalValues(vals);
+  }, [order.id]);
+
+  // Fetch samples
+  const fetchSamples = useCallback(async () => {
+    const { data } = await supabase
+      .from("lab_samples")
+      .select("*")
+      .eq("lab_order_id", order.id);
+    setSamples(data || []);
+  }, [order.id]);
+
+  // Fetch history
+  const fetchHistory = useCallback(async () => {
+    if (!order.patient_id) return;
+    const { data } = await supabase
+      .from("lab_order_items")
+      .select(`
+        result_numeric, result_flag, result_value, result_unit,
+        lab_order_id,
+        lab_test_master!lab_order_items_test_id_fkey (test_name, test_code),
+        lab_orders!lab_order_items_lab_order_id_fkey (order_date)
+      `)
+      .eq("hospital_id", (await supabase.from("lab_orders").select("hospital_id").eq("id", order.id).single()).data?.hospital_id || "")
+      .in("status", ["validated", "reported"])
+      .not("result_value", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(50);
+
+    // Filter to same patient's orders
+    if (data) {
+      const orderIds = new Set<string>();
+      // Get all order ids for this patient
+      const { data: patientOrders } = await supabase
+        .from("lab_orders")
+        .select("id")
+        .eq("patient_id", order.patient_id)
+        .neq("id", order.id)
+        .order("order_date", { ascending: false })
+        .limit(20);
+      (patientOrders || []).forEach((o: any) => orderIds.add(o.id));
+      setHistory(data.filter((d: any) => orderIds.has(d.lab_order_id)));
+    }
+  }, [order.id, order.patient_id]);
+
+  useEffect(() => { fetchItems(); fetchSamples(); fetchHistory(); }, [fetchItems, fetchSamples, fetchHistory]);
+
+  // TAT calculation
+  const elapsed = (Date.now() - new Date(order.order_time).getTime()) / 60000;
+  const avgTat = items.length > 0
+    ? items.reduce((s, i) => s + (i.tat_minutes || 60), 0) / items.length
+    : 60;
+  const tatRatio = elapsed / avgTat;
+  const tatLabel = elapsed >= 60 ? `${Math.floor(elapsed / 60)}h ${Math.floor(elapsed % 60)}m` : `${Math.floor(elapsed)}m`;
+  const tatBg = tatRatio > 1 ? "bg-red-50 text-red-800" : tatRatio > 0.75 ? "bg-amber-50 text-amber-800" : "bg-emerald-50 text-emerald-800";
+
+  const patient = order.patients;
+
+  // Save a single result
+  const saveResult = async (item: TestItem, rawValue: string) => {
+    if (!currentUserId) return;
+    const isNumeric = item.normal_min != null || item.normal_max != null;
+    const numVal = isNumeric ? parseFloat(rawValue) : null;
+    const flag = isNumeric && numVal != null && !isNaN(numVal) ? calcFlag(numVal, item) : (rawValue && !isNumeric ? "A" : null);
+    // For text results: Negative/Not detected = normal
+    if (!isNumeric && rawValue) {
+      const lower = rawValue.toLowerCase();
+      if (lower === "negative" || lower === "not detected") {
+        // Keep flag null (normal text)
+      }
+    }
+    const finalFlag = isNumeric && numVal != null && !isNaN(numVal) ? calcFlag(numVal, item)
+      : (!isNumeric && rawValue && ["positive", "detected"].includes(rawValue.toLowerCase())) ? "A"
+      : null;
+
+    const { error } = await supabase
+      .from("lab_order_items")
+      .update({
+        result_value: rawValue || null,
+        result_numeric: numVal != null && !isNaN(numVal) ? numVal : null,
+        result_flag: finalFlag,
+        result_unit: item.unit,
+        reference_range: item.normal_min != null && item.normal_max != null
+          ? `${item.normal_min}–${item.normal_max} ${item.unit || ""}`
+          : item.normal_max != null ? `< ${item.normal_max} ${item.unit || ""}` : null,
+        result_entered_at: new Date().toISOString(),
+        result_entered_by: currentUserId,
+        status: "result_entered",
+      })
+      .eq("id", item.id);
+
+    if (error) { console.error("Save result error:", error); return; }
+
+    // Critical alert
+    if (finalFlag === "CH" || finalFlag === "CL") {
+      const { data: orderData } = await supabase.from("lab_orders").select("hospital_id").eq("id", order.id).single();
+      if (orderData) {
+        await supabase.from("clinical_alerts").insert({
+          hospital_id: orderData.hospital_id,
+          alert_type: "critical_lab_value",
+          severity: "critical",
+          alert_message: `Critical ${item.test_name}: ${rawValue} ${item.unit || ""} — Patient: ${patient?.full_name} (${patient?.uhid})`,
+          patient_id: order.patient_id,
+          lab_order_item_id: item.id,
+        });
+        toast({
+          title: `🚨 Critical: ${item.test_name} = ${rawValue}`,
+          description: `Patient: ${patient?.full_name}`,
+          variant: "destructive",
+        });
+      }
+    }
+
+    fetchItems();
+    onRefresh();
+  };
+
+  const handleAcknowledgeCritical = async (itemId: string) => {
+    if (!currentUserId) return;
+    await supabase.from("lab_order_items").update({
+      critical_acknowledged: true,
+      critical_acknowledged_by: currentUserId,
+      critical_acknowledged_at: new Date().toISOString(),
+    }).eq("id", itemId);
+
+    // Also update clinical_alerts
+    await supabase.from("clinical_alerts").update({
+      is_acknowledged: true,
+      acknowledged_by: currentUserId,
+      acknowledged_at: new Date().toISOString(),
+    }).eq("lab_order_item_id", itemId);
+
+    fetchItems();
+    toast({ title: "✓ Critical value acknowledged" });
+  };
+
+  const handleMarkCollected = async () => {
+    if (!currentUserId) return;
+    await supabase.from("lab_order_items").update({
+      status: "sample_collected",
+      sample_collected_at: new Date().toISOString(),
+      sample_collected_by: currentUserId,
+    }).eq("lab_order_id", order.id).in("status", ["ordered"]);
+
+    await supabase.from("lab_orders").update({ status: "sample_collected" }).eq("id", order.id);
+    await supabase.from("lab_samples").update({
+      status: "collected",
+      collected_at: new Date().toISOString(),
+      collected_by: currentUserId,
+    }).eq("lab_order_id", order.id).eq("status", "pending");
+
+    fetchItems(); fetchSamples(); onRefresh();
+    toast({ title: "📦 Sample collected" });
+  };
+
+  const handleValidateAll = async () => {
+    if (!currentUserId) return;
+    const unacknowledgedCritical = items.filter(i => (i.result_flag === "CH" || i.result_flag === "CL") && !i.critical_acknowledged);
+    if (unacknowledgedCritical.length > 0) {
+      toast({ title: "Acknowledge critical values before releasing", variant: "destructive" });
+      return;
+    }
+
+    await supabase.from("lab_order_items").update({
+      status: "reported",
+      validated_at: new Date().toISOString(),
+      validated_by: currentUserId,
+    }).eq("lab_order_id", order.id).in("status", ["result_entered"]);
+
+    await supabase.from("lab_orders").update({ status: "completed" }).eq("id", order.id);
+    fetchItems(); onRefresh();
+    toast({ title: "✓ Report released" });
+  };
+
+  const allResultsEntered = items.length > 0 && items.every(i => i.result_value);
+  const hasUnacknowledgedCritical = items.some(i => (i.result_flag === "CH" || i.result_flag === "CL") && !i.critical_acknowledged);
+
+  // Group items by category
+  const grouped = items.reduce<Record<string, TestItem[]>>((acc, item) => {
+    const cat = item.category.toUpperCase();
+    if (!acc[cat]) acc[cat] = [];
+    acc[cat].push(item);
+    return acc;
+  }, {});
+
+  // History grouped by test
+  const historyByTest = history.reduce<Record<string, any[]>>((acc, h) => {
+    const name = h.lab_test_master?.test_name || "Unknown";
+    if (!acc[name]) acc[name] = [];
+    acc[name].push(h);
+    return acc;
+  }, {});
+
+  return (
+    <div className="flex-1 flex flex-col overflow-hidden bg-muted/30">
+      {/* Order Header */}
+      <div className="h-[68px] shrink-0 bg-card border-b border-border px-5 flex items-center gap-4">
+        {/* Patient info */}
+        <div className="flex items-center gap-3 min-w-0">
+          {patient && (
+            <>
+              <div className="w-9 h-9 rounded-full bg-[hsl(var(--sidebar-background))] text-white flex items-center justify-center text-xs font-bold shrink-0">
+                {getInitials(patient.full_name)}
+              </div>
+              <div className="min-w-0">
+                <p className="text-[15px] font-bold text-foreground truncate">{patient.full_name}</p>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground">{patient.uhid}</span>
+                  <span className="text-[11px] text-muted-foreground">{getAge(patient.dob)} {patient.gender === "male" ? "M" : patient.gender === "female" ? "F" : ""}</span>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Order info */}
+        <div className="text-center min-w-0">
+          <p className="text-xs text-muted-foreground font-mono">LAB-{order.id.slice(0, 8).toUpperCase()}</p>
+          <div className="flex items-center gap-2 justify-center">
+            {order.priority !== "routine" && (
+              <span className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded-full",
+                order.priority === "stat" ? "bg-destructive/10 text-destructive" : "bg-amber-100 text-amber-700"
+              )}>
+                {order.priority === "stat" ? "🔴 STAT" : "🟡 URGENT"}
+              </span>
+            )}
+            <span className="text-[11px] text-muted-foreground">
+              Dr. {(order.ordered_by_user as any)?.full_name || "Unknown"}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex-1" />
+
+        {/* TAT display */}
+        <div className={cn("rounded-lg px-3.5 py-2 shrink-0", tatBg, tatRatio > 1 && "ring-1 ring-red-300 animate-pulse")}>
+          <p className="text-sm font-bold flex items-center gap-1"><Clock size={13} /> {tatLabel}</p>
+          <p className="text-[10px] opacity-70">Target: {Math.round(avgTat)}m</p>
+        </div>
+
+        {/* Status action */}
+        {order.status === "ordered" && (
+          <button onClick={handleMarkCollected}
+            className="shrink-0 px-3.5 py-1.5 rounded-lg bg-amber-500 text-white text-[11px] font-semibold hover:bg-amber-600 active:scale-[0.97] transition-all">
+            📦 Mark Collected
+          </button>
+        )}
+        {allResultsEntered && order.status !== "completed" && (
+          <button onClick={handleValidateAll}
+            disabled={hasUnacknowledgedCritical}
+            className="shrink-0 px-3.5 py-1.5 rounded-lg bg-emerald-600 text-white text-[11px] font-semibold hover:bg-emerald-700 active:scale-[0.97] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            title={hasUnacknowledgedCritical ? "Acknowledge critical values first" : ""}>
+            ✓ Validate & Release
+          </button>
+        )}
+      </div>
+
+      {/* Tabs */}
+      <Tabs defaultValue="results" className="flex-1 flex flex-col overflow-hidden">
+        <TabsList className="shrink-0 bg-card border-b border-border rounded-none h-11 w-full justify-start px-5 gap-0">
+          <TabsTrigger value="results" className="rounded-none border-b-2 border-transparent data-[state=active]:border-b-[hsl(var(--sidebar-background))] data-[state=active]:text-[hsl(var(--sidebar-background))] data-[state=active]:shadow-none text-[13px] px-6">Results</TabsTrigger>
+          <TabsTrigger value="sample" className="rounded-none border-b-2 border-transparent data-[state=active]:border-b-[hsl(var(--sidebar-background))] data-[state=active]:text-[hsl(var(--sidebar-background))] data-[state=active]:shadow-none text-[13px] px-6">Sample</TabsTrigger>
+          <TabsTrigger value="history" className="rounded-none border-b-2 border-transparent data-[state=active]:border-b-[hsl(var(--sidebar-background))] data-[state=active]:text-[hsl(var(--sidebar-background))] data-[state=active]:shadow-none text-[13px] px-6">History</TabsTrigger>
+          <TabsTrigger value="notes" className="rounded-none border-b-2 border-transparent data-[state=active]:border-b-[hsl(var(--sidebar-background))] data-[state=active]:text-[hsl(var(--sidebar-background))] data-[state=active]:shadow-none text-[13px] px-6">Notes</TabsTrigger>
+        </TabsList>
+
+        {/* TAB 1: Results */}
+        <TabsContent value="results" className="flex-1 overflow-auto m-0 mt-0">
+          <div className="min-w-[600px]">
+            {/* Header row */}
+            <div className="sticky top-0 z-10 bg-muted/80 backdrop-blur border-b border-border grid grid-cols-[160px_150px_70px_130px_70px_90px_50px] gap-0 px-4 py-2 text-[11px] font-bold uppercase text-muted-foreground tracking-wide">
+              <span>Test Name</span>
+              <span>Result</span>
+              <span>Unit</span>
+              <span>Ref. Range</span>
+              <span className="text-center">Flag</span>
+              <span>Status</span>
+              <span></span>
+            </div>
+
+            {Object.entries(grouped).map(([category, catItems]) => (
+              <React.Fragment key={category}>
+                <div className="bg-muted/60 px-4 py-1.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wide border-b border-border">
+                  {category.replace(/_/g, " ")}
+                </div>
+                {catItems.map(item => {
+                  const fs = item.result_flag ? FLAG_STYLES[item.result_flag] : null;
+                  const sp = STATUS_PILLS[item.status] || STATUS_PILLS.ordered;
+                  const isNumeric = item.normal_min != null || item.normal_max != null;
+                  const isCritical = item.result_flag === "CH" || item.result_flag === "CL";
+                  const isValidated = item.status === "validated" || item.status === "reported";
+
+                  return (
+                    <React.Fragment key={item.id}>
+                      <div className={cn(
+                        "grid grid-cols-[160px_150px_70px_130px_70px_90px_50px] gap-0 px-4 items-center h-12 border-b border-border/50 transition-colors",
+                        fs?.bg || "bg-card",
+                        fs?.border
+                      )}>
+                        {/* Test Name */}
+                        <div className="min-w-0">
+                          <p className="text-[13px] font-semibold text-foreground truncate">{item.test_name}</p>
+                          {item.test_code && <p className="text-[10px] text-muted-foreground">{item.test_code}</p>}
+                        </div>
+
+                        {/* Result Input */}
+                        <div>
+                          {isValidated ? (
+                            <span className="text-sm font-semibold text-foreground">{item.result_value || "—"}</span>
+                          ) : isNumeric ? (
+                            <input
+                              type="number"
+                              step="any"
+                              value={localValues[item.id] || ""}
+                              onChange={e => setLocalValues(p => ({ ...p, [item.id]: e.target.value }))}
+                              onBlur={e => { if (e.target.value) saveResult(item, e.target.value); }}
+                              className="w-[100px] h-9 border border-border rounded-md px-2.5 text-sm font-semibold text-center bg-card focus:ring-2 focus:ring-ring focus:border-transparent outline-none tabular-nums"
+                              placeholder="—"
+                            />
+                          ) : (
+                            <select
+                              value={localValues[item.id] || ""}
+                              onChange={e => {
+                                setLocalValues(p => ({ ...p, [item.id]: e.target.value }));
+                                if (e.target.value) saveResult(item, e.target.value);
+                              }}
+                              className="w-[120px] h-9 border border-border rounded-md px-2 text-sm bg-card focus:ring-2 focus:ring-ring outline-none"
+                            >
+                              <option value="">Select...</option>
+                              <option value="Positive">Positive</option>
+                              <option value="Negative">Negative</option>
+                              <option value="Detected">Detected</option>
+                              <option value="Not detected">Not detected</option>
+                              <option value="Equivocal">Equivocal</option>
+                            </select>
+                          )}
+                        </div>
+
+                        {/* Unit */}
+                        <span className="text-xs text-muted-foreground">{item.unit || "—"}</span>
+
+                        {/* Ref Range */}
+                        <span className="text-xs text-muted-foreground">
+                          {item.normal_min != null && item.normal_max != null
+                            ? `${item.normal_min} – ${item.normal_max}`
+                            : item.normal_max != null ? `< ${item.normal_max}` : "—"}
+                        </span>
+
+                        {/* Flag */}
+                        <div className="flex justify-center">
+                          {fs && fs.label && (
+                            <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded", fs.bg, fs.text,
+                              isCritical && "animate-pulse"
+                            )}>
+                              {fs.label}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Status */}
+                        <span className={cn("text-[10px] font-medium px-2 py-0.5 rounded-full text-center", sp.bg, sp.text)}>
+                          {sp.label}
+                        </span>
+
+                        {/* Actions */}
+                        <div className="flex justify-center">
+                          {isValidated ? (
+                            <span className="text-muted-foreground/50"><CheckCircle2 size={14} /></span>
+                          ) : item.result_value ? (
+                            <button className="text-muted-foreground hover:text-foreground"><Pencil size={13} /></button>
+                          ) : null}
+                        </div>
+                      </div>
+
+                      {/* Critical banner */}
+                      {isCritical && !item.critical_acknowledged && (
+                        <div className="mx-4 my-1 bg-red-50 border border-red-200 rounded-lg px-4 py-3 flex items-center gap-3">
+                          <AlertTriangle className="text-destructive shrink-0" size={18} />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[13px] font-bold text-destructive uppercase">Critical Value Detected</p>
+                            <p className="text-sm font-semibold text-foreground">{item.test_name}: {item.result_value} {item.unit || ""}</p>
+                            <p className="text-[11px] text-muted-foreground">Normal: {item.normal_min}–{item.normal_max}</p>
+                          </div>
+                          <button
+                            onClick={() => handleAcknowledgeCritical(item.id)}
+                            className="shrink-0 px-3 py-1.5 rounded-md bg-destructive text-white text-xs font-semibold hover:bg-destructive/90 active:scale-[0.97] transition-all"
+                          >
+                            ✓ Acknowledge
+                          </button>
+                        </div>
+                      )}
+                      {isCritical && item.critical_acknowledged && (
+                        <div className="mx-4 my-1 bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-2 text-xs text-emerald-700 font-medium">
+                          ✓ Critical acknowledged
+                        </div>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </React.Fragment>
+            ))}
+          </div>
+        </TabsContent>
+
+        {/* TAB 2: Sample */}
+        <TabsContent value="sample" className="flex-1 overflow-auto m-0 p-4 space-y-3">
+          {samples.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">No samples recorded</p>}
+          {samples.map(sample => (
+            <div key={sample.id} className="bg-card border border-border rounded-lg p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold bg-muted px-2 py-1 rounded capitalize">{sample.sample_type}</span>
+                  {sample.barcode && (
+                    <span className="text-xs font-mono bg-muted/50 px-2 py-1 rounded text-muted-foreground">{sample.barcode}</span>
+                  )}
+                </div>
+                <span className={cn("text-[10px] font-medium px-2 py-0.5 rounded-full capitalize",
+                  sample.status === "collected" ? "bg-amber-100 text-amber-700" :
+                  sample.status === "received" ? "bg-blue-100 text-blue-700" :
+                  sample.status === "processing" ? "bg-violet-100 text-violet-700" :
+                  "bg-muted text-muted-foreground"
+                )}>
+                  {sample.status}
+                </span>
+              </div>
+
+              {/* Stepper */}
+              <div className="flex items-center gap-1 mb-3">
+                {["pending", "collected", "received", "processing"].map((step, i) => {
+                  const stepOrder = ["pending", "collected", "received", "processing"];
+                  const currentIdx = stepOrder.indexOf(sample.status);
+                  const isComplete = i <= currentIdx;
+                  return (
+                    <React.Fragment key={step}>
+                      {i > 0 && <div className={cn("flex-1 h-0.5 rounded", isComplete ? "bg-emerald-500" : "bg-border")} />}
+                      <div className={cn("w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0",
+                        isComplete ? "bg-emerald-500 text-white" : "bg-muted text-muted-foreground border border-border"
+                      )}>
+                        {isComplete ? "✓" : i + 1}
+                      </div>
+                    </React.Fragment>
+                  );
+                })}
+              </div>
+              <div className="flex justify-between text-[10px] text-muted-foreground px-1">
+                <span>Ordered</span><span>Collected</span><span>Received</span><span>Processing</span>
+              </div>
+
+              {sample.collected_at && (
+                <p className="text-[11px] text-muted-foreground mt-2">
+                  Collected: {new Date(sample.collected_at).toLocaleString()}
+                </p>
+              )}
+
+              {sample.status === "pending" && (
+                <button onClick={handleMarkCollected}
+                  className="w-full mt-3 h-9 rounded-lg bg-amber-500 text-white text-xs font-semibold hover:bg-amber-600 active:scale-[0.97] transition-all">
+                  Mark Sample Collected
+                </button>
+              )}
+            </div>
+          ))}
+        </TabsContent>
+
+        {/* TAB 3: History */}
+        <TabsContent value="history" className="flex-1 overflow-auto m-0 p-4 space-y-4">
+          {Object.keys(historyByTest).length === 0 && (
+            <p className="text-sm text-muted-foreground text-center py-8">No previous results found for this patient</p>
+          )}
+          {Object.entries(historyByTest).map(([testName, results]) => (
+            <div key={testName} className="bg-card border border-border rounded-lg p-3">
+              <p className="text-xs font-bold text-foreground mb-2">{testName}</p>
+              <div className="flex flex-wrap gap-2">
+                {results.slice(0, 5).map((r: any, i: number) => {
+                  const flagS = r.result_flag ? FLAG_STYLES[r.result_flag] : null;
+                  return (
+                    <div key={i} className={cn("text-xs px-2.5 py-1 rounded-md border", flagS?.bg || "bg-muted", "border-border")}>
+                      <span className={cn("font-semibold", flagS?.text || "text-foreground")}>{r.result_value || r.result_numeric}</span>
+                      <span className="text-muted-foreground ml-1">{r.result_unit}</span>
+                      <span className="text-muted-foreground ml-1.5 text-[10px]">
+                        {(r.lab_orders as any)?.order_date ? new Date((r.lab_orders as any).order_date).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : ""}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </TabsContent>
+
+        {/* TAB 4: Notes */}
+        <TabsContent value="notes" className="flex-1 m-0 p-4">
+          <Textarea
+            value={labNotes}
+            onChange={e => setLabNotes(e.target.value)}
+            onBlur={() => {
+              supabase.from("lab_orders").update({ clinical_notes: labNotes }).eq("id", order.id);
+            }}
+            placeholder="Lab notes, QC comments, instrument used..."
+            className="h-full min-h-[200px] resize-none"
+          />
+        </TabsContent>
+      </Tabs>
+
+      {/* Action Bar */}
+      <div className="h-14 shrink-0 bg-card border-t border-border px-5 flex items-center gap-2">
+        <button onClick={handleValidateAll}
+          disabled={!allResultsEntered || hasUnacknowledgedCritical || order.status === "completed"}
+          className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 active:scale-[0.97] transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5">
+          <CheckCircle2 size={14} /> Validate & Release
+        </button>
+        <div className="flex-1" />
+        <button className="px-3 py-2 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-muted transition-colors flex items-center gap-1.5">
+          <Printer size={13} /> Print Report
+        </button>
+        {order.status === "completed" && (
+          <button
+            onClick={() => {
+              const p = order.patients;
+              if (!p?.phone) { toast({ title: "Patient phone not available", variant: "destructive" }); return; }
+              const testLines = items.map(i => {
+                const emoji = i.result_flag === "CH" || i.result_flag === "CL" ? "🔴" : i.result_flag === "H" || i.result_flag === "L" ? "🟡" : "✅";
+                return `• ${i.test_name}: *${i.result_value} ${i.unit || ""}* ${emoji}`;
+              }).join("\n");
+              const msg = `🏥 *Lab Report*\n*Patient:* ${p.full_name}\n\n📋 *Results:*\n${testLines}`;
+              const phone = p.phone?.replace(/\D/g, "");
+              window.open(`https://wa.me/91${phone}?text=${encodeURIComponent(msg)}`, "_blank");
+            }}
+            className="px-3 py-2 rounded-lg border border-emerald-300 text-xs font-medium text-emerald-700 hover:bg-emerald-50 transition-colors flex items-center gap-1.5">
+            <MessageSquare size={13} /> WhatsApp
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default LabResultWorkspace;

@@ -4,6 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Microscope } from "lucide-react";
 import LabQueuePanel from "@/components/lab/LabQueuePanel";
 import LabInfoPanel from "@/components/lab/LabInfoPanel";
+import LabResultWorkspace from "@/components/lab/LabResultWorkspace";
 import NewLabOrderModal from "@/components/lab/NewLabOrderModal";
 
 interface LabOrder {
@@ -15,9 +16,9 @@ interface LabOrder {
   clinical_notes: string | null;
   patient_id: string;
   ordered_by: string;
-  patients: { full_name: string; uhid: string; gender: string | null; dob: string | null } | null;
+  patients: { full_name: string; uhid: string; gender: string | null; dob: string | null; phone?: string | null; blood_group?: string | null } | null;
   ordered_by_user: { full_name: string } | null;
-  lab_order_items: { id: string; status: string; test_id: string; lab_test_master: { tat_minutes: number } | null }[];
+  lab_order_items: { id: string; status: string; result_flag: string | null; result_value: string | null; test_id: string; lab_test_master: { tat_minutes: number } | null }[];
 }
 
 const LabPage: React.FC = () => {
@@ -47,9 +48,9 @@ const LabPage: React.FC = () => {
       .from("lab_orders")
       .select(`
         id, priority, status, order_date, order_time, clinical_notes, patient_id, ordered_by,
-        patients (full_name, uhid, gender, dob),
+        patients (full_name, uhid, gender, dob, phone, blood_group),
         ordered_by_user:users!lab_orders_ordered_by_fkey (full_name),
-        lab_order_items (id, status, test_id, lab_test_master:lab_test_master!lab_order_items_test_id_fkey (tat_minutes))
+        lab_order_items (id, status, result_flag, result_value, test_id, lab_test_master:lab_test_master!lab_order_items_test_id_fkey (tat_minutes))
       `)
       .eq("hospital_id", hospitalId)
       .eq("order_date", today)
@@ -59,7 +60,6 @@ const LabPage: React.FC = () => {
     if (error) {
       console.error("Lab orders fetch error:", error);
     } else {
-      // Sort: stat first, then urgent, then routine
       const sorted = (data || []).sort((a: any, b: any) => {
         const p: Record<string, number> = { stat: 0, urgent: 1, routine: 2 };
         return (p[a.priority] ?? 2) - (p[b.priority] ?? 2);
@@ -77,7 +77,7 @@ const LabPage: React.FC = () => {
     const channel = supabase
       .channel("lab-realtime")
       .on("postgres_changes", { event: "*", schema: "public", table: "lab_orders", filter: `hospital_id=eq.${hospitalId}` }, () => fetchOrders())
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "lab_order_items", filter: `hospital_id=eq.${hospitalId}` }, () => fetchOrders())
+      .on("postgres_changes", { event: "*", schema: "public", table: "lab_order_items", filter: `hospital_id=eq.${hospitalId}` }, () => fetchOrders())
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [hospitalId, fetchOrders]);
@@ -113,30 +113,20 @@ const LabPage: React.FC = () => {
       />
 
       {/* Center: Workspace */}
-      <div className="flex-1 bg-muted/30 flex items-center justify-center overflow-hidden">
-        {selectedOrder ? (
-          <div className="text-center space-y-2">
-            <p className="text-lg font-semibold text-foreground">
-              {(selectedOrder.patients as any)?.full_name}
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Order: {selectedOrder.id.slice(0, 8).toUpperCase()}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Result entry workspace — coming in next phase
-            </p>
-          </div>
-        ) : (
+      {selectedOrder ? (
+        <LabResultWorkspace order={selectedOrder} onRefresh={fetchOrders} />
+      ) : (
+        <div className="flex-1 bg-muted/30 flex items-center justify-center overflow-hidden">
           <div className="text-center space-y-3">
             <Microscope size={48} className="mx-auto text-muted-foreground/40" />
             <p className="text-base text-muted-foreground">Select a test order from the queue</p>
             <p className="text-sm text-muted-foreground/60">or create a new lab order</p>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Right: Info */}
-      <LabInfoPanel selectedOrder={selectedOrder} />
+      <LabInfoPanel selectedOrder={selectedOrder} onSelectOrder={setSelectedOrderId} />
 
       {/* New Order Modal */}
       {showNewOrder && hospitalId && (
