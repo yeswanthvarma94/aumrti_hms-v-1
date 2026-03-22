@@ -69,15 +69,19 @@ const Register: React.FC = () => {
 
   const handleLaunch = async () => {
     if (otpPhase === "idle") {
-      // Send OTP
       if (!data.termsAccepted) return;
       setLoading(true);
       try {
-        const { error } = await supabase.auth.signInWithOtp({ email: data.email });
+        const otpPayload =
+          data.verificationMethod === "phone"
+            ? { phone: data.phone }
+            : { email: data.email };
+        const { error } = await supabase.auth.signInWithOtp(otpPayload);
         if (error) throw error;
         setOtpPhase("sent");
         setOtp(["", "", "", "", "", ""]);
-        toast({ title: "OTP sent!", description: `Check your inbox at ${data.email}` });
+        const target = data.verificationMethod === "phone" ? data.phone : data.email;
+        toast({ title: "OTP sent!", description: `Check ${target}` });
       } catch (err: any) {
         toast({ title: "Failed to send OTP", description: err.message, variant: "destructive" });
       } finally {
@@ -87,13 +91,16 @@ const Register: React.FC = () => {
     }
 
     if (otpPhase === "sent") {
-      // This is a resend
       setLoading(true);
       try {
-        const { error } = await supabase.auth.signInWithOtp({ email: data.email });
+        const otpPayload =
+          data.verificationMethod === "phone"
+            ? { phone: data.phone }
+            : { email: data.email };
+        const { error } = await supabase.auth.signInWithOtp(otpPayload);
         if (error) throw error;
         setOtp(["", "", "", "", "", ""]);
-        toast({ title: "OTP resent!", description: `Check your inbox at ${data.email}` });
+        toast({ title: "OTP resent!" });
       } catch (err: any) {
         toast({ title: "Failed to resend OTP", description: err.message, variant: "destructive" });
       } finally {
@@ -110,7 +117,11 @@ const Register: React.FC = () => {
       setOtpPhase("verifying");
       try {
         const token = otp.join("");
-        const { error } = await supabase.auth.verifyOtp({ email: data.email, token, type: "email" });
+        const verifyPayload =
+          data.verificationMethod === "phone"
+            ? { phone: data.phone, token, type: "sms" as const }
+            : { email: data.email, token, type: "email" as const };
+        const { error } = await supabase.auth.verifyOtp(verifyPayload);
         if (error) throw error;
 
         // User is now authenticated — create hospital via edge function

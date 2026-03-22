@@ -1,6 +1,7 @@
 import React from "react";
 import { RegistrationData, BED_COUNTS } from "./constants";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Mail, Phone } from "lucide-react";
 
 interface Props {
   data: RegistrationData;
@@ -29,6 +30,7 @@ const Step5Confirm: React.FC<Props> = ({ data, onChange, onEditStep, loading, on
     { label: "Beds", value: bedLabel, step: 0 },
     { label: "Admin Name", value: data.fullName, step: 1 },
     { label: "Admin Email", value: data.email, step: 1 },
+    { label: "Mobile", value: data.phone, step: 0 },
     { label: "Plan", value: planLabels[data.plan] || data.plan, step: 3 },
     { label: "NABH", value: data.nabhAccredited ? `Yes — ${data.nabhNumber || "N/A"}` : "No", step: 2 },
     { label: "GSTIN", value: data.gstin || "Not provided", step: 2 },
@@ -48,16 +50,21 @@ const Step5Confirm: React.FC<Props> = ({ data, onChange, onEditStep, loading, on
     }
   };
 
+  const verifyTarget =
+    data.verificationMethod === "email"
+      ? data.email
+      : data.phone;
+
   return (
     <div className="space-y-5">
       <div>
         <h2 className="text-[22px] font-bold text-foreground">
-          {otpPhase === "idle" ? "You're almost live! 🎉" : "Verify your email"}
+          {otpPhase === "idle" ? "You're almost live! 🎉" : "Verify your account"}
         </h2>
         <p className="text-sm text-muted-foreground mt-1">
           {otpPhase === "idle"
             ? "Review your details before we create your hospital account"
-            : `Enter the 6-digit OTP sent to ${data.email}`}
+            : `Enter the 6-digit OTP sent to ${verifyTarget}`}
         </p>
       </div>
 
@@ -110,6 +117,48 @@ const Step5Confirm: React.FC<Props> = ({ data, onChange, onEditStep, loading, on
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* Verification method chooser */}
+          <div className="mt-6">
+            <p className="text-sm font-semibold text-foreground mb-2">Verify your account via</p>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => onChange({ verificationMethod: "email" })}
+                className={`flex items-center gap-2.5 p-3.5 rounded-lg border-2 transition-colors text-left ${
+                  data.verificationMethod === "email"
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:border-muted-foreground/40"
+                }`}
+              >
+                <Mail size={20} className={data.verificationMethod === "email" ? "text-primary" : "text-muted-foreground"} />
+                <div>
+                  <p className="text-sm font-medium text-foreground">Email OTP</p>
+                  <p className="text-xs text-muted-foreground truncate max-w-[180px]">{data.email || "Not provided"}</p>
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => onChange({ verificationMethod: "phone" })}
+                className={`flex items-center gap-2.5 p-3.5 rounded-lg border-2 transition-colors text-left ${
+                  data.verificationMethod === "phone"
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:border-muted-foreground/40"
+                }`}
+              >
+                <Phone size={20} className={data.verificationMethod === "phone" ? "text-primary" : "text-muted-foreground"} />
+                <div>
+                  <p className="text-sm font-medium text-foreground">Mobile OTP</p>
+                  <p className="text-xs text-muted-foreground truncate max-w-[180px]">{data.phone || "Not provided"}</p>
+                </div>
+              </button>
+            </div>
+            {data.verificationMethod === "phone" && (
+              <p className="text-xs text-amber-600 mt-2">
+                📱 Mobile OTP requires Twilio SMS configuration in Supabase Auth settings.
+              </p>
+            )}
           </div>
 
           <div className="flex items-start gap-2 mt-6">

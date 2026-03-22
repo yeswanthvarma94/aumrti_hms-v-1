@@ -89,6 +89,7 @@ export interface RegistrationData {
   website: string;
   plan: "starter" | "professional" | "enterprise";
   termsAccepted: boolean;
+  verificationMethod: "email" | "phone";
 }
 
 export const initialData: RegistrationData = {
@@ -111,4 +112,5 @@ export const initialData: RegistrationData = {
   website: "",
   plan: "professional",
   termsAccepted: false,
+  verificationMethod: "email",
 };
