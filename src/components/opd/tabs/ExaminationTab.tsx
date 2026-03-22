@@ -32,7 +32,7 @@ const ExaminationTab: React.FC<Props> = ({ encounter, onChange }) => {
   const handleVoice = (field: "examination_notes" | "soap_objective") => {
     const SR = (window as unknown as Record<string, unknown>).SpeechRecognition || (window as unknown as Record<string, unknown>).webkitSpeechRecognition;
     if (!SR) return;
-    const recognition = new (SR as { new(): SpeechRecognition })();
+    const recognition = new (SR as new () => { lang: string; continuous: boolean; interimResults?: boolean; onresult: ((e: { results: { 0: { 0: { transcript: string } } } }) => void) | null; onerror: (() => void) | null; onend: (() => void) | null; start: () => void })();
     recognition.lang = "en-IN";
     recognition.continuous = false;
     setRecording(true);
