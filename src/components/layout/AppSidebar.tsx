@@ -76,7 +76,7 @@ const navGroups: NavGroup[] = [
     icon: FlaskConical,
     subItems: [
       { label: "Lab", path: "/lab", icon: TestTube, subtitle: "Lab orders & results" },
-      { label: "Radiology", path: "/radiology", icon: ScanLine, subtitle: "Imaging & reports", comingSoon: true },
+      { label: "Radiology", path: "/radiology", icon: ScanLine, subtitle: "Imaging & reports" },
     ],
   },
   { label: "Pharmacy", icon: Pill, path: "/pharmacy", comingSoon: true },

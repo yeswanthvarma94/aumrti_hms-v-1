@@ -1848,6 +1848,76 @@ export type Database = {
           },
         ]
       }
+      pcpndt_form_f: {
+        Row: {
+          created_at: string | null
+          hospital_id: string
+          id: string
+          indication: string | null
+          order_id: string
+          patient_address: string | null
+          patient_age: number | null
+          patient_name: string
+          referred_by: string | null
+          remarks: string | null
+          sex_determination_done: boolean | null
+          signed_at: string | null
+          signed_by: string
+        }
+        Insert: {
+          created_at?: string | null
+          hospital_id: string
+          id?: string
+          indication?: string | null
+          order_id: string
+          patient_address?: string | null
+          patient_age?: number | null
+          patient_name: string
+          referred_by?: string | null
+          remarks?: string | null
+          sex_determination_done?: boolean | null
+          signed_at?: string | null
+          signed_by: string
+        }
+        Update: {
+          created_at?: string | null
+          hospital_id?: string
+          id?: string
+          indication?: string | null
+          order_id?: string
+          patient_address?: string | null
+          patient_age?: number | null
+          patient_name?: string
+          referred_by?: string | null
+          remarks?: string | null
+          sex_determination_done?: boolean | null
+          signed_at?: string | null
+          signed_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pcpndt_form_f_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pcpndt_form_f_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "radiology_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pcpndt_form_f_signed_by_fkey"
+            columns: ["signed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       prescriptions: {
         Row: {
           advice_notes: string | null
@@ -1927,6 +1997,264 @@ export type Database = {
             columns: ["patient_id"]
             isOneToOne: false
             referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      radiology_modalities: {
+        Row: {
+          created_at: string | null
+          hospital_id: string
+          id: string
+          is_active: boolean | null
+          modality_type: string
+          name: string
+        }
+        Insert: {
+          created_at?: string | null
+          hospital_id: string
+          id?: string
+          is_active?: boolean | null
+          modality_type: string
+          name: string
+        }
+        Update: {
+          created_at?: string | null
+          hospital_id?: string
+          id?: string
+          is_active?: boolean | null
+          modality_type?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "radiology_modalities_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      radiology_orders: {
+        Row: {
+          accession_number: string | null
+          admission_id: string | null
+          body_part: string | null
+          clinical_history: string | null
+          created_at: string | null
+          dicom_pacs_url: string | null
+          dicom_study_uid: string | null
+          encounter_id: string | null
+          hospital_id: string
+          id: string
+          indication: string | null
+          is_pcpndt: boolean | null
+          modality_id: string
+          modality_type: string
+          order_date: string
+          order_time: string
+          ordered_by: string
+          patient_id: string
+          priority: string
+          scheduled_time: string | null
+          status: string
+          study_name: string
+        }
+        Insert: {
+          accession_number?: string | null
+          admission_id?: string | null
+          body_part?: string | null
+          clinical_history?: string | null
+          created_at?: string | null
+          dicom_pacs_url?: string | null
+          dicom_study_uid?: string | null
+          encounter_id?: string | null
+          hospital_id: string
+          id?: string
+          indication?: string | null
+          is_pcpndt?: boolean | null
+          modality_id: string
+          modality_type: string
+          order_date?: string
+          order_time?: string
+          ordered_by: string
+          patient_id: string
+          priority?: string
+          scheduled_time?: string | null
+          status?: string
+          study_name: string
+        }
+        Update: {
+          accession_number?: string | null
+          admission_id?: string | null
+          body_part?: string | null
+          clinical_history?: string | null
+          created_at?: string | null
+          dicom_pacs_url?: string | null
+          dicom_study_uid?: string | null
+          encounter_id?: string | null
+          hospital_id?: string
+          id?: string
+          indication?: string | null
+          is_pcpndt?: boolean | null
+          modality_id?: string
+          modality_type?: string
+          order_date?: string
+          order_time?: string
+          ordered_by?: string
+          patient_id?: string
+          priority?: string
+          scheduled_time?: string | null
+          status?: string
+          study_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "radiology_orders_admission_id_fkey"
+            columns: ["admission_id"]
+            isOneToOne: false
+            referencedRelation: "admissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "radiology_orders_encounter_id_fkey"
+            columns: ["encounter_id"]
+            isOneToOne: false
+            referencedRelation: "opd_encounters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "radiology_orders_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "radiology_orders_modality_id_fkey"
+            columns: ["modality_id"]
+            isOneToOne: false
+            referencedRelation: "radiology_modalities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "radiology_orders_ordered_by_fkey"
+            columns: ["ordered_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "radiology_orders_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      radiology_reports: {
+        Row: {
+          ai_impression_suggestion: string | null
+          comparison_note: string | null
+          created_at: string | null
+          critical_finding: string | null
+          findings: string | null
+          hospital_id: string
+          id: string
+          impression: string | null
+          is_ai_used: boolean | null
+          is_critical: boolean | null
+          is_signed: boolean | null
+          order_id: string
+          patient_id: string
+          radiologist_id: string | null
+          recommendations: string | null
+          reported_at: string | null
+          technique: string | null
+          validated_at: string | null
+          validated_by: string | null
+          whatsapp_sent: boolean | null
+        }
+        Insert: {
+          ai_impression_suggestion?: string | null
+          comparison_note?: string | null
+          created_at?: string | null
+          critical_finding?: string | null
+          findings?: string | null
+          hospital_id: string
+          id?: string
+          impression?: string | null
+          is_ai_used?: boolean | null
+          is_critical?: boolean | null
+          is_signed?: boolean | null
+          order_id: string
+          patient_id: string
+          radiologist_id?: string | null
+          recommendations?: string | null
+          reported_at?: string | null
+          technique?: string | null
+          validated_at?: string | null
+          validated_by?: string | null
+          whatsapp_sent?: boolean | null
+        }
+        Update: {
+          ai_impression_suggestion?: string | null
+          comparison_note?: string | null
+          created_at?: string | null
+          critical_finding?: string | null
+          findings?: string | null
+          hospital_id?: string
+          id?: string
+          impression?: string | null
+          is_ai_used?: boolean | null
+          is_critical?: boolean | null
+          is_signed?: boolean | null
+          order_id?: string
+          patient_id?: string
+          radiologist_id?: string | null
+          recommendations?: string | null
+          reported_at?: string | null
+          technique?: string | null
+          validated_at?: string | null
+          validated_by?: string | null
+          whatsapp_sent?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "radiology_reports_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "radiology_reports_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "radiology_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "radiology_reports_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "radiology_reports_radiologist_id_fkey"
+            columns: ["radiologist_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "radiology_reports_validated_by_fkey"
+            columns: ["validated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]

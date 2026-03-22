@@ -13,6 +13,7 @@ import ComingSoon from "./pages/ComingSoon";
 import OPDPage from "./pages/opd/OPDPage";
 import OTPage from "./pages/ot/OTPage";
 import LabPage from "./pages/lab/LabPage";
+import RadiologyPage from "./pages/radiology/RadiologyPage";
 import IPDPage from "./pages/ipd/IPDPage";
 import EmergencyPage from "./pages/emergency/EmergencyPage";
 import PatientsPage from "./pages/patients/PatientsPage";
@@ -53,7 +54,7 @@ const App = () => (
             <Route path="/ot" element={<OTPage />} />
             <Route path="/nursing" element={<NursingPage />} />
             <Route path="/lab" element={<LabPage />} />
-            <Route path="/radiology" element={<ComingSoon />} />
+            <Route path="/radiology" element={<RadiologyPage />} />
             <Route path="/pharmacy" element={<ComingSoon />} />
             <Route path="/billing" element={<ComingSoon />} />
             <Route path="/insurance" element={<ComingSoon />} />
