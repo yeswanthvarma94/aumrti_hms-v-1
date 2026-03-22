@@ -253,6 +253,53 @@ export type Database = {
           },
         ]
       }
+      drug_master: {
+        Row: {
+          category: string | null
+          dosage_forms: string[] | null
+          drug_name: string
+          generic_name: string | null
+          hospital_id: string
+          id: string
+          is_active: boolean | null
+          is_ndps: boolean | null
+          routes: string[] | null
+          standard_doses: string[] | null
+        }
+        Insert: {
+          category?: string | null
+          dosage_forms?: string[] | null
+          drug_name: string
+          generic_name?: string | null
+          hospital_id: string
+          id?: string
+          is_active?: boolean | null
+          is_ndps?: boolean | null
+          routes?: string[] | null
+          standard_doses?: string[] | null
+        }
+        Update: {
+          category?: string | null
+          dosage_forms?: string[] | null
+          drug_name?: string
+          generic_name?: string | null
+          hospital_id?: string
+          id?: string
+          is_active?: boolean | null
+          is_ndps?: boolean | null
+          routes?: string[] | null
+          standard_doses?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drug_master_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hospitals: {
         Row: {
           address: string | null
@@ -325,6 +372,190 @@ export type Database = {
         }
         Relationships: []
       }
+      opd_encounters: {
+        Row: {
+          chief_complaint: string | null
+          created_at: string | null
+          diagnosis: string | null
+          doctor_id: string
+          examination_notes: string | null
+          follow_up_date: string | null
+          follow_up_notes: string | null
+          history_of_present_illness: string | null
+          hospital_id: string
+          icd10_code: string | null
+          id: string
+          is_admitted: boolean | null
+          patient_id: string
+          soap_assessment: string | null
+          soap_objective: string | null
+          soap_plan: string | null
+          soap_subjective: string | null
+          token_id: string
+          updated_at: string | null
+          visit_date: string | null
+          vitals: Json | null
+        }
+        Insert: {
+          chief_complaint?: string | null
+          created_at?: string | null
+          diagnosis?: string | null
+          doctor_id: string
+          examination_notes?: string | null
+          follow_up_date?: string | null
+          follow_up_notes?: string | null
+          history_of_present_illness?: string | null
+          hospital_id: string
+          icd10_code?: string | null
+          id?: string
+          is_admitted?: boolean | null
+          patient_id: string
+          soap_assessment?: string | null
+          soap_objective?: string | null
+          soap_plan?: string | null
+          soap_subjective?: string | null
+          token_id: string
+          updated_at?: string | null
+          visit_date?: string | null
+          vitals?: Json | null
+        }
+        Update: {
+          chief_complaint?: string | null
+          created_at?: string | null
+          diagnosis?: string | null
+          doctor_id?: string
+          examination_notes?: string | null
+          follow_up_date?: string | null
+          follow_up_notes?: string | null
+          history_of_present_illness?: string | null
+          hospital_id?: string
+          icd10_code?: string | null
+          id?: string
+          is_admitted?: boolean | null
+          patient_id?: string
+          soap_assessment?: string | null
+          soap_objective?: string | null
+          soap_plan?: string | null
+          soap_subjective?: string | null
+          token_id?: string
+          updated_at?: string | null
+          visit_date?: string | null
+          vitals?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "opd_encounters_doctor_id_fkey"
+            columns: ["doctor_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opd_encounters_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opd_encounters_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opd_encounters_token_id_fkey"
+            columns: ["token_id"]
+            isOneToOne: false
+            referencedRelation: "opd_tokens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      opd_tokens: {
+        Row: {
+          called_at: string | null
+          consultation_end_at: string | null
+          consultation_start_at: string | null
+          created_at: string
+          department_id: string | null
+          doctor_id: string | null
+          hospital_id: string
+          id: string
+          patient_id: string
+          priority: string
+          status: string
+          token_number: string
+          token_prefix: string | null
+          visit_date: string
+          wait_minutes: number | null
+        }
+        Insert: {
+          called_at?: string | null
+          consultation_end_at?: string | null
+          consultation_start_at?: string | null
+          created_at?: string
+          department_id?: string | null
+          doctor_id?: string | null
+          hospital_id: string
+          id?: string
+          patient_id: string
+          priority?: string
+          status?: string
+          token_number: string
+          token_prefix?: string | null
+          visit_date?: string
+          wait_minutes?: number | null
+        }
+        Update: {
+          called_at?: string | null
+          consultation_end_at?: string | null
+          consultation_start_at?: string | null
+          created_at?: string
+          department_id?: string | null
+          doctor_id?: string | null
+          hospital_id?: string
+          id?: string
+          patient_id?: string
+          priority?: string
+          status?: string
+          token_number?: string
+          token_prefix?: string | null
+          visit_date?: string
+          wait_minutes?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "opd_tokens_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opd_tokens_doctor_id_fkey"
+            columns: ["doctor_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opd_tokens_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opd_tokens_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       opd_visits: {
         Row: {
           created_at: string
@@ -394,42 +625,57 @@ export type Database = {
         Row: {
           abha_id: string | null
           address: string | null
+          allergies: string | null
           blood_group: string | null
+          chronic_conditions: string[] | null
           created_at: string
           dob: string | null
           emergency_contact: Json | null
+          emergency_contact_name: string | null
+          emergency_contact_phone: string | null
           full_name: string
           gender: Database["public"]["Enums"]["gender_type"] | null
           hospital_id: string
           id: string
+          insurance_id: string | null
           phone: string | null
           uhid: string
         }
         Insert: {
           abha_id?: string | null
           address?: string | null
+          allergies?: string | null
           blood_group?: string | null
+          chronic_conditions?: string[] | null
           created_at?: string
           dob?: string | null
           emergency_contact?: Json | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
           full_name: string
           gender?: Database["public"]["Enums"]["gender_type"] | null
           hospital_id: string
           id?: string
+          insurance_id?: string | null
           phone?: string | null
           uhid: string
         }
         Update: {
           abha_id?: string | null
           address?: string | null
+          allergies?: string | null
           blood_group?: string | null
+          chronic_conditions?: string[] | null
           created_at?: string
           dob?: string | null
           emergency_contact?: Json | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
           full_name?: string
           gender?: Database["public"]["Enums"]["gender_type"] | null
           hospital_id?: string
           id?: string
+          insurance_id?: string | null
           phone?: string | null
           uhid?: string
         }
@@ -439,6 +685,89 @@ export type Database = {
             columns: ["hospital_id"]
             isOneToOne: false
             referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prescriptions: {
+        Row: {
+          advice_notes: string | null
+          created_at: string | null
+          doctor_id: string
+          drugs: Json | null
+          encounter_id: string
+          hospital_id: string
+          id: string
+          is_signed: boolean | null
+          lab_orders: Json | null
+          patient_id: string
+          prescription_date: string | null
+          radiology_orders: Json | null
+          review_date: string | null
+          signed_at: string | null
+          whatsapp_sent: boolean | null
+        }
+        Insert: {
+          advice_notes?: string | null
+          created_at?: string | null
+          doctor_id: string
+          drugs?: Json | null
+          encounter_id: string
+          hospital_id: string
+          id?: string
+          is_signed?: boolean | null
+          lab_orders?: Json | null
+          patient_id: string
+          prescription_date?: string | null
+          radiology_orders?: Json | null
+          review_date?: string | null
+          signed_at?: string | null
+          whatsapp_sent?: boolean | null
+        }
+        Update: {
+          advice_notes?: string | null
+          created_at?: string | null
+          doctor_id?: string
+          drugs?: Json | null
+          encounter_id?: string
+          hospital_id?: string
+          id?: string
+          is_signed?: boolean | null
+          lab_orders?: Json | null
+          patient_id?: string
+          prescription_date?: string | null
+          radiology_orders?: Json | null
+          review_date?: string | null
+          signed_at?: string | null
+          whatsapp_sent?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prescriptions_doctor_id_fkey"
+            columns: ["doctor_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prescriptions_encounter_id_fkey"
+            columns: ["encounter_id"]
+            isOneToOne: false
+            referencedRelation: "opd_encounters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prescriptions_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prescriptions_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
             referencedColumns: ["id"]
           },
         ]
