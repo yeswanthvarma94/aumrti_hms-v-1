@@ -169,9 +169,15 @@ const AppHeader: React.FC = () => {
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem>Profile</DropdownMenuItem>
-              <DropdownMenuItem>Hospital Settings</DropdownMenuItem>
-              <DropdownMenuItem className="text-destructive">Sign Out</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => toast({ title: "Profile", description: "Profile page coming soon." })}>
+                Profile
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate("/settings")}>
+                Hospital Settings
+              </DropdownMenuItem>
+              <DropdownMenuItem className="text-destructive" onClick={handleSignOut}>
+                Sign Out
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
