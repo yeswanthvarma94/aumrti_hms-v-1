@@ -39,18 +39,38 @@ export interface OTSchedule {
   patient?: { full_name: string; uhid: string; blood_group: string | null; allergies: string | null; chronic_conditions: string[] | null; gender: string | null; dob: string | null };
   surgeon?: { full_name: string };
   anaesthetist?: { full_name: string };
+  ot_room?: { name: string; type: string };
 }
+
+export const formatDateForQuery = (date: Date | string): string => {
+  const d = typeof date === "string" ? new Date(date + (date.includes("T") ? "" : "T00:00:00")) : date;
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
 
 const OTPage: React.FC = () => {
   const { toast } = useToast();
   const [rooms, setRooms] = useState<OTRoom[]>([]);
-  const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
+  const [selectedRoomId, setSelectedRoomId] = useState<string>("all");
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [schedules, setSchedules] = useState<OTSchedule[]>([]);
   const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(null);
   const [bookModalOpen, setBookModalOpen] = useState(false);
   const [bookModalTime, setBookModalTime] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<"day" | "week" | "month">("day");
+  const [hospitalId, setHospitalId] = useState<string | null>(null);
+
+  // Get hospital ID once
+  useEffect(() => {
+    const getHospitalId = async () => {
+      const res = await supabase.rpc("get_user_hospital_id") as any;
+      if (res?.data) setHospitalId(res.data);
+    };
+    getHospitalId();
+  }, []);
 
   const fetchRooms = useCallback(async () => {
     const { data } = await supabase
@@ -60,53 +80,83 @@ const OTPage: React.FC = () => {
       .order("name");
     if (data && data.length > 0) {
       setRooms(data);
-      if (!selectedRoomId) setSelectedRoomId(data[0].id);
-    } else {
-      // Auto-create default rooms
-      const hid = (await supabase.rpc("get_user_hospital_id")) as any;
-      const hospitalId = hid?.data;
-      if (hospitalId) {
-        const defaults = [
-          { hospital_id: hospitalId, name: "OT-1 (Major)", type: "major" },
-          { hospital_id: hospitalId, name: "OT-2 (Minor)", type: "minor" },
-          { hospital_id: hospitalId, name: "OT-3 (Emergency)", type: "emergency" },
-        ];
-        const { data: created } = await supabase.from("ot_rooms").insert(defaults).select("id, name, type");
-        if (created) {
-          setRooms(created);
-          setSelectedRoomId(created[0].id);
-        }
-      }
+    } else if (hospitalId) {
+      const defaults = [
+        { hospital_id: hospitalId, name: "OT-1 (Major)", type: "major" },
+        { hospital_id: hospitalId, name: "OT-2 (Minor)", type: "minor" },
+        { hospital_id: hospitalId, name: "OT-3 (Emergency)", type: "emergency" },
+      ];
+      const { data: created } = await supabase.from("ot_rooms").insert(defaults).select("id, name, type");
+      if (created) setRooms(created);
     }
-  }, [selectedRoomId]);
+  }, [hospitalId]);
 
   const fetchSchedules = useCallback(async () => {
-    if (!selectedRoomId) return;
+    if (!hospitalId) return;
     setLoading(true);
-    const { data } = await supabase
+
+    const dateStr = formatDateForQuery(selectedDate);
+    let query = supabase
       .from("ot_schedules")
-      .select("*, patient:patients(full_name, uhid, blood_group, allergies, chronic_conditions, gender, dob), surgeon:users!ot_schedules_surgeon_id_fkey(full_name), anaesthetist:users!ot_schedules_anaesthetist_id_fkey(full_name)")
-      .eq("ot_room_id", selectedRoomId)
-      .eq("scheduled_date", selectedDate)
+      .select("*, patient:patients(full_name, uhid, blood_group, allergies, chronic_conditions, gender, dob), surgeon:users!ot_schedules_surgeon_id_fkey(full_name), anaesthetist:users!ot_schedules_anaesthetist_id_fkey(full_name), ot_room:ot_rooms(name, type)")
+      .eq("scheduled_date", dateStr)
       .order("scheduled_start_time");
+
+    if (selectedRoomId !== "all") {
+      query = query.eq("ot_room_id", selectedRoomId);
+    }
+
+    const { data, error } = await query;
+    console.log("OT Query date:", dateStr, "room:", selectedRoomId, "Results:", data?.length, "Error:", error);
     setSchedules((data as any) || []);
     setLoading(false);
-  }, [selectedRoomId, selectedDate]);
+  }, [hospitalId, selectedRoomId, selectedDate]);
 
-  useEffect(() => { fetchRooms(); }, []);
-  useEffect(() => { if (selectedRoomId) fetchSchedules(); }, [selectedRoomId, selectedDate, fetchSchedules]);
+  useEffect(() => { if (hospitalId) fetchRooms(); }, [hospitalId]);
+  useEffect(() => { if (hospitalId) fetchSchedules(); }, [hospitalId, selectedRoomId, selectedDate, fetchSchedules]);
+
+  // Realtime subscription
+  useEffect(() => {
+    if (!hospitalId) return;
+    const channel = supabase
+      .channel("ot-realtime")
+      .on("postgres_changes", {
+        event: "*",
+        schema: "public",
+        table: "ot_schedules",
+      }, () => {
+        fetchSchedules();
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [hospitalId, fetchSchedules]);
 
   const selectedSchedule = schedules.find((s) => s.id === selectedScheduleId) || null;
 
   const handleDateChange = (dir: number) => {
-    const d = new Date(selectedDate);
-    d.setDate(d.getDate() + dir);
-    setSelectedDate(d.toISOString().split("T")[0]);
+    setSelectedDate((prev) => {
+      const d = new Date(prev);
+      d.setDate(d.getDate() + dir);
+      return d;
+    });
   };
 
   const handleBookSlot = (time?: string) => {
     setBookModalTime(time || null);
     setBookModalOpen(true);
+  };
+
+  const handleBooked = (bookedDate?: string, bookedRoomId?: string) => {
+    setBookModalOpen(false);
+    if (bookedDate) {
+      setSelectedDate(new Date(bookedDate + "T00:00:00"));
+    }
+    if (bookedRoomId) {
+      setSelectedRoomId(bookedRoomId);
+    }
+    setViewMode("day");
+    fetchSchedules();
   };
 
   return (
@@ -116,13 +166,17 @@ const OTPage: React.FC = () => {
         selectedRoomId={selectedRoomId}
         onSelectRoom={setSelectedRoomId}
         selectedDate={selectedDate}
+        onSetSelectedDate={setSelectedDate}
         onDateChange={handleDateChange}
-        onSetToday={() => setSelectedDate(new Date().toISOString().split("T")[0])}
+        onSetToday={() => setSelectedDate(new Date())}
         schedules={schedules}
         selectedScheduleId={selectedScheduleId}
         onSelectSchedule={setSelectedScheduleId}
         onBookSlot={handleBookSlot}
         loading={loading}
+        viewMode={viewMode}
+        onSetViewMode={setViewMode}
+        hospitalId={hospitalId}
       />
       <OTCaseWorkspace
         schedule={selectedSchedule}
@@ -132,15 +186,19 @@ const OTPage: React.FC = () => {
         schedules={schedules}
         selectedDate={selectedDate}
         onSelectSchedule={setSelectedScheduleId}
+        hospitalId={hospitalId}
+        onSetSelectedDate={setSelectedDate}
+        onSetSelectedRoom={setSelectedRoomId}
+        onSetViewMode={setViewMode}
       />
       {bookModalOpen && (
         <BookOTModal
           rooms={rooms}
-          selectedRoomId={selectedRoomId}
-          selectedDate={selectedDate}
+          selectedRoomId={selectedRoomId === "all" ? (rooms[0]?.id || "") : selectedRoomId}
+          selectedDate={formatDateForQuery(selectedDate)}
           prefillTime={bookModalTime}
           onClose={() => setBookModalOpen(false)}
-          onBooked={() => { setBookModalOpen(false); fetchSchedules(); }}
+          onBooked={handleBooked}
         />
       )}
     </div>
