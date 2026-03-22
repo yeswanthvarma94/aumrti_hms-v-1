@@ -187,9 +187,9 @@ const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onT
       };
 
       if (encounterId) {
-        await supabase.from("opd_encounters").update(payload).eq("id", encounterId);
+        await supabase.from("opd_encounters").update(payload as never).eq("id", encounterId);
       } else {
-        const { data: newEnc } = await supabase.from("opd_encounters").insert(payload).select("id").single();
+        const { data: newEnc } = await supabase.from("opd_encounters").insert([payload] as never).select("id").single();
         if (newEnc) setEncounterId(newEnc.id);
       }
       setSaved(true);
