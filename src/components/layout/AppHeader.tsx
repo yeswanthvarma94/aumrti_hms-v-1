@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Menu, Search, Bell, Wifi, WifiOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "./SidebarContext";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -49,8 +51,16 @@ const routeLabels: Record<string, string> = {
 const AppHeader: React.FC = () => {
   const { toggle } = useSidebar();
   const location = useLocation();
+  const navigate = useNavigate();
+  const { toast } = useToast();
   const [searchOpen, setSearchOpen] = useState(false);
   const [online, setOnline] = useState(navigator.onLine);
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    toast({ title: "Signed out successfully" });
+    navigate("/login", { replace: true });
+  };
 
   useEffect(() => {
     const onOnline = () => setOnline(true);
@@ -137,7 +147,10 @@ const AppHeader: React.FC = () => {
           </div>
 
           {/* Notification bell */}
-          <button className="relative p-2 rounded-md hover:bg-muted transition-colors active:scale-95">
+          <button
+            onClick={() => toast({ title: "Notifications", description: "No new notifications right now." })}
+            className="relative p-2 rounded-md hover:bg-muted transition-colors active:scale-95"
+          >
             <Bell size={20} />
             <Badge className="absolute -top-0.5 -right-0.5 h-[18px] min-w-[18px] px-1 text-[10px] font-bold bg-destructive text-destructive-foreground border-2 border-card rounded-full flex items-center justify-center">
               3
@@ -156,9 +169,15 @@ const AppHeader: React.FC = () => {
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem>Profile</DropdownMenuItem>
-              <DropdownMenuItem>Hospital Settings</DropdownMenuItem>
-              <DropdownMenuItem className="text-destructive">Sign Out</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => toast({ title: "Profile", description: "Profile page coming soon." })}>
+                Profile
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate("/settings")}>
+                Hospital Settings
+              </DropdownMenuItem>
+              <DropdownMenuItem className="text-destructive" onClick={handleSignOut}>
+                Sign Out
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

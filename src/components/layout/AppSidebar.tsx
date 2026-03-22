@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Home,
   Stethoscope,
@@ -26,6 +26,8 @@ import {
 import { cn } from "@/lib/utils";
 import { useSidebar } from "./SidebarContext";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface SubItem {
   label: string;
@@ -86,7 +88,15 @@ const navGroups: NavGroup[] = [
 const AppSidebar: React.FC = () => {
   const { collapsed } = useSidebar();
   const location = useLocation();
+  const navigate = useNavigate();
+  const { toast } = useToast();
   const [hoveredGroup, setHoveredGroup] = useState<string | null>(null);
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    toast({ title: "Signed out successfully" });
+    navigate("/login", { replace: true });
+  };
 
   const isActive = (group: NavGroup) => {
     if (group.path) return location.pathname === group.path;
@@ -191,7 +201,11 @@ const AppSidebar: React.FC = () => {
             <p className="text-xs text-sidebar-foreground/60 truncate">Admin</p>
           </div>
         )}
-        <button className="text-sidebar-foreground/60 hover:text-white transition-colors p-1">
+        <button
+          onClick={handleSignOut}
+          className="text-sidebar-foreground/60 hover:text-white transition-colors p-1 active:scale-95"
+          title="Sign out"
+        >
           <LogOut size={18} />
         </button>
       </div>
