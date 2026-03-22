@@ -6,11 +6,11 @@ import type { OTRoom } from "@/pages/ot/OTPage";
 
 interface Props {
   rooms: OTRoom[];
-  selectedRoomId: string | null;
+  selectedRoomId: string;
   selectedDate: string;
   prefillTime: string | null;
   onClose: () => void;
-  onBooked: () => void;
+  onBooked: (date?: string, roomId?: string) => void;
 }
 
 const CATEGORIES = ["general", "orthopaedic", "gynaecology", "urology", "cardiothoracic", "neurosurgery", "ent", "ophthalmology", "paediatric", "plastic", "emergency", "endoscopy", "other"];
@@ -57,6 +57,7 @@ const BookOTModal: React.FC<Props> = ({ rooms, selectedRoomId, selectedDate, pre
   };
 
   const endTime = addMinutes(form.startTime, form.duration);
+  const timeToMin = (t: string) => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
 
   const checkConflict = async () => {
     const { data } = await supabase
@@ -74,15 +75,9 @@ const BookOTModal: React.FC<Props> = ({ rooms, selectedRoomId, selectedDate, pre
         const sEnd = timeToMin(s.scheduled_end_time);
         return startMin < sEnd && endMin > sStart;
       });
-      if (overlapping) {
-        setConflict(`⚠️ Room is booked from ${overlapping.scheduled_start_time.slice(0, 5)} to ${overlapping.scheduled_end_time.slice(0, 5)} for ${overlapping.surgery_name}`);
-      } else {
-        setConflict(null);
-      }
+      setConflict(overlapping ? `⚠️ Room is booked from ${overlapping.scheduled_start_time.slice(0, 5)} to ${overlapping.scheduled_end_time.slice(0, 5)} for ${overlapping.surgery_name}` : null);
     }
   };
-
-  const timeToMin = (t: string) => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
 
   useEffect(() => { if (form.roomId && form.date && form.startTime) checkConflict(); }, [form.roomId, form.date, form.startTime, form.duration]);
 
@@ -121,7 +116,6 @@ const BookOTModal: React.FC<Props> = ({ rooms, selectedRoomId, selectedDate, pre
       return;
     }
 
-    // Create empty checklist
     if (schedule) {
       await supabase.from("ot_checklists").insert({
         hospital_id: hospitalId,
@@ -131,7 +125,7 @@ const BookOTModal: React.FC<Props> = ({ rooms, selectedRoomId, selectedDate, pre
 
     toast({ title: `OT booked — ${form.surgeryName} on ${form.date} at ${form.startTime}` });
     setSaving(false);
-    onBooked();
+    onBooked(form.date, form.roomId);
   };
 
   const filteredPatients = patients.filter(
@@ -153,21 +147,13 @@ const BookOTModal: React.FC<Props> = ({ rooms, selectedRoomId, selectedDate, pre
           {/* Patient */}
           <div>
             <label className="text-xs font-medium text-foreground mb-1 block">Patient *</label>
-            <input
-              type="text"
-              placeholder="Search by name or UHID..."
-              value={patientSearch}
-              onChange={(e) => setPatientSearch(e.target.value)}
-              className="w-full text-sm border border-border rounded-md px-3 py-2 bg-background focus:outline-none focus:ring-1 focus:ring-primary"
-            />
+            <input type="text" placeholder="Search by name or UHID..." value={patientSearch} onChange={(e) => setPatientSearch(e.target.value)}
+              className="w-full text-sm border border-border rounded-md px-3 py-2 bg-background focus:outline-none focus:ring-1 focus:ring-primary" />
             {patientSearch && !form.patientId && (
               <div className="border border-border rounded-md mt-1 max-h-32 overflow-y-auto bg-card">
                 {filteredPatients.slice(0, 8).map((p) => (
-                  <button
-                    key={p.id}
-                    onClick={() => { setForm({ ...form, patientId: p.id }); setPatientSearch(p.full_name); }}
-                    className="w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors"
-                  >
+                  <button key={p.id} onClick={() => { setForm({ ...form, patientId: p.id }); setPatientSearch(p.full_name); }}
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors">
                     {p.full_name} <span className="text-muted-foreground text-xs">({p.uhid})</span>
                   </button>
                 ))}
@@ -175,7 +161,6 @@ const BookOTModal: React.FC<Props> = ({ rooms, selectedRoomId, selectedDate, pre
             )}
           </div>
 
-          {/* Surgery name + category */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-medium mb-1 block">Surgery Name *</label>
@@ -189,7 +174,6 @@ const BookOTModal: React.FC<Props> = ({ rooms, selectedRoomId, selectedDate, pre
             </div>
           </div>
 
-          {/* Date + Room */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-medium mb-1 block">Date *</label>
@@ -203,7 +187,6 @@ const BookOTModal: React.FC<Props> = ({ rooms, selectedRoomId, selectedDate, pre
             </div>
           </div>
 
-          {/* Time + Duration */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-medium mb-1 block">Start Time *</label>
@@ -222,7 +205,6 @@ const BookOTModal: React.FC<Props> = ({ rooms, selectedRoomId, selectedDate, pre
             <div className="bg-amber-50 border border-amber-200 rounded-md px-3 py-2 text-xs text-amber-700">{conflict}</div>
           )}
 
-          {/* Surgeon */}
           <div>
             <label className="text-xs font-medium mb-1 block">Surgeon *</label>
             <select value={form.surgeonId} onChange={(e) => setForm({ ...form, surgeonId: e.target.value })} className="w-full text-sm border border-border rounded-md px-3 py-2 bg-background focus:outline-none focus:ring-1 focus:ring-primary">
@@ -231,7 +213,6 @@ const BookOTModal: React.FC<Props> = ({ rooms, selectedRoomId, selectedDate, pre
             </select>
           </div>
 
-          {/* Anaesthesia */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-medium mb-1 block">Anaesthetist</label>
@@ -248,7 +229,6 @@ const BookOTModal: React.FC<Props> = ({ rooms, selectedRoomId, selectedDate, pre
             </div>
           </div>
 
-          {/* Notes */}
           <div>
             <label className="text-xs font-medium mb-1 block">Notes</label>
             <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Special instructions..." rows={2} className="w-full text-sm border border-border rounded-md px-3 py-2 bg-background resize-none focus:outline-none focus:ring-1 focus:ring-primary" />
@@ -256,11 +236,8 @@ const BookOTModal: React.FC<Props> = ({ rooms, selectedRoomId, selectedDate, pre
         </div>
 
         <div className="px-6 pb-5 pt-2">
-          <button
-            onClick={handleSubmit}
-            disabled={saving}
-            className="w-full bg-[hsl(var(--sidebar-accent))] text-white font-semibold py-3 rounded-lg hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50"
-          >
+          <button onClick={handleSubmit} disabled={saving}
+            className="w-full bg-[hsl(var(--sidebar-accent))] text-white font-semibold py-3 rounded-lg hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50">
             {saving ? "Booking..." : "📅 Confirm OT Booking"}
           </button>
         </div>
