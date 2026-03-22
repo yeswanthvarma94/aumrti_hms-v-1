@@ -11,6 +11,7 @@ import OnboardingWizard from "./pages/setup/OnboardingWizard";
 import Dashboard from "./pages/Dashboard";
 import ComingSoon from "./pages/ComingSoon";
 import OPDPage from "./pages/opd/OPDPage";
+import IPDPage from "./pages/ipd/IPDPage";
 import DesignSystem from "./pages/DesignSystem";
 import NotFound from "./pages/NotFound";
 
@@ -34,7 +35,7 @@ const App = () => (
           <Route element={<AppShell />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/opd" element={<OPDPage />} />
-            <Route path="/ipd" element={<ComingSoon />} />
+            <Route path="/ipd" element={<IPDPage />} />
             <Route path="/emergency" element={<ComingSoon />} />
             <Route path="/ot" element={<ComingSoon />} />
             <Route path="/nursing" element={<ComingSoon />} />
