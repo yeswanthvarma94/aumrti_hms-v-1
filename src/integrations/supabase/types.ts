@@ -1112,8 +1112,10 @@ export type Database = {
           hospital_id: string
           id: string
           insurance_id: string | null
+          is_active: boolean | null
           phone: string | null
           uhid: string
+          updated_at: string | null
         }
         Insert: {
           abha_id?: string | null
@@ -1131,8 +1133,10 @@ export type Database = {
           hospital_id: string
           id?: string
           insurance_id?: string | null
+          is_active?: boolean | null
           phone?: string | null
           uhid: string
+          updated_at?: string | null
         }
         Update: {
           abha_id?: string | null
@@ -1150,8 +1154,10 @@ export type Database = {
           hospital_id?: string
           id?: string
           insurance_id?: string | null
+          is_active?: boolean | null
           phone?: string | null
           uhid?: string
+          updated_at?: string | null
         }
         Relationships: [
           {
