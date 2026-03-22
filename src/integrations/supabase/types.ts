@@ -1340,7 +1340,9 @@ export type Database = {
       }
       users: {
         Row: {
+          auth_user_id: string | null
           branch_id: string | null
+          can_login: boolean | null
           created_at: string
           department_id: string | null
           email: string
@@ -1355,14 +1357,16 @@ export type Database = {
           role: Database["public"]["Enums"]["app_role"]
         }
         Insert: {
+          auth_user_id?: string | null
           branch_id?: string | null
+          can_login?: boolean | null
           created_at?: string
           department_id?: string | null
           email: string
           employee_id?: string | null
           full_name: string
           hospital_id: string
-          id: string
+          id?: string
           is_active?: boolean
           last_login?: string | null
           phone?: string | null
@@ -1370,7 +1374,9 @@ export type Database = {
           role?: Database["public"]["Enums"]["app_role"]
         }
         Update: {
+          auth_user_id?: string | null
           branch_id?: string | null
+          can_login?: boolean | null
           created_at?: string
           department_id?: string | null
           email?: string
