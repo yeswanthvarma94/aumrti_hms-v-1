@@ -211,9 +211,9 @@ const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onT
         patient_id: token.patient_id,
         doctor_id: userId,
         prescription_date: new Date().toISOString().split("T")[0],
-        drugs: data.drugs as unknown as Record<string, unknown>[],
-        lab_orders: data.lab_orders as unknown as Record<string, unknown>[],
-        radiology_orders: data.radiology_orders as unknown as Record<string, unknown>[],
+        drugs: JSON.parse(JSON.stringify(data.drugs)),
+        lab_orders: JSON.parse(JSON.stringify(data.lab_orders)),
+        radiology_orders: JSON.parse(JSON.stringify(data.radiology_orders)),
         advice_notes: data.advice_notes || null,
         review_date: data.review_date || null,
       };
