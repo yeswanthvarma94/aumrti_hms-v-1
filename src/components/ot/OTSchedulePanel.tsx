@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, LayoutGrid, CalendarDays } from "lucide-react";
 import { format, startOfWeek, endOfWeek, addDays, startOfMonth, endOfMonth, isSameDay, isToday, addMonths, subMonths } from "date-fns";
