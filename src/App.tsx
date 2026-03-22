@@ -15,6 +15,13 @@ import IPDPage from "./pages/ipd/IPDPage";
 import EmergencyPage from "./pages/emergency/EmergencyPage";
 import PatientsPage from "./pages/patients/PatientsPage";
 import NursingPage from "./pages/nursing/NursingPage";
+import SettingsPage from "./pages/settings/SettingsPage";
+import SettingsStaffPage from "./pages/settings/SettingsStaffPage";
+import SettingsDepartmentsPage from "./pages/settings/SettingsDepartmentsPage";
+import SettingsWardsPage from "./pages/settings/SettingsWardsPage";
+import SettingsServicesPage from "./pages/settings/SettingsServicesPage";
+import SettingsDrugsPage from "./pages/settings/SettingsDrugsPage";
+import SettingsProfilePage from "./pages/settings/SettingsProfilePage";
 import DesignSystem from "./pages/DesignSystem";
 import NotFound from "./pages/NotFound";
 
@@ -52,7 +59,13 @@ const App = () => (
             <Route path="/hr" element={<ComingSoon />} />
             <Route path="/inventory" element={<ComingSoon />} />
             <Route path="/quality" element={<ComingSoon />} />
-            <Route path="/settings" element={<ComingSoon />} />
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/settings/staff" element={<SettingsStaffPage />} />
+            <Route path="/settings/departments" element={<SettingsDepartmentsPage />} />
+            <Route path="/settings/wards" element={<SettingsWardsPage />} />
+            <Route path="/settings/services" element={<SettingsServicesPage />} />
+            <Route path="/settings/drugs" element={<SettingsDrugsPage />} />
+            <Route path="/settings/profile" element={<SettingsProfilePage />} />
           </Route>
 
           <Route path="*" element={<NotFound />} />
