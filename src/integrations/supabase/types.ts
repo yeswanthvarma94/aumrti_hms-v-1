@@ -1095,6 +1095,306 @@ export type Database = {
           },
         ]
       }
+      ot_checklists: {
+        Row: {
+          compliance_percentage: number
+          created_at: string
+          hospital_id: string
+          id: string
+          ot_schedule_id: string
+          signin_allergies_known: boolean
+          signin_anaesthesia_checked: boolean
+          signin_blood_loss_risk: boolean
+          signin_completed_at: string | null
+          signin_completed_by: string | null
+          signin_consent_signed: boolean
+          signin_difficult_airway: boolean
+          signin_patient_identity: boolean
+          signin_pulse_oximeter: boolean
+          signin_site_marked: boolean
+          signout_completed_at: string | null
+          signout_completed_by: string | null
+          signout_equipment_issues: boolean
+          signout_instrument_count: boolean
+          signout_procedure_recorded: boolean
+          signout_recovery_handover: boolean
+          signout_specimen_labelled: boolean
+          signout_swab_count: boolean
+          timeout_antibiotics_given: boolean
+          timeout_anticoagulation: boolean
+          timeout_completed_at: string | null
+          timeout_completed_by: string | null
+          timeout_equipment_issues: boolean
+          timeout_imaging_displayed: boolean
+          timeout_patient_confirmed: boolean
+          timeout_procedure_confirmed: boolean
+          timeout_site_confirmed: boolean
+          timeout_team_introduced: boolean
+        }
+        Insert: {
+          compliance_percentage?: number
+          created_at?: string
+          hospital_id: string
+          id?: string
+          ot_schedule_id: string
+          signin_allergies_known?: boolean
+          signin_anaesthesia_checked?: boolean
+          signin_blood_loss_risk?: boolean
+          signin_completed_at?: string | null
+          signin_completed_by?: string | null
+          signin_consent_signed?: boolean
+          signin_difficult_airway?: boolean
+          signin_patient_identity?: boolean
+          signin_pulse_oximeter?: boolean
+          signin_site_marked?: boolean
+          signout_completed_at?: string | null
+          signout_completed_by?: string | null
+          signout_equipment_issues?: boolean
+          signout_instrument_count?: boolean
+          signout_procedure_recorded?: boolean
+          signout_recovery_handover?: boolean
+          signout_specimen_labelled?: boolean
+          signout_swab_count?: boolean
+          timeout_antibiotics_given?: boolean
+          timeout_anticoagulation?: boolean
+          timeout_completed_at?: string | null
+          timeout_completed_by?: string | null
+          timeout_equipment_issues?: boolean
+          timeout_imaging_displayed?: boolean
+          timeout_patient_confirmed?: boolean
+          timeout_procedure_confirmed?: boolean
+          timeout_site_confirmed?: boolean
+          timeout_team_introduced?: boolean
+        }
+        Update: {
+          compliance_percentage?: number
+          created_at?: string
+          hospital_id?: string
+          id?: string
+          ot_schedule_id?: string
+          signin_allergies_known?: boolean
+          signin_anaesthesia_checked?: boolean
+          signin_blood_loss_risk?: boolean
+          signin_completed_at?: string | null
+          signin_completed_by?: string | null
+          signin_consent_signed?: boolean
+          signin_difficult_airway?: boolean
+          signin_patient_identity?: boolean
+          signin_pulse_oximeter?: boolean
+          signin_site_marked?: boolean
+          signout_completed_at?: string | null
+          signout_completed_by?: string | null
+          signout_equipment_issues?: boolean
+          signout_instrument_count?: boolean
+          signout_procedure_recorded?: boolean
+          signout_recovery_handover?: boolean
+          signout_specimen_labelled?: boolean
+          signout_swab_count?: boolean
+          timeout_antibiotics_given?: boolean
+          timeout_anticoagulation?: boolean
+          timeout_completed_at?: string | null
+          timeout_completed_by?: string | null
+          timeout_equipment_issues?: boolean
+          timeout_imaging_displayed?: boolean
+          timeout_patient_confirmed?: boolean
+          timeout_procedure_confirmed?: boolean
+          timeout_site_confirmed?: boolean
+          timeout_team_introduced?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ot_checklists_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ot_checklists_ot_schedule_id_fkey"
+            columns: ["ot_schedule_id"]
+            isOneToOne: false
+            referencedRelation: "ot_schedules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ot_rooms: {
+        Row: {
+          created_at: string
+          hospital_id: string
+          id: string
+          is_active: boolean
+          name: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          hospital_id: string
+          id?: string
+          is_active?: boolean
+          name: string
+          type?: string
+        }
+        Update: {
+          created_at?: string
+          hospital_id?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ot_rooms_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ot_schedules: {
+        Row: {
+          actual_end_time: string | null
+          actual_start_time: string | null
+          admission_id: string | null
+          anaesthesia_type: string
+          anaesthetist_id: string | null
+          booking_notes: string | null
+          cancellation_reason: string | null
+          created_at: string
+          created_by: string | null
+          estimated_duration_minutes: number
+          hospital_id: string
+          id: string
+          implants_consumables: Json | null
+          ot_room_id: string
+          patient_id: string
+          post_op_diagnosis: string | null
+          scheduled_date: string
+          scheduled_end_time: string
+          scheduled_start_time: string
+          scrub_nurse_id: string | null
+          status: string
+          surgeon_id: string
+          surgery_category: string
+          surgery_name: string
+        }
+        Insert: {
+          actual_end_time?: string | null
+          actual_start_time?: string | null
+          admission_id?: string | null
+          anaesthesia_type?: string
+          anaesthetist_id?: string | null
+          booking_notes?: string | null
+          cancellation_reason?: string | null
+          created_at?: string
+          created_by?: string | null
+          estimated_duration_minutes?: number
+          hospital_id: string
+          id?: string
+          implants_consumables?: Json | null
+          ot_room_id: string
+          patient_id: string
+          post_op_diagnosis?: string | null
+          scheduled_date: string
+          scheduled_end_time: string
+          scheduled_start_time: string
+          scrub_nurse_id?: string | null
+          status?: string
+          surgeon_id: string
+          surgery_category?: string
+          surgery_name: string
+        }
+        Update: {
+          actual_end_time?: string | null
+          actual_start_time?: string | null
+          admission_id?: string | null
+          anaesthesia_type?: string
+          anaesthetist_id?: string | null
+          booking_notes?: string | null
+          cancellation_reason?: string | null
+          created_at?: string
+          created_by?: string | null
+          estimated_duration_minutes?: number
+          hospital_id?: string
+          id?: string
+          implants_consumables?: Json | null
+          ot_room_id?: string
+          patient_id?: string
+          post_op_diagnosis?: string | null
+          scheduled_date?: string
+          scheduled_end_time?: string
+          scheduled_start_time?: string
+          scrub_nurse_id?: string | null
+          status?: string
+          surgeon_id?: string
+          surgery_category?: string
+          surgery_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ot_schedules_admission_id_fkey"
+            columns: ["admission_id"]
+            isOneToOne: false
+            referencedRelation: "admissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ot_schedules_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ot_schedules_ot_room_id_fkey"
+            columns: ["ot_room_id"]
+            isOneToOne: false
+            referencedRelation: "ot_rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ot_schedules_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ot_team_members: {
+        Row: {
+          confirmed: boolean
+          id: string
+          ot_schedule_id: string
+          role_in_ot: string
+          user_id: string
+        }
+        Insert: {
+          confirmed?: boolean
+          id?: string
+          ot_schedule_id: string
+          role_in_ot: string
+          user_id: string
+        }
+        Update: {
+          confirmed?: boolean
+          id?: string
+          ot_schedule_id?: string
+          role_in_ot?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ot_team_members_ot_schedule_id_fkey"
+            columns: ["ot_schedule_id"]
+            isOneToOne: false
+            referencedRelation: "ot_schedules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       patients: {
         Row: {
           abha_id: string | null
