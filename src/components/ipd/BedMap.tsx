@@ -12,6 +12,7 @@ interface Props {
   hospitalId: string | null;
   loading: boolean;
   onRefresh: () => void;
+  onNewAdmission: () => void;
 }
 
 const statusColors: Record<string, { bg: string; border: string; hoverBorder: string }> = {
@@ -22,7 +23,7 @@ const statusColors: Record<string, { bg: string; border: string; hoverBorder: st
   maintenance: { bg: "bg-slate-100", border: "border-slate-300", hoverBorder: "" },
 };
 
-const BedMap: React.FC<Props> = ({ beds, selectedBedId, onSelectBed, hospitalId, loading, onRefresh }) => {
+const BedMap: React.FC<Props> = ({ beds, selectedBedId, onSelectBed, hospitalId, loading, onRefresh, onNewAdmission }) => {
   const [wards, setWards] = useState<{ id: string; name: string }[]>([]);
   const [activeWard, setActiveWard] = useState<string>("all");
 
@@ -128,7 +129,7 @@ const BedMap: React.FC<Props> = ({ beds, selectedBedId, onSelectBed, hospitalId,
 
       {/* Footer */}
       <div className="flex-shrink-0 border-t border-slate-100 p-2">
-        <button className="w-full h-9 bg-[#1A2F5A] text-white rounded-lg text-[13px] font-semibold hover:bg-[#152647] active:scale-[0.98] transition-all">
+        <button onClick={onNewAdmission} className="w-full h-9 bg-[#1A2F5A] text-white rounded-lg text-[13px] font-semibold hover:bg-[#152647] active:scale-[0.98] transition-all">
           + New Admission
         </button>
       </div>

@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import BedMap from "@/components/ipd/BedMap";
 import IPDWorkspace from "@/components/ipd/IPDWorkspace";
 import WardStats from "@/components/ipd/WardStats";
+import AdmitPatientModal from "@/components/ipd/AdmitPatientModal";
 
 export interface BedData {
   id: string;
@@ -12,12 +13,16 @@ export interface BedData {
   ward_name?: string;
   admission?: {
     id: string;
+    patient_id: string;
     patient_name: string;
     patient_initials: string;
     admitted_at: string;
     admission_type: string;
+    admission_number: string;
+    admitting_diagnosis: string;
     doctor_name: string;
     los_days: number;
+    expected_discharge_date: string | null;
   } | null;
 }
 
@@ -40,6 +45,7 @@ const IPDPage: React.FC = () => {
   const [admissions, setAdmissions] = useState<AdmissionRow[]>([]);
   const [selectedBedId, setSelectedBedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [admitModal, setAdmitModal] = useState<{ open: boolean; bedId?: string; wardId?: string; bedNumber?: string }>({ open: false });
 
   const fetchData = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -48,7 +54,6 @@ const IPDPage: React.FC = () => {
     if (!ud) return;
     setHospitalId(ud.hospital_id);
 
-    // Fetch beds with ward names
     const { data: bedData } = await supabase
       .from("beds")
       .select("id, bed_number, status, ward_id, ward:wards(name)")
@@ -56,18 +61,13 @@ const IPDPage: React.FC = () => {
       .eq("is_active", true)
       .order("bed_number");
 
-    // Fetch active admissions
     const { data: admData } = await supabase
       .from("admissions")
-      .select("id, patient_id, bed_id, ward_id, admission_type, admitted_at, expected_discharge_date, admitting_doctor_id, status, patient:patients(full_name), bed:beds(bed_number), ward:wards(name), doctor:users!admissions_admitting_doctor_id_fkey(full_name)")
+      .select("id, patient_id, bed_id, ward_id, admission_type, admission_number, admitting_diagnosis, admitted_at, expected_discharge_date, admitting_doctor_id, status, patient:patients(full_name), bed:beds(bed_number), ward:wards(name), doctor:users!admissions_admitting_doctor_id_fkey(full_name)")
       .eq("hospital_id", ud.hospital_id)
       .eq("status", "active");
 
-    const admMap = new Map<string, {
-      id: string; patient_name: string; patient_initials: string;
-      admitted_at: string; admission_type: string; doctor_name: string; los_days: number;
-    }>();
-
+    const admMap = new Map<string, any>();
     const admRows: AdmissionRow[] = [];
 
     (admData || []).forEach((a: Record<string, unknown>) => {
@@ -81,12 +81,16 @@ const IPDPage: React.FC = () => {
 
       admMap.set(a.bed_id as string, {
         id: a.id as string,
+        patient_id: a.patient_id as string,
         patient_name: name,
         patient_initials: initials,
         admitted_at: a.admitted_at as string,
         admission_type: a.admission_type as string,
+        admission_number: a.admission_number as string || "",
+        admitting_diagnosis: a.admitting_diagnosis as string || "",
         doctor_name: doctor?.full_name || "—",
         los_days: los,
+        expected_discharge_date: a.expected_discharge_date as string | null,
       });
 
       admRows.push({
@@ -122,7 +126,6 @@ const IPDPage: React.FC = () => {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // Realtime
   useEffect(() => {
     if (!hospitalId) return;
     const ch = supabase.channel("ipd-realtime")
@@ -134,11 +137,35 @@ const IPDPage: React.FC = () => {
 
   const selectedBed = beds.find((b) => b.id === selectedBedId) || null;
 
+  const handleBedSelect = (bedId: string) => {
+    const bed = beds.find((b) => b.id === bedId);
+    if (bed?.status === "available") {
+      setAdmitModal({ open: true, bedId: bed.id, wardId: bed.ward_id, bedNumber: `${bed.ward_name} - ${bed.bed_number}` });
+    } else {
+      setSelectedBedId(bedId);
+    }
+  };
+
+  const handleNewAdmission = () => {
+    setAdmitModal({ open: true });
+  };
+
   return (
     <div className="flex flex-row h-full overflow-hidden">
-      <BedMap beds={beds} selectedBedId={selectedBedId} onSelectBed={setSelectedBedId} hospitalId={hospitalId} loading={loading} onRefresh={fetchData} />
-      <IPDWorkspace bed={selectedBed} />
+      <BedMap beds={beds} selectedBedId={selectedBedId} onSelectBed={handleBedSelect}
+        hospitalId={hospitalId} loading={loading} onRefresh={fetchData} onNewAdmission={handleNewAdmission} />
+      <IPDWorkspace bed={selectedBed} hospitalId={hospitalId} onRefresh={fetchData} />
       <WardStats admissions={admissions} onSelectBed={setSelectedBedId} />
+
+      <AdmitPatientModal
+        open={admitModal.open}
+        onClose={() => setAdmitModal({ open: false })}
+        hospitalId={hospitalId}
+        preselectedBedId={admitModal.bedId || null}
+        preselectedWardId={admitModal.wardId || null}
+        preselectedBedNumber={admitModal.bedNumber || null}
+        onAdmitted={fetchData}
+      />
     </div>
   );
 };
