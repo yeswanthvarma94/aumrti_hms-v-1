@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn } from "@/lib/utils";
 import { differenceInDays, format } from "date-fns";
 import { ClipboardList, Send, Sparkles } from "lucide-react";
+import PmjaySection from "./PmjaySection";
 
 interface PreAuth {
   id: string;
@@ -229,9 +230,14 @@ const PreAuthQueue: React.FC = () => {
               <Textarea className="mt-1" rows={3} value={formState.notes} onChange={e => setFormState({ ...formState, notes: e.target.value })} />
             </div>
 
+            {/* PMJAY Section */}
+            {formState.tpa_name?.toLowerCase().includes("pmjay") && (
+              <PmjaySection onPackageSelect={(rate) => setFormState({ ...formState, estimated_amount: rate })} />
+            )}
+
             <div className="flex gap-2 pt-2">
               <Button onClick={handleSubmit} className="gap-1.5">
-                <Send size={14} /> Submit Pre-Auth
+                <Send size={14} /> {formState.tpa_name?.toLowerCase().includes("pmjay") ? "Submit for PMJAY Pre-Auth" : "Submit Pre-Auth"}
               </Button>
               <Button variant="outline" onClick={handleSaveDraft}>Save Draft</Button>
             </div>

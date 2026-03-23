@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { differenceInDays, format } from "date-fns";
+import AppealLetterModal from "./AppealLetterModal";
 
 interface Claim {
   id: string;
@@ -27,6 +28,7 @@ const ClaimsStatus: React.FC = () => {
   const [claims, setClaims] = useState<Claim[]>([]);
   const [filter, setFilter] = useState("all");
   const [loading, setLoading] = useState(true);
+  const [appealClaim, setAppealClaim] = useState<Claim | null>(null);
   const { toast } = useToast();
 
   useEffect(() => { loadData(); }, [filter]);
@@ -156,6 +158,7 @@ const ClaimsStatus: React.FC = () => {
                     )}
                     {c.status === "rejected" && (
                       <>
+                        <Button size="sm" variant="outline" className="text-[10px] h-6" onClick={() => setAppealClaim(c)}>📝 Appeal</Button>
                         <Button size="sm" variant="outline" className="text-[10px] h-6">Resubmit</Button>
                         <Button size="sm" variant="ghost" className="text-[10px] h-6 text-destructive" onClick={() => writeOff(c)}>Write Off</Button>
                       </>
@@ -167,6 +170,12 @@ const ClaimsStatus: React.FC = () => {
           </TableBody>
         </Table>
       </div>
+
+      <AppealLetterModal
+        open={!!appealClaim}
+        onOpenChange={(open) => !open && setAppealClaim(null)}
+        claim={appealClaim}
+      />
     </div>
   );
 };
