@@ -227,6 +227,18 @@ const BillEditor: React.FC<Props> = ({ bill, hospitalId, onRefresh }) => {
           <InsuranceTab bill={bill} hospitalId={hospitalId} onRefresh={onRefresh} />
         </TabsContent>
       </Tabs>
+
+      {showGstInvoice && hospitalInfo && (
+        <GSTInvoiceModal
+          bill={bill}
+          lineItems={lineItems}
+          hospitalName={hospitalInfo.name || "Hospital"}
+          hospitalGstin={hospitalInfo.gstin || ""}
+          hospitalAddress={hospitalInfo.address || ""}
+          irn={bill.notes || `DEMO-${bill.bill_number}`}
+          onClose={() => setShowGstInvoice(false)}
+        />
+      )}
     </div>
   );
 };

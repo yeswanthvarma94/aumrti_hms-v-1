@@ -267,6 +267,9 @@ const LineItemsTab: React.FC<Props> = ({ bill, hospitalId, lineItems, loading, o
         )}
       </div>
 
+      {/* AI Leakage Scanner */}
+      <LeakageScanner bill={bill} hospitalId={hospitalId} lineItems={lineItems} onRefresh={onRefresh} />
+
       {/* Totals */}
       <div className="bg-card border-t-2 border-border px-5 py-4 flex-shrink-0">
         <div className="flex justify-end">
