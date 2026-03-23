@@ -479,6 +479,7 @@ export type Database = {
           paid_amount: number | null
           patient_id: string
           patient_payable: number | null
+          payment_link_sent: boolean | null
           payment_status: string
           qr_code_url: string | null
           subtotal: number | null
@@ -513,6 +514,7 @@ export type Database = {
           paid_amount?: number | null
           patient_id: string
           patient_payable?: number | null
+          payment_link_sent?: boolean | null
           payment_status?: string
           qr_code_url?: string | null
           subtotal?: number | null
@@ -547,6 +549,7 @@ export type Database = {
           paid_amount?: number | null
           patient_id?: string
           patient_payable?: number | null
+          payment_link_sent?: boolean | null
           payment_status?: string
           qr_code_url?: string | null
           subtotal?: number | null

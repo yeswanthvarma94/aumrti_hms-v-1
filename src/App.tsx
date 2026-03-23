@@ -11,6 +11,7 @@ import OnboardingWizard from "./pages/setup/OnboardingWizard";
 import Dashboard from "./pages/Dashboard";
 import ComingSoon from "./pages/ComingSoon";
 import BillingPage from "./pages/billing/BillingPage";
+import PaymentsPage from "./pages/billing/PaymentsPage";
 import PharmacyPage from "./pages/pharmacy/PharmacyPage";
 import OPDPage from "./pages/opd/OPDPage";
 import OTPage from "./pages/ot/OTPage";
@@ -61,7 +62,7 @@ const App = () => (
             <Route path="/pharmacy" element={<PharmacyPage />} />
             <Route path="/billing" element={<BillingPage />} />
             <Route path="/insurance" element={<InsurancePage />} />
-            <Route path="/payments" element={<ComingSoon />} />
+            <Route path="/payments" element={<PaymentsPage />} />
             <Route path="/hr" element={<ComingSoon />} />
             <Route path="/inventory" element={<ComingSoon />} />
             <Route path="/quality" element={<ComingSoon />} />

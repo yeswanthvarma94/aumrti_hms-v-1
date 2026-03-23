@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { Receipt, Printer, MessageSquare, FileText } from "lucide-react";
+import { Receipt, Printer, MessageSquare, FileText, Send } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -10,6 +10,7 @@ import LineItemsTab from "@/components/billing/tabs/LineItemsTab";
 import PaymentsTab from "@/components/billing/tabs/PaymentsTab";
 import InsuranceTab from "@/components/billing/tabs/InsuranceTab";
 import GSTInvoiceModal from "@/components/billing/GSTInvoiceModal";
+import PaymentLinkModal from "@/components/billing/PaymentLinkModal";
 import type { BillRecord } from "@/pages/billing/BillingPage";
 
 export interface LineItem {
@@ -55,6 +56,7 @@ const BillEditor: React.FC<Props> = ({ bill, hospitalId, onRefresh }) => {
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
   const [loadingItems, setLoadingItems] = useState(false);
   const [showGstInvoice, setShowGstInvoice] = useState(false);
+  const [showPaymentLink, setShowPaymentLink] = useState(false);
   const [hospitalInfo, setHospitalInfo] = useState<any>(null);
 
   useEffect(() => {
@@ -193,6 +195,11 @@ const BillEditor: React.FC<Props> = ({ bill, hospitalId, onRefresh }) => {
               <FileText size={12} /> GST Invoice
             </Button>
           )}
+          {bill.balance_due > 0 && (
+            <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1" onClick={() => setShowPaymentLink(true)}>
+              <Send size={12} /> Payment Link
+            </Button>
+          )}
           <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1" onClick={() => window.print()}>
             <Printer size={12} /> Print
           </Button>
@@ -237,6 +244,15 @@ const BillEditor: React.FC<Props> = ({ bill, hospitalId, onRefresh }) => {
           hospitalAddress={hospitalInfo.address || ""}
           irn={bill.notes || `DEMO-${bill.bill_number}`}
           onClose={() => setShowGstInvoice(false)}
+        />
+      )}
+      {showPaymentLink && hospitalInfo && (
+        <PaymentLinkModal
+          bill={bill}
+          hospitalName={hospitalInfo.name || "Hospital"}
+          hospitalPhone=""
+          razorpayConfigured={!!hospitalInfo.razorpay_key_id}
+          onClose={() => setShowPaymentLink(false)}
         />
       )}
     </div>
