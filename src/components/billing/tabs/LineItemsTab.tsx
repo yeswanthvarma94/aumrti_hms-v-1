@@ -79,6 +79,8 @@ const LineItemsTab: React.FC<Props> = ({ bill, hospitalId, lineItems, loading, o
     setSearchResults(data || []);
   };
 
+  const VALID_ITEM_TYPES = ['consultation','procedure','room_charge','lab','radiology','pharmacy','surgery','package','nursing','consumable','blood','oxygen','other','service'];
+
   const addServiceItem = async (svc: any) => {
     if (!hospitalId) return;
     const rate = Number(svc.fee) || 0;
@@ -86,12 +88,13 @@ const LineItemsTab: React.FC<Props> = ({ bill, hospitalId, lineItems, loading, o
     const taxable = rate;
     const gstAmt = taxable * gstPct / 100;
     const total = taxable + gstAmt;
+    const itemType = VALID_ITEM_TYPES.includes(svc.item_type) ? svc.item_type : "other";
 
-    await supabase.from("bill_line_items").insert({
+    const { error } = await supabase.from("bill_line_items").insert({
       hospital_id: hospitalId,
       bill_id: bill.id,
       service_id: svc.id,
-      item_type: svc.item_type || "other",
+      item_type: itemType,
       description: svc.name,
       quantity: 1,
       unit_rate: rate,
@@ -101,6 +104,10 @@ const LineItemsTab: React.FC<Props> = ({ bill, hospitalId, lineItems, loading, o
       total_amount: total,
       hsn_code: svc.hsn_code,
     });
+    if (error) {
+      toast({ title: "Failed to add service", description: error.message, variant: "destructive" });
+      return;
+    }
     setShowSearch(false);
     setServiceSearch("");
     onRefresh();
@@ -109,7 +116,7 @@ const LineItemsTab: React.FC<Props> = ({ bill, hospitalId, lineItems, loading, o
 
   const addCustomItem = async (desc: string) => {
     if (!hospitalId || !desc) return;
-    await supabase.from("bill_line_items").insert({
+    const { error } = await supabase.from("bill_line_items").insert({
       hospital_id: hospitalId,
       bill_id: bill.id,
       item_type: "other",
@@ -121,6 +128,10 @@ const LineItemsTab: React.FC<Props> = ({ bill, hospitalId, lineItems, loading, o
       gst_amount: 0,
       total_amount: 0,
     });
+    if (error) {
+      toast({ title: "Failed to add item", description: error.message, variant: "destructive" });
+      return;
+    }
     setShowSearch(false);
     setServiceSearch("");
     onRefresh();

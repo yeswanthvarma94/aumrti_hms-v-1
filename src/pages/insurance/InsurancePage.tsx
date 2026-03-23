@@ -19,9 +19,17 @@ const navItems = [
   { key: "config", label: "TPA Configuration", icon: Settings2 },
 ];
 
+interface AdmissionContext {
+  admission_id: string;
+  patient_id: string;
+  patient_name: string;
+  insurance_type: string;
+}
+
 const InsurancePage: React.FC = () => {
   const [activeNav, setActiveNav] = useState("admissions");
   const [kpis, setKpis] = useState({ pendingPreAuth: 0, outstandingClaims: 0, deniedThisMonth: 0 });
+  const [pendingAdmission, setPendingAdmission] = useState<AdmissionContext | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -49,10 +57,19 @@ const InsurancePage: React.FC = () => {
     } catch { /* ignore */ }
   };
 
+  const handleNavigate = (nav: string, admissionData?: AdmissionContext) => {
+    if (nav === "preauth" && admissionData) {
+      setPendingAdmission(admissionData);
+    } else {
+      setPendingAdmission(null);
+    }
+    setActiveNav(nav);
+  };
+
   const renderContent = () => {
     switch (activeNav) {
-      case "admissions": return <ActiveAdmissions onNavigate={(nav: string) => setActiveNav(nav)} />;
-      case "preauth": return <PreAuthQueue />;
+      case "admissions": return <ActiveAdmissions onNavigate={handleNavigate} />;
+      case "preauth": return <PreAuthQueue initialAdmission={pendingAdmission} onAdmissionHandled={() => setPendingAdmission(null)} />;
       case "submit": return <ClaimsToSubmit />;
       case "status": return <ClaimsStatus />;
       case "ageing": return <TPAAgeing />;
@@ -63,7 +80,6 @@ const InsurancePage: React.FC = () => {
 
   return (
     <div className="flex flex-col" style={{ height: "calc(100vh - 56px)" }}>
-      {/* Page Header */}
       <div className="h-[52px] flex-shrink-0 bg-background border-b border-border px-5 flex items-center justify-between">
         <div>
           <h1 className="text-base font-bold text-foreground">Insurance & TPA</h1>
@@ -81,9 +97,7 @@ const InsurancePage: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Layout */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Left Nav */}
         <nav className="w-[240px] bg-background border-r border-border flex-shrink-0 flex flex-col py-2">
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -91,7 +105,7 @@ const InsurancePage: React.FC = () => {
             return (
               <button
                 key={item.key}
-                onClick={() => setActiveNav(item.key)}
+                onClick={() => handleNavigate(item.key)}
                 className={cn(
                   "flex items-center gap-3 h-12 px-4 text-[13px] font-medium transition-colors text-left w-full",
                   isActive
@@ -106,7 +120,6 @@ const InsurancePage: React.FC = () => {
           })}
         </nav>
 
-        {/* Content */}
         <div className="flex-1 overflow-hidden bg-muted/30">
           {renderContent()}
         </div>

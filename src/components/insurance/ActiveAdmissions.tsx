@@ -4,11 +4,13 @@ import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { differenceInDays, format } from "date-fns";
+import { differenceInDays } from "date-fns";
+import { cn } from "@/lib/utils";
 
 interface AdmissionRow {
   id: string;
   patient_name: string;
+  patient_id: string;
   uhid: string;
   ward_name: string;
   bed_number: string;
@@ -20,14 +22,20 @@ interface AdmissionRow {
   pre_auth_approved: number | null;
 }
 
+interface AdmissionContext {
+  admission_id: string;
+  patient_id: string;
+  patient_name: string;
+  insurance_type: string;
+}
+
 interface Props {
-  onNavigate?: (nav: string) => void;
+  onNavigate?: (nav: string, admissionData?: AdmissionContext) => void;
 }
 
 const ActiveAdmissions: React.FC<Props> = ({ onNavigate }) => {
   const [rows, setRows] = useState<AdmissionRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
 
   useEffect(() => { loadData(); }, []);
 
@@ -64,6 +72,7 @@ const ActiveAdmissions: React.FC<Props> = ({ onNavigate }) => {
     setRows(admissions.map(a => ({
       id: a.id,
       patient_name: pMap[a.patient_id]?.full_name || "Unknown",
+      patient_id: a.patient_id,
       uhid: pMap[a.patient_id]?.uhid || "",
       ward_name: wMap[a.ward_id]?.name || "",
       bed_number: bMap[a.bed_id]?.bed_number || "",
@@ -120,7 +129,12 @@ const ActiveAdmissions: React.FC<Props> = ({ onNavigate }) => {
                   <TableCell className={cn("text-xs font-medium tabular-nums", days > 45 ? "text-destructive" : "")}>{days}</TableCell>
                   <TableCell>
                     {!r.pre_auth_status ? (
-                      <Button size="sm" variant="outline" className="text-[11px] h-7" onClick={() => onNavigate?.("preauth")}>
+                      <Button size="sm" variant="outline" className="text-[11px] h-7" onClick={() => onNavigate?.("preauth", {
+                        admission_id: r.id,
+                        patient_id: r.patient_id,
+                        patient_name: r.patient_name,
+                        insurance_type: r.insurance_type,
+                      })}>
                         Request Pre-Auth
                       </Button>
                     ) : (
@@ -136,7 +150,5 @@ const ActiveAdmissions: React.FC<Props> = ({ onNavigate }) => {
     </div>
   );
 };
-
-function cn(...classes: (string | undefined | false)[]) { return classes.filter(Boolean).join(" "); }
 
 export default ActiveAdmissions;
