@@ -123,6 +123,18 @@ const BillEditor: React.FC<Props> = ({ bill, hospitalId, onRefresh }) => {
     onRefresh();
   };
 
+  const handleGenerateGST = async () => {
+    if (!bill) return;
+    const simulatedIRN = `DEMO-${Date.now()}-${bill.bill_number}`;
+    await supabase.from("bills").update({
+      irn: simulatedIRN,
+      irn_generated_at: new Date().toISOString(),
+    }).eq("id", bill.id);
+    toast({ title: "Demo GST Invoice generated", description: "Connect NIC IRP for live e-invoicing" });
+    onRefresh();
+    setShowGstInvoice(true);
+  };
+
   const recalcBillTotals = async () => {
     if (!bill || !hospitalId) return;
     const { data: items } = await supabase
