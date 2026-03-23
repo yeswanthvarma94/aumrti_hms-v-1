@@ -158,6 +158,7 @@ const ClaimsStatus: React.FC = () => {
                     )}
                     {c.status === "rejected" && (
                       <>
+                        <Button size="sm" variant="outline" className="text-[10px] h-6" onClick={() => setAppealClaim(c)}>📝 Appeal</Button>
                         <Button size="sm" variant="outline" className="text-[10px] h-6">Resubmit</Button>
                         <Button size="sm" variant="ghost" className="text-[10px] h-6 text-destructive" onClick={() => writeOff(c)}>Write Off</Button>
                       </>
