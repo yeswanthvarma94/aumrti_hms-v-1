@@ -4,6 +4,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Printer, MessageSquare, Mail } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
+import type { BillRecord } from "@/pages/billing/BillingPage";
+import type { LineItem } from "@/components/billing/BillEditor";
 import type { BillRecord } from "@/pages/billing/BillingPage";
 import type { LineItem } from "@/components/billing/BillEditor";
 
