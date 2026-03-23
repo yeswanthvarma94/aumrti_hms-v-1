@@ -8,8 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { differenceInDays, format } from "date-fns";
-import { ClipboardList, Send, Sparkles } from "lucide-react";
+import { differenceInDays } from "date-fns";
+import { ClipboardList, Send } from "lucide-react";
 import PmjaySection from "./PmjaySection";
 
 interface PreAuth {
@@ -29,15 +29,48 @@ interface PreAuth {
 
 interface TPA { id: string; tpa_name: string; tpa_code: string; required_documents: string[]; }
 
-const PreAuthQueue: React.FC = () => {
+interface AdmissionContext {
+  admission_id: string;
+  patient_id: string;
+  patient_name: string;
+  insurance_type: string;
+}
+
+interface Props {
+  initialAdmission?: AdmissionContext | null;
+  onAdmissionHandled?: () => void;
+}
+
+const PreAuthQueue: React.FC<Props> = ({ initialAdmission, onAdmissionHandled }) => {
   const [preAuths, setPreAuths] = useState<PreAuth[]>([]);
   const [selected, setSelected] = useState<PreAuth | null>(null);
   const [tpas, setTpas] = useState<TPA[]>([]);
   const [loading, setLoading] = useState(true);
   const [formState, setFormState] = useState<any>({});
+  const [isNewForm, setIsNewForm] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => { loadData(); }, []);
+
+  // When initialAdmission arrives, open a new unsaved form
+  useEffect(() => {
+    if (initialAdmission && !loading) {
+      setSelected(null);
+      setIsNewForm(true);
+      setFormState({
+        admission_id: initialAdmission.admission_id,
+        patient_id: initialAdmission.patient_id,
+        patient_name: initialAdmission.patient_name,
+        tpa_name: initialAdmission.insurance_type === "self_pay" ? "" : (initialAdmission.insurance_type || ""),
+        policy_number: "",
+        estimated_amount: "",
+        diagnosis_codes: "",
+        procedure_codes: "",
+        notes: "",
+      });
+      onAdmissionHandled?.();
+    }
+  }, [initialAdmission, loading]);
 
   const loadData = async () => {
     setLoading(true);
@@ -66,6 +99,7 @@ const PreAuthQueue: React.FC = () => {
   };
 
   const selectPreAuth = (pa: PreAuth) => {
+    setIsNewForm(false);
     setSelected(pa);
     setFormState({
       tpa_name: pa.tpa_name,
@@ -78,6 +112,9 @@ const PreAuthQueue: React.FC = () => {
   };
 
   const handleSubmit = async () => {
+    if (isNewForm) {
+      return handleCreateAndSubmit("submitted");
+    }
     if (!selected) return;
     const { error } = await supabase.from("insurance_pre_auth").update({
       tpa_name: formState.tpa_name,
@@ -100,6 +137,9 @@ const PreAuthQueue: React.FC = () => {
   };
 
   const handleSaveDraft = async () => {
+    if (isNewForm) {
+      return handleCreateAndSubmit("draft");
+    }
     if (!selected) return;
     await supabase.from("insurance_pre_auth").update({
       tpa_name: formState.tpa_name,
@@ -112,6 +152,42 @@ const PreAuthQueue: React.FC = () => {
     }).eq("id", selected.id);
     toast({ title: "Draft saved" });
     loadData();
+  };
+
+  const handleCreateAndSubmit = async (status: string) => {
+    if (!formState.admission_id || !formState.patient_id) {
+      toast({ title: "Missing admission data", variant: "destructive" });
+      return;
+    }
+
+    // Get hospital_id
+    const { data: userData } = await supabase.from("users").select("hospital_id").eq("auth_user_id", (await supabase.auth.getUser()).data.user?.id || "").single();
+    if (!userData?.hospital_id) {
+      toast({ title: "Could not determine hospital", variant: "destructive" });
+      return;
+    }
+
+    const { error } = await supabase.from("insurance_pre_auth").insert({
+      hospital_id: userData.hospital_id,
+      admission_id: formState.admission_id,
+      patient_id: formState.patient_id,
+      tpa_name: formState.tpa_name || "Unknown",
+      policy_number: formState.policy_number || null,
+      estimated_amount: Number(formState.estimated_amount) || 0,
+      diagnosis_codes: formState.diagnosis_codes?.split(",").map((s: string) => s.trim()).filter(Boolean) || [],
+      procedure_codes: formState.procedure_codes?.split(",").map((s: string) => s.trim()).filter(Boolean) || [],
+      notes: formState.notes || null,
+      status,
+      submitted_at: status === "submitted" ? new Date().toISOString() : null,
+    });
+
+    if (!error) {
+      toast({ title: status === "submitted" ? "Pre-auth submitted successfully" : "Draft saved" });
+      setIsNewForm(false);
+      loadData();
+    } else {
+      toast({ title: "Error creating pre-auth", description: error.message, variant: "destructive" });
+    }
   };
 
   const statusColor = (s: string) => {
@@ -127,6 +203,7 @@ const PreAuthQueue: React.FC = () => {
   };
 
   const selectedTpa = tpas.find(t => t.tpa_name === formState.tpa_name);
+  const showForm = isNewForm || selected;
 
   if (loading) return <div className="flex items-center justify-center h-full text-muted-foreground text-sm">Loading...</div>;
 
@@ -139,7 +216,7 @@ const PreAuthQueue: React.FC = () => {
           <p className="text-[11px] text-muted-foreground">{preAuths.length} pending</p>
         </div>
         <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
-          {preAuths.length === 0 ? (
+          {preAuths.length === 0 && !isNewForm ? (
             <div className="text-center text-muted-foreground text-sm py-12">
               <ClipboardList size={32} className="mx-auto mb-2 opacity-40" />
               No pending pre-authorizations
@@ -150,7 +227,7 @@ const PreAuthQueue: React.FC = () => {
               onClick={() => selectPreAuth(pa)}
               className={cn(
                 "w-full text-left p-3 rounded-lg border transition-colors",
-                selected?.id === pa.id ? "bg-primary/5 border-primary" : "border-border hover:bg-muted/50"
+                selected?.id === pa.id && !isNewForm ? "bg-primary/5 border-primary" : "border-border hover:bg-muted/50"
               )}
             >
               <div className="flex justify-between items-start">
@@ -169,14 +246,16 @@ const PreAuthQueue: React.FC = () => {
 
       {/* Right: detail */}
       <div className="flex-1 overflow-y-auto p-5">
-        {!selected ? (
+        {!showForm ? (
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
             <ClipboardList size={40} className="opacity-30 mb-2" />
             <p className="text-sm">Select a pre-auth request</p>
           </div>
         ) : (
           <div className="max-w-2xl space-y-5">
-            <h3 className="text-base font-bold">Pre-Auth for {selected.patient_name}</h3>
+            <h3 className="text-base font-bold">
+              {isNewForm ? `New Pre-Auth for ${formState.patient_name}` : `Pre-Auth for ${selected?.patient_name}`}
+            </h3>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -210,7 +289,6 @@ const PreAuthQueue: React.FC = () => {
               <Input className="mt-1 w-48" type="number" value={formState.estimated_amount} onChange={e => setFormState({ ...formState, estimated_amount: e.target.value })} />
             </div>
 
-            {/* Document checklist */}
             {selectedTpa?.required_documents?.length ? (
               <div>
                 <Label className="text-[11px] uppercase text-muted-foreground font-semibold mb-2 block">Required Documents</Label>
@@ -230,7 +308,6 @@ const PreAuthQueue: React.FC = () => {
               <Textarea className="mt-1" rows={3} value={formState.notes} onChange={e => setFormState({ ...formState, notes: e.target.value })} />
             </div>
 
-            {/* PMJAY Section */}
             {formState.tpa_name?.toLowerCase().includes("pmjay") && (
               <PmjaySection onPackageSelect={(rate) => setFormState({ ...formState, estimated_amount: rate })} />
             )}
@@ -240,6 +317,9 @@ const PreAuthQueue: React.FC = () => {
                 <Send size={14} /> {formState.tpa_name?.toLowerCase().includes("pmjay") ? "Submit for PMJAY Pre-Auth" : "Submit Pre-Auth"}
               </Button>
               <Button variant="outline" onClick={handleSaveDraft}>Save Draft</Button>
+              {isNewForm && (
+                <Button variant="ghost" onClick={() => { setIsNewForm(false); setFormState({}); }}>Cancel</Button>
+              )}
             </div>
           </div>
         )}
