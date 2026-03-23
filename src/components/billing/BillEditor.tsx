@@ -195,6 +195,11 @@ const BillEditor: React.FC<Props> = ({ bill, hospitalId, onRefresh }) => {
               <FileText size={12} /> GST Invoice
             </Button>
           )}
+          {bill.balance_due > 0 && (
+            <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1" onClick={() => setShowPaymentLink(true)}>
+              <Send size={12} /> Payment Link
+            </Button>
+          )}
           <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1" onClick={() => window.print()}>
             <Printer size={12} /> Print
           </Button>
