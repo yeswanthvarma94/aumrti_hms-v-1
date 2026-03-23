@@ -60,8 +60,22 @@ const LineItemsTab: React.FC<Props> = ({ bill, hospitalId, lineItems, loading, o
       .from("service_master")
       .select("id, name, fee, category, gst_percent, hsn_code, item_type")
       .eq("hospital_id", hospitalId)
+      .eq("is_active", true)
       .ilike("name", `%${q}%`)
       .limit(10);
+    setSearchResults(data || []);
+  };
+
+  // Load all services when search opens (show initial list)
+  const loadInitialServices = async () => {
+    if (!hospitalId) return;
+    const { data } = await supabase
+      .from("service_master")
+      .select("id, name, fee, category, gst_percent, hsn_code, item_type")
+      .eq("hospital_id", hospitalId)
+      .eq("is_active", true)
+      .order("name")
+      .limit(20);
     setSearchResults(data || []);
   };
 
