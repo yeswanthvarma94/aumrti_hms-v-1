@@ -136,6 +136,93 @@ export type Database = {
           },
         ]
       }
+      advance_receipts: {
+        Row: {
+          adjusted_in_bill_id: string | null
+          admission_id: string | null
+          amount: number
+          created_at: string | null
+          hospital_id: string
+          id: string
+          is_adjusted: boolean | null
+          notes: string | null
+          patient_id: string
+          payment_date: string | null
+          payment_mode: string
+          receipt_number: string
+          received_by: string | null
+          refund_amount: number | null
+        }
+        Insert: {
+          adjusted_in_bill_id?: string | null
+          admission_id?: string | null
+          amount: number
+          created_at?: string | null
+          hospital_id: string
+          id?: string
+          is_adjusted?: boolean | null
+          notes?: string | null
+          patient_id: string
+          payment_date?: string | null
+          payment_mode: string
+          receipt_number: string
+          received_by?: string | null
+          refund_amount?: number | null
+        }
+        Update: {
+          adjusted_in_bill_id?: string | null
+          admission_id?: string | null
+          amount?: number
+          created_at?: string | null
+          hospital_id?: string
+          id?: string
+          is_adjusted?: boolean | null
+          notes?: string | null
+          patient_id?: string
+          payment_date?: string | null
+          payment_mode?: string
+          receipt_number?: string
+          received_by?: string | null
+          refund_amount?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "advance_receipts_adjusted_in_bill_id_fkey"
+            columns: ["adjusted_in_bill_id"]
+            isOneToOne: false
+            referencedRelation: "bills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "advance_receipts_admission_id_fkey"
+            columns: ["admission_id"]
+            isOneToOne: false
+            referencedRelation: "admissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "advance_receipts_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "advance_receipts_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "advance_receipts_received_by_fkey"
+            columns: ["received_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       beds: {
         Row: {
           bed_number: string
@@ -181,41 +268,321 @@ export type Database = {
           },
         ]
       }
-      bills: {
+      bill_line_items: {
         Row: {
-          bill_date: string
-          bill_number: string | null
-          created_at: string
+          bill_id: string
+          created_at: string | null
+          department: string | null
+          description: string
+          discount_amount: number | null
+          discount_percent: number | null
+          gst_amount: number | null
+          gst_percent: number | null
           hospital_id: string
+          hsn_code: string | null
           id: string
-          paid_amount: number
-          patient_id: string
-          payment_status: string
+          insurance_rate: number | null
+          is_insurance_covered: boolean | null
+          item_type: string
+          ordered_by: string | null
+          quantity: number | null
+          service_date: string | null
+          service_id: string | null
+          source_module: string | null
+          source_record_id: string | null
+          taxable_amount: number | null
           total_amount: number
+          unit: string | null
+          unit_rate: number
         }
         Insert: {
-          bill_date?: string
-          bill_number?: string | null
-          created_at?: string
+          bill_id: string
+          created_at?: string | null
+          department?: string | null
+          description: string
+          discount_amount?: number | null
+          discount_percent?: number | null
+          gst_amount?: number | null
+          gst_percent?: number | null
           hospital_id: string
+          hsn_code?: string | null
           id?: string
-          paid_amount?: number
-          patient_id: string
-          payment_status?: string
-          total_amount?: number
+          insurance_rate?: number | null
+          is_insurance_covered?: boolean | null
+          item_type?: string
+          ordered_by?: string | null
+          quantity?: number | null
+          service_date?: string | null
+          service_id?: string | null
+          source_module?: string | null
+          source_record_id?: string | null
+          taxable_amount?: number | null
+          total_amount: number
+          unit?: string | null
+          unit_rate: number
         }
         Update: {
-          bill_date?: string
-          bill_number?: string | null
-          created_at?: string
+          bill_id?: string
+          created_at?: string | null
+          department?: string | null
+          description?: string
+          discount_amount?: number | null
+          discount_percent?: number | null
+          gst_amount?: number | null
+          gst_percent?: number | null
           hospital_id?: string
+          hsn_code?: string | null
           id?: string
-          paid_amount?: number
-          patient_id?: string
-          payment_status?: string
+          insurance_rate?: number | null
+          is_insurance_covered?: boolean | null
+          item_type?: string
+          ordered_by?: string | null
+          quantity?: number | null
+          service_date?: string | null
+          service_id?: string | null
+          source_module?: string | null
+          source_record_id?: string | null
+          taxable_amount?: number | null
           total_amount?: number
+          unit?: string | null
+          unit_rate?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "bill_line_items_bill_id_fkey"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "bills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bill_line_items_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bill_line_items_ordered_by_fkey"
+            columns: ["ordered_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bill_line_items_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "service_master"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bill_payments: {
+        Row: {
+          amount: number
+          bank_reference: string | null
+          bill_id: string
+          created_at: string | null
+          gateway_reference: string | null
+          hospital_id: string
+          id: string
+          is_advance: boolean | null
+          notes: string | null
+          payment_date: string | null
+          payment_mode: string
+          payment_time: string | null
+          received_by: string | null
+          transaction_id: string | null
+        }
+        Insert: {
+          amount: number
+          bank_reference?: string | null
+          bill_id: string
+          created_at?: string | null
+          gateway_reference?: string | null
+          hospital_id: string
+          id?: string
+          is_advance?: boolean | null
+          notes?: string | null
+          payment_date?: string | null
+          payment_mode: string
+          payment_time?: string | null
+          received_by?: string | null
+          transaction_id?: string | null
+        }
+        Update: {
+          amount?: number
+          bank_reference?: string | null
+          bill_id?: string
+          created_at?: string | null
+          gateway_reference?: string | null
+          hospital_id?: string
+          id?: string
+          is_advance?: boolean | null
+          notes?: string | null
+          payment_date?: string | null
+          payment_mode?: string
+          payment_time?: string | null
+          received_by?: string | null
+          transaction_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bill_payments_bill_id_fkey"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "bills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bill_payments_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bill_payments_received_by_fkey"
+            columns: ["received_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bills: {
+        Row: {
+          admission_id: string | null
+          advance_received: number | null
+          balance_due: number | null
+          bill_date: string
+          bill_number: string
+          bill_status: string
+          bill_type: string
+          created_at: string | null
+          created_by: string | null
+          discount_amount: number | null
+          discount_approved_by: string | null
+          discount_percent: number | null
+          discount_reason: string | null
+          encounter_id: string | null
+          gst_amount: number | null
+          gstin_hospital: string | null
+          gstin_patient: string | null
+          hospital_id: string
+          id: string
+          insurance_amount: number | null
+          irn: string | null
+          irn_generated_at: string | null
+          notes: string | null
+          paid_amount: number | null
+          patient_id: string
+          patient_payable: number | null
+          payment_status: string
+          qr_code_url: string | null
+          subtotal: number | null
+          taxable_amount: number | null
+          total_amount: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          admission_id?: string | null
+          advance_received?: number | null
+          balance_due?: number | null
+          bill_date?: string
+          bill_number: string
+          bill_status?: string
+          bill_type?: string
+          created_at?: string | null
+          created_by?: string | null
+          discount_amount?: number | null
+          discount_approved_by?: string | null
+          discount_percent?: number | null
+          discount_reason?: string | null
+          encounter_id?: string | null
+          gst_amount?: number | null
+          gstin_hospital?: string | null
+          gstin_patient?: string | null
+          hospital_id: string
+          id?: string
+          insurance_amount?: number | null
+          irn?: string | null
+          irn_generated_at?: string | null
+          notes?: string | null
+          paid_amount?: number | null
+          patient_id: string
+          patient_payable?: number | null
+          payment_status?: string
+          qr_code_url?: string | null
+          subtotal?: number | null
+          taxable_amount?: number | null
+          total_amount?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          admission_id?: string | null
+          advance_received?: number | null
+          balance_due?: number | null
+          bill_date?: string
+          bill_number?: string
+          bill_status?: string
+          bill_type?: string
+          created_at?: string | null
+          created_by?: string | null
+          discount_amount?: number | null
+          discount_approved_by?: string | null
+          discount_percent?: number | null
+          discount_reason?: string | null
+          encounter_id?: string | null
+          gst_amount?: number | null
+          gstin_hospital?: string | null
+          gstin_patient?: string | null
+          hospital_id?: string
+          id?: string
+          insurance_amount?: number | null
+          irn?: string | null
+          irn_generated_at?: string | null
+          notes?: string | null
+          paid_amount?: number | null
+          patient_id?: string
+          patient_payable?: number | null
+          payment_status?: string
+          qr_code_url?: string | null
+          subtotal?: number | null
+          taxable_amount?: number | null
+          total_amount?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bills_admission_id_fkey"
+            columns: ["admission_id"]
+            isOneToOne: false
+            referencedRelation: "admissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bills_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bills_discount_approved_by_fkey"
+            columns: ["discount_approved_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bills_encounter_id_fkey"
+            columns: ["encounter_id"]
+            isOneToOne: false
+            referencedRelation: "opd_encounters"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "bills_hospital_id_fkey"
             columns: ["hospital_id"]
@@ -381,6 +748,80 @@ export type Database = {
             columns: ["hospital_id"]
             isOneToOne: false
             referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      discount_approvals: {
+        Row: {
+          approved_by: string | null
+          bill_id: string
+          discount_amount: number
+          discount_percent: number
+          hospital_id: string
+          id: string
+          reason: string
+          remarks: string | null
+          requested_at: string | null
+          requested_by: string
+          responded_at: string | null
+          status: string
+        }
+        Insert: {
+          approved_by?: string | null
+          bill_id: string
+          discount_amount: number
+          discount_percent: number
+          hospital_id: string
+          id?: string
+          reason: string
+          remarks?: string | null
+          requested_at?: string | null
+          requested_by: string
+          responded_at?: string | null
+          status?: string
+        }
+        Update: {
+          approved_by?: string | null
+          bill_id?: string
+          discount_amount?: number
+          discount_percent?: number
+          hospital_id?: string
+          id?: string
+          reason?: string
+          remarks?: string | null
+          requested_at?: string | null
+          requested_by?: string
+          responded_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "discount_approvals_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "discount_approvals_bill_id_fkey"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "bills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "discount_approvals_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "discount_approvals_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -2743,9 +3184,12 @@ export type Database = {
           fee: number
           follow_up_fee: number | null
           gst_applicable: boolean
+          gst_percent: number | null
           hospital_id: string
+          hsn_code: string | null
           id: string
           is_active: boolean
+          item_type: string | null
           name: string
         }
         Insert: {
@@ -2754,9 +3198,12 @@ export type Database = {
           fee?: number
           follow_up_fee?: number | null
           gst_applicable?: boolean
+          gst_percent?: number | null
           hospital_id: string
+          hsn_code?: string | null
           id?: string
           is_active?: boolean
+          item_type?: string | null
           name: string
         }
         Update: {
@@ -2765,9 +3212,12 @@ export type Database = {
           fee?: number
           follow_up_fee?: number | null
           gst_applicable?: boolean
+          gst_percent?: number | null
           hospital_id?: string
+          hsn_code?: string | null
           id?: string
           is_active?: boolean
+          item_type?: string | null
           name?: string
         }
         Relationships: [
