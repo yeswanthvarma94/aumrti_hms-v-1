@@ -54,6 +54,14 @@ const BillEditor: React.FC<Props> = ({ bill, hospitalId, onRefresh }) => {
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
   const [loadingItems, setLoadingItems] = useState(false);
+  const [showGstInvoice, setShowGstInvoice] = useState(false);
+  const [hospitalInfo, setHospitalInfo] = useState<any>(null);
+
+  useEffect(() => {
+    if (!hospitalId) return;
+    supabase.from("hospitals").select("name, gstin, address").eq("id", hospitalId).maybeSingle()
+      .then(({ data }) => setHospitalInfo(data));
+  }, [hospitalId]);
 
   const fetchLineItems = useCallback(async () => {
     if (!bill) return;
