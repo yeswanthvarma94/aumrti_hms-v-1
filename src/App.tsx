@@ -18,6 +18,7 @@ import LabPage from "./pages/lab/LabPage";
 import RadiologyPage from "./pages/radiology/RadiologyPage";
 import IPDPage from "./pages/ipd/IPDPage";
 import EmergencyPage from "./pages/emergency/EmergencyPage";
+import InsurancePage from "./pages/insurance/InsurancePage";
 import PatientsPage from "./pages/patients/PatientsPage";
 import NursingPage from "./pages/nursing/NursingPage";
 import SettingsPage from "./pages/settings/SettingsPage";
@@ -59,7 +60,7 @@ const App = () => (
             <Route path="/radiology" element={<RadiologyPage />} />
             <Route path="/pharmacy" element={<PharmacyPage />} />
             <Route path="/billing" element={<BillingPage />} />
-            <Route path="/insurance" element={<ComingSoon />} />
+            <Route path="/insurance" element={<InsurancePage />} />
             <Route path="/payments" element={<ComingSoon />} />
             <Route path="/hr" element={<ComingSoon />} />
             <Route path="/inventory" element={<ComingSoon />} />
