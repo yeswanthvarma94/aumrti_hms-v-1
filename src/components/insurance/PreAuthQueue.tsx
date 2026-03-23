@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn } from "@/lib/utils";
 import { differenceInDays, format } from "date-fns";
 import { ClipboardList, Send, Sparkles } from "lucide-react";
+import PmjaySection from "./PmjaySection";
 
 interface PreAuth {
   id: string;
