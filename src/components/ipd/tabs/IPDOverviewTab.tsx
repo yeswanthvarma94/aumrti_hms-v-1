@@ -11,9 +11,17 @@ interface Props {
 }
 
 const IPDOverviewTab: React.FC<Props> = ({ admissionId, hospitalId, onTabChange }) => {
+  const navigate = useNavigate();
   const [latestVitals, setLatestVitals] = useState<any>(null);
   const [medications, setMedications] = useState<any[]>([]);
   const [vitalsTime, setVitalsTime] = useState<string>("");
+  const [billingCleared, setBillingCleared] = useState(false);
+
+  useEffect(() => {
+    if (!admissionId) return;
+    supabase.from("admissions").select("billing_cleared").eq("id", admissionId).maybeSingle()
+      .then(({ data }) => setBillingCleared(data?.billing_cleared || false));
+  }, [admissionId]);
 
   useEffect(() => {
     if (!admissionId || !hospitalId) return;
