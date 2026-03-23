@@ -8,6 +8,7 @@ import { Plus, X, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { BillRecord } from "@/pages/billing/BillingPage";
 import type { LineItem } from "@/components/billing/BillEditor";
+import LeakageScanner from "@/components/billing/LeakageScanner";
 
 function numberToWords(n: number): string {
   if (n === 0) return "Zero";
