@@ -188,6 +188,11 @@ const BillEditor: React.FC<Props> = ({ bill, hospitalId, onRefresh }) => {
           {bill.bill_status === "draft" && (
             <Button size="sm" className="h-7 text-[11px]" onClick={handleFinalize}>Finalise Bill</Button>
           )}
+          {bill.bill_status === "final" && bill.gst_amount > 0 && (
+            <Button size="sm" className="h-7 text-[11px] gap-1 bg-emerald-700 hover:bg-emerald-800 text-white" onClick={handleGenerateGST}>
+              <FileText size={12} /> GST Invoice
+            </Button>
+          )}
           <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1" onClick={() => window.print()}>
             <Printer size={12} /> Print
           </Button>
