@@ -20,7 +20,11 @@ interface AdmissionRow {
   pre_auth_approved: number | null;
 }
 
-const ActiveAdmissions: React.FC = () => {
+interface Props {
+  onNavigate?: (nav: string) => void;
+}
+
+const ActiveAdmissions: React.FC<Props> = ({ onNavigate }) => {
   const [rows, setRows] = useState<AdmissionRow[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
