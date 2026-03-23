@@ -118,20 +118,35 @@ const IPDOverviewTab: React.FC<Props> = ({ admissionId, hospitalId, onTabChange 
             <CheckCircle2 className="h-4 w-4 text-slate-400" />
             <span className="text-[13px] font-bold text-slate-900">Discharge Progress</span>
           </div>
-          <div className="flex-1 flex items-center">
+          <div className="flex-1 flex flex-col items-center justify-center gap-2">
             <div className="flex items-center gap-1 w-full">
-              {["Medical", "Billing", "Pharmacy", "Summary"].map((step, i) => (
-                <React.Fragment key={step}>
-                  <div className="flex flex-col items-center">
-                    <div className="w-5 h-5 rounded-full border-2 border-slate-300 flex items-center justify-center">
-                      <span className="text-[8px] text-slate-400">{i + 1}</span>
+              {["Medical", "Billing", "Pharmacy", "Summary"].map((step, i) => {
+                const isCompleted = i === 1 ? billingCleared : false;
+                return (
+                  <React.Fragment key={step}>
+                    <div className="flex flex-col items-center">
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${isCompleted ? 'border-emerald-500 bg-emerald-50' : 'border-slate-300'}`}>
+                        <span className={`text-[8px] ${isCompleted ? 'text-emerald-600 font-bold' : 'text-slate-400'}`}>
+                          {isCompleted ? '✓' : i + 1}
+                        </span>
+                      </div>
+                      <span className="text-[9px] text-slate-400 mt-1">{step}</span>
                     </div>
-                    <span className="text-[9px] text-slate-400 mt-1">{step}</span>
-                  </div>
-                  {i < 3 && <div className="flex-1 h-px bg-slate-200 mb-4" />}
-                </React.Fragment>
-              ))}
+                    {i < 3 && <div className="flex-1 h-px bg-slate-200 mb-4" />}
+                  </React.Fragment>
+                );
+              })}
             </div>
+            {!billingCleared && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-[10px] h-6 w-full mt-1 border-amber-300 text-amber-700 hover:bg-amber-50"
+                onClick={() => navigate(`/billing?action=new&admission_id=${admissionId}&type=ipd`)}
+              >
+                Clear Billing →
+              </Button>
+            )}
           </div>
         </div>
       </div>

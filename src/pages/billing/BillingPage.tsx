@@ -35,6 +35,7 @@ export interface BillRecord {
 
 const BillingPage: React.FC = () => {
   const { toast } = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [hospitalId, setHospitalId] = useState<string | null>(null);
   const [bills, setBills] = useState<BillRecord[]>([]);
   const [selectedBillId, setSelectedBillId] = useState<string | null>(null);
@@ -43,6 +44,7 @@ const BillingPage: React.FC = () => {
   const [showAdvance, setShowAdvance] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("today");
+  const [dischargeBillCreated, setDischargeBillCreated] = useState(false);
 
   useEffect(() => {
     const loadHospital = async () => {
@@ -57,6 +59,181 @@ const BillingPage: React.FC = () => {
     };
     loadHospital();
   }, []);
+
+  // Handle discharge billing URL params: /billing?action=new&admission_id=X&type=ipd
+  useEffect(() => {
+    if (!hospitalId || dischargeBillCreated) return;
+    const action = searchParams.get("action");
+    const admissionId = searchParams.get("admission_id");
+    const billType = searchParams.get("type");
+    if (action === "new" && admissionId && billType === "ipd") {
+      createDischargeBill(admissionId);
+    }
+  }, [hospitalId, searchParams, dischargeBillCreated]);
+
+  const createDischargeBill = async (admissionId: string) => {
+    if (!hospitalId) return;
+    setDischargeBillCreated(true);
+
+    // Check if bill already exists for this admission
+    const { data: existing } = await supabase
+      .from("bills")
+      .select("id")
+      .eq("hospital_id", hospitalId)
+      .eq("admission_id", admissionId)
+      .limit(1);
+
+    if (existing && existing.length > 0) {
+      // Select existing bill
+      await fetchBills();
+      setSelectedBillId(existing[0].id);
+      setSearchParams({});
+      return;
+    }
+
+    // Get admission + patient info
+    const { data: admission } = await supabase
+      .from("admissions")
+      .select("*, patients(id, full_name, uhid)")
+      .eq("id", admissionId)
+      .maybeSingle();
+
+    if (!admission) return;
+
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data: userData } = await supabase.from("users").select("id")
+      .eq("auth_user_id", user?.id || "").maybeSingle();
+
+    const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+    const { count } = await supabase.from("bills").select("id", { count: "exact", head: true }).eq("hospital_id", hospitalId);
+    const seq = String((count ?? 0) + 1).padStart(4, "0");
+    const billNumber = `BILL-${dateStr}-${seq}`;
+
+    const { data: newBill, error } = await supabase.from("bills").insert({
+      hospital_id: hospitalId,
+      bill_number: billNumber,
+      patient_id: admission.patient_id,
+      admission_id: admissionId,
+      bill_type: "ipd",
+      bill_status: "draft",
+      created_by: userData?.id || null,
+    }).select("id").single();
+
+    if (error || !newBill) {
+      toast({ title: "Error creating discharge bill", variant: "destructive" });
+      return;
+    }
+
+    // Auto-pull charges for this admission
+    await autoPullAdmissionCharges(newBill.id, admissionId);
+
+    toast({ title: `IPD Discharge Bill #${billNumber} created with auto-pulled charges` });
+    await fetchBills();
+    setSelectedBillId(newBill.id);
+    setSearchParams({});
+  };
+
+  const autoPullAdmissionCharges = async (billId: string, admissionId: string) => {
+    if (!hospitalId) return;
+    const items: any[] = [];
+
+    // Lab charges
+    const { data: labOrders } = await supabase
+      .from("lab_orders")
+      .select("id")
+      .eq("hospital_id", hospitalId)
+      .eq("admission_id", admissionId);
+
+    if (labOrders?.length) {
+      const orderIds = labOrders.map((o) => o.id);
+      const { data: labItems } = await supabase
+        .from("lab_order_items")
+        .select("*, lab_test_master(test_name)")
+        .in("lab_order_id", orderIds);
+
+      (labItems || []).forEach((li: any) => {
+        items.push({
+          hospital_id: hospitalId, bill_id: billId,
+          item_type: "lab", description: `Lab: ${li.lab_test_master?.test_name || "Test"}`,
+          quantity: 1, unit_rate: 200, taxable_amount: 200,
+          gst_percent: 12, gst_amount: 24, total_amount: 224,
+          hsn_code: "998931", source_module: "lab",
+        });
+      });
+    }
+
+    // Radiology charges
+    const { data: radOrders } = await supabase
+      .from("radiology_orders")
+      .select("study_name, accession_number")
+      .eq("hospital_id", hospitalId)
+      .eq("admission_id", admissionId);
+
+    (radOrders || []).forEach((ro: any) => {
+      items.push({
+        hospital_id: hospitalId, bill_id: billId,
+        item_type: "radiology", description: `Radiology: ${ro.study_name}`,
+        quantity: 1, unit_rate: 500, taxable_amount: 500,
+        gst_percent: 12, gst_amount: 60, total_amount: 560,
+        hsn_code: "998921", source_module: "radiology",
+      });
+    });
+
+    // Pharmacy IP dispenses
+    const { data: pharma } = await supabase
+      .from("pharmacy_dispensing")
+      .select("*, pharmacy_dispensing_items(*)")
+      .eq("hospital_id", hospitalId)
+      .eq("admission_id", admissionId)
+      .eq("dispensing_type", "ip");
+
+    (pharma || []).forEach((pd: any) => {
+      ((pd as any).pharmacy_dispensing_items || []).forEach((item: any) => {
+        const total = Number(item.unit_price) * Number(item.quantity_dispensed);
+        items.push({
+          hospital_id: hospitalId, bill_id: billId,
+          item_type: "pharmacy", description: `Pharmacy: ${item.drug_name}`,
+          quantity: Number(item.quantity_dispensed), unit_rate: Number(item.unit_price),
+          taxable_amount: total, gst_percent: 12, gst_amount: total * 0.12,
+          total_amount: total * 1.12, source_module: "pharmacy",
+        });
+      });
+    });
+
+    // Room charges
+    const { data: admission } = await supabase
+      .from("admissions")
+      .select("admitted_at, discharged_at, wards(name), beds(bed_number)")
+      .eq("id", admissionId)
+      .maybeSingle();
+
+    if (admission) {
+      const admitDate = new Date(admission.admitted_at || Date.now());
+      const dischDate = admission.discharged_at ? new Date(admission.discharged_at) : new Date();
+      const days = Math.max(1, Math.ceil((dischDate.getTime() - admitDate.getTime()) / 86400000));
+      const wardName = (admission as any).wards?.name || "Ward";
+      const bedNum = (admission as any).beds?.bed_number || "";
+      items.push({
+        hospital_id: hospitalId, bill_id: billId,
+        item_type: "room_charge", description: `Room: ${wardName} - Bed ${bedNum} (${days} days)`,
+        quantity: days, unit_rate: 500, taxable_amount: days * 500,
+        gst_percent: 0, gst_amount: 0, total_amount: days * 500,
+        hsn_code: "999272", source_module: "ipd",
+      });
+    }
+
+    if (items.length > 0) {
+      await supabase.from("bill_line_items").insert(items);
+      // Recalc totals
+      const subtotal = items.reduce((s, i) => s + (i.taxable_amount || 0), 0);
+      const gst = items.reduce((s, i) => s + (i.gst_amount || 0), 0);
+      await supabase.from("bills").update({
+        subtotal, gst_amount: gst, total_amount: subtotal + gst,
+        taxable_amount: subtotal, patient_payable: subtotal + gst,
+        balance_due: subtotal + gst,
+      }).eq("id", billId);
+    }
+  };
 
   const fetchBills = useCallback(async () => {
     if (!hospitalId) return;
