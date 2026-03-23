@@ -116,7 +116,7 @@ const LineItemsTab: React.FC<Props> = ({ bill, hospitalId, lineItems, loading, o
 
   const addCustomItem = async (desc: string) => {
     if (!hospitalId || !desc) return;
-    await supabase.from("bill_line_items").insert({
+    const { error } = await supabase.from("bill_line_items").insert({
       hospital_id: hospitalId,
       bill_id: bill.id,
       item_type: "other",
@@ -128,6 +128,10 @@ const LineItemsTab: React.FC<Props> = ({ bill, hospitalId, lineItems, loading, o
       gst_amount: 0,
       total_amount: 0,
     });
+    if (error) {
+      toast({ title: "Failed to add item", description: error.message, variant: "destructive" });
+      return;
+    }
     setShowSearch(false);
     setServiceSearch("");
     onRefresh();
