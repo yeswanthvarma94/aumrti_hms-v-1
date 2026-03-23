@@ -96,7 +96,7 @@ const navGroups: NavGroup[] = [
     path: "/billing",
     subItems: [
       { label: "Billing", path: "/billing", icon: Receipt, subtitle: "Patient billing" },
-      { label: "Insurance", path: "/insurance", icon: Shield, subtitle: "TPA & claims", comingSoon: true },
+      { label: "Insurance", path: "/insurance", icon: Shield, subtitle: "TPA & claims" },
       { label: "Payments", path: "/payments", icon: CreditCard, subtitle: "Collections & receipts", comingSoon: true },
     ],
   },
