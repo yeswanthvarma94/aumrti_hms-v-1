@@ -56,6 +56,7 @@ const BillEditor: React.FC<Props> = ({ bill, hospitalId, onRefresh }) => {
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
   const [loadingItems, setLoadingItems] = useState(false);
   const [showGstInvoice, setShowGstInvoice] = useState(false);
+  const [showPaymentLink, setShowPaymentLink] = useState(false);
   const [hospitalInfo, setHospitalInfo] = useState<any>(null);
 
   useEffect(() => {
