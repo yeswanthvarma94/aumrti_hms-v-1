@@ -170,6 +170,12 @@ const ClaimsStatus: React.FC = () => {
           </TableBody>
         </Table>
       </div>
+
+      <AppealLetterModal
+        open={!!appealClaim}
+        onOpenChange={(open) => !open && setAppealClaim(null)}
+        claim={appealClaim}
+      />
     </div>
   );
 };
