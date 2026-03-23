@@ -246,6 +246,15 @@ const BillEditor: React.FC<Props> = ({ bill, hospitalId, onRefresh }) => {
           onClose={() => setShowGstInvoice(false)}
         />
       )}
+      {showPaymentLink && hospitalInfo && (
+        <PaymentLinkModal
+          bill={bill}
+          hospitalName={hospitalInfo.name || "Hospital"}
+          hospitalPhone=""
+          razorpayConfigured={!!hospitalInfo.razorpay_key_id}
+          onClose={() => setShowPaymentLink(false)}
+        />
+      )}
     </div>
   );
 };
