@@ -51,7 +51,7 @@ const InsurancePage: React.FC = () => {
 
   const renderContent = () => {
     switch (activeNav) {
-      case "admissions": return <ActiveAdmissions />;
+      case "admissions": return <ActiveAdmissions onNavigate={(nav: string) => setActiveNav(nav)} />;
       case "preauth": return <PreAuthQueue />;
       case "submit": return <ClaimsToSubmit />;
       case "status": return <ClaimsStatus />;

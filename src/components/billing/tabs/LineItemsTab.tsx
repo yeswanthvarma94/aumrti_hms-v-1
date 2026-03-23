@@ -60,8 +60,22 @@ const LineItemsTab: React.FC<Props> = ({ bill, hospitalId, lineItems, loading, o
       .from("service_master")
       .select("id, name, fee, category, gst_percent, hsn_code, item_type")
       .eq("hospital_id", hospitalId)
+      .eq("is_active", true)
       .ilike("name", `%${q}%`)
       .limit(10);
+    setSearchResults(data || []);
+  };
+
+  // Load all services when search opens (show initial list)
+  const loadInitialServices = async () => {
+    if (!hospitalId) return;
+    const { data } = await supabase
+      .from("service_master")
+      .select("id, name, fee, category, gst_percent, hsn_code, item_type")
+      .eq("hospital_id", hospitalId)
+      .eq("is_active", true)
+      .order("name")
+      .limit(20);
     setSearchResults(data || []);
   };
 
@@ -249,17 +263,28 @@ const LineItemsTab: React.FC<Props> = ({ bill, hospitalId, lineItems, loading, o
                     ))}
                   </div>
                 )}
-                {serviceSearch && searchResults.length === 0 && (
-                  <Button variant="outline" size="sm" onClick={() => addCustomItem(serviceSearch)}>
-                    + Add as custom item: "{serviceSearch}"
-                  </Button>
+                {searchResults.length === 0 && (
+                  <div className="text-xs text-muted-foreground py-2">
+                    {serviceSearch ? (
+                      <Button variant="outline" size="sm" onClick={() => addCustomItem(serviceSearch)}>
+                        + Add as custom item: "{serviceSearch}"
+                      </Button>
+                    ) : (
+                      <span>No services found. Type to add a custom item, or seed services in Settings → Services.</span>
+                    )}
+                  </div>
                 )}
-                <Button variant="ghost" size="sm" onClick={() => { setShowSearch(false); setServiceSearch(""); }}>
-                  Cancel
-                </Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" className="text-[11px]" onClick={() => addCustomItem("Custom Charge")}>
+                    + Custom Item
+                  </Button>
+                  <Button variant="ghost" size="sm" className="text-[11px]" onClick={() => { setShowSearch(false); setServiceSearch(""); setSearchResults([]); }}>
+                    Cancel
+                  </Button>
+                </div>
               </div>
             ) : (
-              <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={() => setShowSearch(true)}>
+              <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={() => { setShowSearch(true); loadInitialServices(); }}>
                 <Plus size={14} /> Add Service
               </Button>
             )}

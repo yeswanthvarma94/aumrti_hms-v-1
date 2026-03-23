@@ -20,7 +20,11 @@ interface AdmissionRow {
   pre_auth_approved: number | null;
 }
 
-const ActiveAdmissions: React.FC = () => {
+interface Props {
+  onNavigate?: (nav: string) => void;
+}
+
+const ActiveAdmissions: React.FC<Props> = ({ onNavigate }) => {
   const [rows, setRows] = useState<AdmissionRow[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -116,7 +120,7 @@ const ActiveAdmissions: React.FC = () => {
                   <TableCell className={cn("text-xs font-medium tabular-nums", days > 45 ? "text-destructive" : "")}>{days}</TableCell>
                   <TableCell>
                     {!r.pre_auth_status ? (
-                      <Button size="sm" variant="outline" className="text-[11px] h-7" onClick={() => toast({ title: "Navigate to Pre-Auth Queue to create" })}>
+                      <Button size="sm" variant="outline" className="text-[11px] h-7" onClick={() => onNavigate?.("preauth")}>
                         Request Pre-Auth
                       </Button>
                     ) : (
