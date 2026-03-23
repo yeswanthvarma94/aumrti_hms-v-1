@@ -2,13 +2,14 @@ import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { Receipt, Printer, MessageSquare } from "lucide-react";
+import { Receipt, Printer, MessageSquare, FileText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import LineItemsTab from "@/components/billing/tabs/LineItemsTab";
 import PaymentsTab from "@/components/billing/tabs/PaymentsTab";
 import InsuranceTab from "@/components/billing/tabs/InsuranceTab";
+import GSTInvoiceModal from "@/components/billing/GSTInvoiceModal";
 import type { BillRecord } from "@/pages/billing/BillingPage";
 
 export interface LineItem {
@@ -53,6 +54,14 @@ const BillEditor: React.FC<Props> = ({ bill, hospitalId, onRefresh }) => {
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
   const [loadingItems, setLoadingItems] = useState(false);
+  const [showGstInvoice, setShowGstInvoice] = useState(false);
+  const [hospitalInfo, setHospitalInfo] = useState<any>(null);
+
+  useEffect(() => {
+    if (!hospitalId) return;
+    supabase.from("hospitals").select("name, gstin, address").eq("id", hospitalId).maybeSingle()
+      .then(({ data }) => setHospitalInfo(data));
+  }, [hospitalId]);
 
   const fetchLineItems = useCallback(async () => {
     if (!bill) return;
@@ -114,6 +123,18 @@ const BillEditor: React.FC<Props> = ({ bill, hospitalId, onRefresh }) => {
     onRefresh();
   };
 
+  const handleGenerateGST = async () => {
+    if (!bill) return;
+    const simulatedIRN = `DEMO-${Date.now()}-${bill.bill_number}`;
+    await supabase.from("bills").update({
+      irn: simulatedIRN,
+      irn_generated_at: new Date().toISOString(),
+    }).eq("id", bill.id);
+    toast({ title: "Demo GST Invoice generated", description: "Connect NIC IRP for live e-invoicing" });
+    onRefresh();
+    setShowGstInvoice(true);
+  };
+
   const recalcBillTotals = async () => {
     if (!bill || !hospitalId) return;
     const { data: items } = await supabase
@@ -167,6 +188,11 @@ const BillEditor: React.FC<Props> = ({ bill, hospitalId, onRefresh }) => {
           {bill.bill_status === "draft" && (
             <Button size="sm" className="h-7 text-[11px]" onClick={handleFinalize}>Finalise Bill</Button>
           )}
+          {bill.bill_status === "final" && bill.gst_amount > 0 && (
+            <Button size="sm" className="h-7 text-[11px] gap-1 bg-emerald-700 hover:bg-emerald-800 text-white" onClick={handleGenerateGST}>
+              <FileText size={12} /> GST Invoice
+            </Button>
+          )}
           <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1" onClick={() => window.print()}>
             <Printer size={12} /> Print
           </Button>
@@ -201,6 +227,18 @@ const BillEditor: React.FC<Props> = ({ bill, hospitalId, onRefresh }) => {
           <InsuranceTab bill={bill} hospitalId={hospitalId} onRefresh={onRefresh} />
         </TabsContent>
       </Tabs>
+
+      {showGstInvoice && hospitalInfo && (
+        <GSTInvoiceModal
+          bill={bill}
+          lineItems={lineItems}
+          hospitalName={hospitalInfo.name || "Hospital"}
+          hospitalGstin={hospitalInfo.gstin || ""}
+          hospitalAddress={hospitalInfo.address || ""}
+          irn={bill.notes || `DEMO-${bill.bill_number}`}
+          onClose={() => setShowGstInvoice(false)}
+        />
+      )}
     </div>
   );
 };
