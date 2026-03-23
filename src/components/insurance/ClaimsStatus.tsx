@@ -28,6 +28,7 @@ const ClaimsStatus: React.FC = () => {
   const [claims, setClaims] = useState<Claim[]>([]);
   const [filter, setFilter] = useState("all");
   const [loading, setLoading] = useState(true);
+  const [appealClaim, setAppealClaim] = useState<Claim | null>(null);
   const { toast } = useToast();
 
   useEffect(() => { loadData(); }, [filter]);
