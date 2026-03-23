@@ -142,6 +142,22 @@ const GSTInvoiceModal: React.FC<Props> = ({
             </p>
             <p className="text-[10px] text-muted-foreground mt-2">Computer generated invoice — no signature required</p>
           </div>
+
+          {/* UPI QR Code */}
+          {bill.balance_due > 0 && (
+            <div className="px-4 py-3 border-t border-border flex items-center gap-4">
+              <QRCodeSVG
+                value={`upi://pay?pa=hospital@upi&pn=${encodeURIComponent(hospitalName)}&am=${bill.balance_due}&cu=INR&tn=Bill-${bill.bill_number}`}
+                size={80}
+                level="M"
+              />
+              <div>
+                <p className="text-xs font-bold text-foreground">Pay via UPI</p>
+                <p className="text-[11px] text-muted-foreground">Scan & pay ₹{bill.balance_due.toLocaleString("en-IN")}</p>
+                <p className="text-[10px] font-mono text-muted-foreground mt-1">UPI ID: hospital@upi</p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Actions */}
