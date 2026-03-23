@@ -1,57 +1,79 @@
 
 
-## Patient Registration Page — `/patients`
+# Billing Module — /billing
 
-### What We're Building
-A dedicated Patient Registration page positioned in the sidebar between Dashboard and Clinical, providing a full-featured patient management view with search, registration, and patient list.
+## Overview
+Build a unified billing module that pulls charges from OPD, Lab, Radiology, Pharmacy, and IPD into one patient bill. Supports split payments, discount approval workflow, advance receipts, and insurance tagging.
 
-### Sidebar Change
-Add a new top-level nav item **"Patients"** with `UserPlus` icon at index 1 (after Dashboard, before Clinical) in `AppSidebar.tsx`.
+## Step 1: Database Migration
 
-### Route
-`/patients` inside `AppShell` routes in `App.tsx`.
+**DROP and recreate `bills` table** (current table is minimal with only basic columns). Create new tables:
 
-### Page Layout — Single Full Page
-Height: `calc(100vh - 56px)`, no page scroll.
+- **bills** — Full schema with bill_type, bill_status, subtotal, discount fields, GST, advance, insurance, patient_payable, balance_due, created_by, etc.
+- **bill_line_items** — Individual charges with item_type, quantity, rates, GST, HSN, source_module tracking, insurance coverage flag
+- **bill_payments** — Split payment support with multiple modes (cash/upi/card/insurance/pmjay/advance_adjust)
+- **advance_receipts** — Pre-bill advance collection with receipt numbers
+- **discount_approvals** — Approval workflow for discounts above threshold
 
-**Header Bar (56px):**
-- Left: "Patient Registry" title + total patient count badge
-- Right: `[+ Register New Patient]` primary button → opens registration modal
+**ALTER service_master** — Add `hsn_code text`, `gst_percent numeric(5,2) default 0`, `item_type text default 'service'`
 
-**Search & Filter Bar (48px):**
-- Search input (by name, phone, UHID) with debounced query
-- Filter pills: All | Today | This Week | This Month
+**Seed** default service rates (consultation, room charges, procedures, radiology, nursing) and 3 sample bills for testing.
 
-**Patient Table (fills remaining height, internally scrollable):**
-- Columns: UHID | Name | Age/Gender | Phone | Blood Group | Last Visit | Actions
-- Rows fetched from `patients` table, sorted by `created_at DESC`
-- Click row → expands inline or opens detail drawer showing demographics, allergies, chronic conditions, visit history
-- Actions column: View, Edit (inline modal)
-- Empty state if no patients
+RLS on all new tables: `hospital_id = get_user_hospital_id()`
 
-**Registration Modal (reuse pattern from WalkInModal):**
-- Full patient form: Name, Phone, Age, Gender, DOB, Blood Group, Address, Allergies, Chronic Conditions, Insurance ID, ABHA ID, Emergency Contact
-- Auto-generates UHID on submit
-- Inserts into `patients` table
-- Toast on success, refreshes list
+## Step 2: UI Components
 
-### Technical Details
+### BillingPage (`src/pages/billing/BillingPage.tsx`)
+- 2-panel layout: 320px left queue + flex:1 right editor
+- Zero scroll, calc(100vh - 56px)
 
-**Files to create:**
-1. `src/pages/patients/PatientsPage.tsx` — main page with search, table, modal state
-2. `src/components/patients/PatientRegistrationModal.tsx` — full registration form
-3. `src/components/patients/PatientDetailDrawer.tsx` — slide-out panel for patient details + visit history
+### Left Panel — Bill Queue (`src/components/billing/BillQueue.tsx`)
+- Header with filter tabs (All/Draft/Unpaid/Partial/Insurance/Today)
+- Stats bar (today's collection, pending amount, bill count)
+- Date filter pills (Today/Yesterday/This Week/This Month)
+- Bill cards with left-border color by payment_status, bill number, patient name, amount, balance due
+- Footer with Advance Receipt button
 
-**Files to edit:**
-1. `src/App.tsx` — add `/patients` route inside AppShell
-2. `src/components/layout/AppSidebar.tsx` — add "Patients" nav item between Dashboard and Clinical (line 46-47)
-3. `src/components/layout/MobileTabBar.tsx` — no change needed (keep existing tabs)
+### Center Panel — Bill Editor (`src/components/billing/BillEditor.tsx`)
+- Empty state when no bill selected
+- Bill header: patient info, bill number, status badge, action buttons by status
+- 3-tab strip: Line Items | Payments | Insurance
 
-**Queries:**
-- Patient list: `SELECT * FROM patients WHERE hospital_id = [current] ORDER BY created_at DESC`
-- Search: `WHERE full_name ILIKE '%q%' OR phone ILIKE '%q%' OR uhid ILIKE '%q%'`
-- Visit history: `SELECT * FROM opd_encounters WHERE patient_id = [id] ORDER BY visit_date DESC LIMIT 5`
-- Today filter: `WHERE created_at::date = CURRENT_DATE`
+### Line Items Tab (`src/components/billing/tabs/LineItemsTab.tsx`)
+- Auto-pull banner showing source modules
+- Editable table: description, qty, rate, disc%, GST%, amount, delete
+- Add Service search from service_master with category quick-add buttons
+- Bill totals section: subtotal, discount (with approval workflow), GST breakdown, advance/insurance deductions, patient payable, balance due
+- Number-to-words for total amount
 
-**No new tables needed** — uses existing `patients` table which already has all required columns.
+### Payments Tab (`src/components/billing/tabs/PaymentsTab.tsx`)
+- Split payment form: multiple rows with mode dropdown + amount + reference
+- Payment history table
+- Advance adjustment banner
+
+### Insurance Tab (`src/components/billing/tabs/InsuranceTab.tsx`)
+- TPA/insurer details, policy number, pre-auth
+- Coverage type toggle (cashless/reimbursement)
+- PMJAY section
+
+### New Bill Modal (`src/components/billing/NewBillModal.tsx`)
+- Patient search, bill type selection, encounter/admission linking
+- Auto-pull charges on creation
+- Generate bill number: BILL-{YYYYMMDD}-{seq}
+
+### Advance Receipt Modal (`src/components/billing/AdvanceReceiptModal.tsx`)
+- Patient search, amount, payment mode
+- Generate receipt: ADV-{YYYYMMDD}-{seq}
+
+## Step 3: Routing & Sidebar
+
+- Add `/billing` route in App.tsx pointing to BillingPage
+- Update AppSidebar: remove `comingSoon` from Finance/Billing, keep Insurance and Payments as coming soon
+- Update Finance sub-menu: Billing → /billing, Insurance → still coming soon, Payments → still coming soon
+
+## Technical Notes
+- Auto-pull logic runs on bill creation when encounter_id or admission_id is provided — queries lab_orders, radiology_orders, pharmacy_dispensing, admissions for linked charges
+- All amounts computed client-side with live recalculation on edits
+- WhatsApp bill sharing via wa.me link
+- Print uses browser print dialog with @media print styles
 
