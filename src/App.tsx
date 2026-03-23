@@ -18,6 +18,7 @@ import LabPage from "./pages/lab/LabPage";
 import RadiologyPage from "./pages/radiology/RadiologyPage";
 import IPDPage from "./pages/ipd/IPDPage";
 import EmergencyPage from "./pages/emergency/EmergencyPage";
+import InsurancePage from "./pages/insurance/InsurancePage";
 import PatientsPage from "./pages/patients/PatientsPage";
 import NursingPage from "./pages/nursing/NursingPage";
 import SettingsPage from "./pages/settings/SettingsPage";
