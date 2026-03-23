@@ -2,13 +2,14 @@ import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { Receipt, Printer, MessageSquare } from "lucide-react";
+import { Receipt, Printer, MessageSquare, FileText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import LineItemsTab from "@/components/billing/tabs/LineItemsTab";
 import PaymentsTab from "@/components/billing/tabs/PaymentsTab";
 import InsuranceTab from "@/components/billing/tabs/InsuranceTab";
+import GSTInvoiceModal from "@/components/billing/GSTInvoiceModal";
 import type { BillRecord } from "@/pages/billing/BillingPage";
 
 export interface LineItem {
