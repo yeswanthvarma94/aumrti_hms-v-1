@@ -1117,6 +1117,209 @@ export type Database = {
         }
         Relationships: []
       }
+      insurance_claims: {
+        Row: {
+          ai_denial_risk_score: number | null
+          approved_amount: number | null
+          bill_id: string
+          claim_number: string | null
+          claimed_amount: number
+          created_at: string | null
+          created_by: string | null
+          denial_code: string | null
+          denial_reason: string | null
+          documents_submitted: Json | null
+          hospital_id: string
+          id: string
+          notes: string | null
+          patient_id: string
+          pre_auth_id: string | null
+          settled_amount: number | null
+          settlement_date: string | null
+          status: string
+          submitted_at: string | null
+          tpa_name: string
+        }
+        Insert: {
+          ai_denial_risk_score?: number | null
+          approved_amount?: number | null
+          bill_id: string
+          claim_number?: string | null
+          claimed_amount: number
+          created_at?: string | null
+          created_by?: string | null
+          denial_code?: string | null
+          denial_reason?: string | null
+          documents_submitted?: Json | null
+          hospital_id: string
+          id?: string
+          notes?: string | null
+          patient_id: string
+          pre_auth_id?: string | null
+          settled_amount?: number | null
+          settlement_date?: string | null
+          status?: string
+          submitted_at?: string | null
+          tpa_name: string
+        }
+        Update: {
+          ai_denial_risk_score?: number | null
+          approved_amount?: number | null
+          bill_id?: string
+          claim_number?: string | null
+          claimed_amount?: number
+          created_at?: string | null
+          created_by?: string | null
+          denial_code?: string | null
+          denial_reason?: string | null
+          documents_submitted?: Json | null
+          hospital_id?: string
+          id?: string
+          notes?: string | null
+          patient_id?: string
+          pre_auth_id?: string | null
+          settled_amount?: number | null
+          settlement_date?: string | null
+          status?: string
+          submitted_at?: string | null
+          tpa_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "insurance_claims_bill_id_fkey"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "bills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "insurance_claims_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "insurance_claims_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "insurance_claims_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "insurance_claims_pre_auth_id_fkey"
+            columns: ["pre_auth_id"]
+            isOneToOne: false
+            referencedRelation: "insurance_pre_auth"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      insurance_pre_auth: {
+        Row: {
+          admission_id: string
+          approved_amount: number | null
+          approved_at: string | null
+          created_at: string | null
+          created_by: string | null
+          diagnosis_codes: string[] | null
+          documents_checklist: Json | null
+          estimated_amount: number | null
+          hospital_id: string
+          id: string
+          notes: string | null
+          patient_id: string
+          policy_number: string | null
+          pre_auth_number: string | null
+          procedure_codes: string[] | null
+          rejection_reason: string | null
+          status: string
+          submitted_at: string | null
+          tpa_name: string
+          valid_until: string | null
+        }
+        Insert: {
+          admission_id: string
+          approved_amount?: number | null
+          approved_at?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          diagnosis_codes?: string[] | null
+          documents_checklist?: Json | null
+          estimated_amount?: number | null
+          hospital_id: string
+          id?: string
+          notes?: string | null
+          patient_id: string
+          policy_number?: string | null
+          pre_auth_number?: string | null
+          procedure_codes?: string[] | null
+          rejection_reason?: string | null
+          status?: string
+          submitted_at?: string | null
+          tpa_name: string
+          valid_until?: string | null
+        }
+        Update: {
+          admission_id?: string
+          approved_amount?: number | null
+          approved_at?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          diagnosis_codes?: string[] | null
+          documents_checklist?: Json | null
+          estimated_amount?: number | null
+          hospital_id?: string
+          id?: string
+          notes?: string | null
+          patient_id?: string
+          policy_number?: string | null
+          pre_auth_number?: string | null
+          procedure_codes?: string[] | null
+          rejection_reason?: string | null
+          status?: string
+          submitted_at?: string | null
+          tpa_name?: string
+          valid_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "insurance_pre_auth_admission_id_fkey"
+            columns: ["admission_id"]
+            isOneToOne: false
+            referencedRelation: "admissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "insurance_pre_auth_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "insurance_pre_auth_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "insurance_pre_auth_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ipd_medications: {
         Row: {
           admission_id: string
@@ -3268,6 +3471,59 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tpa_config: {
+        Row: {
+          claims_email: string | null
+          coordinator_name: string | null
+          coordinator_phone: string | null
+          created_at: string | null
+          credit_days: number | null
+          hospital_id: string
+          id: string
+          is_active: boolean | null
+          required_documents: string[] | null
+          submission_method: string | null
+          tpa_code: string | null
+          tpa_name: string
+        }
+        Insert: {
+          claims_email?: string | null
+          coordinator_name?: string | null
+          coordinator_phone?: string | null
+          created_at?: string | null
+          credit_days?: number | null
+          hospital_id: string
+          id?: string
+          is_active?: boolean | null
+          required_documents?: string[] | null
+          submission_method?: string | null
+          tpa_code?: string | null
+          tpa_name: string
+        }
+        Update: {
+          claims_email?: string | null
+          coordinator_name?: string | null
+          coordinator_phone?: string | null
+          created_at?: string | null
+          credit_days?: number | null
+          hospital_id?: string
+          id?: string
+          is_active?: boolean | null
+          required_documents?: string[] | null
+          submission_method?: string | null
+          tpa_code?: string | null
+          tpa_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tpa_config_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
             referencedColumns: ["id"]
           },
         ]
