@@ -1,64 +1,51 @@
 
 
-# Payment Collections Engine
+# Fix: Billing Line Items + Insurance Pre-Auth Navigation
 
-## Overview
-Add payment link generation, UPI QR codes on bills, a collections dashboard at `/billing/payments`, and a Razorpay webhook edge function for auto-reconciliation.
+## Root Causes
 
-## Step 1: Database Migration
-- Add `payment_link_sent boolean default false` to `bills` table
-- No new tables needed
+### Issue 1: Unable to add services to bills
+The `bill_line_items` table has a CHECK constraint on `item_type` that only allows: `consultation, procedure, room_charge, lab, radiology, pharmacy, surgery, package, nursing, consumable, blood, oxygen, other`.
 
-## Step 2: Payment Link Modal
-**New file**: `src/components/billing/PaymentLinkModal.tsx`
-- Pre-fills amount (balance_due), patient phone from props
-- Generates WhatsApp message with bill details and payment link
-- If `hospital.razorpay_key_id` exists, shows note about Razorpay integration (actual API call would need edge function for security — use demo link for now)
-- Copy link button + Send on WhatsApp button
-- On send: updates `bills.payment_link_sent = true`
+However, the `service_master` records have `item_type = 'service'` (the default from the ALTER TABLE migration). When `addServiceItem()` in `LineItemsTab.tsx` tries to insert with `svc.item_type || "other"`, it uses `'service'` from the DB — which violates the CHECK constraint, causing a silent insert failure.
 
-**Modify**: `src/components/billing/BillEditor.tsx`
-- Add "Send Payment Link" button in the header action bar (next to Print)
-- Only show when `balance_due > 0`
-- Opens PaymentLinkModal
+**Fix**: Two-part fix:
+1. **Database migration**: Add `'service'` to the allowed values in the CHECK constraint on `bill_line_items.item_type`, OR update all `service_master` rows where `item_type = 'service'` to map to a valid value like `'other'`.
+   - Preferred: ALTER the CHECK constraint to include `'service'`.
+2. **Code fix** in `LineItemsTab.tsx`: Map unknown `item_type` values to `'other'` as a fallback when inserting, so even if future services have unexpected types, inserts won't fail.
 
-## Step 3: UPI QR Code on Bill
-**Install**: `qrcode.react` package
+### Issue 2: Insurance "Request Pre-Auth" not working
+Currently, clicking "Request Pre-Auth" in Active Admissions calls `onNavigate("preauth")` which switches to the Pre-Auth Queue tab. But the Pre-Auth Queue only shows existing `insurance_pre_auth` records — there are none (0 in DB). The user expects clicking the button to open a form for that specific admission.
 
-**Modify**: `src/components/billing/GSTInvoiceModal.tsx` (or create a separate print component)
-- Add UPI QR section at the bottom of the invoice/bill print view
-- Generate UPI string: `upi://pay?pa={upi_id}&pn={hospital_name}&am={balance_due}&cu=INR&tn=Bill-{bill_number}`
-- Show QR only when `balance_due > 0`
-- For now, use a placeholder UPI ID or fetch from hospital settings
+**Fix**: When "Request Pre-Auth" is clicked:
+1. Navigate to the Pre-Auth Queue tab
+2. Pass the admission data (admission_id, patient_id, patient_name, tpa_name) to PreAuthQueue
+3. In PreAuthQueue, accept an optional `initialAdmission` prop. When present, auto-open the right panel with a new unsaved form pre-filled with that admission's details (TPA from admission's insurance_type, patient info, etc.)
 
-Also add QR to the BillEditor's print section by creating a hidden print-friendly div with UPI QR.
+## Changes
 
-## Step 4: Collections Dashboard
-**New file**: `src/pages/billing/PaymentsPage.tsx`
-- Full-width layout with header
-- 4 KPI cards: Collected Today, Outstanding, Links Sent, Advances on Hold
-- Collections table: query `bill_payments` joined with `bills` and `patients`, filterable by date and payment mode
-- Daily summary bar chart (Recharts) showing breakdown by payment mode
-- Export/Print buttons
+### Step 1: Database Migration
+```sql
+ALTER TABLE public.bill_line_items 
+  DROP CONSTRAINT IF EXISTS bill_line_items_item_type_check;
+ALTER TABLE public.bill_line_items 
+  ADD CONSTRAINT bill_line_items_item_type_check 
+  CHECK (item_type IN ('consultation','procedure','room_charge','lab','radiology','pharmacy','surgery','package','nursing','consumable','blood','oxygen','other','service'));
+```
 
-## Step 5: Razorpay Webhook Edge Function
-**New file**: `supabase/functions/razorpay-webhook/index.ts`
-- Handles `payment.captured` events
-- Extracts `payment_link_id` from payload, matches to bill via notes field
-- Inserts `bill_payments` record and updates `bills` amounts
-- Returns 200 OK
-- Manual reconciliation fallback UI in PaymentsPage for when webhooks aren't configured
+### Step 2: LineItemsTab.tsx
+- In `addServiceItem()`, add fallback mapping: if `svc.item_type` is not in the known list, default to `'other'`.
+- Add error handling (toast on insert failure) so issues are visible.
 
-## Step 6: Routing & Sidebar
-**Modify** `src/App.tsx`:
-- Change `/payments` route from `ComingSoon` to `PaymentsPage`
-- Or add `/billing/payments` route pointing to PaymentsPage
+### Step 3: InsurancePage.tsx
+- Change `renderContent` for "preauth" to pass `initialAdmission` prop when navigating from Active Admissions.
+- Store selected admission data in state when `onNavigate` is called.
 
-**Modify** `src/components/layout/AppSidebar.tsx`:
-- Update Finance sub-menu: Payments path → `/payments`, remove `comingSoon: true`
+### Step 4: ActiveAdmissions.tsx
+- Change `onNavigate` callback to also pass the admission row data: `onNavigate("preauth", admissionRow)`.
 
-## Technical Notes
-- UPI QR uses `qrcode.react` with standard UPI deep link format
-- Razorpay API calls for payment link creation should go through an edge function (not client-side) for security — initial implementation uses demo links with a note to configure Razorpay
-- Collections dashboard queries `bill_payments` with date filters and aggregates by payment mode
+### Step 5: PreAuthQueue.tsx
+- Accept optional `initialAdmission` prop with admission_id, patient_id, patient_name, tpa_name.
+- When prop is provided, auto-open the right panel with a "New Pre-Auth" form pre-filled with that data (unsaved until user clicks Submit/Save Draft).
+- Add a "Create" flow that inserts into `insurance_pre_auth` on submit.
 
