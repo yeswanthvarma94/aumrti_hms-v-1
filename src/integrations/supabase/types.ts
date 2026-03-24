@@ -2817,6 +2817,185 @@ export type Database = {
           },
         ]
       }
+      payroll_items: {
+        Row: {
+          absent_days: number | null
+          advance_deduction: number | null
+          basic: number | null
+          conveyance: number | null
+          created_at: string | null
+          da: number | null
+          esic_employee: number | null
+          esic_employer: number | null
+          gross_salary: number | null
+          hospital_id: string
+          hra: number | null
+          id: string
+          leave_days: number | null
+          medical_allowance: number | null
+          net_salary: number | null
+          other_deductions: number | null
+          overtime_amount: number | null
+          overtime_hours: number | null
+          payment_status: string | null
+          payroll_run_id: string
+          pf_employee: number | null
+          pf_employer: number | null
+          present_days: number | null
+          tds: number | null
+          total_deductions: number | null
+          user_id: string
+        }
+        Insert: {
+          absent_days?: number | null
+          advance_deduction?: number | null
+          basic?: number | null
+          conveyance?: number | null
+          created_at?: string | null
+          da?: number | null
+          esic_employee?: number | null
+          esic_employer?: number | null
+          gross_salary?: number | null
+          hospital_id: string
+          hra?: number | null
+          id?: string
+          leave_days?: number | null
+          medical_allowance?: number | null
+          net_salary?: number | null
+          other_deductions?: number | null
+          overtime_amount?: number | null
+          overtime_hours?: number | null
+          payment_status?: string | null
+          payroll_run_id: string
+          pf_employee?: number | null
+          pf_employer?: number | null
+          present_days?: number | null
+          tds?: number | null
+          total_deductions?: number | null
+          user_id: string
+        }
+        Update: {
+          absent_days?: number | null
+          advance_deduction?: number | null
+          basic?: number | null
+          conveyance?: number | null
+          created_at?: string | null
+          da?: number | null
+          esic_employee?: number | null
+          esic_employer?: number | null
+          gross_salary?: number | null
+          hospital_id?: string
+          hra?: number | null
+          id?: string
+          leave_days?: number | null
+          medical_allowance?: number | null
+          net_salary?: number | null
+          other_deductions?: number | null
+          overtime_amount?: number | null
+          overtime_hours?: number | null
+          payment_status?: string | null
+          payroll_run_id?: string
+          pf_employee?: number | null
+          pf_employer?: number | null
+          present_days?: number | null
+          tds?: number | null
+          total_deductions?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payroll_items_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payroll_items_payroll_run_id_fkey"
+            columns: ["payroll_run_id"]
+            isOneToOne: false
+            referencedRelation: "payroll_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payroll_items_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payroll_runs: {
+        Row: {
+          approved_by: string | null
+          created_at: string | null
+          hospital_id: string
+          id: string
+          notes: string | null
+          processed_by: string | null
+          run_date: string | null
+          run_month: string
+          staff_count: number | null
+          status: string | null
+          total_deductions: number | null
+          total_gross: number | null
+          total_net: number | null
+        }
+        Insert: {
+          approved_by?: string | null
+          created_at?: string | null
+          hospital_id: string
+          id?: string
+          notes?: string | null
+          processed_by?: string | null
+          run_date?: string | null
+          run_month: string
+          staff_count?: number | null
+          status?: string | null
+          total_deductions?: number | null
+          total_gross?: number | null
+          total_net?: number | null
+        }
+        Update: {
+          approved_by?: string | null
+          created_at?: string | null
+          hospital_id?: string
+          id?: string
+          notes?: string | null
+          processed_by?: string | null
+          run_date?: string | null
+          run_month?: string
+          staff_count?: number | null
+          status?: string | null
+          total_deductions?: number | null
+          total_gross?: number | null
+          total_net?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payroll_runs_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payroll_runs_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payroll_runs_processed_by_fkey"
+            columns: ["processed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pcpndt_form_f: {
         Row: {
           created_at: string | null
