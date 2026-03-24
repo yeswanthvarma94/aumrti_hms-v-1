@@ -223,6 +223,78 @@ export type Database = {
           },
         ]
       }
+      audit_records: {
+        Row: {
+          audit_title: string
+          audit_type: string | null
+          auditor_name: string | null
+          chapters_covered: string[] | null
+          conducted_date: string | null
+          created_at: string | null
+          created_by: string | null
+          department_ids: string[] | null
+          findings: string | null
+          hospital_id: string
+          id: string
+          report_url: string | null
+          scheduled_date: string
+          score_maximum: number | null
+          score_obtained: number | null
+          status: string | null
+        }
+        Insert: {
+          audit_title: string
+          audit_type?: string | null
+          auditor_name?: string | null
+          chapters_covered?: string[] | null
+          conducted_date?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          department_ids?: string[] | null
+          findings?: string | null
+          hospital_id: string
+          id?: string
+          report_url?: string | null
+          scheduled_date: string
+          score_maximum?: number | null
+          score_obtained?: number | null
+          status?: string | null
+        }
+        Update: {
+          audit_title?: string
+          audit_type?: string | null
+          auditor_name?: string | null
+          chapters_covered?: string[] | null
+          conducted_date?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          department_ids?: string[] | null
+          findings?: string | null
+          hospital_id?: string
+          id?: string
+          report_url?: string | null
+          scheduled_date?: string
+          score_maximum?: number | null
+          score_obtained?: number | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_records_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_records_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       beds: {
         Row: {
           bed_number: string
@@ -636,6 +708,103 @@ export type Database = {
             columns: ["hospital_id"]
             isOneToOne: false
             referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      capa_records: {
+        Row: {
+          capa_number: string
+          completed_date: string | null
+          corrective_action: string | null
+          created_at: string | null
+          due_date: string | null
+          effectiveness_check: string | null
+          hospital_id: string
+          id: string
+          preventive_action: string | null
+          problem_statement: string
+          responsible_person: string | null
+          root_cause: string | null
+          status: string | null
+          trigger_ref_id: string | null
+          trigger_type: string
+          verification_by: string | null
+          verified_date: string | null
+          why_1: string | null
+          why_2: string | null
+          why_3: string | null
+          why_4: string | null
+          why_5: string | null
+        }
+        Insert: {
+          capa_number: string
+          completed_date?: string | null
+          corrective_action?: string | null
+          created_at?: string | null
+          due_date?: string | null
+          effectiveness_check?: string | null
+          hospital_id: string
+          id?: string
+          preventive_action?: string | null
+          problem_statement: string
+          responsible_person?: string | null
+          root_cause?: string | null
+          status?: string | null
+          trigger_ref_id?: string | null
+          trigger_type: string
+          verification_by?: string | null
+          verified_date?: string | null
+          why_1?: string | null
+          why_2?: string | null
+          why_3?: string | null
+          why_4?: string | null
+          why_5?: string | null
+        }
+        Update: {
+          capa_number?: string
+          completed_date?: string | null
+          corrective_action?: string | null
+          created_at?: string | null
+          due_date?: string | null
+          effectiveness_check?: string | null
+          hospital_id?: string
+          id?: string
+          preventive_action?: string | null
+          problem_statement?: string
+          responsible_person?: string | null
+          root_cause?: string | null
+          status?: string | null
+          trigger_ref_id?: string | null
+          trigger_type?: string
+          verification_by?: string | null
+          verified_date?: string | null
+          why_1?: string | null
+          why_2?: string | null
+          why_3?: string | null
+          why_4?: string | null
+          why_5?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "capa_records_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "capa_records_responsible_person_fkey"
+            columns: ["responsible_person"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "capa_records_verification_by_fkey"
+            columns: ["verification_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -1420,6 +1589,89 @@ export type Database = {
           whatsapp_enabled?: boolean
         }
         Relationships: []
+      }
+      incident_reports: {
+        Row: {
+          capa_id: string | null
+          created_at: string | null
+          department_id: string | null
+          description: string
+          hospital_id: string
+          id: string
+          immediate_action: string | null
+          incident_date: string
+          incident_number: string
+          incident_time: string | null
+          incident_type: string
+          patient_id: string | null
+          reported_by: string
+          severity: string | null
+          status: string | null
+        }
+        Insert: {
+          capa_id?: string | null
+          created_at?: string | null
+          department_id?: string | null
+          description: string
+          hospital_id: string
+          id?: string
+          immediate_action?: string | null
+          incident_date: string
+          incident_number: string
+          incident_time?: string | null
+          incident_type: string
+          patient_id?: string | null
+          reported_by: string
+          severity?: string | null
+          status?: string | null
+        }
+        Update: {
+          capa_id?: string | null
+          created_at?: string | null
+          department_id?: string | null
+          description?: string
+          hospital_id?: string
+          id?: string
+          immediate_action?: string | null
+          incident_date?: string
+          incident_number?: string
+          incident_time?: string | null
+          incident_type?: string
+          patient_id?: string | null
+          reported_by?: string
+          severity?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "incident_reports_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "incident_reports_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "incident_reports_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "incident_reports_reported_by_fkey"
+            columns: ["reported_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       indent_items: {
         Row: {
@@ -2409,6 +2661,65 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nabh_criteria: {
+        Row: {
+          auto_collected: boolean | null
+          chapter_code: string
+          chapter_name: string
+          compliance_score: number | null
+          compliance_status: string | null
+          created_at: string | null
+          criterion_number: string
+          criterion_text: string
+          evidence_notes: string | null
+          hospital_id: string
+          id: string
+          last_assessed: string | null
+          next_review: string | null
+          objective_elements: string[] | null
+        }
+        Insert: {
+          auto_collected?: boolean | null
+          chapter_code: string
+          chapter_name: string
+          compliance_score?: number | null
+          compliance_status?: string | null
+          created_at?: string | null
+          criterion_number: string
+          criterion_text: string
+          evidence_notes?: string | null
+          hospital_id: string
+          id?: string
+          last_assessed?: string | null
+          next_review?: string | null
+          objective_elements?: string[] | null
+        }
+        Update: {
+          auto_collected?: boolean | null
+          chapter_code?: string
+          chapter_name?: string
+          compliance_score?: number | null
+          compliance_status?: string | null
+          created_at?: string | null
+          criterion_number?: string
+          criterion_text?: string
+          evidence_notes?: string | null
+          hospital_id?: string
+          id?: string
+          last_assessed?: string | null
+          next_review?: string | null
+          objective_elements?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nabh_criteria_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
             referencedColumns: ["id"]
           },
         ]
@@ -4040,6 +4351,68 @@ export type Database = {
             columns: ["vendor_id"]
             isOneToOne: false
             referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quality_indicators: {
+        Row: {
+          auto_calculated: boolean | null
+          benchmark: number | null
+          category: string | null
+          created_at: string | null
+          data_source: string | null
+          denominator: number | null
+          hospital_id: string
+          id: string
+          indicator_name: string
+          numerator: number | null
+          period: string | null
+          period_start: string | null
+          target: number | null
+          unit: string | null
+          value: number | null
+        }
+        Insert: {
+          auto_calculated?: boolean | null
+          benchmark?: number | null
+          category?: string | null
+          created_at?: string | null
+          data_source?: string | null
+          denominator?: number | null
+          hospital_id: string
+          id?: string
+          indicator_name: string
+          numerator?: number | null
+          period?: string | null
+          period_start?: string | null
+          target?: number | null
+          unit?: string | null
+          value?: number | null
+        }
+        Update: {
+          auto_calculated?: boolean | null
+          benchmark?: number | null
+          category?: string | null
+          created_at?: string | null
+          data_source?: string | null
+          denominator?: number | null
+          hospital_id?: string
+          id?: string
+          indicator_name?: string
+          numerator?: number | null
+          period?: string | null
+          period_start?: string | null
+          target?: number | null
+          unit?: string | null
+          value?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quality_indicators_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
             referencedColumns: ["id"]
           },
         ]
