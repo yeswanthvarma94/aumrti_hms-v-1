@@ -5,6 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import RosterTab from "@/components/hr/RosterTab";
 import AttendanceTab from "@/components/hr/AttendanceTab";
 import LeaveManagementTab from "@/components/hr/LeaveManagementTab";
+import PayrollTab from "@/components/hr/PayrollTab";
+import StaffDirectoryTab from "@/components/hr/StaffDirectoryTab";
 import { Button } from "@/components/ui/button";
 
 const navTabs = [
@@ -50,6 +52,8 @@ const HRPage: React.FC = () => {
       case "roster": return <RosterTab />;
       case "attendance": return <AttendanceTab />;
       case "leave": return <LeaveManagementTab />;
+      case "payroll": return <PayrollTab />;
+      case "directory": return <StaffDirectoryTab />;
       default:
         return (
           <div className="flex-1 flex items-center justify-center text-muted-foreground">
