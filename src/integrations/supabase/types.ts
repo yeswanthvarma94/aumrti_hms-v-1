@@ -963,6 +963,94 @@ export type Database = {
           },
         ]
       }
+      duty_roster: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          department_id: string | null
+          hospital_id: string
+          id: string
+          is_holiday: boolean | null
+          is_off: boolean | null
+          notes: string | null
+          roster_date: string
+          shift_id: string | null
+          user_id: string
+          ward_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          department_id?: string | null
+          hospital_id: string
+          id?: string
+          is_holiday?: boolean | null
+          is_off?: boolean | null
+          notes?: string | null
+          roster_date: string
+          shift_id?: string | null
+          user_id: string
+          ward_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          department_id?: string | null
+          hospital_id?: string
+          id?: string
+          is_holiday?: boolean | null
+          is_off?: boolean | null
+          notes?: string | null
+          roster_date?: string
+          shift_id?: string | null
+          user_id?: string
+          ward_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "duty_roster_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "duty_roster_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "duty_roster_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "duty_roster_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "shift_master"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "duty_roster_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "duty_roster_ward_id_fkey"
+            columns: ["ward_id"]
+            isOneToOne: false
+            referencedRelation: "wards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ed_visits: {
         Row: {
           ample_history: Json | null
@@ -3742,12 +3830,69 @@ export type Database = {
           },
         ]
       }
+      shift_master: {
+        Row: {
+          color_code: string | null
+          created_at: string | null
+          duration_hours: number | null
+          end_time: string
+          hospital_id: string
+          id: string
+          is_active: boolean | null
+          shift_code: string
+          shift_name: string
+          shift_type: string | null
+          start_time: string
+        }
+        Insert: {
+          color_code?: string | null
+          created_at?: string | null
+          duration_hours?: number | null
+          end_time: string
+          hospital_id: string
+          id?: string
+          is_active?: boolean | null
+          shift_code: string
+          shift_name: string
+          shift_type?: string | null
+          start_time: string
+        }
+        Update: {
+          color_code?: string | null
+          created_at?: string | null
+          duration_hours?: number | null
+          end_time?: string
+          hospital_id?: string
+          id?: string
+          is_active?: boolean | null
+          shift_code?: string
+          shift_name?: string
+          shift_type?: string | null
+          start_time?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shift_master_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       staff_attendance: {
         Row: {
           attendance_date: string
           created_at: string
           hospital_id: string
+          hours_worked: number | null
           id: string
+          in_time: string | null
+          marked_by: string | null
+          notes: string | null
+          out_time: string | null
+          overtime_hours: number | null
+          source: string | null
           status: string
           user_id: string
         }
@@ -3755,7 +3900,14 @@ export type Database = {
           attendance_date?: string
           created_at?: string
           hospital_id: string
+          hours_worked?: number | null
           id?: string
+          in_time?: string | null
+          marked_by?: string | null
+          notes?: string | null
+          out_time?: string | null
+          overtime_hours?: number | null
+          source?: string | null
           status?: string
           user_id: string
         }
@@ -3763,7 +3915,14 @@ export type Database = {
           attendance_date?: string
           created_at?: string
           hospital_id?: string
+          hours_worked?: number | null
           id?: string
+          in_time?: string | null
+          marked_by?: string | null
+          notes?: string | null
+          out_time?: string | null
+          overtime_hours?: number | null
+          source?: string | null
           status?: string
           user_id?: string
         }
@@ -3773,6 +3932,13 @@ export type Database = {
             columns: ["hospital_id"]
             isOneToOne: false
             referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_attendance_marked_by_fkey"
+            columns: ["marked_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {

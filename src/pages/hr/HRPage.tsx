@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Calendar, CheckSquare, Palmtree, DollarSign, Users, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,6 +20,7 @@ const navTabs = [
 ];
 
 const HRPage: React.FC = () => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("roster");
   const [kpis, setKpis] = useState({ total: 0, present: 0, onLeave: 0, licenseAlerts: 0 });
 
@@ -88,7 +90,7 @@ const HRPage: React.FC = () => {
             </span>
           )}
         </div>
-        <Button size="sm" variant="outline" onClick={() => window.location.href = "/settings/staff"}>
+        <Button size="sm" variant="outline" onClick={() => navigate("/settings/staff")}>
           + Add Staff
         </Button>
       </div>
