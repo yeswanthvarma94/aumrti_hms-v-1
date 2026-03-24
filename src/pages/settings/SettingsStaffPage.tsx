@@ -363,7 +363,7 @@ const SettingsStaffPage: React.FC = () => {
                     return (
                       <button
                         key={rc.role}
-                        onClick={() => setForm({ ...form, role: rc.role })}
+                        onClick={() => setForm({ ...form, role: rc.role, department_id: "", ward_id: "", registration_number: "" })}
                         className={cn(
                           "flex items-center gap-2.5 px-3 py-2.5 rounded-lg border-[1.5px] text-left transition-colors active:scale-[0.98]",
                           selected
