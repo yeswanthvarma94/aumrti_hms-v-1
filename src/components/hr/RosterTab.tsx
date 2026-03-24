@@ -52,13 +52,13 @@ const RosterTab: React.FC = () => {
     const dateTo = format(weekDays[6], "yyyy-MM-dd");
 
     const [shiftsRes, staffRes, rosterRes, deptRes] = await Promise.all([
-      supabase.from("shift_master").select("*").eq("is_active", true),
+      (supabase as any).from("shift_master").select("*").eq("is_active", true),
       supabase.from("users").select("id, full_name, role, department_id, departments(name)").eq("is_active", true).order("full_name"),
-      supabase.from("duty_roster").select("*").gte("roster_date", dateFrom).lte("roster_date", dateTo),
+      (supabase as any).from("duty_roster").select("*").gte("roster_date", dateFrom).lte("roster_date", dateTo),
       supabase.from("departments").select("id, name").eq("is_active", true),
     ]);
 
-    setShifts(shiftsRes.data || []);
+    setShifts((shiftsRes.data || []) as ShiftMaster[]);
     setStaff(
       (staffRes.data || []).map((s: any) => ({
         id: s.id,
