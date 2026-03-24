@@ -10,6 +10,7 @@ import Register from "./pages/register";
 import OnboardingWizard from "./pages/setup/OnboardingWizard";
 import Dashboard from "./pages/Dashboard";
 import ComingSoon from "./pages/ComingSoon";
+import QualityPage from "./pages/quality/QualityPage";
 import BillingPage from "./pages/billing/BillingPage";
 import PaymentsPage from "./pages/billing/PaymentsPage";
 import PharmacyPage from "./pages/pharmacy/PharmacyPage";
@@ -67,7 +68,7 @@ const App = () => (
             <Route path="/payments" element={<PaymentsPage />} />
             <Route path="/hr" element={<HRPage />} />
             <Route path="/inventory" element={<InventoryPage />} />
-            <Route path="/quality" element={<ComingSoon />} />
+            <Route path="/quality" element={<QualityPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/settings/staff" element={<SettingsStaffPage />} />
             <Route path="/settings/departments" element={<SettingsDepartmentsPage />} />
