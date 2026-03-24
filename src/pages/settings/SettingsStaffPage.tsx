@@ -20,11 +20,12 @@ interface StaffForm {
   role: AppRole;
   department_id: string;
   registration_number: string;
+  ward_id: string; // UI-only, not persisted to users table
 }
 
 const EMPTY_FORM: StaffForm = {
   full_name: "", phone: "", email: "", role: "doctor",
-  department_id: "", registration_number: "",
+  department_id: "", registration_number: "", ward_id: "",
 };
 
 /* ─── Role config ─── */
@@ -124,16 +125,23 @@ const SettingsStaffPage: React.FC = () => {
     return data.hospital_id;
   };
 
+  // Only send department_id for roles that actually use the departments dropdown
+  const getSafeDepartmentId = () => {
+    if (form.role !== "doctor") return null;
+    return form.department_id && form.department_id.trim() !== "" ? form.department_id : null;
+  };
+
   const saveStaff = useMutation({
     mutationFn: async () => {
       const hid = await getHospitalId();
+      const deptId = getSafeDepartmentId();
       if (editingId) {
         const { error } = await supabase.from("users").update({
           full_name: form.full_name,
           phone: form.phone || null,
           email: form.email,
           role: form.role as any,
-          department_id: form.department_id && form.department_id.trim() !== "" ? form.department_id : null,
+          department_id: deptId,
           registration_number: form.registration_number || null,
         }).eq("id", editingId);
         if (error) throw error;
@@ -145,7 +153,7 @@ const SettingsStaffPage: React.FC = () => {
           email: form.email || `${form.phone || Date.now()}@placeholder.local`,
           phone: form.phone || null,
           role: form.role as any,
-          department_id: form.department_id && form.department_id.trim() !== "" ? form.department_id : null,
+          department_id: deptId,
           registration_number: form.registration_number || null,
           is_active: true,
           can_login: false,
@@ -207,7 +215,7 @@ const SettingsStaffPage: React.FC = () => {
       setEditingId(user.id);
       setForm({
         full_name: user.full_name, phone: user.phone ?? "", email: user.email,
-        role: user.role, department_id: user.department_id ?? "", registration_number: user.registration_number ?? "",
+        role: user.role, department_id: user.department_id ?? "", registration_number: user.registration_number ?? "", ward_id: "",
       });
     } else {
       setEditingId(null);
@@ -362,7 +370,7 @@ const SettingsStaffPage: React.FC = () => {
                     return (
                       <button
                         key={rc.role}
-                        onClick={() => setForm({ ...form, role: rc.role })}
+                        onClick={() => setForm({ ...form, role: rc.role, department_id: "", ward_id: "", registration_number: "" })}
                         className={cn(
                           "flex items-center gap-2.5 px-3 py-2.5 rounded-lg border-[1.5px] text-left transition-colors active:scale-[0.98]",
                           selected
@@ -418,8 +426,8 @@ const SettingsStaffPage: React.FC = () => {
                 <div className="space-y-3">
                   <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Nurse Details</label>
                   <div>
-                    <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Ward Assignment</label>
-                    <select value={form.department_id} onChange={(e) => setForm({ ...form, department_id: e.target.value })}
+                    <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Ward Assignment <span className="text-muted-foreground/60">(display only)</span></label>
+                    <select value={form.ward_id} onChange={(e) => setForm({ ...form, ward_id: e.target.value })}
                       className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
                       <option value="">Select ward</option>
                       {wards?.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
