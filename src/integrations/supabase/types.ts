@@ -4848,6 +4848,94 @@ export type Database = {
           },
         ]
       }
+      staff_profiles: {
+        Row: {
+          basic_salary: number | null
+          conveyance: number | null
+          created_at: string | null
+          da_percent: number | null
+          department_id: string | null
+          designation: string | null
+          employee_id: string | null
+          employment_type: string | null
+          esic_applicable: boolean | null
+          hospital_id: string
+          hra_percent: number | null
+          id: string
+          is_active: boolean | null
+          license_expiry_date: string | null
+          medical_allowance: number | null
+          pf_applicable: boolean | null
+          registration_body: string | null
+          registration_number: string | null
+          user_id: string
+        }
+        Insert: {
+          basic_salary?: number | null
+          conveyance?: number | null
+          created_at?: string | null
+          da_percent?: number | null
+          department_id?: string | null
+          designation?: string | null
+          employee_id?: string | null
+          employment_type?: string | null
+          esic_applicable?: boolean | null
+          hospital_id: string
+          hra_percent?: number | null
+          id?: string
+          is_active?: boolean | null
+          license_expiry_date?: string | null
+          medical_allowance?: number | null
+          pf_applicable?: boolean | null
+          registration_body?: string | null
+          registration_number?: string | null
+          user_id: string
+        }
+        Update: {
+          basic_salary?: number | null
+          conveyance?: number | null
+          created_at?: string | null
+          da_percent?: number | null
+          department_id?: string | null
+          designation?: string | null
+          employee_id?: string | null
+          employment_type?: string | null
+          esic_applicable?: boolean | null
+          hospital_id?: string
+          hra_percent?: number | null
+          id?: string
+          is_active?: boolean | null
+          license_expiry_date?: string | null
+          medical_allowance?: number | null
+          pf_applicable?: boolean | null
+          registration_body?: string | null
+          registration_number?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_profiles_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_profiles_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_profiles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stock_transactions: {
         Row: {
           created_at: string | null
