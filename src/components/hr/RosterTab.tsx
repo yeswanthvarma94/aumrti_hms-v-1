@@ -68,7 +68,7 @@ const RosterTab: React.FC = () => {
         department_name: s.departments?.name,
       }))
     );
-    setRoster(rosterRes.data || []);
+    setRoster((rosterRes.data || []) as RosterEntry[]);
     setDepartments(deptRes.data || []);
   }, [weekStart]);
 

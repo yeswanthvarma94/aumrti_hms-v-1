@@ -92,7 +92,7 @@ const AttendanceTab: React.FC = () => {
     const { data: userData } = await supabase.from("users").select("hospital_id").eq("id", userId).single();
     if (!userData) return;
 
-    const { error } = await supabase.from("staff_attendance").upsert(
+    const { error } = await (supabase as any).from("staff_attendance").upsert(
       {
         hospital_id: userData.hospital_id,
         user_id: userId,
