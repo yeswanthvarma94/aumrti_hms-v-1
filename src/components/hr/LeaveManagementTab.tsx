@@ -87,7 +87,7 @@ const LeaveManagementTab: React.FC = () => {
     const req = requests.find((r) => r.id === id);
     if (!req) return;
 
-    await supabase.from("leave_requests").update({ status: "approved", reviewed_at: new Date().toISOString() }).eq("id", id);
+    await (supabase as any).from("leave_requests").update({ status: "approved", reviewed_at: new Date().toISOString() }).eq("id", id);
 
     // Update leave balance
     const year = new Date().getFullYear();
