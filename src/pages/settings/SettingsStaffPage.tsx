@@ -215,7 +215,7 @@ const SettingsStaffPage: React.FC = () => {
       setEditingId(user.id);
       setForm({
         full_name: user.full_name, phone: user.phone ?? "", email: user.email,
-        role: user.role, department_id: user.department_id ?? "", registration_number: user.registration_number ?? "",
+        role: user.role, department_id: user.department_id ?? "", registration_number: user.registration_number ?? "", ward_id: "",
       });
     } else {
       setEditingId(null);
