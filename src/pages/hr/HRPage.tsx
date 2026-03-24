@@ -90,7 +90,7 @@ const HRPage: React.FC = () => {
             </span>
           )}
         </div>
-        <Button size="sm" variant="outline" onClick={() => window.location.href = "/settings/staff"}>
+        <Button size="sm" variant="outline" onClick={() => navigate("/settings/staff")}>
           + Add Staff
         </Button>
       </div>
