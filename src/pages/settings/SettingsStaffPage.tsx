@@ -166,8 +166,8 @@ const SettingsStaffPage: React.FC = () => {
         await (supabase as any).from("staff_profiles").insert({
           hospital_id: hid,
           user_id: newId,
-          employee_id: form.employee_id || null,
-          designation: form.designation || form.role,
+          employee_id: null,
+          designation: form.role,
           employment_type: "permanent",
           department_id: deptId,
           registration_number: form.registration_number || null,
