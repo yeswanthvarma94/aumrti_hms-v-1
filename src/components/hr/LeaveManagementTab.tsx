@@ -70,7 +70,7 @@ const LeaveManagementTab: React.FC = () => {
     if (!selectedStaff) { setBalance(null); return; }
     const loadBalance = async () => {
       const year = new Date().getFullYear();
-      const { data } = await supabase
+      const { data } = await (supabase as any)
         .from("leave_balance")
         .select("*")
         .eq("user_id", selectedStaff)
