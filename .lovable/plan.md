@@ -1,51 +1,30 @@
 
 
-# Fix: Billing Line Items + Insurance Pre-Auth Navigation
+# Fix HR Module — Missing Tables and Columns
 
 ## Root Causes
 
-### Issue 1: Unable to add services to bills
-The `bill_line_items` table has a CHECK constraint on `item_type` that only allows: `consultation, procedure, room_charge, lab, radiology, pharmacy, surgery, package, nursing, consumable, blood, oxygen, other`.
+1. **Roster error ("Could not find table 'public.duty_roster'")**: The `duty_roster` and `shift_master` tables were never created — the migration either failed or wasn't applied.
 
-However, the `service_master` records have `item_type = 'service'` (the default from the ALTER TABLE migration). When `addServiceItem()` in `LineItemsTab.tsx` tries to insert with `svc.item_type || "other"`, it uses `'service'` from the DB — which violates the CHECK constraint, causing a silent insert failure.
+2. **Attendance error ("Could not find 'source' column")**: The `staff_attendance` table only has 6 columns (`id, hospital_id, user_id, attendance_date, status, created_at`). The code references `source`, `in_time`, `out_time`, `hours_worked`, `overtime_hours`, `marked_by`, `notes` — none of which exist.
 
-**Fix**: Two-part fix:
-1. **Database migration**: Add `'service'` to the allowed values in the CHECK constraint on `bill_line_items.item_type`, OR update all `service_master` rows where `item_type = 'service'` to map to a valid value like `'other'`.
-   - Preferred: ALTER the CHECK constraint to include `'service'`.
-2. **Code fix** in `LineItemsTab.tsx`: Map unknown `item_type` values to `'other'` as a fallback when inserting, so even if future services have unexpected types, inserts won't fail.
+3. **Add Staff slow loading**: This navigates to `/settings/staff` which is a separate page. Not a bug per se — it's a full page navigation. Can be improved by using `navigate()` instead of `window.location.href`.
 
-### Issue 2: Insurance "Request Pre-Auth" not working
-Currently, clicking "Request Pre-Auth" in Active Admissions calls `onNavigate("preauth")` which switches to the Pre-Auth Queue tab. But the Pre-Auth Queue only shows existing `insurance_pre_auth` records — there are none (0 in DB). The user expects clicking the button to open a form for that specific admission.
+## Step 1: Database Migration
 
-**Fix**: When "Request Pre-Auth" is clicked:
-1. Navigate to the Pre-Auth Queue tab
-2. Pass the admission data (admission_id, patient_id, patient_name, tpa_name) to PreAuthQueue
-3. In PreAuthQueue, accept an optional `initialAdmission` prop. When present, auto-open the right panel with a new unsaved form pre-filled with that admission's details (TPA from admission's insurance_type, patient info, etc.)
+Create missing tables and add missing columns:
 
-## Changes
+**Create `shift_master`** with: id, hospital_id, shift_name, shift_code, start_time, end_time, duration_hours, shift_type, color_code, is_active. Seed 4 default shifts (Morning/Evening/Night/General) for all hospitals. Add RLS.
 
-### Step 1: Database Migration
-```sql
-ALTER TABLE public.bill_line_items 
-  DROP CONSTRAINT IF EXISTS bill_line_items_item_type_check;
-ALTER TABLE public.bill_line_items 
-  ADD CONSTRAINT bill_line_items_item_type_check 
-  CHECK (item_type IN ('consultation','procedure','room_charge','lab','radiology','pharmacy','surgery','package','nursing','consumable','blood','oxygen','other','service'));
-```
+**Create `duty_roster`** with: id, hospital_id, user_id, roster_date, shift_id, department_id, ward_id, is_off, is_holiday, notes, created_by, created_at. UNIQUE on (hospital_id, user_id, roster_date). Add RLS.
 
-### Step 2: LineItemsTab.tsx
-- In `addServiceItem()`, add fallback mapping: if `svc.item_type` is not in the known list, default to `'other'`.
-- Add error handling (toast on insert failure) so issues are visible.
+**ALTER `staff_attendance`** — add missing columns: `in_time time`, `out_time time`, `hours_worked numeric(4,2)`, `source text default 'manual'`, `overtime_hours numeric(4,2) default 0`, `notes text`, `marked_by uuid`. Add UNIQUE constraint on (hospital_id, user_id, attendance_date).
 
-### Step 3: InsurancePage.tsx
-- Change `renderContent` for "preauth" to pass `initialAdmission` prop when navigating from Active Admissions.
-- Store selected admission data in state when `onNavigate` is called.
+## Step 2: Fix Add Staff Navigation
 
-### Step 4: ActiveAdmissions.tsx
-- Change `onNavigate` callback to also pass the admission row data: `onNavigate("preauth", admissionRow)`.
+In `HRPage.tsx`, change `window.location.href = "/settings/staff"` to use React Router's `useNavigate()` for instant client-side navigation.
 
-### Step 5: PreAuthQueue.tsx
-- Accept optional `initialAdmission` prop with admission_id, patient_id, patient_name, tpa_name.
-- When prop is provided, auto-open the right panel with a "New Pre-Auth" form pre-filled with that data (unsaved until user clicks Submit/Save Draft).
-- Add a "Create" flow that inserts into `insurance_pre_auth` on submit.
+## Step 3: Fix Attendance Status Change
+
+The upsert in `AttendanceTab.tsx` includes `source: "manual"` which will work once the column is added. No code changes needed beyond the migration — the column addition fixes it.
 
