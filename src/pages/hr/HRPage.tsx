@@ -52,6 +52,8 @@ const HRPage: React.FC = () => {
       case "roster": return <RosterTab />;
       case "attendance": return <AttendanceTab />;
       case "leave": return <LeaveManagementTab />;
+      case "payroll": return <PayrollTab />;
+      case "directory": return <StaffDirectoryTab />;
       default:
         return (
           <div className="flex-1 flex items-center justify-center text-muted-foreground">
