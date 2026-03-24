@@ -122,7 +122,7 @@ const LeaveManagementTab: React.FC = () => {
     const { data: userData } = await supabase.from("users").select("hospital_id").eq("id", applyForm.userId).single();
     if (!userData) return;
 
-    const { error } = await supabase.from("leave_requests").insert({
+    const { error } = await (supabase as any).from("leave_requests").insert({
       hospital_id: userData.hospital_id,
       user_id: applyForm.userId,
       leave_type: applyForm.leaveType,
