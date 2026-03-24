@@ -419,8 +419,8 @@ const SettingsStaffPage: React.FC = () => {
                 <div className="space-y-3">
                   <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Nurse Details</label>
                   <div>
-                    <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Ward Assignment</label>
-                    <select value={form.department_id} onChange={(e) => setForm({ ...form, department_id: e.target.value })}
+                    <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Ward Assignment <span className="text-muted-foreground/60">(display only)</span></label>
+                    <select value={form.ward_id} onChange={(e) => setForm({ ...form, ward_id: e.target.value })}
                       className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
                       <option value="">Select ward</option>
                       {wards?.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
