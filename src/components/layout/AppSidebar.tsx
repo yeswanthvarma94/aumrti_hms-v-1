@@ -104,7 +104,7 @@ const navGroups: NavGroup[] = [
     label: "More",
     icon: MoreHorizontal,
     subItems: [
-      { label: "HR", path: "/hr", icon: Users, comingSoon: true },
+      { label: "HR", path: "/hr", icon: Users },
       { label: "Inventory", path: "/inventory", icon: Package, comingSoon: true },
       { label: "Quality", path: "/quality", icon: Award, comingSoon: true },
       { label: "Settings", path: "/settings", icon: Settings },
