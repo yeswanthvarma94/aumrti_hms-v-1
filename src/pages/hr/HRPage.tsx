@@ -5,6 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import RosterTab from "@/components/hr/RosterTab";
 import AttendanceTab from "@/components/hr/AttendanceTab";
 import LeaveManagementTab from "@/components/hr/LeaveManagementTab";
+import PayrollTab from "@/components/hr/PayrollTab";
+import StaffDirectoryTab from "@/components/hr/StaffDirectoryTab";
 import { Button } from "@/components/ui/button";
 
 const navTabs = [
