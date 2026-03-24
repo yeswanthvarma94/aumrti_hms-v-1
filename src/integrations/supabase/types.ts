@@ -1814,6 +1814,133 @@ export type Database = {
           },
         ]
       }
+      leave_balance: {
+        Row: {
+          casual_total: number | null
+          casual_used: number | null
+          comp_off_balance: number | null
+          earned_total: number | null
+          earned_used: number | null
+          hospital_id: string
+          id: string
+          sick_total: number | null
+          sick_used: number | null
+          user_id: string
+          year: number
+        }
+        Insert: {
+          casual_total?: number | null
+          casual_used?: number | null
+          comp_off_balance?: number | null
+          earned_total?: number | null
+          earned_used?: number | null
+          hospital_id: string
+          id?: string
+          sick_total?: number | null
+          sick_used?: number | null
+          user_id: string
+          year: number
+        }
+        Update: {
+          casual_total?: number | null
+          casual_used?: number | null
+          comp_off_balance?: number | null
+          earned_total?: number | null
+          earned_used?: number | null
+          hospital_id?: string
+          id?: string
+          sick_total?: number | null
+          sick_used?: number | null
+          user_id?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leave_balance_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_balance_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leave_requests: {
+        Row: {
+          applied_at: string | null
+          days_count: number
+          from_date: string
+          hospital_id: string
+          id: string
+          leave_type: string
+          reason: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          reviewer_notes: string | null
+          status: string | null
+          to_date: string
+          user_id: string
+        }
+        Insert: {
+          applied_at?: string | null
+          days_count: number
+          from_date: string
+          hospital_id: string
+          id?: string
+          leave_type: string
+          reason: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          reviewer_notes?: string | null
+          status?: string | null
+          to_date: string
+          user_id: string
+        }
+        Update: {
+          applied_at?: string | null
+          days_count?: number
+          from_date?: string
+          hospital_id?: string
+          id?: string
+          leave_type?: string
+          reason?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          reviewer_notes?: string | null
+          status?: string | null
+          to_date?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leave_requests_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_requests_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ndps_register: {
         Row: {
           balance_after: number
