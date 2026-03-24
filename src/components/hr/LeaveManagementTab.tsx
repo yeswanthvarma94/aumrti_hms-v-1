@@ -48,7 +48,7 @@ const LeaveManagementTab: React.FC = () => {
 
   useEffect(() => {
     const load = async () => {
-      const { data: reqData } = await supabase
+      const { data: reqData } = await (supabase as any)
         .from("leave_requests")
         .select("*, users!leave_requests_user_id_fkey(full_name)")
         .order("applied_at", { ascending: false });
