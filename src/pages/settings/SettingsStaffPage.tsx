@@ -133,7 +133,7 @@ const SettingsStaffPage: React.FC = () => {
           phone: form.phone || null,
           email: form.email,
           role: form.role as any,
-          department_id: form.department_id || null,
+          department_id: form.department_id && form.department_id.trim() !== "" ? form.department_id : null,
           registration_number: form.registration_number || null,
         }).eq("id", editingId);
         if (error) throw error;
@@ -145,7 +145,7 @@ const SettingsStaffPage: React.FC = () => {
           email: form.email || `${form.phone || Date.now()}@placeholder.local`,
           phone: form.phone || null,
           role: form.role as any,
-          department_id: form.department_id || null,
+          department_id: form.department_id && form.department_id.trim() !== "" ? form.department_id : null,
           registration_number: form.registration_number || null,
           is_active: true,
           can_login: false,
@@ -182,7 +182,7 @@ const SettingsStaffPage: React.FC = () => {
         email: `${r.name.toLowerCase().replace(/\s+/g, ".")}@placeholder.local`,
         phone: r.phone || null,
         role: "doctor" as const,
-        department_id: r.dept_id || null,
+        department_id: r.dept_id && r.dept_id.trim() !== "" ? r.dept_id : null,
         registration_number: null,
         is_active: true,
         can_login: false,
