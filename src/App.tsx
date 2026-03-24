@@ -10,6 +10,7 @@ import Register from "./pages/register";
 import OnboardingWizard from "./pages/setup/OnboardingWizard";
 import Dashboard from "./pages/Dashboard";
 import ComingSoon from "./pages/ComingSoon";
+import QualityPage from "./pages/quality/QualityPage";
 import BillingPage from "./pages/billing/BillingPage";
 import PaymentsPage from "./pages/billing/PaymentsPage";
 import PharmacyPage from "./pages/pharmacy/PharmacyPage";
