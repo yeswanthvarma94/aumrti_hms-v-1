@@ -182,7 +182,7 @@ const SettingsStaffPage: React.FC = () => {
         email: `${r.name.toLowerCase().replace(/\s+/g, ".")}@placeholder.local`,
         phone: r.phone || null,
         role: "doctor" as const,
-        department_id: r.dept_id || null,
+        department_id: r.dept_id && r.dept_id.trim() !== "" ? r.dept_id : null,
         registration_number: null,
         is_active: true,
         can_login: false,
