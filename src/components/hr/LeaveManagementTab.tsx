@@ -139,7 +139,7 @@ const LeaveManagementTab: React.FC = () => {
       setShowApplyModal(false);
       setApplyForm({ userId: "", leaveType: "casual", fromDate: undefined, toDate: undefined, reason: "" });
       // Reload
-      const { data: reqData } = await supabase.from("leave_requests").select("*, users!leave_requests_user_id_fkey(full_name)").order("applied_at", { ascending: false });
+      const { data: reqData } = await (supabase as any).from("leave_requests").select("*, users!leave_requests_user_id_fkey(full_name)").order("applied_at", { ascending: false });
       setRequests((reqData || []).map((r: any) => ({ ...r, full_name: r.users?.full_name || "Unknown" })));
     }
   };
