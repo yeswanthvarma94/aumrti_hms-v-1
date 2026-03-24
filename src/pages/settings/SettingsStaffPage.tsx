@@ -20,11 +20,12 @@ interface StaffForm {
   role: AppRole;
   department_id: string;
   registration_number: string;
+  ward_id: string; // UI-only, not persisted to users table
 }
 
 const EMPTY_FORM: StaffForm = {
   full_name: "", phone: "", email: "", role: "doctor",
-  department_id: "", registration_number: "",
+  department_id: "", registration_number: "", ward_id: "",
 };
 
 /* ─── Role config ─── */
