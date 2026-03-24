@@ -93,9 +93,9 @@ const LeaveManagementTab: React.FC = () => {
     const year = new Date().getFullYear();
     const leaveCol = `${req.leave_type}_used` as string;
     if (["casual", "sick", "earned"].includes(req.leave_type)) {
-      const { data: bal } = await supabase.from("leave_balance").select("*").eq("user_id", req.user_id).eq("year", year).maybeSingle();
+      const { data: bal } = await (supabase as any).from("leave_balance").select("*").eq("user_id", req.user_id).eq("year", year).maybeSingle();
       if (bal) {
-        await supabase.from("leave_balance").update({ [leaveCol]: (bal as any)[leaveCol] + req.days_count }).eq("id", bal.id);
+        await (supabase as any).from("leave_balance").update({ [leaveCol]: (bal as any)[leaveCol] + req.days_count }).eq("id", bal.id);
       }
     }
 
