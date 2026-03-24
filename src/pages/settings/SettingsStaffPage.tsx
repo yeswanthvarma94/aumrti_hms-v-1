@@ -146,8 +146,9 @@ const SettingsStaffPage: React.FC = () => {
         }).eq("id", editingId);
         if (error) throw error;
       } else {
+        const newId = crypto.randomUUID();
         const { error } = await supabase.from("users").insert({
-          id: crypto.randomUUID(),
+          id: newId,
           hospital_id: hid,
           full_name: form.full_name,
           email: form.email || `${form.phone || Date.now()}@placeholder.local`,
@@ -160,6 +161,18 @@ const SettingsStaffPage: React.FC = () => {
           auth_user_id: null,
         } as any);
         if (error) throw error;
+
+        // Also create a staff_profiles row for HR/payroll
+        await (supabase as any).from("staff_profiles").insert({
+          hospital_id: hid,
+          user_id: newId,
+          employee_id: form.employee_id || null,
+          designation: form.designation || form.role,
+          employment_type: "permanent",
+          department_id: deptId,
+          registration_number: form.registration_number || null,
+          is_active: true,
+        });
       }
     },
     onSuccess: () => {
