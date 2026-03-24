@@ -105,7 +105,7 @@ const LeaveManagementTab: React.FC = () => {
 
   const handleReject = async () => {
     if (!rejectId) return;
-    await supabase.from("leave_requests").update({ status: "rejected", reviewer_notes: rejectNotes, reviewed_at: new Date().toISOString() }).eq("id", rejectId);
+    await (supabase as any).from("leave_requests").update({ status: "rejected", reviewer_notes: rejectNotes, reviewed_at: new Date().toISOString() }).eq("id", rejectId);
     setRequests((prev) => prev.map((r) => (r.id === rejectId ? { ...r, status: "rejected" } : r)));
     setRejectId(null);
     setRejectNotes("");
