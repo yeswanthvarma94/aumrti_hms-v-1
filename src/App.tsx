@@ -23,6 +23,7 @@ import InsurancePage from "./pages/insurance/InsurancePage";
 import PatientsPage from "./pages/patients/PatientsPage";
 import NursingPage from "./pages/nursing/NursingPage";
 import HRPage from "./pages/hr/HRPage";
+import InventoryPage from "./pages/inventory/InventoryPage";
 import SettingsPage from "./pages/settings/SettingsPage";
 import SettingsStaffPage from "./pages/settings/SettingsStaffPage";
 import SettingsDepartmentsPage from "./pages/settings/SettingsDepartmentsPage";
