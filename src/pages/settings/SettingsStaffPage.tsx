@@ -125,16 +125,23 @@ const SettingsStaffPage: React.FC = () => {
     return data.hospital_id;
   };
 
+  // Only send department_id for roles that actually use the departments dropdown
+  const getSafeDepartmentId = () => {
+    if (form.role !== "doctor") return null;
+    return form.department_id && form.department_id.trim() !== "" ? form.department_id : null;
+  };
+
   const saveStaff = useMutation({
     mutationFn: async () => {
       const hid = await getHospitalId();
+      const deptId = getSafeDepartmentId();
       if (editingId) {
         const { error } = await supabase.from("users").update({
           full_name: form.full_name,
           phone: form.phone || null,
           email: form.email,
           role: form.role as any,
-          department_id: form.department_id && form.department_id.trim() !== "" ? form.department_id : null,
+          department_id: deptId,
           registration_number: form.registration_number || null,
         }).eq("id", editingId);
         if (error) throw error;
@@ -146,7 +153,7 @@ const SettingsStaffPage: React.FC = () => {
           email: form.email || `${form.phone || Date.now()}@placeholder.local`,
           phone: form.phone || null,
           role: form.role as any,
-          department_id: form.department_id && form.department_id.trim() !== "" ? form.department_id : null,
+          department_id: deptId,
           registration_number: form.registration_number || null,
           is_active: true,
           can_login: false,
