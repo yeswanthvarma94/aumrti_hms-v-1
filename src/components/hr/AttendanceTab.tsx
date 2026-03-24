@@ -45,8 +45,8 @@ const AttendanceTab: React.FC = () => {
     const load = async () => {
       const [staffRes, attRes, rosterRes, deptRes] = await Promise.all([
         supabase.from("users").select("id, full_name, role, department_id, departments(name)").eq("is_active", true).order("full_name"),
-        supabase.from("staff_attendance").select("*").eq("attendance_date", dateStr),
-        supabase.from("duty_roster").select("*, shift_master(shift_name)").eq("roster_date", dateStr),
+        (supabase as any).from("staff_attendance").select("*").eq("attendance_date", dateStr),
+        (supabase as any).from("duty_roster").select("*, shift_master(shift_name)").eq("roster_date", dateStr),
         supabase.from("departments").select("id, name").eq("is_active", true),
       ]);
 
