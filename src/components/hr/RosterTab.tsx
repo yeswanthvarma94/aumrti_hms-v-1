@@ -110,7 +110,7 @@ const RosterTab: React.FC = () => {
     const dateStr = format(date, "yyyy-MM-dd");
     const entry = getEntry(userId, date);
     if (entry?.id) {
-      await supabase.from("duty_roster").delete().eq("id", entry.id);
+      await (supabase as any).from("duty_roster").delete().eq("id", entry.id);
       loadData();
     }
     setOpenPopover(null);

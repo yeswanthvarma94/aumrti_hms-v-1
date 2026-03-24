@@ -34,7 +34,7 @@ const HRPage: React.FC = () => {
       const present = attendance?.filter((a) => a.status === "present" || a.status === "late").length || 0;
       const onLeave = attendance?.filter((a) => a.status === "on_leave").length || 0;
 
-      const { count: licenseAlerts } = await supabase
+      const { count: licenseAlerts } = await (supabase as any)
         .from("staff_profiles")
         .select("id", { count: "exact", head: true })
         .not("license_expiry_date", "is", null)
