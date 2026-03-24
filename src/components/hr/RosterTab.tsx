@@ -86,7 +86,7 @@ const RosterTab: React.FC = () => {
     const { data: userData } = await supabase.from("users").select("hospital_id").eq("id", userId).single();
     if (!userData) return;
 
-    const { error } = await supabase.from("duty_roster").upsert(
+    const { error } = await (supabase as any).from("duty_roster").upsert(
       {
         hospital_id: userData.hospital_id,
         user_id: userId,
