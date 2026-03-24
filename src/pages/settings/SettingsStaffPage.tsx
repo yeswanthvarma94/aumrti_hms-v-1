@@ -211,6 +211,16 @@ const SettingsStaffPage: React.FC = () => {
       }));
       const { error } = await supabase.from("users").insert(rows as any);
       if (error) throw error;
+
+      // Create staff_profiles for bulk-added doctors
+      const profileRows = rows.map((r) => ({
+        hospital_id: hid,
+        user_id: r.id,
+        designation: "doctor",
+        department_id: r.department_id,
+        is_active: true,
+      }));
+      await (supabase as any).from("staff_profiles").insert(profileRows);
       return valid.length;
     },
     onSuccess: (count) => {
