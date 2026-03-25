@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Plus, Check, X, Package, Search } from "lucide-react";
+import { Plus, Check, X, Package, Search, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,6 +32,7 @@ const IndentsPanel: React.FC = () => {
   const [newIndent, setNewIndent] = useState({ department_id: "", required_date: "", notes: "" });
   const [newItems, setNewItems] = useState<{ item_id: string; quantity: number; remarks: string }[]>([]);
   const [itemSearch, setItemSearch] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const loadIndents = async () => {
     const { data } = await (supabase as any)
@@ -75,30 +76,44 @@ const IndentsPanel: React.FC = () => {
   const filtered = filter === "all" ? indents : indents.filter((i) => i.status === filter);
 
   const updateStatus = async (id: string, status: string) => {
+    setSaving(true);
+    // Optimistic UI update
+    setIndents((prev) => prev.map((i) => i.id === id ? { ...i, status } : i));
+    if (selected?.id === id) setSelected((prev: any) => prev ? { ...prev, status } : prev);
+
     const { data: userData } = await supabase.from("users").select("id").limit(1).single();
     await (supabase as any).from("department_indents").update({
       status,
       approved_by: userData?.id,
       approved_at: new Date().toISOString(),
     }).eq("id", id);
+
     toast({ title: `Indent ${status}` });
-    loadIndents();
-    if (selected?.id === id) setSelected({ ...selected, status });
+    setFilter(status); // Auto-switch to the new status tab
+    setSaving(false);
   };
 
   const issueItems = async () => {
     if (!selected) return;
+    setSaving(true);
     const { data: userData } = await supabase.from("users").select("id, hospital_id").limit(1).single();
-    if (!userData) return;
+    if (!userData) { setSaving(false); return; }
 
-    let allIssued = true;
+    const validItems = indentItems.filter((item) => (issueQtys[item.id] || 0) > 0);
+    let allIssued = validItems.length === indentItems.length;
     for (const item of indentItems) {
       const qty = issueQtys[item.id] || 0;
-      if (qty <= 0) { allIssued = false; continue; }
-      if (qty < item.quantity_requested) allIssued = false;
+      if (qty <= 0 || qty < item.quantity_requested) allIssued = false;
+    }
 
-      await (supabase as any).from("indent_items").update({ quantity_issued: qty }).eq("id", item.id);
-      // Deduct stock
+    // Batch update indent_items quantities
+    await Promise.all(validItems.map((item) =>
+      (supabase as any).from("indent_items").update({ quantity_issued: issueQtys[item.id] }).eq("id", item.id)
+    ));
+
+    // Parallel: stock deduction + transaction logging
+    await Promise.all(validItems.map(async (item) => {
+      const qty = issueQtys[item.id];
       const { data: stockRows } = await (supabase as any)
         .from("inventory_stock")
         .select("id, quantity_available")
@@ -106,13 +121,14 @@ const IndentsPanel: React.FC = () => {
         .gt("quantity_available", 0)
         .order("expiry_date", { ascending: true })
         .limit(1);
-      if (stockRows?.[0]) {
-        await (supabase as any).from("inventory_stock").update({
-          quantity_available: Math.max(0, stockRows[0].quantity_available - qty),
-        }).eq("id", stockRows[0].id);
-      }
-      // Log transaction
-      await (supabase as any).from("stock_transactions").insert({
+
+      const stockUpdate = stockRows?.[0]
+        ? (supabase as any).from("inventory_stock").update({
+            quantity_available: Math.max(0, stockRows[0].quantity_available - qty),
+          }).eq("id", stockRows[0].id)
+        : Promise.resolve();
+
+      const txInsert = (supabase as any).from("stock_transactions").insert({
         hospital_id: userData.hospital_id,
         item_id: item.item_id,
         transaction_type: "indent_issue",
@@ -123,14 +139,20 @@ const IndentsPanel: React.FC = () => {
         created_by: userData.id,
         notes: `Issued against indent ${selected.indent_number}`,
       });
-    }
+
+      await Promise.all([stockUpdate, txInsert]);
+    }));
 
     const newStatus = allIssued ? "issued" : "partially_issued";
     await (supabase as any).from("department_indents").update({ status: newStatus }).eq("id", selected.id);
+
     toast({ title: `Items issued to ${selected.departments?.name} ✓` });
+    setFilter(newStatus === "issued" ? "issued" : "approved"); // Auto-switch
+    setSelected({ ...selected, status: newStatus });
     loadIndents();
     loadMaster();
-    selectIndent({ ...selected, status: newStatus });
+    loadIndentItems(selected.id);
+    setSaving(false);
   };
 
   const submitNewIndent = async () => {
@@ -138,8 +160,9 @@ const IndentsPanel: React.FC = () => {
       toast({ title: "Select department and add items", variant: "destructive" });
       return;
     }
+    setSaving(true);
     const { data: userData } = await supabase.from("users").select("id, hospital_id").limit(1).single();
-    if (!userData) return;
+    if (!userData) { setSaving(false); return; }
 
     const indentNumber = `IND-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${Math.floor(Math.random() * 900 + 100)}`;
     const { data: indent, error } = await (supabase as any).from("department_indents").insert({
@@ -152,23 +175,26 @@ const IndentsPanel: React.FC = () => {
       status: "pending",
     }).select().single();
 
-    if (error || !indent) { toast({ title: "Failed to create indent", variant: "destructive" }); return; }
+    if (error || !indent) { toast({ title: "Failed to create indent", variant: "destructive" }); setSaving(false); return; }
 
-    for (const ni of newItems) {
-      await (supabase as any).from("indent_items").insert({
+    // Bulk insert all items at once
+    await (supabase as any).from("indent_items").insert(
+      newItems.map((ni) => ({
         hospital_id: userData.hospital_id,
         indent_id: indent.id,
         item_id: ni.item_id,
         quantity_requested: ni.quantity,
         remarks: ni.remarks || null,
-      });
-    }
+      }))
+    );
 
     toast({ title: `Indent ${indentNumber} submitted` });
     setShowNew(false);
     setNewIndent({ department_id: "", required_date: "", notes: "" });
     setNewItems([]);
+    setFilter("pending");
     loadIndents();
+    setSaving(false);
   };
 
   const addItemRow = (itemId: string) => {
@@ -177,7 +203,7 @@ const IndentsPanel: React.FC = () => {
     setItemSearch("");
   };
 
-  const tabs = ["pending", "approved", "issued", "all"];
+  const tabs = ["pending", "approved", "issued", "rejected", "all"];
 
   return (
     <div className="flex flex-1 overflow-hidden">
@@ -186,7 +212,7 @@ const IndentsPanel: React.FC = () => {
         <div className="flex-shrink-0 bg-card border-b border-border px-3 py-2 flex items-center gap-1.5 flex-wrap">
           {tabs.map((t) => (
             <button key={t} onClick={() => setFilter(t)} className={cn("px-2.5 py-1 rounded-full text-[10px] font-medium capitalize transition-colors", filter === t ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80")}>
-              {t} {t !== "all" && `(${indents.filter((i) => i.status === t).length})`}
+              {t.replace("_", " ")} {t !== "all" && `(${indents.filter((i) => i.status === t).length})`}
             </button>
           ))}
           <Button size="sm" variant="outline" className="ml-auto text-[10px] h-6 gap-1" onClick={() => setShowNew(true)}>
@@ -218,10 +244,10 @@ const IndentsPanel: React.FC = () => {
               </div>
               {indent.status === "pending" && (
                 <div className="flex gap-1 mt-2" onClick={(e) => e.stopPropagation()}>
-                  <Button variant="ghost" size="sm" className="h-5 px-2 text-[9px] text-emerald-600" onClick={() => updateStatus(indent.id, "approved")}>
+                  <Button variant="ghost" size="sm" className="h-5 px-2 text-[9px] text-emerald-600" disabled={saving} onClick={() => updateStatus(indent.id, "approved")}>
                     <Check className="h-2.5 w-2.5 mr-0.5" /> Approve
                   </Button>
-                  <Button variant="ghost" size="sm" className="h-5 px-2 text-[9px] text-destructive" onClick={() => updateStatus(indent.id, "rejected")}>
+                  <Button variant="ghost" size="sm" className="h-5 px-2 text-[9px] text-destructive" disabled={saving} onClick={() => updateStatus(indent.id, "rejected")}>
                     <X className="h-2.5 w-2.5 mr-0.5" /> Reject
                   </Button>
                 </div>
@@ -298,8 +324,8 @@ const IndentsPanel: React.FC = () => {
             </div>
             {(selected.status === "approved" || selected.status === "partially_issued") && indentItems.length > 0 && (
               <div className="flex-shrink-0 border-t border-border bg-card px-4 py-2.5">
-                <Button size="sm" className="text-xs gap-1.5" onClick={issueItems}>
-                  <Package className="h-3 w-3" /> Issue Selected Items
+                <Button size="sm" className="text-xs gap-1.5" onClick={issueItems} disabled={saving}>
+                  {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Package className="h-3 w-3" />} Issue Selected Items
                 </Button>
               </div>
             )}
@@ -362,7 +388,9 @@ const IndentsPanel: React.FC = () => {
           </div>
           <div className="flex gap-2 justify-end mt-2">
             <Button variant="outline" size="sm" onClick={() => setShowNew(false)} className="text-xs">Cancel</Button>
-            <Button size="sm" onClick={submitNewIndent} className="text-xs">Submit Indent</Button>
+            <Button size="sm" onClick={submitNewIndent} disabled={saving} className="text-xs gap-1.5">
+              {saving && <Loader2 className="h-3 w-3 animate-spin" />} Submit Indent
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

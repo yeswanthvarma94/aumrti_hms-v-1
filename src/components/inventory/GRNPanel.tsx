@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Plus, X, Search } from "lucide-react";
+import { Plus, X, Search, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +29,7 @@ const GRNPanel: React.FC = () => {
   const [newGRN, setNewGRN] = useState({ vendor_id: "", invoice_number: "", invoice_date: "", quality_check: "pass" });
   const [newGRNItems, setNewGRNItems] = useState<any[]>([]);
   const [itemSearch, setItemSearch] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const loadRecords = async () => {
     const { data } = await (supabase as any)
@@ -99,15 +100,17 @@ const GRNPanel: React.FC = () => {
   };
 
   const submitGRN = async () => {
-    if (newGRNItems.length === 0) { toast({ title: "Add items to GRN", variant: "destructive" }); return; }
+    const validItems = newGRNItems.filter((gi: any) => gi.quantity_received > 0);
+    if (validItems.length === 0) { toast({ title: "Add items to GRN", variant: "destructive" }); return; }
+    setSaving(true);
     const { data: userData } = await supabase.from("users").select("id, hospital_id").limit(1).single();
-    if (!userData) return;
+    if (!userData) { setSaving(false); return; }
 
     const vendorId = newGRN.vendor_id || (fromPO && selectedPO ? pos.find((p) => p.id === selectedPO)?.vendor_id : null);
-    if (!vendorId) { toast({ title: "Select vendor", variant: "destructive" }); return; }
+    if (!vendorId) { toast({ title: "Select vendor", variant: "destructive" }); setSaving(false); return; }
 
     const grnNumber = `GRN-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${Math.floor(Math.random() * 900 + 100)}`;
-    const totalAmount = newGRNItems.reduce((s: number, i: any) => s + (i.quantity_received * i.unit_rate), 0);
+    const totalAmount = validItems.reduce((s: number, i: any) => s + (i.quantity_received * i.unit_rate), 0);
 
     const { data: grn, error } = await (supabase as any).from("grn_records").insert({
       hospital_id: userData.hospital_id,
@@ -121,12 +124,11 @@ const GRNPanel: React.FC = () => {
       received_by: userData.id,
     }).select().single();
 
-    if (error || !grn) { toast({ title: "Failed to save GRN", variant: "destructive" }); return; }
+    if (error || !grn) { toast({ title: "Failed to save GRN", variant: "destructive" }); setSaving(false); return; }
 
-    for (const gi of newGRNItems) {
-      if (gi.quantity_received <= 0) continue;
-      // Insert GRN item
-      await (supabase as any).from("grn_items").insert({
+    // Bulk insert all GRN items
+    await (supabase as any).from("grn_items").insert(
+      validItems.map((gi: any) => ({
         hospital_id: userData.hospital_id,
         grn_id: grn.id,
         item_id: gi.item_id,
@@ -136,9 +138,11 @@ const GRNPanel: React.FC = () => {
         quantity_received: gi.quantity_received,
         unit_rate: gi.unit_rate,
         total_amount: gi.quantity_received * gi.unit_rate,
-      });
+      }))
+    );
 
-      // Update stock (upsert)
+    // Parallel: stock updates, transaction logs, PO item updates
+    await Promise.all(validItems.map(async (gi: any) => {
       const { data: existingStock } = await (supabase as any)
         .from("inventory_stock")
         .select("id, quantity_available")
@@ -147,28 +151,25 @@ const GRNPanel: React.FC = () => {
         .limit(1)
         .maybeSingle();
 
-      if (existingStock) {
-        await (supabase as any).from("inventory_stock").update({
-          quantity_available: existingStock.quantity_available + gi.quantity_received,
-          last_received_date: new Date().toISOString().slice(0, 10),
-          cost_price: gi.unit_rate,
-          batch_number: gi.batch_number || existingStock.batch_number,
-          expiry_date: gi.expiry_date || existingStock.expiry_date,
-        }).eq("id", existingStock.id);
-      } else {
-        await (supabase as any).from("inventory_stock").insert({
-          hospital_id: userData.hospital_id,
-          item_id: gi.item_id,
-          quantity_available: gi.quantity_received,
-          cost_price: gi.unit_rate,
-          batch_number: gi.batch_number || null,
-          expiry_date: gi.expiry_date || null,
-          last_received_date: new Date().toISOString().slice(0, 10),
-        });
-      }
+      const stockOp = existingStock
+        ? (supabase as any).from("inventory_stock").update({
+            quantity_available: existingStock.quantity_available + gi.quantity_received,
+            last_received_date: new Date().toISOString().slice(0, 10),
+            cost_price: gi.unit_rate,
+            batch_number: gi.batch_number || existingStock.batch_number,
+            expiry_date: gi.expiry_date || existingStock.expiry_date,
+          }).eq("id", existingStock.id)
+        : (supabase as any).from("inventory_stock").insert({
+            hospital_id: userData.hospital_id,
+            item_id: gi.item_id,
+            quantity_available: gi.quantity_received,
+            cost_price: gi.unit_rate,
+            batch_number: gi.batch_number || null,
+            expiry_date: gi.expiry_date || null,
+            last_received_date: new Date().toISOString().slice(0, 10),
+          });
 
-      // Log transaction
-      await (supabase as any).from("stock_transactions").insert({
+      const txOp = (supabase as any).from("stock_transactions").insert({
         hospital_id: userData.hospital_id,
         item_id: gi.item_id,
         transaction_type: "grn",
@@ -180,13 +181,14 @@ const GRNPanel: React.FC = () => {
         notes: `GRN ${grnNumber}`,
       });
 
-      // Update PO item received qty
-      if (gi.po_item_id) {
-        await (supabase as any).from("po_items").update({
-          quantity_received: (gi.already_received || 0) + gi.quantity_received,
-        }).eq("id", gi.po_item_id);
-      }
-    }
+      const poOp = gi.po_item_id
+        ? (supabase as any).from("po_items").update({
+            quantity_received: (gi.already_received || 0) + gi.quantity_received,
+          }).eq("id", gi.po_item_id)
+        : Promise.resolve();
+
+      await Promise.all([stockOp, txOp, poOp]);
+    }));
 
     // Update PO status
     if (fromPO && selectedPO) {
@@ -202,6 +204,7 @@ const GRNPanel: React.FC = () => {
     setNewGRN({ vendor_id: "", invoice_number: "", invoice_date: "", quality_check: "pass" });
     loadRecords();
     loadMaster();
+    setSaving(false);
   };
 
   return (
@@ -395,7 +398,9 @@ const GRNPanel: React.FC = () => {
           </div>
           <div className="flex gap-2 justify-end mt-2">
             <Button variant="outline" size="sm" onClick={() => setShowNew(false)} className="text-xs">Cancel</Button>
-            <Button size="sm" onClick={submitGRN} className="text-xs">Save GRN</Button>
+            <Button size="sm" onClick={submitGRN} disabled={saving} className="text-xs gap-1.5">
+              {saving && <Loader2 className="h-3 w-3 animate-spin" />} Save GRN
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
