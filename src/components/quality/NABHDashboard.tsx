@@ -3,7 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { PieChart, Pie, Cell, AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { ArrowLeft } from "lucide-react";
 
 interface Criterion {
   id: string;
@@ -33,12 +35,22 @@ const scoreColor = (pct: number) => {
   return "hsl(142, 71%, 45%)";
 };
 
+const statusBadge = (status: string) => {
+  switch (status) {
+    case "compliant": return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400";
+    case "partially_compliant": return "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400";
+    case "non_compliant": return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
+    default: return "bg-muted text-muted-foreground";
+  }
+};
+
 const NABHDashboard: React.FC = () => {
   const { toast } = useToast();
   const [criteria, setCriteria] = useState<Criterion[]>([]);
   const [audits, setAudits] = useState<AuditRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [collecting, setCollecting] = useState(false);
+  const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
@@ -75,6 +87,12 @@ const NABHDashboard: React.FC = () => {
 
   const nonCompliant = criteria.filter((c) => c.compliance_status === "non_compliant");
 
+  // Selected chapter criteria
+  const selectedCriteria = selectedChapter
+    ? criteria.filter((c) => c.chapter_code === selectedChapter)
+    : [];
+  const selectedChapterInfo = selectedChapter ? chapters[selectedChapter] : null;
+
   // Trend data (mock for now — 6 months)
   const trendData = Array.from({ length: 6 }, (_, i) => ({
     month: new Date(Date.now() - (5 - i) * 30 * 86400000).toLocaleString("default", { month: "short" }),
@@ -91,7 +109,6 @@ const NABHDashboard: React.FC = () => {
   const runAutoCollection = async () => {
     setCollecting(true);
     try {
-      // Auto-check AAC.1 — patient registration
       const { count: patientCount } = await supabase
         .from("patients")
         .select("id", { count: "exact", head: true });
@@ -103,7 +120,6 @@ const NABHDashboard: React.FC = () => {
           .eq("criterion_number", "AAC.1");
       }
 
-      // Auto-check MRD.1 — discharge summary completion
       const { data: admData } = await supabase
         .from("admissions")
         .select("discharge_summary_done")
@@ -175,7 +191,17 @@ const NABHDashboard: React.FC = () => {
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Chapter Progress</p>
         <div className="space-y-2">
           {chapterList.map((ch) => (
-            <div key={ch.code} className="group">
+            <button
+              key={ch.code}
+              type="button"
+              onClick={() => setSelectedChapter(selectedChapter === ch.code ? null : ch.code)}
+              className={cn(
+                "w-full text-left rounded-lg p-2 transition-all",
+                selectedChapter === ch.code
+                  ? "bg-primary/10 ring-1 ring-primary"
+                  : "hover:bg-muted/50"
+              )}
+            >
               <div className="flex items-center justify-between text-xs mb-0.5">
                 <span className="font-medium text-foreground truncate">{ch.code} — {ch.name}</span>
                 <span className="font-semibold ml-2" style={{ color: scoreColor(ch.avg) }}>{ch.avg}%</span>
@@ -186,41 +212,87 @@ const NABHDashboard: React.FC = () => {
                   style={{ width: `${ch.avg}%`, backgroundColor: scoreColor(ch.avg) }}
                 />
               </div>
-            </div>
+            </button>
           ))}
         </div>
       </div>
 
-      {/* CENTER: Trend + Auto Evidence */}
+      {/* CENTER: Trend + Auto Evidence OR Chapter Detail */}
       <div className="border-r border-border p-4 flex flex-col overflow-y-auto">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Compliance Trend</p>
-        <div className="h-[140px] mb-4">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={trendData}>
-              <XAxis dataKey="month" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
-              <YAxis domain={[0, 100]} tick={{ fontSize: 10 }} tickLine={false} axisLine={false} width={30} />
-              <Tooltip contentStyle={{ fontSize: 11 }} />
-              <Area type="monotone" dataKey="score" stroke="hsl(var(--primary))" fill="hsl(var(--primary) / 0.15)" strokeWidth={2} />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Auto-Evidence Collected</p>
-        <div className="space-y-2 mb-4">
-          {autoEvidence.map((ev, i) => (
-            <div key={i} className="flex items-start gap-2 text-xs">
-              <span className="text-green-500 mt-0.5">✓</span>
+        {selectedChapter && selectedChapterInfo ? (
+          <>
+            <div className="flex items-center gap-2 mb-3">
+              <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => setSelectedChapter(null)}>
+                <ArrowLeft className="h-3.5 w-3.5" />
+              </Button>
               <div>
-                <span className="text-foreground">{ev.text}</span>
-                <span className="ml-1 text-muted-foreground">— {ev.criterion}</span>
+                <p className="text-sm font-semibold text-foreground">{selectedChapterInfo.code} — {selectedChapterInfo.name}</p>
+                <p className="text-[10px] text-muted-foreground">{selectedCriteria.length} criteria</p>
               </div>
             </div>
-          ))}
-        </div>
+            <div className="space-y-2">
+              {selectedCriteria.map((c) => (
+                <div key={c.id} className="border border-border rounded-lg p-3">
+                  <div className="flex items-start justify-between gap-2 mb-1.5">
+                    <span className="text-xs font-semibold text-foreground">{c.criterion_number}</span>
+                    <Badge variant="secondary" className={cn("text-[9px] shrink-0", statusBadge(c.compliance_status))}>
+                      {c.compliance_status.replace("_", " ")}
+                    </Badge>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed mb-2">{c.criterion_text}</p>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all"
+                        style={{ width: `${c.compliance_score}%`, backgroundColor: scoreColor(c.compliance_score) }}
+                      />
+                    </div>
+                    <span className="text-[10px] font-semibold" style={{ color: scoreColor(c.compliance_score) }}>
+                      {c.compliance_score}%
+                    </span>
+                  </div>
+                  {c.last_assessed && (
+                    <p className="text-[9px] text-muted-foreground mt-1">
+                      Last assessed: {new Date(c.last_assessed).toLocaleDateString()}
+                      {c.auto_collected && " (auto)"}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Compliance Trend</p>
+            <div className="h-[140px] mb-4">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={trendData}>
+                  <XAxis dataKey="month" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
+                  <YAxis domain={[0, 100]} tick={{ fontSize: 10 }} tickLine={false} axisLine={false} width={30} />
+                  <Tooltip contentStyle={{ fontSize: 11 }} />
+                  <Area type="monotone" dataKey="score" stroke="hsl(var(--primary))" fill="hsl(var(--primary) / 0.15)" strokeWidth={2} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
 
-        <Button size="sm" variant="outline" onClick={runAutoCollection} disabled={collecting} className="w-full">
-          {collecting ? "Running…" : "Run Full Auto-Collection"}
-        </Button>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Auto-Evidence Collected</p>
+            <div className="space-y-2 mb-4">
+              {autoEvidence.map((ev, i) => (
+                <div key={i} className="flex items-start gap-2 text-xs">
+                  <span className="text-green-500 mt-0.5">✓</span>
+                  <div>
+                    <span className="text-foreground">{ev.text}</span>
+                    <span className="ml-1 text-muted-foreground">— {ev.criterion}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <Button size="sm" variant="outline" onClick={runAutoCollection} disabled={collecting} className="w-full">
+              {collecting ? "Running…" : "Run Full Auto-Collection"}
+            </Button>
+          </>
+        )}
       </div>
 
       {/* RIGHT: Critical Gaps + Upcoming Audits */}
