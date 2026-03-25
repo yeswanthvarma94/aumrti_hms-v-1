@@ -20,12 +20,26 @@ interface StaffForm {
   role: AppRole;
   department_id: string;
   registration_number: string;
-  ward_id: string; // UI-only, not persisted to users table
+  ward_id: string;
+  // Employment & Salary
+  employee_id: string;
+  employment_type: string;
+  basic_salary: string;
+  hra_percent: string;
+  da_percent: string;
+  conveyance: string;
+  medical_allowance: string;
+  pf_applicable: boolean;
+  esic_applicable: boolean;
+  license_expiry_date: string;
 }
 
 const EMPTY_FORM: StaffForm = {
   full_name: "", phone: "", email: "", role: "doctor",
   department_id: "", registration_number: "", ward_id: "",
+  employee_id: "", employment_type: "permanent", basic_salary: "",
+  hra_percent: "20", da_percent: "10", conveyance: "1600", medical_allowance: "1250",
+  pf_applicable: true, esic_applicable: false, license_expiry_date: "",
 };
 
 /* ─── Role config ─── */
