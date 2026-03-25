@@ -145,6 +145,25 @@ const SettingsStaffPage: React.FC = () => {
     return form.department_id && form.department_id.trim() !== "" ? form.department_id : null;
   };
 
+  const buildProfilePayload = (userId: string, hid: string, deptId: string | null) => ({
+    user_id: userId,
+    hospital_id: hid,
+    designation: form.role,
+    employment_type: form.employment_type || "permanent",
+    department_id: deptId,
+    registration_number: form.registration_number || null,
+    employee_id: form.employee_id || null,
+    basic_salary: form.basic_salary ? parseFloat(form.basic_salary) : null,
+    hra_percent: form.hra_percent ? parseFloat(form.hra_percent) : 20,
+    da_percent: form.da_percent ? parseFloat(form.da_percent) : 10,
+    conveyance: form.conveyance ? parseFloat(form.conveyance) : 1600,
+    medical_allowance: form.medical_allowance ? parseFloat(form.medical_allowance) : 1250,
+    pf_applicable: form.pf_applicable,
+    esic_applicable: form.esic_applicable,
+    license_expiry_date: form.license_expiry_date || null,
+    is_active: true,
+  });
+
   const saveStaff = useMutation({
     mutationFn: async () => {
       const hid = await getHospitalId();
@@ -159,6 +178,12 @@ const SettingsStaffPage: React.FC = () => {
           registration_number: form.registration_number || null,
         }).eq("id", editingId);
         if (error) throw error;
+
+        // Upsert staff_profiles with salary data
+        await (supabase as any).from("staff_profiles").upsert(
+          buildProfilePayload(editingId, hid, deptId),
+          { onConflict: "user_id" }
+        );
       } else {
         const newId = crypto.randomUUID();
         const { error } = await supabase.from("users").insert({
@@ -176,17 +201,8 @@ const SettingsStaffPage: React.FC = () => {
         } as any);
         if (error) throw error;
 
-        // Also create a staff_profiles row for HR/payroll
-        await (supabase as any).from("staff_profiles").insert({
-          hospital_id: hid,
-          user_id: newId,
-          employee_id: null,
-          designation: form.role,
-          employment_type: "permanent",
-          department_id: deptId,
-          registration_number: form.registration_number || null,
-          is_active: true,
-        });
+        // Create staff_profiles row with salary data
+        await (supabase as any).from("staff_profiles").insert(buildProfilePayload(newId, hid, deptId));
       }
     },
     onSuccess: () => {
