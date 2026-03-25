@@ -20,12 +20,26 @@ interface StaffForm {
   role: AppRole;
   department_id: string;
   registration_number: string;
-  ward_id: string; // UI-only, not persisted to users table
+  ward_id: string;
+  // Employment & Salary
+  employee_id: string;
+  employment_type: string;
+  basic_salary: string;
+  hra_percent: string;
+  da_percent: string;
+  conveyance: string;
+  medical_allowance: string;
+  pf_applicable: boolean;
+  esic_applicable: boolean;
+  license_expiry_date: string;
 }
 
 const EMPTY_FORM: StaffForm = {
   full_name: "", phone: "", email: "", role: "doctor",
   department_id: "", registration_number: "", ward_id: "",
+  employee_id: "", employment_type: "permanent", basic_salary: "",
+  hra_percent: "20", da_percent: "10", conveyance: "1600", medical_allowance: "1250",
+  pf_applicable: true, esic_applicable: false, license_expiry_date: "",
 };
 
 /* ─── Role config ─── */
@@ -131,6 +145,25 @@ const SettingsStaffPage: React.FC = () => {
     return form.department_id && form.department_id.trim() !== "" ? form.department_id : null;
   };
 
+  const buildProfilePayload = (userId: string, hid: string, deptId: string | null) => ({
+    user_id: userId,
+    hospital_id: hid,
+    designation: form.role,
+    employment_type: form.employment_type || "permanent",
+    department_id: deptId,
+    registration_number: form.registration_number || null,
+    employee_id: form.employee_id || null,
+    basic_salary: form.basic_salary ? parseFloat(form.basic_salary) : null,
+    hra_percent: form.hra_percent ? parseFloat(form.hra_percent) : 20,
+    da_percent: form.da_percent ? parseFloat(form.da_percent) : 10,
+    conveyance: form.conveyance ? parseFloat(form.conveyance) : 1600,
+    medical_allowance: form.medical_allowance ? parseFloat(form.medical_allowance) : 1250,
+    pf_applicable: form.pf_applicable,
+    esic_applicable: form.esic_applicable,
+    license_expiry_date: form.license_expiry_date || null,
+    is_active: true,
+  });
+
   const saveStaff = useMutation({
     mutationFn: async () => {
       const hid = await getHospitalId();
@@ -145,6 +178,12 @@ const SettingsStaffPage: React.FC = () => {
           registration_number: form.registration_number || null,
         }).eq("id", editingId);
         if (error) throw error;
+
+        // Upsert staff_profiles with salary data
+        await (supabase as any).from("staff_profiles").upsert(
+          buildProfilePayload(editingId, hid, deptId),
+          { onConflict: "user_id" }
+        );
       } else {
         const newId = crypto.randomUUID();
         const { error } = await supabase.from("users").insert({
@@ -162,17 +201,8 @@ const SettingsStaffPage: React.FC = () => {
         } as any);
         if (error) throw error;
 
-        // Also create a staff_profiles row for HR/payroll
-        await (supabase as any).from("staff_profiles").insert({
-          hospital_id: hid,
-          user_id: newId,
-          employee_id: null,
-          designation: form.role,
-          employment_type: "permanent",
-          department_id: deptId,
-          registration_number: form.registration_number || null,
-          is_active: true,
-        });
+        // Create staff_profiles row with salary data
+        await (supabase as any).from("staff_profiles").insert(buildProfilePayload(newId, hid, deptId));
       }
     },
     onSuccess: () => {
@@ -233,12 +263,25 @@ const SettingsStaffPage: React.FC = () => {
   });
 
   /* ─── Helpers ─── */
-  const openDrawer = (user?: any) => {
+  const openDrawer = async (user?: any) => {
     if (user) {
       setEditingId(user.id);
+      // Fetch staff_profiles data for salary fields
+      const { data: profile } = await (supabase as any)
+        .from("staff_profiles").select("*").eq("user_id", user.id).maybeSingle();
       setForm({
         full_name: user.full_name, phone: user.phone ?? "", email: user.email,
         role: user.role, department_id: user.department_id ?? "", registration_number: user.registration_number ?? "", ward_id: "",
+        employee_id: profile?.employee_id ?? "",
+        employment_type: profile?.employment_type ?? "permanent",
+        basic_salary: profile?.basic_salary?.toString() ?? "",
+        hra_percent: profile?.hra_percent?.toString() ?? "20",
+        da_percent: profile?.da_percent?.toString() ?? "10",
+        conveyance: profile?.conveyance?.toString() ?? "1600",
+        medical_allowance: profile?.medical_allowance?.toString() ?? "1250",
+        pf_applicable: profile?.pf_applicable ?? true,
+        esic_applicable: profile?.esic_applicable ?? false,
+        license_expiry_date: profile?.license_expiry_date ?? "",
       });
     } else {
       setEditingId(null);
@@ -462,6 +505,65 @@ const SettingsStaffPage: React.FC = () => {
                   </div>
                 </div>
               )}
+
+              {/* Employment & Salary */}
+              <div className="space-y-3">
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Employment & Salary</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Employee ID</label>
+                    <Input value={form.employee_id} onChange={(e) => setForm({ ...form, employee_id: e.target.value })} placeholder="EMP-001" className="h-10" />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Employment Type</label>
+                    <select value={form.employment_type} onChange={(e) => setForm({ ...form, employment_type: e.target.value })}
+                      className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                      <option value="permanent">Permanent</option>
+                      <option value="contract">Contract</option>
+                      <option value="visiting">Visiting</option>
+                      <option value="intern">Intern</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Basic Salary (₹/month)</label>
+                  <Input type="number" value={form.basic_salary} onChange={(e) => setForm({ ...form, basic_salary: e.target.value })} placeholder="25000" className="h-10" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[11px] font-medium text-muted-foreground mb-1 block">HRA %</label>
+                    <Input type="number" value={form.hra_percent} onChange={(e) => setForm({ ...form, hra_percent: e.target.value })} className="h-10" />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-medium text-muted-foreground mb-1 block">DA %</label>
+                    <Input type="number" value={form.da_percent} onChange={(e) => setForm({ ...form, da_percent: e.target.value })} className="h-10" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Conveyance (₹)</label>
+                    <Input type="number" value={form.conveyance} onChange={(e) => setForm({ ...form, conveyance: e.target.value })} className="h-10" />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Medical Allow. (₹)</label>
+                    <Input type="number" value={form.medical_allowance} onChange={(e) => setForm({ ...form, medical_allowance: e.target.value })} className="h-10" />
+                  </div>
+                </div>
+                <div className="flex items-center gap-6">
+                  <label className="flex items-center gap-2 text-[13px] text-foreground cursor-pointer">
+                    <input type="checkbox" checked={form.pf_applicable} onChange={(e) => setForm({ ...form, pf_applicable: e.target.checked })} className="rounded border-input" />
+                    PF Applicable
+                  </label>
+                  <label className="flex items-center gap-2 text-[13px] text-foreground cursor-pointer">
+                    <input type="checkbox" checked={form.esic_applicable} onChange={(e) => setForm({ ...form, esic_applicable: e.target.checked })} className="rounded border-input" />
+                    ESIC Applicable
+                  </label>
+                </div>
+                <div>
+                  <label className="text-[11px] font-medium text-muted-foreground mb-1 block">License Expiry Date</label>
+                  <Input type="date" value={form.license_expiry_date} onChange={(e) => setForm({ ...form, license_expiry_date: e.target.value })} className="h-10" />
+                </div>
+              </div>
             </div>
 
             {/* Footer */}
