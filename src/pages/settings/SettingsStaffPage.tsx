@@ -505,6 +505,65 @@ const SettingsStaffPage: React.FC = () => {
                   </div>
                 </div>
               )}
+
+              {/* Employment & Salary */}
+              <div className="space-y-3">
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Employment & Salary</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Employee ID</label>
+                    <Input value={form.employee_id} onChange={(e) => setForm({ ...form, employee_id: e.target.value })} placeholder="EMP-001" className="h-10" />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Employment Type</label>
+                    <select value={form.employment_type} onChange={(e) => setForm({ ...form, employment_type: e.target.value })}
+                      className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                      <option value="permanent">Permanent</option>
+                      <option value="contract">Contract</option>
+                      <option value="visiting">Visiting</option>
+                      <option value="intern">Intern</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Basic Salary (₹/month)</label>
+                  <Input type="number" value={form.basic_salary} onChange={(e) => setForm({ ...form, basic_salary: e.target.value })} placeholder="25000" className="h-10" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[11px] font-medium text-muted-foreground mb-1 block">HRA %</label>
+                    <Input type="number" value={form.hra_percent} onChange={(e) => setForm({ ...form, hra_percent: e.target.value })} className="h-10" />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-medium text-muted-foreground mb-1 block">DA %</label>
+                    <Input type="number" value={form.da_percent} onChange={(e) => setForm({ ...form, da_percent: e.target.value })} className="h-10" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Conveyance (₹)</label>
+                    <Input type="number" value={form.conveyance} onChange={(e) => setForm({ ...form, conveyance: e.target.value })} className="h-10" />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Medical Allow. (₹)</label>
+                    <Input type="number" value={form.medical_allowance} onChange={(e) => setForm({ ...form, medical_allowance: e.target.value })} className="h-10" />
+                  </div>
+                </div>
+                <div className="flex items-center gap-6">
+                  <label className="flex items-center gap-2 text-[13px] text-foreground cursor-pointer">
+                    <input type="checkbox" checked={form.pf_applicable} onChange={(e) => setForm({ ...form, pf_applicable: e.target.checked })} className="rounded border-input" />
+                    PF Applicable
+                  </label>
+                  <label className="flex items-center gap-2 text-[13px] text-foreground cursor-pointer">
+                    <input type="checkbox" checked={form.esic_applicable} onChange={(e) => setForm({ ...form, esic_applicable: e.target.checked })} className="rounded border-input" />
+                    ESIC Applicable
+                  </label>
+                </div>
+                <div>
+                  <label className="text-[11px] font-medium text-muted-foreground mb-1 block">License Expiry Date</label>
+                  <Input type="date" value={form.license_expiry_date} onChange={(e) => setForm({ ...form, license_expiry_date: e.target.value })} className="h-10" />
+                </div>
+              </div>
             </div>
 
             {/* Footer */}
