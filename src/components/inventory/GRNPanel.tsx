@@ -398,7 +398,9 @@ const GRNPanel: React.FC = () => {
           </div>
           <div className="flex gap-2 justify-end mt-2">
             <Button variant="outline" size="sm" onClick={() => setShowNew(false)} className="text-xs">Cancel</Button>
-            <Button size="sm" onClick={submitGRN} className="text-xs">Save GRN</Button>
+            <Button size="sm" onClick={submitGRN} disabled={saving} className="text-xs gap-1.5">
+              {saving && <Loader2 className="h-3 w-3 animate-spin" />} Save GRN
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
