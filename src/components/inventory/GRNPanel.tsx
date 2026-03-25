@@ -29,6 +29,7 @@ const GRNPanel: React.FC = () => {
   const [newGRN, setNewGRN] = useState({ vendor_id: "", invoice_number: "", invoice_date: "", quality_check: "pass" });
   const [newGRNItems, setNewGRNItems] = useState<any[]>([]);
   const [itemSearch, setItemSearch] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const loadRecords = async () => {
     const { data } = await (supabase as any)
