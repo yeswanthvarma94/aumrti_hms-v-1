@@ -247,12 +247,25 @@ const SettingsStaffPage: React.FC = () => {
   });
 
   /* ─── Helpers ─── */
-  const openDrawer = (user?: any) => {
+  const openDrawer = async (user?: any) => {
     if (user) {
       setEditingId(user.id);
+      // Fetch staff_profiles data for salary fields
+      const { data: profile } = await (supabase as any)
+        .from("staff_profiles").select("*").eq("user_id", user.id).maybeSingle();
       setForm({
         full_name: user.full_name, phone: user.phone ?? "", email: user.email,
         role: user.role, department_id: user.department_id ?? "", registration_number: user.registration_number ?? "", ward_id: "",
+        employee_id: profile?.employee_id ?? "",
+        employment_type: profile?.employment_type ?? "permanent",
+        basic_salary: profile?.basic_salary?.toString() ?? "",
+        hra_percent: profile?.hra_percent?.toString() ?? "20",
+        da_percent: profile?.da_percent?.toString() ?? "10",
+        conveyance: profile?.conveyance?.toString() ?? "1600",
+        medical_allowance: profile?.medical_allowance?.toString() ?? "1250",
+        pf_applicable: profile?.pf_applicable ?? true,
+        esic_applicable: profile?.esic_applicable ?? false,
+        license_expiry_date: profile?.license_expiry_date ?? "",
       });
     } else {
       setEditingId(null);
