@@ -1,36 +1,35 @@
 
 
-## Plan: Add Salary & Employment Fields to Staff Management
+## Plan: Fix Inventory Indents & GRN Performance and Missing Features
 
-### Problem
-The staff creation/edit drawer has no fields for salary, PF/ESIC, or license expiry. The `staff_profiles` table already has these columns (`basic_salary`, `hra_percent`, `da_percent`, `conveyance`, `medical_allowance`, `pf_applicable`, `esic_applicable`, `license_expiry_date`, `employment_type`, `employee_id`), but the UI never lets users set them.
+### Problems Identified
+
+1. **Slow indent/GRN operations**: Both `submitNewIndent`, `updateStatus`, `issueItems`, and `submitGRN` use sequential `await` calls inside loops. Each item triggers 3-4 separate DB calls one after another.
+2. **Issued tab not auto-switching**: After issuing items, the filter stays on the current tab instead of switching to "issued".
+3. **No "rejected" tab**: The tabs array on line 180 is `["pending", "approved", "issued", "all"]` -- missing "rejected".
+4. **GRN slow**: `submitGRN` runs sequential DB calls per item (grn_items insert, stock check, stock update, transaction insert, po_items update).
 
 ### Changes
 
-**File: `src/pages/settings/SettingsStaffPage.tsx`**
+**File: `src/components/inventory/IndentsPanel.tsx`**
 
-1. **Extend `StaffForm` interface** with salary/employment fields:
-   - `basic_salary`, `hra_percent`, `da_percent`, `conveyance`, `medical_allowance` (numbers)
-   - `pf_applicable`, `esic_applicable` (booleans)
-   - `license_expiry_date`, `employment_type`, `employee_id` (strings)
+1. **Add loading states** -- add `saving` boolean to disable buttons and show feedback during operations.
+2. **Add "rejected" tab** -- change line 180 to include "rejected" in the tabs array.
+3. **Auto-switch to correct tab after status change** -- after approve, switch filter to "approved"; after reject, switch to "rejected"; after issuing, switch to "issued".
+4. **Batch indent item inserts** -- in `submitNewIndent`, replace the sequential loop with a single bulk `.insert([...allItems])` call.
+5. **Batch issue operations** -- in `issueItems`, collect all update/insert payloads and use `Promise.all` for independent operations instead of sequential awaits.
+6. **Optimistic UI** -- update the local `indents` state immediately on approve/reject instead of waiting for reload.
 
-2. **Add "Employment & Salary" section** to the slide-over drawer (visible for all roles, below role-specific fields):
-   - Employee ID (text)
-   - Employment Type (dropdown: permanent, contract, visiting, intern)
-   - Basic Salary (number, ₹)
-   - HRA % (default 20), DA % (default 10)
-   - Conveyance (default 1600), Medical Allowance (default 1250)
-   - PF Applicable (checkbox), ESIC Applicable (checkbox)
-   - License Expiry Date (date input)
+**File: `src/components/inventory/GRNPanel.tsx`**
 
-3. **Update save mutation** to upsert `staff_profiles` with the salary fields on both create and edit. On edit, perform an upsert to `staff_profiles` keyed by `user_id`.
-
-4. **Update `openDrawer`** to load existing `staff_profiles` data when editing, so salary fields are pre-populated.
+7. **Add loading state** -- add `saving` boolean to disable the submit button during GRN creation.
+8. **Batch GRN item inserts** -- insert all `grn_items` in a single bulk insert.
+9. **Parallelize per-item operations** -- use `Promise.all` for stock updates, transaction logs, and PO item updates that are independent of each other.
 
 ### Technical Details
 
-- The `staff_profiles` table already has all needed columns; no migration required.
-- On edit, fetch the profile with `supabase.from("staff_profiles").select("*").eq("user_id", editingId).maybeSingle()` and populate the form.
-- On save (both create and update), upsert into `staff_profiles` with `onConflict: "user_id"` to handle both new and existing profiles.
-- Default values match the payroll calculation defaults (HRA 20%, DA 10%, conveyance 1600, medical 1250).
+- Replace `for (const item of items) { await ...; }` patterns with `Promise.all(items.map(...))` where operations are independent.
+- Bulk insert: `supabase.from("table").insert([item1, item2, ...])` instead of individual inserts per row.
+- Loading state prevents double-clicks during slow operations.
+- Tab auto-switch uses `setFilter(newStatus)` after status updates.
 
