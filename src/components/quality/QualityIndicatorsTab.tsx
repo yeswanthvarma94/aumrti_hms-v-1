@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -35,6 +35,7 @@ const QualityIndicatorsTab: React.FC = () => {
   const { toast } = useToast();
   const [indicators, setIndicators] = useState<Indicator[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [editModal, setEditModal] = useState<Indicator | null>(null);
   const [editValue, setEditValue] = useState("");
 
@@ -43,8 +44,15 @@ const QualityIndicatorsTab: React.FC = () => {
   }, []);
 
   const loadIndicators = async () => {
-    const { data } = await supabase.from("quality_indicators").select("*").order("category");
+    const { data, error: queryError } = await supabase.from("quality_indicators").select("*").order("category");
+    if (queryError) {
+      setError(queryError.message);
+      toast({ title: "Failed to load indicators", description: queryError.message, variant: "destructive" });
+      setLoading(false);
+      return;
+    }
     setIndicators((data as any) || []);
+    setError(null);
     setLoading(false);
   };
 
@@ -73,7 +81,6 @@ const QualityIndicatorsTab: React.FC = () => {
     loadIndicators();
   };
 
-  // Group by category
   const grouped = indicators.reduce<Record<string, Indicator[]>>((acc, ind) => {
     (acc[ind.category] = acc[ind.category] || []).push(ind);
     return acc;
@@ -82,6 +89,33 @@ const QualityIndicatorsTab: React.FC = () => {
   const sparkData = Array.from({ length: 6 }, (_, i) => ({ v: Math.random() * 50 + 30 }));
 
   if (loading) return <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">Loading…</div>;
+
+  if (error) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center gap-3 p-8">
+        <div className="text-destructive text-sm font-medium">Failed to load quality indicators</div>
+        <p className="text-xs text-muted-foreground text-center max-w-sm">{error}</p>
+        <Button size="sm" variant="outline" onClick={() => { setLoading(true); loadIndicators(); }}>
+          Retry
+        </Button>
+      </div>
+    );
+  }
+
+  if (indicators.length === 0) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center gap-3 p-8">
+        <div className="text-2xl">📊</div>
+        <p className="text-sm font-medium text-foreground">No quality indicators found</p>
+        <p className="text-xs text-muted-foreground text-center max-w-sm">
+          Quality indicators may not be configured yet, or your session may have expired. Please check your authentication or contact admin.
+        </p>
+        <Button size="sm" variant="outline" onClick={() => { setLoading(true); loadIndicators(); }}>
+          Refresh
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 overflow-y-auto p-4">

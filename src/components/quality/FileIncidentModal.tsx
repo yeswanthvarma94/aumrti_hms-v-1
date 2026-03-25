@@ -52,9 +52,11 @@ const FileIncidentModal: React.FC<Props> = ({ open, onOpenChange, onFiled }) => 
     }
     setSaving(true);
     try {
+      // Attempt session refresh for stale tokens
+      await supabase.auth.refreshSession();
       const { data: userData } = await supabase.auth.getUser();
       const userId = userData.user?.id;
-      if (!userId) { toast({ title: "Not authenticated", variant: "destructive" }); setSaving(false); return; }
+      if (!userId) { toast({ title: "Session expired — please log in again", variant: "destructive" }); setSaving(false); return; }
 
       const { data: userProfile } = await supabase
         .from("users")
