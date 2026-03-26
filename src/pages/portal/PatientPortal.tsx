@@ -114,6 +114,7 @@ const PatientPortal: React.FC = () => {
         <Route path="reports" element={<PortalReports session={session} />} />
         <Route path="bills" element={<PortalBills session={session} />} />
         <Route path="prescriptions" element={<PortalPrescriptions session={session} />} />
+        <Route path="timeline" element={<PortalTimeline session={session} />} />
         <Route path="feedback" element={<PortalFeedback session={session} />} />
         <Route path="*" element={<Navigate to="/portal/dashboard" replace />} />
       </Routes>
