@@ -13,6 +13,8 @@ import IPDMedicationsTab from "./tabs/IPDMedicationsTab";
 import IPDWardRoundTab from "./tabs/IPDWardRoundTab";
 import IPDNotesTab from "./tabs/IPDNotesTab";
 import IPDDocumentsTab from "./tabs/IPDDocumentsTab";
+import { useWhatsAppNotification } from "@/components/whatsapp/WhatsAppNotificationCard";
+import { sendDischargeSummaryNotif, sendFeedbackRequest } from "@/lib/whatsapp-notifications";
 
 interface Props {
   bed: BedData | null;
