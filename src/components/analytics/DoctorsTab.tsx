@@ -177,7 +177,7 @@ const DoctorTable: React.FC<{ doctors: DoctorScore[]; onRowClick: (doc: DoctorSc
       </thead>
       <tbody>
         {doctors.map(doc => (
-          <tr key={doc.id} className="border-b border-border/50 hover:bg-muted/30">
+          <tr key={doc.id} className="border-b border-border/50 hover:bg-muted/30 cursor-pointer" onClick={() => onRowClick(doc)}>
             <td className="px-4 py-2.5 font-medium text-foreground">{doc.full_name}</td>
             <td className="px-3 py-2.5 text-muted-foreground">{doc.department_name}</td>
             <td className="px-3 py-2.5 text-right">{doc.opdCount}</td>
