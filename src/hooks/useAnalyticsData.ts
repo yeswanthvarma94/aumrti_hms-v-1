@@ -185,7 +185,8 @@ export function useInsuranceSummary(range: DateRange) {
 
       const { data } = await supabase.from("insurance_claims")
         .select("status, claimed_amount, approved_amount, settled_amount, tpa_name")
-        .eq("hospital_id", hospitalId);
+        .eq("hospital_id", hospitalId)
+        .limit(2000);
 
       const claims = data || [];
       const submitted = claims.filter(c => c.status !== "draft");
