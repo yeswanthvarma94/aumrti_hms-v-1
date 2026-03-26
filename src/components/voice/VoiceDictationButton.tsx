@@ -1,35 +1,118 @@
-import React from "react";
+import React, { useRef, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { Mic, MicOff, Loader2 } from "lucide-react";
-import { useVoiceDictation, VoiceContextType } from "@/hooks/useVoiceDictation";
+import { useVoiceScribe, SessionType } from "@/contexts/VoiceScribeContext";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+
+interface SpeechRecognitionLike {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  onresult: ((e: { results: SpeechRecognitionResultList }) => void) | null;
+  onerror: ((e: { error: string }) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+}
 
 interface Props {
-  contextType: VoiceContextType;
-  existingData?: Record<string, unknown>;
-  onStructuredResult: (data: Record<string, unknown>) => void;
+  sessionType: SessionType;
   className?: string;
   size?: "sm" | "md";
 }
 
-const VoiceDictationButton: React.FC<Props> = ({
-  contextType,
-  existingData,
-  onStructuredResult,
-  className,
-  size = "md",
-}) => {
+const VoiceDictationButton: React.FC<Props> = ({ sessionType, className, size = "md" }) => {
   const {
-    isRecording,
-    isProcessing,
-    transcript,
-    isSupported,
-    startRecording,
-    stopRecording,
-  } = useVoiceDictation({
-    contextType,
-    existingData,
-    onStructuredResult,
-  });
+    isRecording, setIsRecording,
+    setIsPanelOpen, setPanelState,
+    setRawTranscript, setStructuredOutput,
+    setCurrentSessionType,
+  } = useVoiceScribe();
+  const { toast } = useToast();
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const fullTranscriptRef = useRef("");
+
+  const isSupported = typeof window !== "undefined" && !!(
+    (window as unknown as Record<string, unknown>).SpeechRecognition ||
+    (window as unknown as Record<string, unknown>).webkitSpeechRecognition
+  );
+
+  const processTranscript = useCallback(async (rawText: string) => {
+    if (!rawText.trim()) return;
+    setPanelState("processing");
+    setIsPanelOpen(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke("ai-clinical-voice", {
+        body: { transcript: rawText, context_type: sessionType },
+      });
+      if (error || data?.error) throw new Error(data?.error || error?.message);
+      setStructuredOutput(data.structured);
+      setPanelState("output");
+    } catch (err) {
+      console.error("AI structuring failed:", err);
+      setPanelState("fallback");
+    }
+  }, [sessionType, setPanelState, setIsPanelOpen, setStructuredOutput]);
+
+  const startRecording = useCallback(() => {
+    if (!isSupported) {
+      toast({ title: "Voice not supported", description: "Use Chrome or Edge", variant: "destructive" });
+      return;
+    }
+
+    const SR = (window as unknown as Record<string, unknown>).SpeechRecognition ||
+      (window as unknown as Record<string, unknown>).webkitSpeechRecognition;
+    const recognition = new (SR as new () => SpeechRecognitionLike)();
+    recognition.lang = "en-IN";
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    fullTranscriptRef.current = "";
+    setRawTranscript("");
+    setCurrentSessionType(sessionType);
+
+    recognition.onresult = (e) => {
+      let interim = "";
+      let final = "";
+      for (let i = 0; i < e.results.length; i++) {
+        const r = e.results[i];
+        if (r.isFinal) {
+          final += r[0].transcript + " ";
+        } else {
+          interim += r[0].transcript;
+        }
+      }
+      fullTranscriptRef.current = final;
+      setRawTranscript(final + interim);
+    };
+
+    recognition.onerror = (e) => {
+      if (e.error !== "aborted") {
+        toast({ title: `Speech error: ${e.error}`, variant: "destructive" });
+      }
+      setIsRecording(false);
+    };
+
+    recognition.onend = () => {
+      setIsRecording(false);
+      if (fullTranscriptRef.current.trim()) {
+        processTranscript(fullTranscriptRef.current.trim());
+      }
+    };
+
+    recognitionRef.current = recognition;
+    recognition.start();
+    setIsRecording(true);
+    setIsPanelOpen(true);
+    setPanelState("recording");
+  }, [isSupported, sessionType, processTranscript, setIsRecording, setIsPanelOpen, setPanelState, setRawTranscript, setCurrentSessionType, toast]);
+
+  const stopRecording = useCallback(() => {
+    recognitionRef.current?.stop();
+    recognitionRef.current = null;
+  }, []);
 
   if (!isSupported) return null;
 
@@ -40,42 +123,20 @@ const VoiceDictationButton: React.FC<Props> = ({
     <div className={cn("relative inline-flex items-center gap-2", className)}>
       <button
         onClick={isRecording ? stopRecording : startRecording}
-        disabled={isProcessing}
         className={cn(
           "rounded-md font-medium flex items-center gap-1.5 transition-all active:scale-[0.97]",
           btnSize,
           isRecording
             ? "bg-red-500 text-white hover:bg-red-600 animate-pulse"
-            : isProcessing
-            ? "bg-slate-200 text-slate-400 cursor-wait"
             : "bg-[#1A2F5A] text-white hover:bg-[#152647]"
         )}
       >
-        {isProcessing ? (
-          <>
-            <Loader2 className={cn(iconSize, "animate-spin")} />
-            AI Processing…
-          </>
-        ) : isRecording ? (
-          <>
-            <MicOff className={iconSize} />
-            Stop & Process
-          </>
+        {isRecording ? (
+          <><MicOff className={iconSize} /> Stop & Process</>
         ) : (
-          <>
-            <Mic className={iconSize} />
-            Voice Dictate
-          </>
+          <><Mic className={iconSize} /> Voice Dictate</>
         )}
       </button>
-
-      {/* Live transcript preview */}
-      {isRecording && transcript && (
-        <div className="absolute top-full left-0 mt-1 z-50 bg-white border border-slate-200 rounded-lg shadow-lg p-2 max-w-sm min-w-[200px]">
-          <p className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Listening…</p>
-          <p className="text-xs text-slate-700 leading-relaxed line-clamp-4">{transcript}</p>
-        </div>
-      )}
     </div>
   );
 };

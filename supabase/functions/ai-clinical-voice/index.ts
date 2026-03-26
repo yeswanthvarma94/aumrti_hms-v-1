@@ -6,57 +6,78 @@ const corsHeaders = {
 };
 
 const CONTEXT_PROMPTS: Record<string, string> = {
-  complaint: `Extract structured complaint data from this doctor's voice dictation. Return JSON:
-{
-  "chief_complaint": "main complaint in clinical terms",
-  "duration": "e.g. 3 days, 1 week",
-  "onset": "Sudden | Gradual | Insidious",
-  "history_of_present_illness": "detailed HPI narrative"
-}
-Only include fields that are clearly mentioned. Use empty string for missing fields.`,
+  opd_consultation: `You are a clinical documentation AI for an Indian hospital. A doctor dictated the following during an OPD consultation. Extract and structure the clinical information.
 
-  examination: `Extract structured examination data from this doctor's voice dictation. Return JSON:
+Return ONLY a JSON object with this exact structure:
 {
-  "examination_notes": "general examination findings",
-  "systemic_examination": "systemic/clinical findings",
-  "diagnosis": "diagnosis or impression if mentioned",
-  "icd10_code": "ICD-10 code if you can determine it, else empty string"
-}
-Only include fields that are clearly mentioned. Use empty string for missing fields.`,
-
-  prescription: `Extract structured prescription data from this doctor's voice dictation. Return JSON:
-{
-  "drugs": [
+  "chief_complaint": "main reason for visit in 1-2 sentences",
+  "history_of_present_illness": "detailed history",
+  "examination_findings": "clinical examination findings",
+  "diagnosis": "primary diagnosis or working diagnosis",
+  "icd_suggestion": "suggested ICD-10 code if identifiable",
+  "plan": "management plan",
+  "prescription": [
     {
       "drug_name": "drug name with strength",
-      "dose": "dosage",
-      "route": "Oral|IV|IM|SC|Topical|Inhaled|Sublingual",
-      "frequency": "OD|BD|TDS|QID|SOS|STAT|HS",
-      "duration_days": "number of days",
-      "instructions": "special instructions",
-      "quantity": "total quantity"
+      "dose": "dose",
+      "route": "oral/iv/im etc",
+      "frequency": "OD/BD/TDS/QID/SOS/STAT/HS",
+      "duration": "number of days",
+      "instructions": "special instructions if any"
     }
   ],
-  "lab_orders": ["test name 1", "test name 2"],
-  "radiology_orders": ["study name 1"],
-  "advice_notes": "general advice if mentioned",
-  "review_date": "follow-up date if mentioned, in YYYY-MM-DD format"
+  "follow_up": "follow-up instructions",
+  "investigations": ["test 1", "test 2"],
+  "confidence": 0.85
 }
-Only include items that are clearly mentioned. Use standard Indian drug names.`,
 
-  ward_round: `Extract structured ward round SOAP note from this doctor's voice dictation. Return JSON:
-{
-  "subjective": "how patient is feeling, symptoms",
-  "objective": "examination findings, vitals mentioned",
-  "assessment": "clinical assessment/diagnosis",
-  "plan": "today's plan, medication changes, orders"
-}
-Only include fields that are clearly mentioned. Use empty string for missing fields.`,
+If a field cannot be extracted, use empty string or empty array.
+Prescription array should only include items clearly mentioned.
+confidence should be 0-1 based on transcript clarity.`,
 
-  notes: `Extract a clean clinical note from this voice dictation. Return JSON:
+  ward_round: `You are a clinical documentation AI for an Indian hospital. A doctor dictated the following during an IPD ward round.
+
+Return ONLY a JSON object:
 {
-  "note_text": "cleaned up clinical note",
-  "category": "nursing|progress|procedure|other"
+  "subjective": "patient's complaints today",
+  "objective": "vitals and examination today",
+  "assessment": "clinical assessment / diagnosis status",
+  "plan": "today's management plan",
+  "medication_changes": [
+    { "action": "add/stop/change", "drug": "", "note": "" }
+  ],
+  "investigations_ordered": ["test 1", "test 2"],
+  "consultant_to_call": "",
+  "discharge_plan": "if discharge being planned",
+  "confidence": 0.85
+}`,
+
+  emergency: `You are a clinical documentation AI. This is an emergency department case.
+
+Return ONLY a JSON object:
+{
+  "presenting_complaint": "",
+  "triage_category": "P1/P2/P3/P4 if mentioned",
+  "history": "",
+  "examination": "",
+  "working_diagnosis": "",
+  "immediate_management": "",
+  "investigations_ordered": [],
+  "disposition": "admit/discharge/observe/refer",
+  "confidence": 0.85
+}`,
+
+  nursing_note: `You are a clinical documentation AI. This is a nursing note dictated by a nurse.
+
+Return ONLY a JSON object:
+{
+  "observation": "patient observation",
+  "vitals_mentioned": { "bp": "", "pulse": "", "temp": "", "spo2": "" },
+  "interventions": "nursing interventions done",
+  "medications_given": [{ "drug": "", "dose": "", "time": "" }],
+  "patient_response": "patient response to treatment",
+  "handover_note": "important notes for next shift",
+  "confidence": 0.85
 }`,
 };
 
@@ -76,7 +97,7 @@ serve(async (req) => {
       });
     }
 
-    const contextPrompt = CONTEXT_PROMPTS[context_type] || CONTEXT_PROMPTS.notes;
+    const contextPrompt = CONTEXT_PROMPTS[context_type] || CONTEXT_PROMPTS.opd_consultation;
 
     const existingContext = existing_data
       ? `\n\nExisting data already in the form (merge with, don't overwrite unless corrected):\n${JSON.stringify(existing_data)}`
@@ -84,10 +105,8 @@ serve(async (req) => {
 
     const prompt = `${contextPrompt}${existingContext}
 
-Doctor's voice dictation transcript:
-"${transcript}"
-
-Return ONLY valid JSON, no markdown, no explanation.`;
+Dictation transcript:
+"${transcript}"`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -100,7 +119,7 @@ Return ONLY valid JSON, no markdown, no explanation.`;
         messages: [
           {
             role: "system",
-            content: "You are a clinical documentation assistant for Indian hospitals. Parse doctor voice dictations into structured medical data. Use standard Indian medical terminology. Always return valid JSON only.",
+            content: "You are a clinical documentation assistant for Indian hospitals. Parse doctor voice dictations into structured medical data. Use standard Indian medical terminology and drug names. Always return valid JSON only, no markdown wrapping.",
           },
           { role: "user", content: prompt },
         ],
@@ -132,22 +151,18 @@ Return ONLY valid JSON, no markdown, no explanation.`;
       console.error("AI gateway error:", response.status, t);
       if (response.status === 429) {
         return new Response(JSON.stringify({ error: "Rate limited, please try again later." }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       if (response.status === 402) {
         return new Response(JSON.stringify({ error: "AI credits exhausted. Add funds in Settings." }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       throw new Error(`AI gateway error: ${response.status}`);
     }
 
     const result = await response.json();
-
-    // Extract from tool call response
     const toolCall = result.choices?.[0]?.message?.tool_calls?.[0];
     let structured: Record<string, unknown>;
 
@@ -155,7 +170,6 @@ Return ONLY valid JSON, no markdown, no explanation.`;
       const parsed = JSON.parse(toolCall.function.arguments);
       structured = parsed.data || parsed;
     } else {
-      // Fallback: try parsing content as JSON
       const content = result.choices?.[0]?.message?.content || "{}";
       const cleaned = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
       structured = JSON.parse(cleaned);

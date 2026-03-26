@@ -6,6 +6,8 @@ import AppSidebar from "./AppSidebar";
 import AppHeader from "./AppHeader";
 import MobileTabBar from "./MobileTabBar";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { VoiceScribeProvider } from "@/contexts/VoiceScribeContext";
+import VoiceScribePanel from "@/components/voice/VoiceScribePanel";
 
 const ShellContent: React.FC = () => {
   const { collapsed } = useSidebar();
@@ -34,14 +36,17 @@ const ShellContent: React.FC = () => {
       </main>
 
       {isMobile && <MobileTabBar />}
+      <VoiceScribePanel />
     </div>
   );
 };
 
 const AppShell: React.FC = () => (
-  <SidebarProvider>
-    <ShellContent />
-  </SidebarProvider>
+  <VoiceScribeProvider>
+    <SidebarProvider>
+      <ShellContent />
+    </SidebarProvider>
+  </VoiceScribeProvider>
 );
 
 export default AppShell;
