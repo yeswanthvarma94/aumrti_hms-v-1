@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { PortalSession } from "./PortalLogin";
 import { ArrowLeft, Check, ChevronDown, ChevronUp, Calendar } from "lucide-react";
 import { toast } from "sonner";
+import { sendAppointmentConfirmation } from "@/lib/whatsapp-notifications";
 
 const DEPT_ICONS: Record<string, string> = {
   "general medicine": "🏥", medicine: "🏥",
