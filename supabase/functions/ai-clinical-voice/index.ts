@@ -119,30 +119,10 @@ Dictation transcript:
         messages: [
           {
             role: "system",
-            content: "You are a clinical documentation assistant for Indian hospitals. Parse doctor voice dictations into structured medical data. Use standard Indian medical terminology and drug names. Always return valid JSON only, no markdown wrapping.",
+            content: "You are a clinical documentation assistant for Indian hospitals. Parse doctor voice dictations into structured medical data. Use standard Indian medical terminology and drug names. Always return valid JSON only, no markdown wrapping. Do not include any explanation or text outside the JSON object.",
           },
           { role: "user", content: prompt },
         ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "structure_clinical_data",
-              description: "Return structured clinical data extracted from voice dictation",
-              parameters: {
-                type: "object",
-                properties: {
-                  data: {
-                    type: "object",
-                    description: "The structured clinical data matching the requested format",
-                  },
-                },
-                required: ["data"],
-              },
-            },
-          },
-        ],
-        tool_choice: { type: "function", function: { name: "structure_clinical_data" } },
       }),
     });
 
@@ -163,16 +143,18 @@ Dictation transcript:
     }
 
     const result = await response.json();
-    const toolCall = result.choices?.[0]?.message?.tool_calls?.[0];
+    console.log("AI raw response:", JSON.stringify(result).substring(0, 500));
+    
+    const content = result.choices?.[0]?.message?.content || "{}";
+    const cleaned = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    console.log("Cleaned content:", cleaned.substring(0, 300));
+    
     let structured: Record<string, unknown>;
-
-    if (toolCall?.function?.arguments) {
-      const parsed = JSON.parse(toolCall.function.arguments);
-      structured = parsed.data || parsed;
-    } else {
-      const content = result.choices?.[0]?.message?.content || "{}";
-      const cleaned = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    try {
       structured = JSON.parse(cleaned);
+    } catch (parseErr) {
+      console.error("JSON parse error:", parseErr, "Content was:", cleaned.substring(0, 200));
+      throw new Error("Failed to parse AI response as JSON");
     }
 
     return new Response(JSON.stringify({ structured, context_type }), {
