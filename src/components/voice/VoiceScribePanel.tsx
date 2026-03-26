@@ -33,6 +33,9 @@ const VoiceScribePanel: React.FC = () => {
     }
   }, [structuredOutput]);
 
+  const currentLangOption = SUPPORTED_LANGUAGES.find(l => l.code === selectedLanguage);
+  const isSarvam = currentLangOption?.engine === "sarvam";
+
   if (!isPanelOpen) return null;
 
   const confidence = typeof editableData.confidence === "number" ? editableData.confidence : 1;
