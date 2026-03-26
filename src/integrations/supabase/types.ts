@@ -223,6 +223,47 @@ export type Database = {
           },
         ]
       }
+      ai_digests: {
+        Row: {
+          anomalies: Json | null
+          delivered_whatsapp: boolean | null
+          digest_date: string
+          digest_text: string
+          generated_at: string | null
+          hospital_id: string
+          id: string
+          kpi_snapshot: Json
+        }
+        Insert: {
+          anomalies?: Json | null
+          delivered_whatsapp?: boolean | null
+          digest_date?: string
+          digest_text: string
+          generated_at?: string | null
+          hospital_id: string
+          id?: string
+          kpi_snapshot?: Json
+        }
+        Update: {
+          anomalies?: Json | null
+          delivered_whatsapp?: boolean | null
+          digest_date?: string
+          digest_text?: string
+          generated_at?: string | null
+          hospital_id?: string
+          id?: string
+          kpi_snapshot?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_digests_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_records: {
         Row: {
           audit_title: string

@@ -23,6 +23,7 @@ import {
   Package,
   Award,
   Settings,
+  BarChart3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "./SidebarContext";
@@ -100,6 +101,7 @@ const navGroups: NavGroup[] = [
       { label: "Payments", path: "/payments", icon: CreditCard, subtitle: "Collections & receipts" },
     ],
   },
+  { label: "Analytics", icon: BarChart3, path: "/analytics" },
   {
     label: "More",
     icon: MoreHorizontal,
