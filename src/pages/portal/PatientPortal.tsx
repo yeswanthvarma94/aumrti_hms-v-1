@@ -8,6 +8,7 @@ import PortalReports from "./PortalReports";
 import PortalBills from "./PortalBills";
 import PortalPrescriptions from "./PortalPrescriptions";
 import PortalFeedback from "./PortalFeedback";
+import PortalTimeline from "./PortalTimeline";
 import { supabase } from "@/integrations/supabase/client";
 
 const PatientPortal: React.FC = () => {
