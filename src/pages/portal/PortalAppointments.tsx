@@ -231,7 +231,7 @@ const BookNewTab: React.FC<{ session: PortalSession }> = ({ session }) => {
                     className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0"
                     style={{ background: "#0E7B7B" }}
                   >
-                    {doc.full_name?.split(" ").map((w: string) => w[0]).join("").slice(//0, 2).toUpperCase()}
+                    {doc.full_name?.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase()}
                   </div>
                   <div>
                     <p className="text-sm font-bold" style={{ color: "#0F172A" }}>Dr. {doc.full_name}</p>
