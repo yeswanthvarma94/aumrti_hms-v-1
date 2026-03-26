@@ -118,30 +118,22 @@ const QualityTab: React.FC<{ range: DateRange }> = ({ range }) => {
           </div>
         </div>
 
-        {/* Patient Safety */}
-        <AnalyticsKPICard icon="🛡️" iconBg="bg-red-50" label="Patient Safety" value={`${data.incidentCount} incidents`} sub={
-          <span>
-            Sentinel: <span className={data.sentinelCount > 0 ? "text-destructive font-semibold" : ""}>{data.sentinelCount}</span>
-            {" · "}CAPA open: {data.capaOpen}
-          </span>
-        } />
-
-        {/* Infection Control */}
+        <AnalyticsKPICard icon="🛡️" iconBg="bg-red-50" label="Patient Safety"
+          value={`${data.incidentCount} incidents`}
+          subtitle={`Sentinel: ${data.sentinelCount} · CAPA open: ${data.capaOpen}`}
+          subtitleColor={data.sentinelCount > 0 ? "text-destructive" : undefined}
+        />
         <AnalyticsKPICard icon="🦠" iconBg="bg-orange-50" label="Infection Control"
           value={data.haiRate !== null ? `${data.haiRate}%` : "N/A"}
-          sub={<span>Hand Hygiene: {data.handHygiene !== null ? `${data.handHygiene}%` : "N/A"}</span>}
+          subtitle={`Hand Hygiene: ${data.handHygiene !== null ? `${data.handHygiene}%` : "N/A"}`}
         />
-
-        {/* Clinical Quality */}
         <AnalyticsKPICard icon="📋" iconBg="bg-blue-50" label="Clinical Quality"
           value={`${data.avgDischargeTat}h TAT`}
-          sub={<span>Readmission: {data.readmissionRate}%</span>}
+          subtitle={`Readmission: ${data.readmissionRate}%`}
         />
-
-        {/* Patient Satisfaction */}
         <AnalyticsKPICard icon="⭐" iconBg="bg-yellow-50" label="Patient Satisfaction"
           value="N/A"
-          sub={<span>No survey data yet</span>}
+          subtitle="No survey data yet"
         />
       </div>
 
