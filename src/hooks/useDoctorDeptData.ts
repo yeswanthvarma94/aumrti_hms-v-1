@@ -257,11 +257,13 @@ export function useDeptDoctors(deptId: string | null, range: DateRange) {
         supabase.from("opd_encounters").select("id, doctor_id")
           .eq("hospital_id", hospitalId)
           .in("doctor_id", doctorIds)
-          .gte("created_at", range.from).lte("created_at", range.to + "T23:59:59"),
+          .gte("created_at", range.from).lte("created_at", range.to + "T23:59:59")
+          .limit(5000),
         supabase.from("bills").select("paid_amount, encounter_id")
           .eq("hospital_id", hospitalId)
           .eq("bill_type", "opd")
-          .gte("bill_date", range.from).lte("bill_date", range.to),
+          .gte("bill_date", range.from).lte("bill_date", range.to)
+          .limit(5000),
       ]);
 
       const opdByDoc: Record<string, string[]> = {};
