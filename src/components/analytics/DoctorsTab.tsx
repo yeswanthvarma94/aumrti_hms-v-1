@@ -161,7 +161,7 @@ const KPIMini: React.FC<{ label: string; value: string; color?: string }> = ({ l
   </div>
 );
 
-const DoctorTable: React.FC<{ doctors: DoctorScore[] }> = ({ doctors }) => (
+const DoctorTable: React.FC<{ doctors: DoctorScore[]; onRowClick: (doc: DoctorScore) => void }> = ({ doctors, onRowClick }) => (
   <div className="bg-card border border-border rounded-xl overflow-hidden">
     <table className="w-full text-xs">
       <thead>
