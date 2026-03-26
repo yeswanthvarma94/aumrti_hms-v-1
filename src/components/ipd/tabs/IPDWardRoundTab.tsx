@@ -4,6 +4,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import VoiceDictationButton from "@/components/voice/VoiceDictationButton";
 
 interface Props {
   admissionId: string;
@@ -92,7 +93,20 @@ const IPDWardRoundTab: React.FC<Props> = ({ admissionId, hospitalId, userId, pat
               placeholder="Today's plan" className="h-16 text-xs resize-none mt-0.5" />
           </div>
         </div>
-        <div className="flex justify-end mt-2">
+        <div className="flex items-center justify-between mt-2">
+          <VoiceDictationButton
+            contextType="ward_round"
+            existingData={{ s: form.s, o: form.o, a: form.a, p: form.p }}
+            onStructuredResult={(data) => {
+              setForm((prev) => ({
+                s: (data.subjective as string) || prev.s,
+                o: (data.objective as string) || prev.o,
+                a: (data.assessment as string) || prev.a,
+                p: (data.plan as string) || prev.p,
+              }));
+            }}
+            size="sm"
+          />
           <Button size="sm" onClick={handleSave} disabled={saving} className="bg-[#1A2F5A] hover:bg-[#152647] text-xs h-8">
             {saving ? "Saving..." : "Save Round Note"}
           </Button>
