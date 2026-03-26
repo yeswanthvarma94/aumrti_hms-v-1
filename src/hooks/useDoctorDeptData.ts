@@ -163,17 +163,20 @@ export function useDeptPerformance(range: DateRange) {
       if (!hospitalId) return [];
 
       const [deptsRes, usersRes, opdRes, admRes, billsRes] = await Promise.all([
-        supabase.from("departments").select("id, name").eq("hospital_id", hospitalId).eq("is_active", true),
-        supabase.from("users").select("id, department_id").eq("hospital_id", hospitalId).eq("role", "doctor").eq("is_active", true),
+        supabase.from("departments").select("id, name").eq("hospital_id", hospitalId).eq("is_active", true).limit(100),
+        supabase.from("users").select("id, department_id").eq("hospital_id", hospitalId).eq("role", "doctor").eq("is_active", true).limit(500),
         supabase.from("opd_encounters").select("id, doctor_id")
           .eq("hospital_id", hospitalId)
-          .gte("created_at", range.from).lte("created_at", range.to + "T23:59:59"),
+          .gte("created_at", range.from).lte("created_at", range.to + "T23:59:59")
+          .limit(5000),
         supabase.from("admissions").select("id, admitting_doctor_id")
           .eq("hospital_id", hospitalId)
-          .gte("admitted_at", range.from).lte("admitted_at", range.to + "T23:59:59"),
+          .gte("admitted_at", range.from).lte("admitted_at", range.to + "T23:59:59")
+          .limit(5000),
         supabase.from("bills").select("paid_amount, encounter_id, admission_id")
           .eq("hospital_id", hospitalId)
-          .gte("bill_date", range.from).lte("bill_date", range.to),
+          .gte("bill_date", range.from).lte("bill_date", range.to)
+          .limit(5000),
       ]);
 
       const depts = deptsRes.data || [];
