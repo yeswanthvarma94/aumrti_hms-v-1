@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Menu, Search, Bell, Wifi, WifiOff } from "lucide-react";
+import { Menu, Search, Wifi, WifiOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "./SidebarContext";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Badge } from "@/components/ui/badge";
+import NotificationCentre from "./NotificationCentre";
 import {
   Dialog,
   DialogContent,
