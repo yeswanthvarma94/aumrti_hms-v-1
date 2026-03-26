@@ -88,11 +88,21 @@ export function useRevenueBreakdown(range: DateRange) {
       const hospitalId = await getHospitalId();
       if (!hospitalId) return [];
 
-      const { data } = await supabase.from("bill_line_items")
-        .select("item_type, total_amount, bill_id")
-        .eq("hospital_id", hospitalId);
+      // Get bill IDs in range first, then fetch their line items
+      const { data: billsInRange } = await supabase.from("bills")
+        .select("id")
+        .eq("hospital_id", hospitalId)
+        .gte("bill_date", range.from).lte("bill_date", range.to)
+        .limit(2000);
 
-      // Filter by joining bills date range client-side is suboptimal but works for now
+      const billIds = (billsInRange || []).map(b => b.id);
+      if (!billIds.length) return [];
+
+      const { data } = await supabase.from("bill_line_items")
+        .select("item_type, total_amount")
+        .eq("hospital_id", hospitalId)
+        .in("bill_id", billIds)
+        .limit(5000);
       const typeMap: Record<string, number> = {};
       (data || []).forEach(row => {
         const t = row.item_type || "other";
