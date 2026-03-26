@@ -3567,6 +3567,134 @@ export type Database = {
           },
         ]
       }
+      patient_feedback: {
+        Row: {
+          admission_id: string | null
+          comments: string | null
+          doctor_rating: number | null
+          encounter_id: string | null
+          facility_rating: number | null
+          hospital_id: string
+          id: string
+          nursing_rating: number | null
+          overall_rating: number
+          patient_id: string
+          submitted_at: string | null
+          would_recommend: boolean | null
+        }
+        Insert: {
+          admission_id?: string | null
+          comments?: string | null
+          doctor_rating?: number | null
+          encounter_id?: string | null
+          facility_rating?: number | null
+          hospital_id: string
+          id?: string
+          nursing_rating?: number | null
+          overall_rating: number
+          patient_id: string
+          submitted_at?: string | null
+          would_recommend?: boolean | null
+        }
+        Update: {
+          admission_id?: string | null
+          comments?: string | null
+          doctor_rating?: number | null
+          encounter_id?: string | null
+          facility_rating?: number | null
+          hospital_id?: string
+          id?: string
+          nursing_rating?: number | null
+          overall_rating?: number
+          patient_id?: string
+          submitted_at?: string | null
+          would_recommend?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_feedback_admission_id_fkey"
+            columns: ["admission_id"]
+            isOneToOne: false
+            referencedRelation: "admissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_feedback_encounter_id_fkey"
+            columns: ["encounter_id"]
+            isOneToOne: false
+            referencedRelation: "opd_encounters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_feedback_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_feedback_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      patient_portal_sessions: {
+        Row: {
+          created_at: string | null
+          hospital_id: string
+          id: string
+          last_active: string | null
+          otp_code: string | null
+          otp_expires_at: string | null
+          otp_verified: boolean | null
+          patient_id: string
+          phone: string
+          session_token: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          hospital_id: string
+          id?: string
+          last_active?: string | null
+          otp_code?: string | null
+          otp_expires_at?: string | null
+          otp_verified?: boolean | null
+          patient_id: string
+          phone: string
+          session_token?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          hospital_id?: string
+          id?: string
+          last_active?: string | null
+          otp_code?: string | null
+          otp_expires_at?: string | null
+          otp_verified?: boolean | null
+          patient_id?: string
+          phone?: string
+          session_token?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_portal_sessions_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_portal_sessions_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       patients: {
         Row: {
           abha_id: string | null
@@ -5353,6 +5481,60 @@ export type Database = {
             columns: ["hospital_id"]
             isOneToOne: false
             referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_notifications: {
+        Row: {
+          created_at: string | null
+          hospital_id: string
+          id: string
+          message_text: string
+          notification_type: string
+          opened: boolean | null
+          patient_id: string
+          phone_number: string
+          sent_at: string | null
+          whatsapp_url: string
+        }
+        Insert: {
+          created_at?: string | null
+          hospital_id: string
+          id?: string
+          message_text: string
+          notification_type: string
+          opened?: boolean | null
+          patient_id: string
+          phone_number: string
+          sent_at?: string | null
+          whatsapp_url: string
+        }
+        Update: {
+          created_at?: string | null
+          hospital_id?: string
+          id?: string
+          message_text?: string
+          notification_type?: string
+          opened?: boolean | null
+          patient_id?: string
+          phone_number?: string
+          sent_at?: string | null
+          whatsapp_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_notifications_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_notifications_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
             referencedColumns: ["id"]
           },
         ]
