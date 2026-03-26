@@ -1,41 +1,54 @@
 
 
-## Plan: Fix Voice Scribe Structured Output Not Displaying
+## Plan: Fix Emergency Voice Scribe — Vitals, AMPLE & Field Mapping
 
-### Root Cause Analysis
+### Root Cause
 
-Three related issues traced to the same data flow problem:
+Two problems:
 
-1. **Panel shows empty fields**: The edge function uses `tool_choice` with Gemini via the Lovable AI gateway, which may not return tool_calls properly. The fallback parser catches this but may produce an empty object. The panel shows "100%" confidence because that's the default when `confidence` is not a number in the data — confirming `structuredOutput` is likely `{}` or has unexpected structure.
+1. **The AI prompt for `emergency` context doesn't ask for vitals or AMPLE fields.** It only returns `history` as a single string — no BP, pulse, SpO2, GCS, and no structured A/M/P/L/E breakdown.
 
-2. **Chief complaint not pre-filled**: `applyToCurrentScreen()` calls the registered fill function with `structuredOutput`, but if that object is empty, nothing gets filled.
-
-3. **No drug cards**: Same root cause — `editableData.prescription` is undefined/empty because the AI response wasn't parsed correctly.
+2. **The fill function in `EmergencyWorkspace.tsx` only maps `history` to `ample.e` (Events).** The other four AMPLE fields (Allergies, Medications, Past History, Last Meal) and all vitals are completely ignored.
 
 ### Changes
 
-**1. Fix edge function AI call (`supabase/functions/ai-clinical-voice/index.ts`)**
-- Remove `tools` and `tool_choice` from the request — Gemini via the gateway doesn't reliably support forced tool calling
-- Instead, rely on the system prompt to return raw JSON and parse the content directly
-- Add `console.log` for the raw AI response to aid debugging
-- Keep the markdown-stripping fallback parser
+**1. Update emergency prompt in `supabase/functions/ai-clinical-voice/index.ts`**
 
-**2. Add client-side debug logging (`src/components/voice/VoiceDictationButton.tsx`)**
-- Add `console.log("Voice AI response:", data)` after the edge function call so issues are visible in browser console
-- Log the raw transcript before sending to the edge function
+Expand the emergency JSON schema to include vitals and AMPLE:
 
-**3. Re-deploy the edge function**
-- The edge function needs redeployment after the fix
+```json
+{
+  "presenting_complaint": "",
+  "vitals_detected": {
+    "bp_systolic": "", "bp_diastolic": "", "pulse": "", "spo2": "", "gcs": ""
+  },
+  "ample": {
+    "allergies": "", "medications": "", "past_history": "", "last_meal": "", "events": ""
+  },
+  "examination": "",
+  "working_diagnosis": "",
+  "immediate_management": "",
+  "triage_category": "P1/P2/P3/P4",
+  "investigations_ordered": [],
+  "disposition": "admit/discharge/observe/refer",
+  "confidence": 0.85
+}
+```
+
+Add instructional text telling the AI to extract vitals numbers and split history into AMPLE categories when possible.
+
+**2. Update fill function in `src/components/emergency/EmergencyWorkspace.tsx`**
+
+Map the new structured fields:
+
+- `vitals_detected.bp_systolic` → `vitals.bp_s`, etc. for all 5 vitals
+- `ample.allergies` → `ample.a`, `ample.medications` → `ample.m`, etc.
+- Keep existing mappings for complaint, diagnosis, triage, disposition, investigations
+- Fallback: if `ample` object not present but `history` string exists, put it in `ample.e` (backward compatible)
+
+**3. Redeploy the edge function**
 
 ### Technical Detail
 
-Current broken flow:
-```text
-Gemini + tool_choice → no tool_calls in response → fallback to content parsing → content may be empty → structured = {}
-```
-
-Fixed flow:
-```text
-Gemini (no tool_choice) → returns JSON in content → strip markdown → parse JSON → structured data with all fields
-```
+The key insight is that the AI prompt defines what the model returns. Currently the emergency prompt has no vitals or AMPLE structure, so the model never extracts them. Adding these fields to the schema and instructions will make the model parse "BP 120/80, pulse 88, SpO2 98" into the proper fields, and split history into AMPLE categories when the doctor uses that framework.
 
