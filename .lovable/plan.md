@@ -1,39 +1,49 @@
 
 
-## Plan: Fix Quality Module — 3 Issues
+## Plan: Add Sarvam V3 Indian Language Support to Voice Scribe
 
-### Issue Analysis
+### Answers to Your Questions
 
-1. **NABH chapter bars not clickable**: The chapter progress bars in the left column have no `onClick` handler. There's no state to track a selected chapter, and no detail view in the center column.
-
-2. **Quality Indicators white screen**: The `quality_indicators` table has 15 rows, but RLS policies require `get_user_hospital_id()`. When the query returns 0 rows (auth/hospital mismatch), `grouped` is empty and the component renders an empty `<div>` — a blank white screen. No empty state exists.
-
-3. **Incident filing "Not authenticated"**: The `FileIncidentModal` calls `supabase.auth.getUser()` and shows "Not authenticated" if no user is found. This is a legitimate auth check, but the user may have a stale session. The `incident_reports` table also has RLS requiring `get_user_hospital_id()`.
+1. **API key storage**: Supabase Edge Function secret (already have the pattern). The key stays server-side, never exposed to the browser.
+2. **Sarvam call location**: Via a new Supabase Edge Function (`sarvam-transcribe`). Audio is recorded client-side with MediaRecorder, sent as base64 to the edge function, which calls Sarvam API securely.
+3. **Language selection UI**: A popover dropdown on the VoiceDictationButton. Selection persisted in localStorage. English uses Web Speech API (instant), all Indian languages route through Sarvam (batch after stop).
 
 ### Changes
 
-**File: `src/components/quality/NABHDashboard.tsx`**
+**1. Add secret: `SARVAM_API_KEY`**
+- Request the user to add their Sarvam API key as a Supabase edge function secret.
 
-- Add `selectedChapter` state (string | null)
-- Make chapter progress bars clickable — set `selectedChapter` on click
-- When a chapter is selected, replace the center column's trend/auto-evidence content with a **chapter detail view** showing all criteria for that chapter (criterion number, text, compliance status, score bar)
-- Add a "Back" button to return to the default trend view
-- Highlight the selected chapter bar
+**2. Create edge function: `supabase/functions/sarvam-transcribe/index.ts`**
+- Accepts `{ audio_base64, language_code, model }` in POST body
+- Calls `https://api.sarvam.ai/speech-to-text` with `API-Subscription-Key` header
+- Returns `{ transcript }` 
+- CORS headers included
+- Graceful error handling with status codes
 
-**File: `src/components/quality/QualityIndicatorsTab.tsx`**
+**3. Update `src/contexts/VoiceScribeContext.tsx`**
+- Add `selectedLanguage` state (default `"en-IN"`, persisted to localStorage key `vscribe_preferred_language`)
+- Add `setSelectedLanguage` to context type and provider
+- Expose in context value
 
-- Add an **empty state** when `indicators.length === 0` after loading completes — show a message like "No quality indicators found. Please check your authentication or contact admin."
-- Add error handling to the query (check for `error` from supabase response) and show a toast if the query fails
+**4. Update `src/components/voice/VoiceDictationButton.tsx`**
+- Add language selector popover (using existing Popover component) next to the mic button
+- Languages: English (en-IN), Hindi (hi-IN), Telugu (te-IN), Tamil (ta-IN), Kannada (kn-IN), Malayalam (ml-IN), Marathi (mr-IN), Bengali (bn-IN), Gujarati (gu-IN)
+- Each shows label + badge ("Web Speech" vs "Sarvam AI")
+- When language is `en-IN`: use existing Web Speech API flow (real-time transcript)
+- When language is non-English: use MediaRecorder to capture audio blob → convert to base64 → call `sarvam-transcribe` edge function → get transcript → feed into existing `processTranscript` (AI structuring)
+- During Sarvam recording: show "Recording in {language}..." instead of live transcript, since Sarvam is batch-only
+- Fallback: if Sarvam fails, toast warning and switch to English Web Speech
 
-**File: `src/components/quality/FileIncidentModal.tsx`**
-
-- Before showing the generic "Not authenticated" error, attempt to refresh the session with `supabase.auth.refreshSession()`
-- If refresh fails, show a more helpful message: "Your session has expired. Please log in again."
-- This handles stale sessions without requiring the user to manually re-login
+**5. Update `src/components/voice/VoiceScribePanel.tsx`**
+- Show selected language indicator in panel header during recording state
+- During Sarvam recording, show "Transcript will appear after recording stops" instead of blank live transcript area
+- After Sarvam transcription completes, show "Transcribing your {language} dictation..." processing state before Claude structuring kicks in
 
 ### Technical Details
 
-- NABH chapter click: filter `criteria` array by `chapter_code === selectedChapter` to show criteria details
-- Quality Indicators empty state: simple conditional `if (!loading && indicators.length === 0) return <EmptyState />`
-- Incident auth: `await supabase.auth.refreshSession()` before `getUser()` call to recover expired tokens
+- MediaRecorder uses `audio/webm;codecs=opus` mime type
+- Audio converted to base64 via FileReader before sending to edge function
+- Language selection stored in localStorage for persistence across sessions
+- The Claude structuring pipeline is unchanged — it receives the transcript regardless of source (Web Speech or Sarvam)
+- Sarvam model: `saaras:v2`
 
