@@ -333,7 +333,8 @@ Handover: ${editableData.handover_note || ""}`;
           <div className="flex-shrink-0 border-t border-slate-100 p-3 space-y-2">
             <button onClick={handleApply}
               className="w-full h-11 bg-[#1A2F5A] text-white text-sm font-semibold rounded-lg hover:bg-[#152647] active:scale-[0.98] transition-all flex items-center justify-center gap-2">
-              <Check className="h-4 w-4" /> Apply to Consultation
+              <Check className="h-4 w-4" /> {applyLabel}
+            </button>
             </button>
             <div className="flex items-center justify-between">
               <button onClick={handleCopyText}
