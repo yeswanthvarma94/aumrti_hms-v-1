@@ -40,6 +40,7 @@ const IPDWorkspace: React.FC<Props> = ({ bed, hospitalId, onRefresh }) => {
   const [patient, setPatient] = useState<PatientDetails | null>(null);
   const [activeTab, setActiveTab] = useState("overview");
   const [userId, setUserId] = useState<string | null>(null);
+  const { show: showWaNotif, card: waCard } = useWhatsAppNotification();
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id || null));
