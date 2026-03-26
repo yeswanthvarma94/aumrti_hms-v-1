@@ -342,6 +342,27 @@ const LabResultWorkspace: React.FC<Props> = ({ order, onRefresh }) => {
     }).eq("lab_order_id", order.id).neq("status", "cancelled");
 
     await supabase.from("lab_orders").update({ status: "completed" }).eq("id", order.id);
+
+    // Trigger WhatsApp notification
+    if (patient?.phone) {
+      const { data: orderData } = await supabase.from("lab_orders").select("hospital_id").eq("id", order.id).single();
+      if (orderData) {
+        const { data: hospital } = await supabase.from("hospitals").select("name").eq("id", orderData.hospital_id).maybeSingle();
+        const abnormalCount = items.filter(i => i.result_flag && !["N", null].includes(i.result_flag)).length;
+        const result = await sendLabResultReady({
+          hospitalId: orderData.hospital_id,
+          hospitalName: hospital?.name || "Hospital",
+          patientId: order.patient_id,
+          patientName: patient.full_name,
+          phone: patient.phone,
+          testCount: items.length,
+          abnormalCount,
+          orderDate: order.order_date,
+        });
+        showWaNotif(patient.full_name, "lab_result_ready", result.waUrl);
+      }
+    }
+
     fetchItems(); onRefresh();
     toast({ title: "✓ Report released" });
   };
