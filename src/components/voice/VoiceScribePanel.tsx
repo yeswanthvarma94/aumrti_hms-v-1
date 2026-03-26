@@ -19,6 +19,7 @@ const VoiceScribePanel: React.FC = () => {
     isPanelOpen, setIsPanelOpen, panelState, setPanelState,
     rawTranscript, setRawTranscript, structuredOutput, setStructuredOutput,
     currentSessionType, applyToCurrentScreen, resetSession,
+    selectedLanguage,
   } = useVoiceScribe();
   const { toast } = useToast();
 
