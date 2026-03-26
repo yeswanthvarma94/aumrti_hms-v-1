@@ -119,30 +119,10 @@ Dictation transcript:
         messages: [
           {
             role: "system",
-            content: "You are a clinical documentation assistant for Indian hospitals. Parse doctor voice dictations into structured medical data. Use standard Indian medical terminology and drug names. Always return valid JSON only, no markdown wrapping.",
+            content: "You are a clinical documentation assistant for Indian hospitals. Parse doctor voice dictations into structured medical data. Use standard Indian medical terminology and drug names. Always return valid JSON only, no markdown wrapping. Do not include any explanation or text outside the JSON object.",
           },
           { role: "user", content: prompt },
         ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "structure_clinical_data",
-              description: "Return structured clinical data extracted from voice dictation",
-              parameters: {
-                type: "object",
-                properties: {
-                  data: {
-                    type: "object",
-                    description: "The structured clinical data matching the requested format",
-                  },
-                },
-                required: ["data"],
-              },
-            },
-          },
-        ],
-        tool_choice: { type: "function", function: { name: "structure_clinical_data" } },
       }),
     });
 
