@@ -9,6 +9,11 @@ import { cn } from "@/lib/utils";
 import { ExternalLink, Mic } from "lucide-react";
 import { useVoiceScribe } from "@/contexts/VoiceScribeContext";
 import VoiceDictationButton from "@/components/voice/VoiceDictationButton";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from "@/components/ui/alert-dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import AdmitPatientModal from "@/components/ipd/AdmitPatientModal";
+import NewLabOrderModal from "@/components/lab/NewLabOrderModal";
 import type { EDVisit } from "@/pages/emergency/EmergencyPage";
 
 interface Props {
@@ -32,6 +37,34 @@ const EmergencyWorkspace: React.FC<Props> = ({ visit, hospitalId, userId, onRefr
   const [dispositionSuggestion, setDispositionSuggestion] = useState<string | null>(null);
   const [investigationsSuggested, setInvestigationsSuggested] = useState<string[]>([]);
 
+  // Modal states
+  const [showAdmitModal, setShowAdmitModal] = useState(false);
+  const [showLabModal, setShowLabModal] = useState(false);
+  const [showBloodDialog, setShowBloodDialog] = useState(false);
+  const [showSpecialistDialog, setShowSpecialistDialog] = useState(false);
+  const [showDischargeConfirm, setShowDischargeConfirm] = useState(false);
+  const [showMlcDialog, setShowMlcDialog] = useState(false);
+
+  // Blood request state
+  const [bloodGroup, setBloodGroup] = useState("");
+  const [bloodComponent, setBloodComponent] = useState("PRBCs");
+  const [bloodUnits, setBloodUnits] = useState("1");
+  const [bloodUrgent, setBloodUrgent] = useState(true);
+  const [bloodSubmitting, setBloodSubmitting] = useState(false);
+
+  // Specialist state
+  const [specialistDept, setSpecialistDept] = useState("");
+  const [specialistReason, setSpecialistReason] = useState("");
+  const [specialistSubmitting, setSpecialistSubmitting] = useState(false);
+  const [departments, setDepartments] = useState<{ id: string; name: string }[]>([]);
+
+  // Load departments for specialist dialog
+  useEffect(() => {
+    if (!hospitalId) return;
+    supabase.from("departments").select("id, name").eq("hospital_id", hospitalId).eq("is_active", true).order("name")
+      .then(({ data }) => setDepartments(data || []));
+  }, [hospitalId]);
+
   // Load data when visit changes
   useEffect(() => {
     if (!visit) return;
@@ -53,7 +86,6 @@ const EmergencyWorkspace: React.FC<Props> = ({ visit, hospitalId, userId, onRefr
       if (data.presenting_complaint) setComplaint(data.presenting_complaint as string);
       if (data.working_diagnosis) setDiagnosis(data.working_diagnosis as string);
 
-      // Map vitals
       const vd = data.vitals_detected as Record<string, string> | undefined;
       if (vd) {
         setVitals(prev => ({
@@ -65,7 +97,6 @@ const EmergencyWorkspace: React.FC<Props> = ({ visit, hospitalId, userId, onRefr
         }));
       }
 
-      // Map AMPLE history
       const amp = data.ample as Record<string, string> | undefined;
       if (amp) {
         setAmple(prev => ({
@@ -76,24 +107,14 @@ const EmergencyWorkspace: React.FC<Props> = ({ visit, hospitalId, userId, onRefr
           e: amp.events || prev.e,
         }));
       } else if (data.history) {
-        // Fallback: old format puts history in Events
         setAmple(prev => ({ ...prev, e: data.history as string }));
       }
 
-      // Triage suggestion
       if (data.triage_category && visit) {
         const suggested = data.triage_category as string;
-        if (suggested !== visit.triage_category) {
-          setTriageSuggestion(suggested);
-        }
+        if (suggested !== visit.triage_category) setTriageSuggestion(suggested);
       }
-
-      // Disposition suggestion
-      if (data.disposition) {
-        setDispositionSuggestion(data.disposition as string);
-      }
-
-      // Investigations
+      if (data.disposition) setDispositionSuggestion(data.disposition as string);
       if (Array.isArray(data.investigations_ordered) && data.investigations_ordered.length > 0) {
         setInvestigationsSuggested(data.investigations_ordered as string[]);
       }
@@ -135,6 +156,49 @@ const EmergencyWorkspace: React.FC<Props> = ({ visit, hospitalId, userId, onRefr
     onRefresh();
   };
 
+  const handleBloodRequest = async () => {
+    if (!hospitalId || !visit) return;
+    setBloodSubmitting(true);
+    try {
+      await supabase.from("clinical_alerts").insert({
+        hospital_id: hospitalId,
+        alert_type: "blood_request",
+        severity: bloodUrgent ? "critical" : "high",
+        alert_message: `🩸 Blood Request: ${bloodUnits} unit(s) ${bloodComponent}${bloodGroup ? ` (${bloodGroup})` : ""} for ${visit.patient_name}`,
+        patient_id: visit.patient_id,
+      });
+      toast({ title: "✓ Blood request sent", description: `${bloodUnits} unit(s) ${bloodComponent} requested` });
+      setShowBloodDialog(false);
+    } catch (err: any) {
+      toast({ title: "Failed to send blood request", variant: "destructive" });
+    } finally {
+      setBloodSubmitting(false);
+    }
+  };
+
+  const handleSpecialistCall = async () => {
+    if (!hospitalId || !visit || !specialistDept) return;
+    setSpecialistSubmitting(true);
+    try {
+      const deptName = departments.find(d => d.id === specialistDept)?.name || specialistDept;
+      await supabase.from("clinical_alerts").insert({
+        hospital_id: hospitalId,
+        alert_type: "specialist_consult",
+        severity: "high",
+        alert_message: `📟 Specialist consult requested: ${deptName} for ${visit.patient_name}. Reason: ${specialistReason || "Emergency consultation"}`,
+        patient_id: visit.patient_id,
+      });
+      toast({ title: "✓ Specialist alert sent", description: `${deptName} team notified` });
+      setShowSpecialistDialog(false);
+      setSpecialistDept("");
+      setSpecialistReason("");
+    } catch {
+      toast({ title: "Failed to send alert", variant: "destructive" });
+    } finally {
+      setSpecialistSubmitting(false);
+    }
+  };
+
   return (
     <div className="h-full flex" style={{ background: "#1E293B", borderTop: "1px solid #334155" }}>
       {/* LEFT: Timeline */}
@@ -147,13 +211,10 @@ const EmergencyWorkspace: React.FC<Props> = ({ visit, hospitalId, userId, onRefr
           <TimelineItem filled={false} label="Investigation" time="" />
           <TimelineItem filled={visit.disposition !== "awaiting"} label={visit.disposition !== "awaiting" ? `Disposition: ${visit.disposition}` : "Disposition"} time={visit.disposition !== "awaiting" ? "Done" : ""} />
         </div>
-
-        {/* Voice scribe hint */}
         <div className="mt-2 bg-red-900/20 rounded-md p-2 flex items-center gap-2">
           <Mic className="h-3.5 w-3.5 text-red-400" />
           <span className="text-[10px] text-red-300">Tap mic for emergency voice entry</span>
         </div>
-
         <div className="mt-auto pt-3 border-t border-slate-700">
           <p className="text-[10px] text-slate-500 uppercase font-bold">Time in ED</p>
           <p className={cn("text-lg font-bold font-mono tabular-nums", losColor)}>{losText}</p>
@@ -212,7 +273,7 @@ const EmergencyWorkspace: React.FC<Props> = ({ visit, hospitalId, userId, onRefr
                 <span key={i} className="text-[11px] bg-purple-800/50 text-purple-200 px-2 py-0.5 rounded-full">{inv}</span>
               ))}
             </div>
-            <button onClick={() => { toast({ title: "Lab orders", description: "STAT lab order creation coming in Phase 5" }); setInvestigationsSuggested([]); }}
+            <button onClick={() => { if (hospitalId) { setShowLabModal(true); } setInvestigationsSuggested([]); }}
               className="text-[10px] text-purple-300 hover:underline mt-1.5">Create STAT Lab Orders →</button>
           </div>
         )}
@@ -290,12 +351,12 @@ const EmergencyWorkspace: React.FC<Props> = ({ visit, hospitalId, userId, onRefr
       <div className="w-[170px] flex-shrink-0 flex flex-col gap-2 p-3 overflow-y-auto" style={{ background: "#162032", borderLeft: "1px solid #334155" }}>
         <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Actions</p>
 
-        <ActionBtn label="🛏️ Admit to IPD" bg="#3B82F6" onClick={() => { handleDisposition("admitted"); toast({ description: "Route to IPD admission" }); }} />
-        <ActionBtn label="🔬 STAT Lab" bg="#8B5CF6" onClick={() => toast({ title: "STAT Lab", description: "Lab orders module coming in Phase 5" })} />
-        <ActionBtn label="🩸 Blood Request" bg="#EF4444" onClick={() => toast({ title: "Blood Bank", description: "Blood request module coming in Phase 5" })} />
-        <ActionBtn label="📟 Call Specialist" bg="#F59E0B" onClick={() => toast({ title: "Specialist Alert", description: "Specialist notification coming in Phase 5" })} />
-        <ActionBtn label="🏠 Discharge" bg="#10B981" onClick={() => handleDisposition("discharged")} />
-        {mlc && <ActionBtn label="📄 MLC Register" bg="#7C3AED" onClick={() => toast({ title: "MLC", description: "MLC register coming in Phase 5" })} />}
+        <ActionBtn label="🛏️ Admit to IPD" bg="#3B82F6" onClick={() => setShowAdmitModal(true)} />
+        <ActionBtn label="🔬 STAT Lab" bg="#8B5CF6" onClick={() => { if (hospitalId) setShowLabModal(true); }} />
+        <ActionBtn label="🩸 Blood Request" bg="#EF4444" onClick={() => setShowBloodDialog(true)} />
+        <ActionBtn label="📟 Call Specialist" bg="#F59E0B" onClick={() => setShowSpecialistDialog(true)} />
+        <ActionBtn label="🏠 Discharge" bg="#10B981" onClick={() => setShowDischargeConfirm(true)} />
+        {mlc && <ActionBtn label="📄 MLC Register" bg="#7C3AED" onClick={() => setShowMlcDialog(true)} />}
 
         <button
           onClick={() => navigate(`/patients?id=${visit.patient_id}`)}
@@ -309,6 +370,156 @@ const EmergencyWorkspace: React.FC<Props> = ({ visit, hospitalId, userId, onRefr
           <p className="text-xs text-slate-300 capitalize font-medium mt-0.5">{visit.disposition}</p>
         </div>
       </div>
+
+      {/* === MODALS === */}
+
+      {/* Admit to IPD */}
+      <AdmitPatientModal
+        open={showAdmitModal}
+        onClose={() => setShowAdmitModal(false)}
+        hospitalId={hospitalId}
+        onAdmitted={() => {
+          setShowAdmitModal(false);
+          handleDisposition("admitted");
+        }}
+      />
+
+      {/* STAT Lab */}
+      {showLabModal && hospitalId && (
+        <NewLabOrderModal
+          hospitalId={hospitalId}
+          onClose={() => setShowLabModal(false)}
+          onCreated={() => {
+            setShowLabModal(false);
+            toast({ title: "✓ STAT lab order created from ED" });
+          }}
+        />
+      )}
+
+      {/* Discharge Confirmation */}
+      <AlertDialog open={showDischargeConfirm} onOpenChange={setShowDischargeConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Discharge</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to discharge <strong>{visit.patient_name}</strong> from the Emergency Department? This will mark the visit as inactive.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { handleDisposition("discharged"); setShowDischargeConfirm(false); }}
+              className="bg-emerald-600 hover:bg-emerald-700">
+              Confirm Discharge
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Blood Request Dialog */}
+      <Dialog open={showBloodDialog} onOpenChange={setShowBloodDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>🩸 Blood Request</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <label className="text-sm font-medium">Blood Group</label>
+              <Select value={bloodGroup} onValueChange={setBloodGroup}>
+                <SelectTrigger className="mt-1"><SelectValue placeholder="Select blood group" /></SelectTrigger>
+                <SelectContent>
+                  {["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map(g => (
+                    <SelectItem key={g} value={g}>{g}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-sm font-medium">Component</label>
+              <Select value={bloodComponent} onValueChange={setBloodComponent}>
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {["Whole Blood", "PRBCs", "FFP", "Platelets", "Cryoprecipitate"].map(c => (
+                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-sm font-medium">Units</label>
+              <Input type="number" min="1" max="10" value={bloodUnits} onChange={e => setBloodUnits(e.target.value)} className="mt-1" />
+            </div>
+            <label className="flex items-center gap-2">
+              <input type="checkbox" checked={bloodUrgent} onChange={e => setBloodUrgent(e.target.checked)} className="rounded" />
+              <span className="text-sm font-medium text-destructive">Urgent / Emergency</span>
+            </label>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowBloodDialog(false)}>Cancel</Button>
+            <Button onClick={handleBloodRequest} disabled={bloodSubmitting} className="bg-red-600 hover:bg-red-700">
+              {bloodSubmitting ? "Sending..." : "Send Request"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Specialist Consult Dialog */}
+      <Dialog open={showSpecialistDialog} onOpenChange={setShowSpecialistDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>📟 Call Specialist</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <label className="text-sm font-medium">Department / Specialty *</label>
+              <Select value={specialistDept} onValueChange={setSpecialistDept}>
+                <SelectTrigger className="mt-1"><SelectValue placeholder="Select department" /></SelectTrigger>
+                <SelectContent>
+                  {departments.map(d => (
+                    <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-sm font-medium">Reason for Consult</label>
+              <Textarea value={specialistReason} onChange={e => setSpecialistReason(e.target.value)}
+                placeholder="Brief reason for specialist consultation..."
+                className="mt-1 resize-none" rows={3} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowSpecialistDialog(false)}>Cancel</Button>
+            <Button onClick={handleSpecialistCall} disabled={specialistSubmitting || !specialistDept}
+              className="bg-amber-600 hover:bg-amber-700">
+              {specialistSubmitting ? "Sending..." : "Send Alert"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* MLC Summary Dialog */}
+      <Dialog open={showMlcDialog} onOpenChange={setShowMlcDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>📄 MLC Register Summary</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 text-sm">
+            <div className="grid grid-cols-2 gap-2">
+              <div><span className="text-muted-foreground">Patient:</span> <strong>{visit.patient_name}</strong></div>
+              <div><span className="text-muted-foreground">Arrival:</span> {new Date(visit.arrival_time).toLocaleString("en-IN")}</div>
+              <div><span className="text-muted-foreground">Police Station:</span> {mlcDetails.police_station || "—"}</div>
+              <div><span className="text-muted-foreground">Officer:</span> {mlcDetails.officer || "—"}</div>
+              <div><span className="text-muted-foreground">FIR No:</span> {mlcDetails.fir || "—"}</div>
+              <div><span className="text-muted-foreground">Injury Type:</span> {mlcDetails.injury_type || "—"}</div>
+              <div className="col-span-2"><span className="text-muted-foreground">Chief Complaint:</span> {complaint || "—"}</div>
+              <div className="col-span-2"><span className="text-muted-foreground">Working Diagnosis:</span> {diagnosis || "—"}</div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowMlcDialog(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
