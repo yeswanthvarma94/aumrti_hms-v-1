@@ -805,6 +805,9 @@ const LabResultWorkspace: React.FC<Props> = ({ order, onRefresh }) => {
       </div>
     </div>
   );
+  {waCard}
+  </div>
+  );
 };
 
 export default LabResultWorkspace;
