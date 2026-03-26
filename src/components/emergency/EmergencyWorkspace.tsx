@@ -6,7 +6,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Mic } from "lucide-react";
+import { useVoiceScribe } from "@/contexts/VoiceScribeContext";
+import VoiceDictationButton from "@/components/voice/VoiceDictationButton";
 import type { EDVisit } from "@/pages/emergency/EmergencyPage";
 
 interface Props {
@@ -18,6 +20,7 @@ interface Props {
 
 const EmergencyWorkspace: React.FC<Props> = ({ visit, hospitalId, userId, onRefresh }) => {
   const navigate = useNavigate();
+  const { registerScreen, unregisterScreen } = useVoiceScribe();
   const [vitals, setVitals] = useState({ bp_s: "", bp_d: "", pulse: "", spo2: "", gcs: "" });
   const [complaint, setComplaint] = useState("");
   const [ample, setAmple] = useState({ a: "", m: "", p: "", l: "", e: "" });
@@ -25,6 +28,9 @@ const EmergencyWorkspace: React.FC<Props> = ({ visit, hospitalId, userId, onRefr
   const [mlc, setMlc] = useState(false);
   const [mlcDetails, setMlcDetails] = useState({ police_station: "", officer: "", fir: "", injury_type: "" });
   const [savingVitals, setSavingVitals] = useState(false);
+  const [triageSuggestion, setTriageSuggestion] = useState<string | null>(null);
+  const [dispositionSuggestion, setDispositionSuggestion] = useState<string | null>(null);
+  const [investigationsSuggested, setInvestigationsSuggested] = useState<string[]>([]);
 
   // Load data when visit changes
   useEffect(() => {
@@ -36,7 +42,42 @@ const EmergencyWorkspace: React.FC<Props> = ({ visit, hospitalId, userId, onRefr
     setAmple(visit.ample_history as any || { a: "", m: "", p: "", l: "", e: "" });
     const vs = visit.vitals_snapshot || {};
     setVitals({ bp_s: vs.bp_s || "", bp_d: vs.bp_d || "", pulse: vs.pulse || "", spo2: vs.spo2 || "", gcs: vs.gcs || "" });
+    setTriageSuggestion(null);
+    setDispositionSuggestion(null);
+    setInvestigationsSuggested([]);
   }, [visit?.id]);
+
+  // Register screen for voice scribe
+  useEffect(() => {
+    const fillFn = (data: Record<string, unknown>) => {
+      if (data.presenting_complaint) setComplaint(data.presenting_complaint as string);
+      if (data.history) {
+        // Map history to AMPLE events field
+        setAmple(prev => ({ ...prev, e: data.history as string }));
+      }
+      if (data.working_diagnosis) setDiagnosis(data.working_diagnosis as string);
+
+      // Triage suggestion
+      if (data.triage_category && visit) {
+        const suggested = data.triage_category as string;
+        if (suggested !== visit.triage_category) {
+          setTriageSuggestion(suggested);
+        }
+      }
+
+      // Disposition suggestion
+      if (data.disposition) {
+        setDispositionSuggestion(data.disposition as string);
+      }
+
+      // Investigations
+      if (Array.isArray(data.investigations_ordered) && data.investigations_ordered.length > 0) {
+        setInvestigationsSuggested(data.investigations_ordered as string[]);
+      }
+    };
+    registerScreen("emergency", fillFn);
+    return () => unregisterScreen("emergency");
+  }, [registerScreen, unregisterScreen, visit?.triage_category, visit?.id]);
 
   if (!visit) {
     return (
@@ -84,6 +125,12 @@ const EmergencyWorkspace: React.FC<Props> = ({ visit, hospitalId, userId, onRefr
           <TimelineItem filled={visit.disposition !== "awaiting"} label={visit.disposition !== "awaiting" ? `Disposition: ${visit.disposition}` : "Disposition"} time={visit.disposition !== "awaiting" ? "Done" : ""} />
         </div>
 
+        {/* Voice scribe hint */}
+        <div className="mt-2 bg-red-900/20 rounded-md p-2 flex items-center gap-2">
+          <Mic className="h-3.5 w-3.5 text-red-400" />
+          <span className="text-[10px] text-red-300">Tap mic for emergency voice entry</span>
+        </div>
+
         <div className="mt-auto pt-3 border-t border-slate-700">
           <p className="text-[10px] text-slate-500 uppercase font-bold">Time in ED</p>
           <p className={cn("text-lg font-bold font-mono tabular-nums", losColor)}>{losText}</p>
@@ -107,13 +154,60 @@ const EmergencyWorkspace: React.FC<Props> = ({ visit, hospitalId, userId, onRefr
 
         {/* Chief complaint */}
         <div>
-          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Chief Complaint</label>
+          <div className="flex items-center justify-between">
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Chief Complaint</label>
+            <VoiceDictationButton sessionType="emergency" size="sm" />
+          </div>
           <Textarea value={complaint} onChange={e => setComplaint(e.target.value)}
             onBlur={() => saveField("chief_complaint", complaint)}
             placeholder="Chief complaint / presenting history..."
             className="mt-1 text-sm resize-none text-white border-slate-600 h-16"
             style={{ background: "#0F172A" }} />
         </div>
+
+        {/* Triage suggestion banner */}
+        {triageSuggestion && (
+          <div className="bg-amber-900/30 border border-amber-700/50 rounded-lg p-2.5 flex items-center justify-between">
+            <span className="text-xs text-amber-300">
+              🎯 Voice scribe suggests triage: <strong>{triageSuggestion}</strong> (currently {visit.triage_category})
+            </span>
+            <div className="flex gap-1.5">
+              <button onClick={() => { saveField("triage_category", triageSuggestion); setTriageSuggestion(null); onRefresh(); }}
+                className="text-[10px] bg-amber-600 text-white px-2 py-1 rounded hover:bg-amber-500">Apply</button>
+              <button onClick={() => setTriageSuggestion(null)}
+                className="text-[10px] text-amber-400 px-2 py-1 hover:underline">Dismiss</button>
+            </div>
+          </div>
+        )}
+
+        {/* Investigations suggested */}
+        {investigationsSuggested.length > 0 && (
+          <div className="bg-purple-900/30 border border-purple-700/50 rounded-lg p-2.5">
+            <p className="text-[10px] font-bold text-purple-300 uppercase mb-1.5">Voice scribe detected investigations</p>
+            <div className="flex flex-wrap gap-1.5">
+              {investigationsSuggested.map((inv, i) => (
+                <span key={i} className="text-[11px] bg-purple-800/50 text-purple-200 px-2 py-0.5 rounded-full">{inv}</span>
+              ))}
+            </div>
+            <button onClick={() => { toast({ title: "Lab orders", description: "STAT lab order creation coming in Phase 5" }); setInvestigationsSuggested([]); }}
+              className="text-[10px] text-purple-300 hover:underline mt-1.5">Create STAT Lab Orders →</button>
+          </div>
+        )}
+
+        {/* Disposition suggestion */}
+        {dispositionSuggestion && (
+          <div className="bg-emerald-900/30 border border-emerald-700/50 rounded-lg p-2.5 flex items-center justify-between">
+            <span className="text-xs text-emerald-300">
+              📋 Suggested disposition: <strong className="capitalize">{dispositionSuggestion}</strong>
+            </span>
+            <div className="flex gap-1.5">
+              <button onClick={() => { handleDisposition(dispositionSuggestion); setDispositionSuggestion(null); }}
+                className="text-[10px] bg-emerald-600 text-white px-2 py-1 rounded hover:bg-emerald-500">Apply</button>
+              <button onClick={() => setDispositionSuggestion(null)}
+                className="text-[10px] text-emerald-400 px-2 py-1 hover:underline">Dismiss</button>
+            </div>
+          </div>
+        )}
 
         {/* AMPLE */}
         <div>

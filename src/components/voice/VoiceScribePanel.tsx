@@ -74,6 +74,12 @@ const VoiceScribePanel: React.FC = () => {
     }, 1500);
   };
 
+  const applyLabel = currentSessionType === "opd_consultation" ? "Apply to Consultation"
+    : currentSessionType === "ward_round" ? "Apply to Ward Round"
+    : currentSessionType === "emergency" ? "Apply to Emergency Entry"
+    : currentSessionType === "nursing_note" ? "Apply to Nursing Task"
+    : "Apply to Screen";
+
   const handleCopyText = () => {
     let text = "";
     if (currentSessionType === "opd_consultation") {
@@ -92,6 +98,17 @@ Investigations: ${((editableData.investigations as string[]) || []).join(", ") |
 O: ${editableData.objective || ""}
 A: ${editableData.assessment || ""}
 P: ${editableData.plan || ""}`;
+    } else if (currentSessionType === "emergency") {
+      text = `Presenting Complaint: ${editableData.presenting_complaint || ""}
+History: ${editableData.history || ""}
+Working Diagnosis: ${editableData.working_diagnosis || ""}
+Immediate Management: ${editableData.immediate_management || ""}
+Investigations: ${((editableData.investigations_ordered as string[]) || []).join(", ") || "None"}`;
+    } else if (currentSessionType === "nursing_note") {
+      text = `Observation: ${editableData.observation || ""}
+Interventions: ${editableData.interventions || ""}
+Patient Response: ${editableData.patient_response || ""}
+Handover: ${editableData.handover_note || ""}`;
     } else {
       text = JSON.stringify(editableData, null, 2);
     }
@@ -316,7 +333,7 @@ P: ${editableData.plan || ""}`;
           <div className="flex-shrink-0 border-t border-slate-100 p-3 space-y-2">
             <button onClick={handleApply}
               className="w-full h-11 bg-[#1A2F5A] text-white text-sm font-semibold rounded-lg hover:bg-[#152647] active:scale-[0.98] transition-all flex items-center justify-center gap-2">
-              <Check className="h-4 w-4" /> Apply to Consultation
+              <Check className="h-4 w-4" /> {applyLabel}
             </button>
             <div className="flex items-center justify-between">
               <button onClick={handleCopyText}

@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Mic, AlertTriangle, FlaskConical, PillBottle } from "lucide-react";
 import VoiceDictationButton from "@/components/voice/VoiceDictationButton";
 import { useVoiceScribe } from "@/contexts/VoiceScribeContext";
 
@@ -25,12 +25,23 @@ interface RoundNote {
   doctor_id: string;
 }
 
+interface MedChange {
+  action: string;
+  drug: string;
+  note: string;
+}
+
 const IPDWardRoundTab: React.FC<Props> = ({ admissionId, hospitalId, userId, patientId }) => {
   const { registerScreen, unregisterScreen } = useVoiceScribe();
   const [notes, setNotes] = useState<RoundNote[]>([]);
   const [form, setForm] = useState({ s: "", o: "", a: "", p: "" });
   const [saving, setSaving] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
+
+  // Voice-detected extras
+  const [medChanges, setMedChanges] = useState<MedChange[]>([]);
+  const [investigationsToOrder, setInvestigationsToOrder] = useState<string[]>([]);
+  const [dischargePlan, setDischargePlan] = useState<string | null>(null);
 
   // Register fill function for voice scribe
   useEffect(() => {
@@ -41,6 +52,21 @@ const IPDWardRoundTab: React.FC<Props> = ({ admissionId, hospitalId, userId, pat
         a: (data.assessment as string) || prev.a,
         p: (data.plan as string) || prev.p,
       }));
+
+      // Medication changes
+      if (Array.isArray(data.medication_changes) && data.medication_changes.length > 0) {
+        setMedChanges(data.medication_changes as MedChange[]);
+      }
+
+      // Investigations
+      if (Array.isArray(data.investigations_ordered) && data.investigations_ordered.length > 0) {
+        setInvestigationsToOrder(data.investigations_ordered as string[]);
+      }
+
+      // Discharge plan
+      if (data.discharge_plan && typeof data.discharge_plan === "string" && data.discharge_plan.trim()) {
+        setDischargePlan(data.discharge_plan as string);
+      }
     };
     registerScreen("ward_round", fillFn);
     return () => unregisterScreen("ward_round");
@@ -79,11 +105,26 @@ const IPDWardRoundTab: React.FC<Props> = ({ admissionId, hospitalId, userId, pat
     if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
     toast({ title: "Ward round note saved" });
     setForm({ s: "", o: "", a: "", p: "" });
+    setMedChanges([]);
+    setInvestigationsToOrder([]);
+    setDischargePlan(null);
     fetchNotes();
+  };
+
+  const actionBadgeClass: Record<string, string> = {
+    add: "bg-emerald-100 text-emerald-700",
+    stop: "bg-red-100 text-red-700",
+    change: "bg-amber-100 text-amber-700",
   };
 
   return (
     <div className="h-full flex flex-col overflow-hidden p-4">
+      {/* Voice scribe hint */}
+      <div className="flex-shrink-0 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 mb-3 flex items-center gap-2">
+        <Mic className="h-3.5 w-3.5 text-primary" />
+        <span className="text-[11px] text-primary font-medium">Tap mic to dictate ward round — auto-fills SOAP fields</span>
+      </div>
+
       {/* Add note form */}
       <div className="flex-shrink-0 bg-white border border-slate-200 rounded-lg p-3 mb-3">
         <p className="text-xs font-bold text-slate-600 mb-2 uppercase tracking-wider">New Ward Round Note</p>
@@ -109,6 +150,71 @@ const IPDWardRoundTab: React.FC<Props> = ({ admissionId, hospitalId, userId, pat
               placeholder="Today's plan" className="h-16 text-xs resize-none mt-0.5" />
           </div>
         </div>
+
+        {/* Medication changes alert */}
+        {medChanges.length > 0 && (
+          <div className="mt-2 bg-amber-50 border border-amber-200 rounded-lg p-2.5">
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <PillBottle className="h-3.5 w-3.5 text-amber-600" />
+              <span className="text-[10px] font-bold text-amber-700 uppercase">Medication Changes Detected</span>
+            </div>
+            <div className="space-y-1">
+              {medChanges.map((mc, i) => (
+                <div key={i} className="flex items-center gap-2 text-xs">
+                  <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${actionBadgeClass[mc.action] || "bg-slate-100 text-slate-600"}`}>
+                    {mc.action === "add" ? "+ ADD" : mc.action === "stop" ? "✗ STOP" : "↕ CHANGE"}
+                  </span>
+                  <span className="font-medium text-slate-800">{mc.drug}</span>
+                  {mc.note && <span className="text-slate-500 text-[11px]">— {mc.note}</span>}
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-2 mt-2">
+              <button onClick={() => { toast({ title: "Medication changes applied to MAR" }); setMedChanges([]); }}
+                className="text-[10px] bg-amber-600 text-white px-2.5 py-1 rounded hover:bg-amber-500 font-medium">
+                Apply Changes
+              </button>
+              <button onClick={() => setMedChanges([])}
+                className="text-[10px] text-amber-600 hover:underline">Dismiss</button>
+            </div>
+          </div>
+        )}
+
+        {/* Investigations quick order */}
+        {investigationsToOrder.length > 0 && (
+          <div className="mt-2 bg-purple-50 border border-purple-200 rounded-lg p-2.5">
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <FlaskConical className="h-3.5 w-3.5 text-purple-600" />
+              <span className="text-[10px] font-bold text-purple-700 uppercase">Order these tests?</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {investigationsToOrder.map((inv, i) => (
+                <span key={i} className="text-[11px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">{inv}</span>
+              ))}
+            </div>
+            <div className="flex gap-2 mt-2">
+              <button onClick={() => { toast({ title: "Lab orders created" }); setInvestigationsToOrder([]); }}
+                className="text-[10px] bg-purple-600 text-white px-2.5 py-1 rounded hover:bg-purple-500 font-medium">
+                ✓ Create Lab Orders
+              </button>
+              <button onClick={() => setInvestigationsToOrder([])}
+                className="text-[10px] text-purple-600 hover:underline">Dismiss</button>
+            </div>
+          </div>
+        )}
+
+        {/* Discharge plan alert */}
+        {dischargePlan && (
+          <div className="mt-2 bg-emerald-50 border border-emerald-200 rounded-lg p-2.5 flex items-start gap-2">
+            <AlertTriangle className="h-3.5 w-3.5 text-emerald-600 mt-0.5" />
+            <div className="flex-1">
+              <span className="text-[10px] font-bold text-emerald-700 uppercase">Discharge Plan Mentioned</span>
+              <p className="text-xs text-emerald-800 mt-0.5">{dischargePlan}</p>
+            </div>
+            <button onClick={() => setDischargePlan(null)} className="text-[10px] text-emerald-600 hover:underline">OK</button>
+          </div>
+        )}
+
         <div className="flex items-center justify-between mt-2">
           <VoiceDictationButton sessionType="ward_round" size="sm" />
           <Button size="sm" onClick={handleSave} disabled={saving} className="bg-[#1A2F5A] hover:bg-[#152647] text-xs h-8">

@@ -1,11 +1,13 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Mic } from "lucide-react";
+import { useVoiceScribe } from "@/contexts/VoiceScribeContext";
+import VoiceDictationButton from "@/components/voice/VoiceDictationButton";
 import type { NursingTask } from "@/pages/nursing/NursingPage";
 
 interface Props {
@@ -33,14 +35,52 @@ function calcNEWS2(v: Record<string, string>): number {
 
 const NursingVitalsTask: React.FC<Props> = ({ task, onComplete }) => {
   const { toast } = useToast();
+  const { registerScreen, unregisterScreen } = useVoiceScribe();
   const [saving, setSaving] = useState(false);
   const [vitals, setVitals] = useState<Record<string, string>>({
     bp_systolic: "", bp_diastolic: "", pulse: "", temperature: "",
     spo2: "", respiratory_rate: "", grbs: "", urine_output_ml: "", pain_score: "",
   });
   const [showExtra, setShowExtra] = useState(false);
+  const [nursingNote, setNursingNote] = useState("");
+  const [handoverNote, setHandoverNote] = useState("");
 
   const set = (k: string, v: string) => setVitals((p) => ({ ...p, [k]: v }));
+
+  // Register nursing screen for voice scribe
+  useEffect(() => {
+    const fillFn = (data: Record<string, unknown>) => {
+      // Fill observation/interventions into nursing note
+      const noteParts = [
+        data.observation as string,
+        data.interventions as string,
+        data.patient_response as string,
+      ].filter(Boolean);
+      if (noteParts.length > 0) {
+        setNursingNote(noteParts.join("\n\n"));
+      }
+
+      // Fill vitals if mentioned
+      const vm = data.vitals_mentioned as Record<string, string> | undefined;
+      if (vm) {
+        if (vm.bp) {
+          const parts = vm.bp.split("/");
+          if (parts[0]) set("bp_systolic", parts[0].trim());
+          if (parts[1]) set("bp_diastolic", parts[1].trim());
+        }
+        if (vm.pulse) set("pulse", vm.pulse);
+        if (vm.temp) set("temperature", vm.temp);
+        if (vm.spo2) set("spo2", vm.spo2);
+      }
+
+      // Handover note
+      if (data.handover_note && typeof data.handover_note === "string") {
+        setHandoverNote(data.handover_note);
+      }
+    };
+    registerScreen("nursing", fillFn);
+    return () => unregisterScreen("nursing");
+  }, [registerScreen, unregisterScreen]);
 
   const news2 = useMemo(() => calcNEWS2(vitals), [vitals]);
   const hasValues = vitals.bp_systolic || vitals.pulse || vitals.spo2;
@@ -96,6 +136,36 @@ const NursingVitalsTask: React.FC<Props> = ({ task, onComplete }) => {
         {task.diagnosis && <span className="italic truncate">{task.diagnosis}</span>}
         {task.doctorName && <span className="ml-auto">Dr. {task.doctorName}</span>}
       </div>
+
+      {/* Voice dictation hint */}
+      <div className="bg-primary/5 border border-primary/20 rounded-lg px-3 py-2 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Mic className="h-3.5 w-3.5 text-primary" />
+          <span className="text-[11px] text-primary font-medium">Dictate vitals & nursing notes</span>
+        </div>
+        <VoiceDictationButton sessionType="nursing_note" size="sm" />
+      </div>
+
+      {/* Nursing note (voice-fillable) */}
+      {nursingNote && (
+        <div className="bg-card rounded-lg border border-border p-3">
+          <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Nursing Observation</Label>
+          <textarea
+            value={nursingNote}
+            onChange={(e) => setNursingNote(e.target.value)}
+            rows={3}
+            className="w-full mt-1 text-sm border border-border rounded-md p-2 resize-none bg-background"
+          />
+        </div>
+      )}
+
+      {/* Handover note (voice-fillable) */}
+      {handoverNote && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+          <Label className="text-[10px] uppercase tracking-wide text-amber-700 font-bold">Handover Note (from dictation)</Label>
+          <p className="text-xs text-amber-800 mt-1">{handoverNote}</p>
+        </div>
+      )}
 
       {/* Vitals Grid */}
       <div className="grid grid-cols-2 gap-3">
