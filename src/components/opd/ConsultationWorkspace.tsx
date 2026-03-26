@@ -399,53 +399,7 @@ const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onT
         <button onClick={handleComplete} className="text-xs bg-[#1A2F5A] text-white px-4 py-1.5 rounded-md font-semibold hover:bg-[#152647] flex items-center gap-1.5 active:scale-[0.97] transition-all">
           <CheckCircle className="h-3.5 w-3.5" /> Complete & Bill
         </button>
-        <VoiceDictationButton
-          contextType={
-            activeTab === 0 ? "complaint" :
-            activeTab === 2 ? "examination" :
-            activeTab === 3 ? "prescription" : "complaint" as VoiceContextType
-          }
-          existingData={
-            activeTab === 3
-              ? (prescription as unknown as Record<string, unknown>)
-              : (encounter as unknown as Record<string, unknown>)
-          }
-          onStructuredResult={(data) => {
-            if (activeTab === 0) {
-              // Complaint tab
-              updateEncounter({
-                chief_complaint: (data.chief_complaint as string) || encounter.chief_complaint,
-                history_of_present_illness: (data.duration as string) || (data.history_of_present_illness as string) || encounter.history_of_present_illness,
-                soap_subjective: (data.onset as string) || encounter.soap_subjective,
-              });
-            } else if (activeTab === 2) {
-              // Examination tab
-              updateEncounter({
-                examination_notes: (data.examination_notes as string) || encounter.examination_notes,
-                soap_objective: (data.systemic_examination as string) || encounter.soap_objective,
-                diagnosis: (data.diagnosis as string) || encounter.diagnosis,
-                icd10_code: (data.icd10_code as string) || encounter.icd10_code,
-              });
-            } else if (activeTab === 3) {
-              // Prescription tab
-              const drugs = (data.drugs as DrugEntry[]) || [];
-              const labOrders = ((data.lab_orders as string[]) || []).map((name) => ({
-                test_name: name, urgency: "routine", clinical_indication: "",
-              }));
-              const radOrders = ((data.radiology_orders as string[]) || []).map((name) => ({
-                study_name: name, urgency: "routine", clinical_indication: "",
-              }));
-              updatePrescription({
-                drugs: [...prescription.drugs, ...drugs],
-                lab_orders: [...prescription.lab_orders, ...labOrders],
-                radiology_orders: [...prescription.radiology_orders, ...radOrders],
-                advice_notes: (data.advice_notes as string) || prescription.advice_notes,
-                review_date: (data.review_date as string) || prescription.review_date,
-              });
-            }
-          }}
-          size="sm"
-        />
+        <VoiceDictationButton sessionType="opd_consultation" size="sm" />
         <div className="flex-1" />
         <button onClick={() => setActiveTab(3)} className="text-xs text-slate-600 border border-slate-200 px-3 py-1.5 rounded-md hover:bg-slate-50 flex items-center gap-1.5 active:scale-[0.97] transition-all">
           <FlaskConical className="h-3.5 w-3.5" /> Order Lab
