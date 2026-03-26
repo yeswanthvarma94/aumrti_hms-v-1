@@ -69,11 +69,18 @@ export const VoiceScribeProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const [rawTranscript, setRawTranscript] = useState("");
   const [structuredOutput, setStructuredOutput] = useState<Record<string, unknown> | null>(null);
   const [currentSessionType, setCurrentSessionType] = useState<SessionType>("opd_consultation");
+  const [selectedLanguage, setSelectedLanguageState] = useState<string>(
+    () => localStorage.getItem("vscribe_preferred_language") || "en-IN"
+  );
   const screenFillFns = useRef<Map<string, (data: Record<string, unknown>) => void>>(new Map());
+
+  const setSelectedLanguage = useCallback((lang: string) => {
+    setSelectedLanguageState(lang);
+    localStorage.setItem("vscribe_preferred_language", lang);
+  }, []);
 
   const detectedSessionType = detectSessionTypeFromPath(location.pathname);
 
-  // Auto-update session type when route changes (only if not recording)
   useEffect(() => {
     if (!isRecording) {
       setCurrentSessionType(detectedSessionType);
@@ -103,7 +110,8 @@ export const VoiceScribeProvider: React.FC<{ children: React.ReactNode }> = ({ c
   return (
     <VoiceScribeContext.Provider value={{
       isRecording, isPanelOpen, panelState, rawTranscript, structuredOutput,
-      currentSessionType, setIsRecording, setIsPanelOpen, setPanelState,
+      currentSessionType, selectedLanguage, setSelectedLanguage,
+      setIsRecording, setIsPanelOpen, setPanelState,
       setRawTranscript, setStructuredOutput, setCurrentSessionType,
       registerScreen, unregisterScreen, applyToCurrentScreen, resetSession,
       detectedSessionType,
