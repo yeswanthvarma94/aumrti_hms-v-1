@@ -54,6 +54,7 @@ interface Props {
 
 const BillEditor: React.FC<Props> = ({ bill, hospitalId, onRefresh }) => {
   const { toast } = useToast();
+  const { show: showWaNotif, card: waCard } = useWhatsAppNotification();
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
   const [loadingItems, setLoadingItems] = useState(false);
