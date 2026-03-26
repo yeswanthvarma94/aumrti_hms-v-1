@@ -101,6 +101,8 @@ const IPDWorkspace: React.FC<Props> = ({ bed, hospitalId, onRefresh }) => {
   };
 
   return (
+    <>
+    {waCard}
     <div className="flex-1 flex flex-col overflow-hidden bg-slate-50">
       {/* Patient Header */}
       <div className="flex-shrink-0 h-[72px] bg-white border-b border-slate-200 px-5 flex items-center gap-4">
