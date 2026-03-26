@@ -261,6 +261,7 @@ const IPDWorkspace: React.FC<Props> = ({ bed, hospitalId, onRefresh }) => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 
