@@ -402,9 +402,61 @@ export function useDailyHeatmap(range: DateRange) {
         dayMap[r.bill_date] = (dayMap[r.bill_date] || 0) + (Number(r.paid_amount) || 0);
       });
 
-      return Object.entries(dayMap)
-        .map(([date, amount]) => ({ date, amount }))
-        .sort((a, b) => a.date.localeCompare(b.date));
+      // Generate all dates in range and fill missing with 0
+      const allDays: { date: string; amount: number }[] = [];
+      const start = new Date(range.from);
+      const end = new Date(range.to);
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        const dateStr = d.toISOString().split("T")[0];
+        allDays.push({ date: dateStr, amount: dayMap[dateStr] || 0 });
+      }
+      return allDays;
+    },
+    refetchInterval: 5 * 60 * 1000,
+  });
+}
+
+export function useDischargeTAT(range: DateRange) {
+  return useQuery({
+    queryKey: ["analytics-discharge-tat", range],
+    queryFn: async () => {
+      const hospitalId = await getHospitalId();
+      if (!hospitalId) return { entries: [], avgHours: 0, distribution: [] };
+
+      const { data } = await supabase.from("admissions")
+        .select("admitted_at, discharged_at, ward_id")
+        .eq("hospital_id", hospitalId)
+        .eq("status", "discharged")
+        .not("discharged_at", "is", null)
+        .not("admitted_at", "is", null)
+        .gte("discharged_at", range.from)
+        .lte("discharged_at", range.to + "T23:59:59")
+        .limit(2000);
+
+      const entries = (data || []).map(r => {
+        const hours = (new Date(r.discharged_at!).getTime() - new Date(r.admitted_at!).getTime()) / 3600000;
+        return { hours: Math.round(hours * 10) / 10, wardId: r.ward_id };
+      }).filter(e => e.hours >= 0);
+
+      const avgHours = entries.length > 0
+        ? Math.round(entries.reduce((s, e) => s + e.hours, 0) / entries.length * 10) / 10
+        : 0;
+
+      // Distribution buckets: <24h, 24-48h, 48-72h, 72-96h, 96-120h, >120h
+      const buckets = ["<24h", "24-48h", "48-72h", "72-96h", "96-120h", ">120h"];
+      const counts = [0, 0, 0, 0, 0, 0];
+      entries.forEach(e => {
+        if (e.hours < 24) counts[0]++;
+        else if (e.hours < 48) counts[1]++;
+        else if (e.hours < 72) counts[2]++;
+        else if (e.hours < 96) counts[3]++;
+        else if (e.hours < 120) counts[4]++;
+        else counts[5]++;
+      });
+
+      const distribution = buckets.map((bucket, i) => ({ bucket, count: counts[i] }));
+
+      return { entries, avgHours, distribution, totalDischarges: entries.length };
     },
     refetchInterval: 5 * 60 * 1000,
   });

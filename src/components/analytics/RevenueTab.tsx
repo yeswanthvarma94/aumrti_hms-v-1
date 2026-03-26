@@ -17,6 +17,8 @@ const fmt = (n: number) => {
   return `₹${n.toLocaleString("en-IN")}`;
 };
 
+const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
 const RevenueTab: React.FC<{ range: DateRange }> = ({ range }) => {
   const { data: kpis, isLoading: kpiLoading } = useRevenueKPIs(range);
   const { data: trend } = useRevenueTrend(range);
@@ -29,7 +31,19 @@ const RevenueTab: React.FC<{ range: DateRange }> = ({ range }) => {
 
   const k = kpis || { totalRevenue: 0, outstanding: 0, outstandingCount: 0, opdRevenue: 0, opdCount: 0, ipdRevenue: 0, ipdCount: 0, pharmacyRevenue: 0, pharmacyCount: 0 };
 
-  const maxHeat = Math.max(1, ...((heatmap || []).map(d => d.amount)));
+  // Build calendar grid from heatmap data
+  const heatmapDays = heatmap || [];
+  const maxHeat = Math.max(1, ...heatmapDays.map(d => d.amount));
+  const todayStr = new Date().toISOString().split("T")[0];
+
+  // Compute leading empty cells (Mon=0, Sun=6)
+  const firstDayOfWeek = heatmapDays.length > 0
+    ? ((new Date(heatmapDays[0].date).getDay() + 6) % 7) // Mon=0
+    : 0;
+
+  const calendarCells: (typeof heatmapDays[number] | null)[] = [];
+  for (let i = 0; i < firstDayOfWeek; i++) calendarCells.push(null);
+  heatmapDays.forEach(d => calendarCells.push(d));
 
   return (
     <div className="p-5 space-y-4 overflow-y-auto">
@@ -148,27 +162,35 @@ const RevenueTab: React.FC<{ range: DateRange }> = ({ range }) => {
         </div>
       </div>
 
-      {/* Daily Heatmap */}
+      {/* Daily Collection Calendar Heatmap */}
       <div className="bg-card border border-border rounded-xl p-4">
         <h3 className="text-sm font-semibold text-foreground mb-3">Daily Collection Heatmap</h3>
         <div className="grid grid-cols-7 gap-1">
-          {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(d => (
-            <div key={d} className="text-[9px] text-muted-foreground text-center font-medium">{d}</div>
+          {WEEKDAYS.map(d => (
+            <div key={d} className="text-[9px] text-muted-foreground text-center font-medium pb-1">{d}</div>
           ))}
-          {(heatmap || []).map(day => {
-            const intensity = day.amount / maxHeat;
-            const today = new Date().toISOString().split("T")[0];
+          {calendarCells.map((cell, i) => {
+            if (!cell) {
+              return <div key={`empty-${i}`} className="aspect-square" />;
+            }
+            const intensity = cell.amount / maxHeat;
+            const dayNum = new Date(cell.date).getDate();
             return (
               <div
-                key={day.date}
-                title={`${day.date}: ${fmt(day.amount)}`}
-                className={`aspect-square rounded-sm cursor-default ${day.date === today ? "ring-2 ring-primary" : ""}`}
+                key={cell.date}
+                title={`${cell.date}: ${fmt(cell.amount)}`}
+                className={`aspect-square rounded-sm cursor-default flex items-center justify-center text-[9px] font-medium ${
+                  cell.date === todayStr ? "ring-2 ring-primary" : ""
+                }`}
                 style={{
-                  backgroundColor: day.amount === 0
+                  backgroundColor: cell.amount === 0
                     ? "hsl(var(--muted))"
                     : `hsla(172, 66%, 40%, ${0.15 + intensity * 0.85})`,
+                  color: intensity > 0.5 ? "white" : "hsl(var(--muted-foreground))",
                 }}
-              />
+              >
+                {dayNum}
+              </div>
             );
           })}
         </div>
