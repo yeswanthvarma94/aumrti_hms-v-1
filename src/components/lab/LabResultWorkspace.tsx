@@ -806,6 +806,7 @@ const LabResultWorkspace: React.FC<Props> = ({ order, onRefresh }) => {
         </button>
       </div>
     </div>
+    </>
   );
 };
 
