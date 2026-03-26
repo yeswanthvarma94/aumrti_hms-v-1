@@ -85,6 +85,7 @@ const TABS = ["Complaint", "Vitals", "Examination", "Rx & Orders", "History"] as
 
 const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onTokenUpdate }) => {
   const { toast } = useToast();
+  const { registerScreen, unregisterScreen } = useVoiceScribe();
   const [activeTab, setActiveTab] = useState(0);
   const [encounter, setEncounter] = useState<EncounterData>(emptyEncounter);
   const [prescription, setPrescription] = useState<PrescriptionData>(emptyPrescription);
@@ -94,6 +95,53 @@ const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onT
   const [saved, setSaved] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout>>();
   const prevTokenId = useRef<string | null>(null);
+  const encounterRef = useRef(encounter);
+  const prescriptionRef = useRef(prescription);
+  encounterRef.current = encounter;
+  prescriptionRef.current = prescription;
+
+  // Register fill function for voice scribe
+  useEffect(() => {
+    const fillFn = (data: Record<string, unknown>) => {
+      const enc = encounterRef.current;
+      const rx = prescriptionRef.current;
+      // Fill encounter fields
+      setEncounter((prev) => ({
+        ...prev,
+        chief_complaint: (data.chief_complaint as string) || prev.chief_complaint,
+        history_of_present_illness: (data.history_of_present_illness as string) || prev.history_of_present_illness,
+        examination_notes: (data.examination_findings as string) || prev.examination_notes,
+        diagnosis: (data.diagnosis as string) || prev.diagnosis,
+        icd10_code: (data.icd_suggestion as string) || prev.icd10_code,
+        soap_plan: (data.plan as string) || prev.soap_plan,
+        follow_up_notes: (data.follow_up as string) || prev.follow_up_notes,
+      }));
+      // Fill prescription
+      const drugs = ((data.prescription as DrugEntry[]) || []).map((d) => ({
+        drug_name: d.drug_name || "",
+        dose: d.dose || "",
+        route: d.route || "Oral",
+        frequency: d.frequency || "OD",
+        duration_days: (d as unknown as Record<string, string>).duration || "",
+        instructions: d.instructions || "",
+        quantity: "",
+        is_stat: false,
+      }));
+      const labOrders = ((data.investigations as string[]) || []).map((name) => ({
+        test_name: name, urgency: "routine", clinical_indication: "",
+      }));
+      if (drugs.length > 0 || labOrders.length > 0) {
+        setPrescription((prev) => ({
+          ...prev,
+          drugs: [...prev.drugs, ...drugs],
+          lab_orders: [...prev.lab_orders, ...labOrders],
+          advice_notes: (data.follow_up as string) || prev.advice_notes,
+        }));
+      }
+    };
+    registerScreen("opd_consultation", fillFn);
+    return () => unregisterScreen("opd_consultation");
+  }, [registerScreen, unregisterScreen]);
 
   // Load encounter when token changes
   useEffect(() => {
