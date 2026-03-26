@@ -1,40 +1,54 @@
 
 
-## Plan: Make Emergency Action Buttons Functional
+## Plan: Fix Analytics Issues & Add Custom Date Range
 
-### Problem
-All action buttons in the Emergency workspace show placeholder toast messages ("coming in Phase 5") instead of performing real actions. The "Admit to IPD" button calls `handleDisposition` but doesn't navigate to the admission flow. "Discharge" works but provides no confirmation.
+### Issues Identified
+
+1. **Heatmap broken**: Currently renders heatmap cells in a flat 7-column grid without filling empty days or aligning to weekday columns. Only days with data appear -- no calendar structure.
+2. **No Discharge TAT chart**: Clinical tab lacks any discharge turnaround time visualization. Data exists in `admissions` table (`admitted_at`, `discharged_at`).
+3. **Last Month inaccurate**: The `getRange("last_month")` logic looks correct (`subMonths` + `startOfMonth`/`endOfMonth`), but clinical queries append `T23:59:59` to `range.to` for timestamp columns while revenue queries use date-only comparison -- this is fine. The real issue is that `useDashboardData` (dashboard page) calculates last month revenue differently than analytics. Will audit and align.
+4. **No custom date picker**: Only preset ranges exist. Need a "Custom" option with from/to date inputs.
 
 ### Changes
 
-**1. Update `src/components/emergency/EmergencyWorkspace.tsx`**
+#### File 1: `src/pages/analytics/AnalyticsPage.tsx`
+- Add a "Custom" button to the quick-range row
+- When "Custom" selected, show two `<input type="date">` fields (from/to) inline in the header
+- Store custom from/to in state, compute `range` from either quickRange or custom dates
+- Add `quickRange` state type to include `"custom"`
 
-Add state for two modals and integrate existing components:
+#### File 2: `src/components/analytics/RevenueTab.tsx` — Fix Heatmap
+- Replace the flat grid with a proper calendar-style heatmap:
+  - Generate all dates in the range (from → to)
+  - Pad the first week with empty cells to align to correct weekday column
+  - Each cell shows the day number + color intensity based on collection amount
+  - Tooltip shows date + amount on hover
+  - Proper month/week labels
 
-- **Admit to IPD**: Open the existing `AdmitPatientModal` (from `src/components/ipd/AdmitPatientModal.tsx`) with the patient pre-selected, then update disposition to "admitted" on success
-- **STAT Lab**: Open the existing `NewLabOrderModal` (from `src/components/lab/NewLabOrderModal.tsx`) with priority set to "stat" and the patient context passed in
-- **Blood Request**: Show a quick dialog form (blood group, units, component type, urgency) that inserts a record into a `blood_requests` table or, if that table doesn't exist, shows a structured toast confirming the request details and navigates to lab
-- **Call Specialist**: Show a quick dialog to select department/specialty, then insert a `clinical_alerts` row with `alert_type = 'specialist_consult'` and the patient/visit details — this is a real notification
-- **Discharge**: Add a confirmation dialog before calling `handleDisposition("discharged")` to prevent accidental discharges
-- **MLC Register**: Navigate to a dedicated MLC view or show a summary dialog with MLC details
+#### File 3: `src/components/analytics/ClinicalTab.tsx` — Add Discharge TAT
+- Add a new "Discharge TAT" chart section
+- Query `admissions` where `status='discharged'` in range
+- Calculate TAT = `discharged_at - admitted_at` in hours
+- Show as a horizontal bar chart grouped by ward or as a distribution histogram
+- Add average TAT KPI card
 
-**2. Import existing modals**
+#### File 4: `src/hooks/useAnalyticsData.ts` — Add Discharge TAT hook + fix last month
+- Add `useDischargeTAT(range)` hook: fetches discharged admissions, calculates hours between admit and discharge, returns per-day or per-ward averages
+- Audit `useClinicalKPIs` to include avg discharge TAT and readmission rate
+- Ensure all date comparisons are consistent (date columns use date format, timestamp columns use datetime format)
 
-- Import `AdmitPatientModal` and `NewLabOrderModal` into EmergencyWorkspace
-- Add `showAdmitModal` and `showLabModal` state booleans
-- Render the modals at the bottom of the component JSX
+### Technical Details
 
-**3. Create specialist consult and blood request dialogs**
+**Heatmap fix**: Generate date array using a loop from `range.from` to `range.to`. Use `getDay()` to determine weekday offset. Render leading empty cells for alignment. Color intensity = `amount / maxAmount`.
 
-- Simple inline Dialog components within EmergencyWorkspace (no separate files needed)
-- Specialist: dropdown for department, textarea for reason, "Send Alert" button that inserts into `clinical_alerts`
-- Blood Request: blood group (auto-filled from patient if available), component type dropdown (Whole Blood, PRBCs, FFP, Platelets), units count, urgency toggle — inserts into `clinical_alerts` with type `blood_request`
+**Discharge TAT**: 
+```
+SELECT admitted_at, discharged_at, ward_id 
+FROM admissions 
+WHERE status='discharged' AND hospital_id=X 
+  AND discharged_at BETWEEN range.from AND range.to
+```
+TAT hours = `(discharged_at - admitted_at) / 3600000`
 
-**4. Add discharge confirmation**
-
-- Use `AlertDialog` (already available in UI components) before executing discharge
-
-### Technical Detail
-
-All "actions" will use existing tables (`clinical_alerts` for specialist/blood alerts, `ipd_admissions` via AdmitPatientModal, `lab_orders` via NewLabOrderModal). No new tables or migrations needed. The `clinical_alerts` table already supports custom alert types and severity levels.
+**Custom date range**: Simple two-input approach with `<input type="date" />` styled to match existing UI. The `range` memo switches between `getRange(quickRange)` and `{from: customFrom, to: customTo}`.
 
