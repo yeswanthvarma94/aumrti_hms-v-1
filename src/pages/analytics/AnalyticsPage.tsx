@@ -137,8 +137,8 @@ const AnalyticsPage: React.FC = () => {
         {activeTab === "clinical" && <ClinicalTab range={range} />}
         {activeTab === "doctors" && <DoctorsTab range={range} />}
         {activeTab === "departments" && <DepartmentsTab range={range} />}
-        {activeTab === "quality" && <PlaceholderTab title="Quality & NABH Analytics" />}
-        {activeTab === "digest" && <PlaceholderTab title="AI Executive Digest" />}
+        {activeTab === "quality" && <QualityTab range={range} />}
+        {activeTab === "digest" && <AIDigestTab />}
       </div>
     </div>
   );
