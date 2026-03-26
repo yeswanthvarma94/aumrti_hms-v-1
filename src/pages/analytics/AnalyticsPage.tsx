@@ -1,10 +1,12 @@
 import React, { useState, useMemo } from "react";
 import { format, subDays, startOfMonth, endOfMonth, subMonths, startOfWeek, endOfWeek } from "date-fns";
-import { RefreshCw, Download, Bot, BarChart2, Calendar } from "lucide-react";
+import { RefreshCw, Download, Bot, BarChart2, Calendar, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarPicker } from "@/components/ui/calendar";
 import RevenueTab from "@/components/analytics/RevenueTab";
 import ClinicalTab from "@/components/analytics/ClinicalTab";
 import DoctorsTab from "@/components/analytics/DoctorsTab";
@@ -24,7 +26,7 @@ const QUICK_RANGES = [
   { label: "Last Month", key: "last_month" },
 ] as const;
 
-type QuickRange = typeof QUICK_RANGES[number]["key"];
+type QuickRange = typeof QUICK_RANGES[number]["key"] | "custom";
 
 const TABS = [
   { id: "revenue", label: "📊 Revenue" },
@@ -36,7 +38,7 @@ const TABS = [
   { id: "custom", label: "📋 Custom Report" },
 ] as const;
 
-function getRange(key: QuickRange): DateRange {
+function getRange(key: Exclude<QuickRange, "custom">): DateRange {
   const today = new Date();
   switch (key) {
     case "today":
@@ -62,10 +64,20 @@ const AnalyticsPage: React.FC = () => {
   const [lastUpdated, setLastUpdated] = useState(new Date());
   const [exportOpen, setExportOpen] = useState(false);
   const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [customFrom, setCustomFrom] = useState<Date | undefined>(undefined);
+  const [customTo, setCustomTo] = useState<Date | undefined>(undefined);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const range = useMemo(() => getRange(quickRange), [quickRange]);
+  const range = useMemo(() => {
+    if (quickRange === "custom" && customFrom && customTo) {
+      return { from: format(customFrom, "yyyy-MM-dd"), to: format(customTo, "yyyy-MM-dd") };
+    }
+    if (quickRange === "custom") {
+      return getRange("this_month");
+    }
+    return getRange(quickRange);
+  }, [quickRange, customFrom, customTo]);
 
   const handleRefresh = () => {
     queryClient.invalidateQueries({ queryKey: ["analytics"] });
@@ -83,13 +95,13 @@ const AnalyticsPage: React.FC = () => {
   return (
     <div className="flex flex-col" style={{ height: "calc(100vh - 56px)" }}>
       {/* Header */}
-      <div className="h-[52px] flex-shrink-0 bg-card border-b border-border px-5 flex items-center justify-between">
+      <div className="min-h-[52px] flex-shrink-0 bg-card border-b border-border px-5 flex items-center justify-between gap-2 flex-wrap py-2">
         <div className="flex items-center gap-3">
           <h1 className="text-base font-bold text-foreground">Analytics & BI</h1>
           <span className="text-[11px] text-muted-foreground">Updated {timeAgo}</span>
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 flex-wrap">
           {QUICK_RANGES.map(r => (
             <button
               key={r.key}
@@ -104,6 +116,62 @@ const AnalyticsPage: React.FC = () => {
               {r.label}
             </button>
           ))}
+
+          {/* Custom date range */}
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setQuickRange("custom")}
+              className={cn(
+                "px-3 py-1 rounded-full text-[11px] font-medium transition-colors flex items-center gap-1",
+                quickRange === "custom"
+                  ? "bg-sidebar text-white"
+                  : "text-muted-foreground hover:bg-muted"
+              )}
+            >
+              <CalendarDays size={12} /> Custom
+            </button>
+
+            {quickRange === "custom" && (
+              <div className="flex items-center gap-1 ml-1">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-7 text-[11px] px-2 gap-1">
+                      <Calendar size={12} />
+                      {customFrom ? format(customFrom, "dd MMM yyyy") : "From"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarPicker
+                      mode="single"
+                      selected={customFrom}
+                      onSelect={setCustomFrom}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+                <span className="text-[11px] text-muted-foreground">–</span>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-7 text-[11px] px-2 gap-1">
+                      <Calendar size={12} />
+                      {customTo ? format(customTo, "dd MMM yyyy") : "To"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarPicker
+                      mode="single"
+                      selected={customTo}
+                      onSelect={setCustomTo}
+                      disabled={(date) => customFrom ? date < customFrom : false}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="flex items-center gap-2">

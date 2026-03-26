@@ -6,6 +6,7 @@ import {
 import AnalyticsKPICard from "./AnalyticsKPICard";
 import {
   useClinicalKPIs, useOPDTrend, useBedOccupancyBreakdown, useTopDiagnoses,
+  useDischargeTAT,
   type DateRange,
 } from "@/hooks/useAnalyticsData";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -15,22 +16,25 @@ const ClinicalTab: React.FC<{ range: DateRange }> = ({ range }) => {
   const { data: opdTrend } = useOPDTrend(range);
   const { data: bedData } = useBedOccupancyBreakdown();
   const { data: diagnoses } = useTopDiagnoses(range);
+  const { data: tatData } = useDischargeTAT(range);
 
   if (isLoading) return <div className="p-5 space-y-4">{[1,2,3].map(i => <Skeleton key={i} className="h-28 w-full" />)}</div>;
 
   const k = kpis || { opdVisits: 0, opdDailyAvg: 0, admissions: 0, bedOccupancy: 0, occupiedBeds: 0, totalBeds: 0, labTests: 0, emergencyCases: 0, emergencyP1: 0 };
+  const tat = tatData || { entries: [], avgHours: 0, distribution: [], totalDischarges: 0 };
 
   const occColor = k.bedOccupancy > 80 ? "text-emerald-500" : k.bedOccupancy >= 60 ? "text-amber-500" : "text-red-500";
 
   return (
     <div className="p-5 space-y-4 overflow-y-auto">
       {/* KPI Row */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
         <AnalyticsKPICard icon="🏥" iconBg="bg-blue-100" value={`${k.opdVisits} visits`} label="OPD Visits" subtitle={`Daily avg: ${k.opdDailyAvg}`} />
         <AnalyticsKPICard icon="🛏️" iconBg="bg-purple-100" value={`${k.admissions}`} label="IPD Admissions" />
         <AnalyticsKPICard icon="📊" iconBg="bg-teal-100" value={`${k.bedOccupancy}%`} valueColor={occColor} label="Bed Occupancy" subtitle={`Occupied: ${k.occupiedBeds} / ${k.totalBeds}`} />
         <AnalyticsKPICard icon="🔬" iconBg="bg-green-100" value={`${k.labTests} tests`} label="Lab Processed" />
         <AnalyticsKPICard icon="🚨" iconBg="bg-red-100" value={`${k.emergencyCases} cases`} label="Emergency" subtitle={`P1 Critical: ${k.emergencyP1}`} subtitleColor="text-red-500" />
+        <AnalyticsKPICard icon="⏱️" iconBg="bg-orange-100" value={`${tat.avgHours}h`} label="Avg Discharge TAT" subtitle={`${tat.totalDischarges} discharges`} />
       </div>
 
       {/* OPD Trend + Bed Occupancy */}
@@ -71,6 +75,24 @@ const ClinicalTab: React.FC<{ range: DateRange }> = ({ range }) => {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Discharge TAT Distribution */}
+      <div className="bg-card border border-border rounded-xl p-4">
+        <h3 className="text-sm font-semibold text-foreground mb-3">Discharge TAT Distribution</h3>
+        {tat.distribution.length > 0 ? (
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={tat.distribution}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+              <XAxis dataKey="bucket" tick={{ fontSize: 10 }} />
+              <YAxis tick={{ fontSize: 10 }} />
+              <Tooltip />
+              <Bar dataKey="count" name="Discharges" fill="hsl(25, 95%, 53%)" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        ) : (
+          <p className="text-sm text-muted-foreground py-8 text-center">No discharge data for this period</p>
+        )}
       </div>
 
       {/* Top Diagnoses */}
