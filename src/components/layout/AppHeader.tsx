@@ -55,6 +55,16 @@ const AppHeader: React.FC = () => {
   const { toast } = useToast();
   const [searchOpen, setSearchOpen] = useState(false);
   const [online, setOnline] = useState(navigator.onLine);
+  const [hospitalId, setHospitalId] = useState<string | null>(null);
+
+  // Get hospital ID for notification centre
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      supabase.from("users").select("hospital_id").eq("auth_user_id", user.id).maybeSingle()
+        .then(({ data }) => { if (data) setHospitalId(data.hospital_id); });
+    });
+  }, []);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
