@@ -94,19 +94,7 @@ const IPDWardRoundTab: React.FC<Props> = ({ admissionId, hospitalId, userId, pat
           </div>
         </div>
         <div className="flex items-center justify-between mt-2">
-          <VoiceDictationButton
-            contextType="ward_round"
-            existingData={{ s: form.s, o: form.o, a: form.a, p: form.p }}
-            onStructuredResult={(data) => {
-              setForm((prev) => ({
-                s: (data.subjective as string) || prev.s,
-                o: (data.objective as string) || prev.o,
-                a: (data.assessment as string) || prev.a,
-                p: (data.plan as string) || prev.p,
-              }));
-            }}
-            size="sm"
-          />
+          <VoiceDictationButton sessionType="ward_round" size="sm" />
           <Button size="sm" onClick={handleSave} disabled={saving} className="bg-[#1A2F5A] hover:bg-[#152647] text-xs h-8">
             {saving ? "Saving..." : "Save Round Note"}
           </Button>
