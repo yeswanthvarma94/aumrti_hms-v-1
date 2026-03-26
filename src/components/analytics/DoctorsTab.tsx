@@ -113,7 +113,7 @@ const DoctorsTab: React.FC<{ range: DateRange }> = ({ range }) => {
   );
 };
 
-const DoctorCard: React.FC<{ doc: DoctorScore; maxRevenue: number }> = ({ doc, maxRevenue }) => {
+const DoctorCard: React.FC<{ doc: DoctorScore; maxRevenue: number; onClick: () => void }> = ({ doc, maxRevenue, onClick }) => {
   const initials = doc.full_name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
   const revPct = Math.round((doc.revenue / maxRevenue) * 100);
 
