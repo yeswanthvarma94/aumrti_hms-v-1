@@ -5,6 +5,8 @@ import { cn } from "@/lib/utils";
 import { Clock, Save, CheckCircle2, FileText, Printer, MessageSquare, AlertTriangle, Pencil } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { useWhatsAppNotification } from "@/components/whatsapp/WhatsAppNotificationCard";
+import { sendLabResultReady } from "@/lib/whatsapp-notifications";
 
 interface LabOrder {
   id: string;
