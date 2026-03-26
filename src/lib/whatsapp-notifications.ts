@@ -1,13 +1,16 @@
 /**
  * WhatsApp Notification Engine
  * Generates wa.me links with pre-filled messages for HMS events.
- * No WhatsApp Business API needed — just opens WhatsApp with structured text.
+ * Records notifications in whatsapp_notifications table.
  */
+
+import { supabase } from "@/integrations/supabase/client";
 
 export interface WhatsAppParams {
   phone: string;
   hospitalName: string;
   hospitalPhone?: string;
+  hospitalAddress?: string;
 }
 
 function cleanPhone(phone: string): string {
@@ -15,128 +18,388 @@ function cleanPhone(phone: string): string {
   return digits.startsWith("91") ? digits : `91${digits}`;
 }
 
-function openWhatsApp(phone: string, message: string) {
-  const url = `https://wa.me/${cleanPhone(phone)}?text=${encodeURIComponent(message)}`;
-  window.open(url, "_blank");
+function makeWaUrl(phone: string, message: string): string {
+  return `https://wa.me/${cleanPhone(phone)}?text=${encodeURIComponent(message)}`;
 }
 
-// ── Appointment Reminder ──────────────────────────────────────
+async function recordNotification(opts: {
+  hospitalId: string;
+  patientId: string;
+  type: string;
+  message: string;
+  phone: string;
+  waUrl: string;
+}) {
+  await supabase.from("whatsapp_notifications").insert({
+    hospital_id: opts.hospitalId,
+    patient_id: opts.patientId,
+    notification_type: opts.type,
+    message_text: opts.message,
+    phone_number: opts.phone,
+    whatsapp_url: opts.waUrl,
+  } as any);
+}
 
-export function sendAppointmentReminder(
-  params: WhatsAppParams & {
-    patientName: string;
-    doctorName: string;
-    department?: string;
-    appointmentDate: string;
-    appointmentTime?: string;
-    tokenNumber?: string;
-  }
-) {
-  const msg = `🏥 *${params.hospitalName}*
+// Portal URL for links in messages
+const PORTAL_URL = window.location.origin + "/portal";
 
-Hello ${params.patientName} 👋
+// ── Appointment Confirmation ─────────────────────────────────
+
+export async function sendAppointmentConfirmation(opts: {
+  hospitalId: string;
+  hospitalName: string;
+  hospitalAddress?: string;
+  patientId: string;
+  patientName: string;
+  phone: string;
+  doctorName: string;
+  department?: string;
+  date: string;
+  time?: string;
+  tokenNumber?: string;
+}) {
+  const msg = `🏥 *${opts.hospitalName}*
+
+✅ *Appointment Confirmed*
+
+Patient: ${opts.patientName}
+Doctor: Dr. ${opts.doctorName}
+${opts.department ? `Department: ${opts.department}` : ""}
+Date: ${opts.date}
+${opts.time ? `Time: ${opts.time}` : ""}
+${opts.tokenNumber ? `Token: ${opts.tokenNumber}` : ""}
+
+${opts.hospitalAddress ? `📍 ${opts.hospitalAddress}` : ""}
+
+Reply to this message for any queries.`;
+
+  const waUrl = makeWaUrl(opts.phone, msg);
+  await recordNotification({
+    hospitalId: opts.hospitalId,
+    patientId: opts.patientId,
+    type: "appointment_confirmation",
+    message: msg,
+    phone: opts.phone,
+    waUrl,
+  });
+  return { waUrl, message: msg };
+}
+
+// ── Appointment Reminder ─────────────────────────────────────
+
+export async function sendAppointmentReminder(opts: {
+  hospitalId: string;
+  hospitalName: string;
+  hospitalPhone?: string;
+  patientId: string;
+  patientName: string;
+  phone: string;
+  doctorName: string;
+  department?: string;
+  date: string;
+  time?: string;
+  tokenNumber?: string;
+}) {
+  const msg = `🏥 *${opts.hospitalName}*
+
+Hello ${opts.patientName} 👋
 
 This is a reminder for your upcoming appointment:
 
-📅 *Date:* ${params.appointmentDate}
-${params.appointmentTime ? `🕐 *Time:* ${params.appointmentTime}` : ""}
-👨‍⚕️ *Doctor:* Dr. ${params.doctorName}
-${params.department ? `🏢 *Department:* ${params.department}` : ""}
-${params.tokenNumber ? `🎫 *Token:* ${params.tokenNumber}` : ""}
+📅 *Date:* ${opts.date}
+${opts.time ? `🕐 *Time:* ${opts.time}` : ""}
+👨‍⚕️ *Doctor:* Dr. ${opts.doctorName}
+${opts.department ? `🏢 *Department:* ${opts.department}` : ""}
+${opts.tokenNumber ? `🎫 *Token:* ${opts.tokenNumber}` : ""}
 
 Please arrive 15 minutes before your scheduled time.
 
-For queries: ${params.hospitalPhone || "Contact hospital reception"}`;
+For queries: ${opts.hospitalPhone || "Contact hospital reception"}`;
 
-  openWhatsApp(params.phone, msg);
+  const waUrl = makeWaUrl(opts.phone, msg);
+  await recordNotification({
+    hospitalId: opts.hospitalId,
+    patientId: opts.patientId,
+    type: "appointment_reminder",
+    message: msg,
+    phone: opts.phone,
+    waUrl,
+  });
+  return { waUrl, message: msg };
 }
 
-// ── Bill Generated ────────────────────────────────────────────
+// ── Lab Result Ready ─────────────────────────────────────────
 
-export function sendBillNotification(
-  params: WhatsAppParams & {
-    patientName: string;
-    billNumber: string;
-    totalAmount: number;
-    balanceDue: number;
-    paymentLink?: string;
-  }
-) {
-  const msg = `🏥 *${params.hospitalName}*
+export async function sendLabResultReady(opts: {
+  hospitalId: string;
+  hospitalName: string;
+  hospitalPhone?: string;
+  patientId: string;
+  patientName: string;
+  phone: string;
+  testCount: number;
+  abnormalCount: number;
+  orderDate: string;
+}) {
+  const msg = `🏥 *${opts.hospitalName} — Lab Report Ready*
 
-Dear ${params.patientName},
+Dear ${opts.patientName},
 
-Your bill has been generated:
+Your lab results are ready.
 
-🧾 *Bill #:* ${params.billNumber}
-💰 *Total Amount:* ₹${params.totalAmount.toLocaleString("en-IN")}
-${params.balanceDue > 0 ? `⚠️ *Balance Due:* ₹${params.balanceDue.toLocaleString("en-IN")}` : "✅ *Fully Paid*"}
-${params.paymentLink ? `\n💳 Pay online: ${params.paymentLink}` : ""}
+📋 *Tests:* ${opts.testCount} test(s)
+${opts.abnormalCount > 0 ? `⚠️ ${opts.abnormalCount} value(s) need attention` : "✅ All values normal"}
 
-For queries: ${params.hospitalPhone || "Contact billing counter"}`;
+📅 Date: ${opts.orderDate}
 
-  openWhatsApp(params.phone, msg);
+🔗 View & Download: ${PORTAL_URL}
+
+Please consult your doctor for interpretation.
+
+For queries: ${opts.hospitalPhone || "Contact hospital lab"}`;
+
+  const waUrl = makeWaUrl(opts.phone, msg);
+  await recordNotification({
+    hospitalId: opts.hospitalId,
+    patientId: opts.patientId,
+    type: "lab_result_ready",
+    message: msg,
+    phone: opts.phone,
+    waUrl,
+  });
+  return { waUrl, message: msg };
 }
 
-// ── Lab Report Ready ──────────────────────────────────────────
+// ── Bill Generated ───────────────────────────────────────────
 
-export function sendLabReportReady(
-  params: WhatsAppParams & {
-    patientName: string;
-    testNames: string[];
-    orderDate: string;
-  }
-) {
-  const tests = params.testNames.slice(0, 5).join(", ");
-  const msg = `🏥 *${params.hospitalName}*
+export async function sendBillGenerated(opts: {
+  hospitalId: string;
+  hospitalName: string;
+  hospitalPhone?: string;
+  patientId: string;
+  patientName: string;
+  phone: string;
+  billNumber: string;
+  billDate: string;
+  totalAmount: number;
+  insuranceAmount?: number;
+  patientPayable: number;
+}) {
+  const msg = `🏥 *${opts.hospitalName}*
 
-Dear ${params.patientName},
+🧾 *Bill Generated*
 
-Your lab results are ready! 🔬
+Patient: ${opts.patientName}
+Bill No: ${opts.billNumber}
+Date: ${opts.billDate}
 
-📋 *Tests:* ${tests}
-📅 *Order Date:* ${params.orderDate}
+💰 *Total Amount: ₹${opts.totalAmount.toLocaleString("en-IN")}*
+${opts.insuranceAmount && opts.insuranceAmount > 0 ? `🏥 Insurance covers: ₹${opts.insuranceAmount.toLocaleString("en-IN")}` : ""}
+💳 *Patient Payable: ₹${opts.patientPayable.toLocaleString("en-IN")}*
 
-Please visit the hospital to collect your reports or view them on the patient portal.
+Pay online: ${PORTAL_URL}/bills
 
-For queries: ${params.hospitalPhone || "Contact hospital lab"}`;
+Or visit billing counter.
 
-  openWhatsApp(params.phone, msg);
+For queries: ${opts.hospitalPhone || "Contact billing counter"}`;
+
+  const waUrl = makeWaUrl(opts.phone, msg);
+  await recordNotification({
+    hospitalId: opts.hospitalId,
+    patientId: opts.patientId,
+    type: "bill_generated",
+    message: msg,
+    phone: opts.phone,
+    waUrl,
+  });
+  return { waUrl, message: msg };
 }
 
-// ── Discharge Summary ─────────────────────────────────────────
+// ── Payment Received ─────────────────────────────────────────
 
-export function sendDischargeSummary(
-  params: WhatsAppParams & {
-    patientName: string;
-    admissionDate: string;
-    dischargeDate: string;
-    diagnosis?: string;
-    followUpDate?: string;
-    instructions?: string;
-  }
-) {
-  const msg = `🏥 *${params.hospitalName}*
+export async function sendPaymentReceived(opts: {
+  hospitalId: string;
+  hospitalName: string;
+  patientId: string;
+  patientName: string;
+  phone: string;
+  billNumber: string;
+  amountPaid: number;
+  paymentMode: string;
+  balanceDue: number;
+}) {
+  const now = new Date();
+  const dateStr = now.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+  const timeStr = now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
 
-Dear ${params.patientName},
+  const msg = `🏥 *${opts.hospitalName}*
 
-You have been discharged. Here are your details:
+✅ *Payment Received*
 
-📅 *Admitted:* ${params.admissionDate}
-📅 *Discharged:* ${params.dischargeDate}
-${params.diagnosis ? `🩺 *Diagnosis:* ${params.diagnosis}` : ""}
-${params.followUpDate ? `📆 *Follow-up:* ${params.followUpDate}` : ""}
-${params.instructions ? `\n📝 *Instructions:*\n${params.instructions}` : ""}
+Patient: ${opts.patientName}
+Bill No: ${opts.billNumber}
+Amount Paid: ₹${opts.amountPaid.toLocaleString("en-IN")}
+Mode: ${opts.paymentMode.toUpperCase()}
+Date: ${dateStr} ${timeStr}
 
-Please take your medications as prescribed. Wishing you a speedy recovery! 🙏
+${opts.balanceDue > 0 ? `⚠️ Balance remaining: ₹${opts.balanceDue.toLocaleString("en-IN")}` : "✅ Bill fully paid"}
 
-For queries: ${params.hospitalPhone || "Contact hospital"}`;
+Thank you! 🙏
+${opts.hospitalName}`;
 
-  openWhatsApp(params.phone, msg);
+  const waUrl = makeWaUrl(opts.phone, msg);
+  await recordNotification({
+    hospitalId: opts.hospitalId,
+    patientId: opts.patientId,
+    type: "payment_received",
+    message: msg,
+    phone: opts.phone,
+    waUrl,
+  });
+  return { waUrl, message: msg };
 }
 
-// ── Generic sender (for custom messages) ──────────────────────
+// ── Discharge Summary ────────────────────────────────────────
 
-export function sendCustomWhatsApp(phone: string, message: string) {
-  openWhatsApp(phone, message);
+export async function sendDischargeSummaryNotif(opts: {
+  hospitalId: string;
+  hospitalName: string;
+  hospitalPhone?: string;
+  patientId: string;
+  patientName: string;
+  phone: string;
+  admittedAt: string;
+  wardName: string;
+  doctorName: string;
+  followUp?: string;
+}) {
+  const now = new Date();
+  const msg = `🏥 *${opts.hospitalName}*
+
+🏠 *Discharge Summary Ready*
+
+Dear ${opts.patientName},
+
+You have been discharged successfully.
+
+📅 Admitted: ${opts.admittedAt}
+📅 Discharged: ${now.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+🏥 Ward: ${opts.wardName}
+👨‍⚕️ Doctor: Dr. ${opts.doctorName}
+
+📋 Follow-up: ${opts.followUp || "As advised by doctor"}
+
+🔗 Download summary: ${PORTAL_URL}/timeline
+
+Take your medications as prescribed.
+Get well soon! 💪
+
+For emergencies: ${opts.hospitalPhone || "Contact hospital"}`;
+
+  const waUrl = makeWaUrl(opts.phone, msg);
+  await recordNotification({
+    hospitalId: opts.hospitalId,
+    patientId: opts.patientId,
+    type: "discharge_summary",
+    message: msg,
+    phone: opts.phone,
+    waUrl,
+  });
+  return { waUrl, message: msg };
+}
+
+// ── Prescription Ready ───────────────────────────────────────
+
+export async function sendPrescriptionReady(opts: {
+  hospitalId: string;
+  hospitalName: string;
+  patientId: string;
+  patientName: string;
+  phone: string;
+  doctorName: string;
+  drugCount: number;
+}) {
+  const msg = `🏥 *${opts.hospitalName}*
+
+💊 *Prescription Ready*
+
+Dear ${opts.patientName},
+
+Dr. ${opts.doctorName} has issued a prescription with ${opts.drugCount} medication(s).
+
+🔗 View & download: ${PORTAL_URL}/prescriptions
+
+Please take your medications as prescribed.`;
+
+  const waUrl = makeWaUrl(opts.phone, msg);
+  await recordNotification({
+    hospitalId: opts.hospitalId,
+    patientId: opts.patientId,
+    type: "prescription_ready",
+    message: msg,
+    phone: opts.phone,
+    waUrl,
+  });
+  return { waUrl, message: msg };
+}
+
+// ── Feedback Request ─────────────────────────────────────────
+
+export async function sendFeedbackRequest(opts: {
+  hospitalId: string;
+  hospitalName: string;
+  patientId: string;
+  patientName: string;
+  phone: string;
+}) {
+  const msg = `🏥 *${opts.hospitalName}*
+
+Dear ${opts.patientName},
+
+We hope you are doing well! 🙏
+
+We'd love to hear about your experience at ${opts.hospitalName}.
+
+⭐ Share your feedback: ${PORTAL_URL}/feedback
+
+Your feedback helps us improve care for everyone.
+
+Thank you!
+${opts.hospitalName}`;
+
+  const waUrl = makeWaUrl(opts.phone, msg);
+  await recordNotification({
+    hospitalId: opts.hospitalId,
+    patientId: opts.patientId,
+    type: "feedback_request",
+    message: msg,
+    phone: opts.phone,
+    waUrl,
+  });
+  return { waUrl, message: msg };
+}
+
+// ── Generic custom ───────────────────────────────────────────
+
+export function openWhatsApp(phone: string, message: string) {
+  const url = makeWaUrl(phone, message);
+  window.open(url, "_blank");
+}
+
+export async function sendCustomWhatsApp(opts: {
+  hospitalId: string;
+  patientId: string;
+  phone: string;
+  message: string;
+}) {
+  const waUrl = makeWaUrl(opts.phone, opts.message);
+  await recordNotification({
+    hospitalId: opts.hospitalId,
+    patientId: opts.patientId,
+    type: "custom",
+    message: opts.message,
+    phone: opts.phone,
+    waUrl,
+  });
+  return { waUrl };
 }

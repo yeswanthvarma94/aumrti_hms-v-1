@@ -5,6 +5,8 @@ import { cn } from "@/lib/utils";
 import { Clock, Save, CheckCircle2, FileText, Printer, MessageSquare, AlertTriangle, Pencil } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { useWhatsAppNotification } from "@/components/whatsapp/WhatsAppNotificationCard";
+import { sendLabResultReady } from "@/lib/whatsapp-notifications";
 
 interface LabOrder {
   id: string;
@@ -88,6 +90,7 @@ const STATUS_PILLS: Record<string, { bg: string; text: string; label: string }> 
 
 const LabResultWorkspace: React.FC<Props> = ({ order, onRefresh }) => {
   const { toast } = useToast();
+  const { show: showWaNotif, card: waCard } = useWhatsAppNotification();
   const [items, setItems] = useState<TestItem[]>([]);
   const [localValues, setLocalValues] = useState<Record<string, string>>({});
   const [labNotes, setLabNotes] = useState(order.clinical_notes || "");
@@ -339,6 +342,27 @@ const LabResultWorkspace: React.FC<Props> = ({ order, onRefresh }) => {
     }).eq("lab_order_id", order.id).neq("status", "cancelled");
 
     await supabase.from("lab_orders").update({ status: "completed" }).eq("id", order.id);
+
+    // Trigger WhatsApp notification
+    if (patient?.phone) {
+      const { data: orderData } = await supabase.from("lab_orders").select("hospital_id").eq("id", order.id).single();
+      if (orderData) {
+        const { data: hospital } = await supabase.from("hospitals").select("name").eq("id", orderData.hospital_id).maybeSingle();
+        const abnormalCount = items.filter(i => i.result_flag && !["N", null].includes(i.result_flag)).length;
+        const result = await sendLabResultReady({
+          hospitalId: orderData.hospital_id,
+          hospitalName: hospital?.name || "Hospital",
+          patientId: order.patient_id,
+          patientName: patient.full_name,
+          phone: patient.phone,
+          testCount: items.length,
+          abnormalCount,
+          orderDate: order.order_date,
+        });
+        showWaNotif(patient.full_name, "lab_result_ready", result.waUrl);
+      }
+    }
+
     fetchItems(); onRefresh();
     toast({ title: "✓ Report released" });
   };
@@ -363,6 +387,8 @@ const LabResultWorkspace: React.FC<Props> = ({ order, onRefresh }) => {
   }, {});
 
   return (
+    <>
+    {waCard}
     <div className="flex-1 flex flex-col overflow-hidden bg-muted/30">
       {/* Order Header */}
       <div className="h-[68px] shrink-0 bg-card border-b border-border px-5 flex items-center gap-4">
@@ -780,6 +806,7 @@ const LabResultWorkspace: React.FC<Props> = ({ order, onRefresh }) => {
         </button>
       </div>
     </div>
+    </>
   );
 };
 

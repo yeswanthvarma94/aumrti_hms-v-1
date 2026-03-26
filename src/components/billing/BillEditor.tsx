@@ -11,6 +11,8 @@ import PaymentsTab from "@/components/billing/tabs/PaymentsTab";
 import InsuranceTab from "@/components/billing/tabs/InsuranceTab";
 import GSTInvoiceModal from "@/components/billing/GSTInvoiceModal";
 import PaymentLinkModal from "@/components/billing/PaymentLinkModal";
+import { useWhatsAppNotification } from "@/components/whatsapp/WhatsAppNotificationCard";
+import { sendBillGenerated } from "@/lib/whatsapp-notifications";
 import type { BillRecord } from "@/pages/billing/BillingPage";
 
 export interface LineItem {
@@ -52,6 +54,7 @@ interface Props {
 
 const BillEditor: React.FC<Props> = ({ bill, hospitalId, onRefresh }) => {
   const { toast } = useToast();
+  const { show: showWaNotif, card: waCard } = useWhatsAppNotification();
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
   const [loadingItems, setLoadingItems] = useState(false);
@@ -116,12 +119,28 @@ const BillEditor: React.FC<Props> = ({ bill, hospitalId, onRefresh }) => {
   }, [fetchLineItems, fetchPayments]);
 
   const handleFinalize = async () => {
-    if (!bill) return;
-    await supabase
-      .from("bills")
-      .update({ bill_status: "final" })
-      .eq("id", bill.id);
+    if (!bill || !hospitalId) return;
+    await supabase.from("bills").update({ bill_status: "final" }).eq("id", bill.id);
     toast({ title: "Bill finalized" });
+
+    // Trigger WhatsApp notification
+    const { data: patient } = await supabase.from("patients").select("full_name, phone").eq("id", bill.patient_id).maybeSingle();
+    if (patient?.phone && hospitalInfo) {
+      const result = await sendBillGenerated({
+        hospitalId,
+        hospitalName: hospitalInfo.name || "Hospital",
+        patientId: bill.patient_id,
+        patientName: patient.full_name,
+        phone: patient.phone,
+        billNumber: bill.bill_number,
+        billDate: bill.bill_date,
+        totalAmount: bill.total_amount,
+        insuranceAmount: bill.insurance_amount,
+        patientPayable: bill.patient_payable,
+      });
+      showWaNotif(patient.full_name, "bill_generated", result.waUrl);
+    }
+
     onRefresh();
   };
 
@@ -166,6 +185,8 @@ const BillEditor: React.FC<Props> = ({ bill, hospitalId, onRefresh }) => {
   }
 
   return (
+    <>
+    {waCard}
     <div className="flex-1 flex flex-col overflow-hidden bg-muted/30">
       {/* Header */}
       <div className="bg-card border-b border-border px-5 py-3 flex items-center gap-4 flex-shrink-0">
@@ -256,6 +277,7 @@ const BillEditor: React.FC<Props> = ({ bill, hospitalId, onRefresh }) => {
         />
       )}
     </div>
+    </>
   );
 };
 

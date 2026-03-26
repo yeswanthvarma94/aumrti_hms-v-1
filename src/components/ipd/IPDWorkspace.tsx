@@ -13,6 +13,8 @@ import IPDMedicationsTab from "./tabs/IPDMedicationsTab";
 import IPDWardRoundTab from "./tabs/IPDWardRoundTab";
 import IPDNotesTab from "./tabs/IPDNotesTab";
 import IPDDocumentsTab from "./tabs/IPDDocumentsTab";
+import { useWhatsAppNotification } from "@/components/whatsapp/WhatsAppNotificationCard";
+import { sendDischargeSummaryNotif, sendFeedbackRequest } from "@/lib/whatsapp-notifications";
 
 interface Props {
   bed: BedData | null;
@@ -38,6 +40,7 @@ const IPDWorkspace: React.FC<Props> = ({ bed, hospitalId, onRefresh }) => {
   const [patient, setPatient] = useState<PatientDetails | null>(null);
   const [activeTab, setActiveTab] = useState("overview");
   const [userId, setUserId] = useState<string | null>(null);
+  const { show: showWaNotif, card: waCard } = useWhatsAppNotification();
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id || null));
@@ -98,6 +101,8 @@ const IPDWorkspace: React.FC<Props> = ({ bed, hospitalId, onRefresh }) => {
   };
 
   return (
+    <>
+    {waCard}
     <div className="flex-1 flex flex-col overflow-hidden bg-slate-50">
       {/* Patient Header */}
       <div className="flex-shrink-0 h-[72px] bg-white border-b border-slate-200 px-5 flex items-center gap-4">
@@ -205,7 +210,41 @@ const IPDWorkspace: React.FC<Props> = ({ bed, hospitalId, onRefresh }) => {
         </div>
         <div className="flex gap-2">
           <Button size="sm" variant="outline" className="text-xs h-8 border-amber-300 text-amber-700 hover:bg-amber-50"
-            onClick={() => toast({ title: "Discharge workflow", description: "Discharge module coming in Phase 6" })}
+            onClick={async () => {
+              if (!bed?.admission || !patient || !hospitalId) {
+                toast({ title: "Discharge workflow", description: "No active admission selected" });
+                return;
+              }
+              const adm = bed.admission as any;
+              // Fetch hospital + doctor details
+              const { data: hospital } = await supabase.from("hospitals").select("name").eq("id", hospitalId).maybeSingle();
+              if (patient.phone && hospital) {
+                const result = await sendDischargeSummaryNotif({
+                  hospitalId,
+                  hospitalName: hospital.name,
+                  patientId: patient.id,
+                  patientName: patient.full_name,
+                  phone: patient.phone,
+                  admittedAt: adm.admitted_at ? new Date(adm.admitted_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—",
+                  wardName: adm.ward_name || "Ward",
+                  doctorName: adm.doctor_name || "Doctor",
+                });
+                showWaNotif(patient.full_name, "discharge_summary", result.waUrl);
+
+                // Also send feedback request after a short delay
+                setTimeout(async () => {
+                  const fbResult = await sendFeedbackRequest({
+                    hospitalId,
+                    hospitalName: hospital.name,
+                    patientId: patient.id,
+                    patientName: patient.full_name,
+                    phone: patient.phone!,
+                  });
+                  showWaNotif(patient.full_name, "feedback_request", fbResult.waUrl);
+                }, 2000);
+              }
+              toast({ title: "Discharge initiated", description: "WhatsApp notification queued" });
+            }}
           >
             🏠 Initiate Discharge
           </Button>
@@ -222,6 +261,7 @@ const IPDWorkspace: React.FC<Props> = ({ bed, hospitalId, onRefresh }) => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 

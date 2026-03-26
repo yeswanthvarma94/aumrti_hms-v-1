@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Menu, Search, Bell, Wifi, WifiOff } from "lucide-react";
+import { Menu, Search, Wifi, WifiOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "./SidebarContext";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Badge } from "@/components/ui/badge";
+import NotificationCentre from "./NotificationCentre";
 import {
   Dialog,
   DialogContent,
@@ -55,6 +55,16 @@ const AppHeader: React.FC = () => {
   const { toast } = useToast();
   const [searchOpen, setSearchOpen] = useState(false);
   const [online, setOnline] = useState(navigator.onLine);
+  const [hospitalId, setHospitalId] = useState<string | null>(null);
+
+  // Get hospital ID for notification centre
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      supabase.from("users").select("hospital_id").eq("auth_user_id", user.id).maybeSingle()
+        .then(({ data }) => { if (data) setHospitalId(data.hospital_id); });
+    });
+  }, []);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -146,16 +156,8 @@ const AppHeader: React.FC = () => {
             {online ? "Online" : "Offline"}
           </div>
 
-          {/* Notification bell */}
-          <button
-            onClick={() => toast({ title: "Notifications", description: "No new notifications right now." })}
-            className="relative p-2 rounded-md hover:bg-muted transition-colors active:scale-95"
-          >
-            <Bell size={20} />
-            <Badge className="absolute -top-0.5 -right-0.5 h-[18px] min-w-[18px] px-1 text-[10px] font-bold bg-destructive text-destructive-foreground border-2 border-card rounded-full flex items-center justify-center">
-              3
-            </Badge>
-          </button>
+          {/* Notification centre */}
+          <NotificationCentre hospitalId={hospitalId} />
 
           {/* User menu */}
           <DropdownMenu>
