@@ -52,26 +52,31 @@ export function useDoctorScores(range: DateRange) {
           .eq("hospital_id", hospitalId)
           .in("doctor_id", doctorIds)
           .gte("created_at", range.from)
-          .lte("created_at", range.to + "T23:59:59"),
+          .lte("created_at", range.to + "T23:59:59")
+          .limit(5000),
         supabase.from("admissions").select("id, admitting_doctor_id, admitted_at, discharged_at, status")
           .eq("hospital_id", hospitalId)
           .in("admitting_doctor_id", doctorIds)
           .gte("admitted_at", range.from)
-          .lte("admitted_at", range.to + "T23:59:59"),
+          .lte("admitted_at", range.to + "T23:59:59")
+          .limit(5000),
         supabase.from("ot_schedules").select("id, surgeon_id")
           .eq("hospital_id", hospitalId)
           .in("surgeon_id", doctorIds)
           .eq("status", "completed")
           .gte("scheduled_date", range.from)
-          .lte("scheduled_date", range.to),
+          .lte("scheduled_date", range.to)
+          .limit(2000),
         supabase.from("bills").select("paid_amount, encounter_id")
           .eq("hospital_id", hospitalId)
           .eq("bill_type", "opd")
-          .gte("bill_date", range.from).lte("bill_date", range.to),
+          .gte("bill_date", range.from).lte("bill_date", range.to)
+          .limit(5000),
         supabase.from("bills").select("paid_amount, admission_id")
           .eq("hospital_id", hospitalId)
           .eq("bill_type", "ipd")
-          .gte("bill_date", range.from).lte("bill_date", range.to),
+          .gte("bill_date", range.from).lte("bill_date", range.to)
+          .limit(5000),
       ]);
 
       // Map OPD encounters to doctors
