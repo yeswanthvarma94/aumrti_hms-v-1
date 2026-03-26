@@ -143,16 +143,18 @@ Dictation transcript:
     }
 
     const result = await response.json();
-    const toolCall = result.choices?.[0]?.message?.tool_calls?.[0];
+    console.log("AI raw response:", JSON.stringify(result).substring(0, 500));
+    
+    const content = result.choices?.[0]?.message?.content || "{}";
+    const cleaned = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    console.log("Cleaned content:", cleaned.substring(0, 300));
+    
     let structured: Record<string, unknown>;
-
-    if (toolCall?.function?.arguments) {
-      const parsed = JSON.parse(toolCall.function.arguments);
-      structured = parsed.data || parsed;
-    } else {
-      const content = result.choices?.[0]?.message?.content || "{}";
-      const cleaned = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    try {
       structured = JSON.parse(cleaned);
+    } catch (parseErr) {
+      console.error("JSON parse error:", parseErr, "Content was:", cleaned.substring(0, 200));
+      throw new Error("Failed to parse AI response as JSON");
     }
 
     return new Response(JSON.stringify({ structured, context_type }), {
