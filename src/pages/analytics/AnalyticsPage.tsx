@@ -9,7 +9,8 @@ import RevenueTab from "@/components/analytics/RevenueTab";
 import ClinicalTab from "@/components/analytics/ClinicalTab";
 import DoctorsTab from "@/components/analytics/DoctorsTab";
 import DepartmentsTab from "@/components/analytics/DepartmentsTab";
-import PlaceholderTab from "@/components/analytics/PlaceholderTab";
+import QualityTab from "@/components/analytics/QualityTab";
+import AIDigestTab from "@/components/analytics/AIDigestTab";
 import type { DateRange } from "@/hooks/useAnalyticsData";
 
 const QUICK_RANGES = [
@@ -136,8 +137,8 @@ const AnalyticsPage: React.FC = () => {
         {activeTab === "clinical" && <ClinicalTab range={range} />}
         {activeTab === "doctors" && <DoctorsTab range={range} />}
         {activeTab === "departments" && <DepartmentsTab range={range} />}
-        {activeTab === "quality" && <PlaceholderTab title="Quality & NABH Analytics" />}
-        {activeTab === "digest" && <PlaceholderTab title="AI Executive Digest" />}
+        {activeTab === "quality" && <QualityTab range={range} />}
+        {activeTab === "digest" && <AIDigestTab />}
       </div>
     </div>
   );
