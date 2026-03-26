@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { format, subDays, startOfMonth, endOfMonth, subMonths, startOfWeek, endOfWeek } from "date-fns";
-import { RefreshCw, Download, Bot } from "lucide-react";
+import { RefreshCw, Download, Bot, BarChart2, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
@@ -11,6 +11,9 @@ import DoctorsTab from "@/components/analytics/DoctorsTab";
 import DepartmentsTab from "@/components/analytics/DepartmentsTab";
 import QualityTab from "@/components/analytics/QualityTab";
 import AIDigestTab from "@/components/analytics/AIDigestTab";
+import CustomReportBuilder from "@/components/analytics/CustomReportBuilder";
+import ExportModal from "@/components/analytics/ExportModal";
+import ScheduleReportModal from "@/components/analytics/ScheduleReportModal";
 import type { DateRange } from "@/hooks/useAnalyticsData";
 
 const QUICK_RANGES = [
@@ -30,6 +33,7 @@ const TABS = [
   { id: "departments", label: "🏢 Departments" },
   { id: "quality", label: "✅ Quality" },
   { id: "digest", label: "🤖 AI Digest" },
+  { id: "custom", label: "📋 Custom Report" },
 ] as const;
 
 function getRange(key: QuickRange): DateRange {
@@ -56,6 +60,8 @@ const AnalyticsPage: React.FC = () => {
   const [quickRange, setQuickRange] = useState<QuickRange>("this_month");
   const [activeTab, setActiveTab] = useState("revenue");
   const [lastUpdated, setLastUpdated] = useState(new Date());
+  const [exportOpen, setExportOpen] = useState(false);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -101,10 +107,10 @@ const AnalyticsPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button size="sm" className="text-[11px] gap-1.5 bg-primary">
+          <Button size="sm" className="text-[11px] gap-1.5 bg-primary" onClick={() => setActiveTab("digest")}>
             <Bot size={14} /> AI Digest
           </Button>
-          <Button size="sm" variant="outline" className="text-[11px] gap-1.5">
+          <Button size="sm" variant="outline" className="text-[11px] gap-1.5" onClick={() => setExportOpen(true)}>
             <Download size={14} /> Export
           </Button>
           <Button size="icon" variant="ghost" className="h-8 w-8" onClick={handleRefresh}>
@@ -139,7 +145,34 @@ const AnalyticsPage: React.FC = () => {
         {activeTab === "departments" && <DepartmentsTab range={range} />}
         {activeTab === "quality" && <QualityTab range={range} />}
         {activeTab === "digest" && <AIDigestTab />}
+        {activeTab === "custom" && <CustomReportBuilder range={range} />}
       </div>
+
+      {/* Footer */}
+      <div className="h-10 flex-shrink-0 bg-muted/50 border-t border-border px-5 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] text-muted-foreground">Data refreshes every 5 minutes</span>
+          <button onClick={handleRefresh} className="text-[11px] text-primary hover:underline">Force Refresh</button>
+        </div>
+        <span className="text-[11px] text-muted-foreground">
+          Last updated: {format(lastUpdated, "dd MMM yyyy, h:mm a")}
+        </span>
+        <div className="flex items-center gap-4">
+          <button onClick={() => setActiveTab("custom")} className="text-[11px] text-primary hover:underline flex items-center gap-1">
+            <BarChart2 size={11} /> Custom Report
+          </button>
+          <button onClick={() => setScheduleOpen(true)} className="text-[11px] text-primary hover:underline flex items-center gap-1">
+            <Calendar size={11} /> Schedule Reports
+          </button>
+          <button onClick={() => setExportOpen(true)} className="text-[11px] text-primary hover:underline flex items-center gap-1">
+            <Download size={11} /> Export
+          </button>
+        </div>
+      </div>
+
+      {/* Modals */}
+      <ExportModal open={exportOpen} onOpenChange={setExportOpen} range={range} activeTab={activeTab} />
+      <ScheduleReportModal open={scheduleOpen} onOpenChange={setScheduleOpen} reportName="Full Analytics Report" />
     </div>
   );
 };
