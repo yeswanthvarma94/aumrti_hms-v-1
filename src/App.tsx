@@ -34,6 +34,7 @@ import SettingsDrugsPage from "./pages/settings/SettingsDrugsPage";
 import SettingsProfilePage from "./pages/settings/SettingsProfilePage";
 import AnalyticsPage from "./pages/analytics/AnalyticsPage";
 import DesignSystem from "./pages/DesignSystem";
+import PatientPortal from "./pages/portal/PatientPortal";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -47,6 +48,7 @@ const App = () => (
         <Routes>
           {/* Public routes */}
           <Route path="/" element={<LandingPage />} />
+          <Route path="/portal" element={<PatientPortal />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<Register />} />
           <Route path="/setup/onboarding" element={<OnboardingWizard />} />
