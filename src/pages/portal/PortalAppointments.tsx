@@ -180,6 +180,22 @@ const BookNewTab: React.FC<{ session: PortalSession }> = ({ session }) => {
     if (error) {
       toast.error("Could not book appointment. Please try again.");
     } else {
+      // Send WhatsApp confirmation
+      const dateStr = selectedDate.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+      const result = await sendAppointmentConfirmation({
+        hospitalId: session.hospitalId,
+        hospitalName: session.hospitalName,
+        patientId: session.patientId,
+        patientName: session.fullName,
+        phone: session.phone,
+        doctorName: selectedDoctor.full_name,
+        department: selectedDept?.name,
+        date: dateStr,
+        time: selectedSlot || undefined,
+        tokenNumber: tokenNum,
+      });
+      // Auto-open WhatsApp for patient-initiated booking
+      window.open(result.waUrl, "_blank");
       setSuccess(true);
     }
   };
