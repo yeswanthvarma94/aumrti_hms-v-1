@@ -7,6 +7,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import RevenueTab from "@/components/analytics/RevenueTab";
 import ClinicalTab from "@/components/analytics/ClinicalTab";
+import DoctorsTab from "@/components/analytics/DoctorsTab";
+import DepartmentsTab from "@/components/analytics/DepartmentsTab";
 import PlaceholderTab from "@/components/analytics/PlaceholderTab";
 import type { DateRange } from "@/hooks/useAnalyticsData";
 
@@ -132,8 +134,8 @@ const AnalyticsPage: React.FC = () => {
       <div className="flex-1 overflow-y-auto bg-muted/30">
         {activeTab === "revenue" && <RevenueTab range={range} />}
         {activeTab === "clinical" && <ClinicalTab range={range} />}
-        {activeTab === "doctors" && <PlaceholderTab title="Doctor Performance Analytics" />}
-        {activeTab === "departments" && <PlaceholderTab title="Department Analytics" />}
+        {activeTab === "doctors" && <DoctorsTab range={range} />}
+        {activeTab === "departments" && <DepartmentsTab range={range} />}
         {activeTab === "quality" && <PlaceholderTab title="Quality & NABH Analytics" />}
         {activeTab === "digest" && <PlaceholderTab title="AI Executive Digest" />}
       </div>
