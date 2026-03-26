@@ -101,6 +101,7 @@ const navGroups: NavGroup[] = [
       { label: "Payments", path: "/payments", icon: CreditCard, subtitle: "Collections & receipts" },
     ],
   },
+  { label: "Analytics", icon: BarChart3, path: "/analytics" },
   {
     label: "More",
     icon: MoreHorizontal,
