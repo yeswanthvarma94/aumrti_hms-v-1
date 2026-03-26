@@ -90,6 +90,7 @@ const STATUS_PILLS: Record<string, { bg: string; text: string; label: string }> 
 
 const LabResultWorkspace: React.FC<Props> = ({ order, onRefresh }) => {
   const { toast } = useToast();
+  const { show: showWaNotif, card: waCard } = useWhatsAppNotification();
   const [items, setItems] = useState<TestItem[]>([]);
   const [localValues, setLocalValues] = useState<Record<string, string>>({});
   const [labNotes, setLabNotes] = useState(order.clinical_notes || "");
