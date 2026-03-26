@@ -276,8 +276,8 @@ const BillEditor: React.FC<Props> = ({ bill, hospitalId, onRefresh }) => {
           onClose={() => setShowPaymentLink(false)}
         />
       )}
-      {waCard}
     </div>
+    </>
   );
 };
 
