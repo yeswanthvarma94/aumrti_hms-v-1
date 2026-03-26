@@ -88,11 +88,21 @@ export function useRevenueBreakdown(range: DateRange) {
       const hospitalId = await getHospitalId();
       if (!hospitalId) return [];
 
-      const { data } = await supabase.from("bill_line_items")
-        .select("item_type, total_amount, bill_id")
-        .eq("hospital_id", hospitalId);
+      // Get bill IDs in range first, then fetch their line items
+      const { data: billsInRange } = await supabase.from("bills")
+        .select("id")
+        .eq("hospital_id", hospitalId)
+        .gte("bill_date", range.from).lte("bill_date", range.to)
+        .limit(2000);
 
-      // Filter by joining bills date range client-side is suboptimal but works for now
+      const billIds = (billsInRange || []).map(b => b.id);
+      if (!billIds.length) return [];
+
+      const { data } = await supabase.from("bill_line_items")
+        .select("item_type, total_amount")
+        .eq("hospital_id", hospitalId)
+        .in("bill_id", billIds)
+        .limit(5000);
       const typeMap: Record<string, number> = {};
       (data || []).forEach(row => {
         const t = row.item_type || "other";
@@ -175,7 +185,8 @@ export function useInsuranceSummary(range: DateRange) {
 
       const { data } = await supabase.from("insurance_claims")
         .select("status, claimed_amount, approved_amount, settled_amount, tpa_name")
-        .eq("hospital_id", hospitalId);
+        .eq("hospital_id", hospitalId)
+        .limit(2000);
 
       const claims = data || [];
       const submitted = claims.filter(c => c.status !== "draft");
@@ -234,7 +245,9 @@ export function useClinicalKPIs(range: DateRange) {
         supabase.from("beds").select("id").eq("hospital_id", hospitalId).eq("is_active", true),
         supabase.from("lab_order_items").select("id, status")
           .eq("hospital_id", hospitalId)
-          .in("status", ["reported", "validated"]),
+          .in("status", ["reported", "validated"])
+          .gte("created_at", range.from).lte("created_at", range.to + "T23:59:59")
+          .limit(5000),
         supabase.from("ed_visits").select("id, triage_category")
           .eq("hospital_id", hospitalId)
           .gte("arrival_time", range.from).lte("arrival_time", range.to + "T23:59:59"),
@@ -354,7 +367,8 @@ export function useTopDiagnoses(range: DateRange) {
         .select("chief_complaint")
         .eq("hospital_id", hospitalId)
         .not("chief_complaint", "is", null)
-        .gte("created_at", range.from).lte("created_at", range.to + "T23:59:59");
+        .gte("created_at", range.from).lte("created_at", range.to + "T23:59:59")
+        .limit(5000);
 
       const countMap: Record<string, number> = {};
       (data || []).forEach(r => {
