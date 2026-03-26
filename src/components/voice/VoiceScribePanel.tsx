@@ -335,7 +335,6 @@ Handover: ${editableData.handover_note || ""}`;
               className="w-full h-11 bg-[#1A2F5A] text-white text-sm font-semibold rounded-lg hover:bg-[#152647] active:scale-[0.98] transition-all flex items-center justify-center gap-2">
               <Check className="h-4 w-4" /> {applyLabel}
             </button>
-            </button>
             <div className="flex items-center justify-between">
               <button onClick={handleCopyText}
                 className="text-xs text-slate-500 hover:text-slate-700 flex items-center gap-1">
