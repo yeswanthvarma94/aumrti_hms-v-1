@@ -1,8 +1,27 @@
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 
-export type PanelState = "ready" | "recording" | "processing" | "output" | "fallback";
+export type PanelState = "ready" | "recording" | "processing" | "output" | "fallback" | "transcribing";
 export type SessionType = "opd_consultation" | "ward_round" | "emergency" | "nursing_note";
+
+export interface LanguageOption {
+  code: string;
+  label: string;
+  flag: string;
+  engine: "web_speech" | "sarvam";
+}
+
+export const SUPPORTED_LANGUAGES: LanguageOption[] = [
+  { code: "en-IN", label: "English", flag: "🇺🇸", engine: "web_speech" },
+  { code: "hi-IN", label: "Hindi", flag: "🇮🇳", engine: "sarvam" },
+  { code: "te-IN", label: "Telugu", flag: "🌟", engine: "sarvam" },
+  { code: "ta-IN", label: "Tamil", flag: "🌟", engine: "sarvam" },
+  { code: "kn-IN", label: "Kannada", flag: "🌟", engine: "sarvam" },
+  { code: "ml-IN", label: "Malayalam", flag: "🌟", engine: "sarvam" },
+  { code: "mr-IN", label: "Marathi", flag: "🌟", engine: "sarvam" },
+  { code: "bn-IN", label: "Bengali", flag: "🌟", engine: "sarvam" },
+  { code: "gu-IN", label: "Gujarati", flag: "🌟", engine: "sarvam" },
+];
 
 interface VoiceScribeContextType {
   isRecording: boolean;
@@ -11,6 +30,8 @@ interface VoiceScribeContextType {
   rawTranscript: string;
   structuredOutput: Record<string, unknown> | null;
   currentSessionType: SessionType;
+  selectedLanguage: string;
+  setSelectedLanguage: (v: string) => void;
   setIsRecording: (v: boolean) => void;
   setIsPanelOpen: (v: boolean) => void;
   setPanelState: (v: PanelState) => void;
