@@ -24,6 +24,7 @@ const DoctorsTab: React.FC<{ range: DateRange }> = ({ range }) => {
   const [deptFilter, setDeptFilter] = useState("all");
   const [sortBy, setSortBy] = useState<SortKey>("revenue");
   const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
+  const [selectedDoc, setSelectedDoc] = useState<DoctorScore | null>(null);
 
   const departments = useMemo(() => {
     const set = new Set((doctors || []).map(d => d.department_name));
