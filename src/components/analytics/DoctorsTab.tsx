@@ -118,7 +118,7 @@ const DoctorCard: React.FC<{ doc: DoctorScore; maxRevenue: number; onClick: () =
   const revPct = Math.round((doc.revenue / maxRevenue) * 100);
 
   return (
-    <div className="bg-card border border-border rounded-xl p-4 hover:shadow-md transition-shadow">
+    <div className="bg-card border border-border rounded-xl p-4 hover:shadow-md transition-shadow cursor-pointer" onClick={onClick}>
       {/* Header */}
       <div className="flex items-center gap-3 mb-3">
         <Avatar className="h-10 w-10">
