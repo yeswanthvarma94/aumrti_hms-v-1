@@ -10,7 +10,6 @@ import ClinicalTab from "@/components/analytics/ClinicalTab";
 import DoctorsTab from "@/components/analytics/DoctorsTab";
 import DepartmentsTab from "@/components/analytics/DepartmentsTab";
 import PlaceholderTab from "@/components/analytics/PlaceholderTab";
-import PlaceholderTab from "@/components/analytics/PlaceholderTab";
 import type { DateRange } from "@/hooks/useAnalyticsData";
 
 const QUICK_RANGES = [
