@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { X, Check, Copy, RefreshCw, Loader2, AlertTriangle } from "lucide-react";
-import { useVoiceScribe } from "@/contexts/VoiceScribeContext";
+import { X, Check, Copy, RefreshCw, Loader2, AlertTriangle, Globe } from "lucide-react";
+import { useVoiceScribe, SUPPORTED_LANGUAGES } from "@/contexts/VoiceScribeContext";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
