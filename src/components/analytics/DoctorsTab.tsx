@@ -101,13 +101,14 @@ const DoctorsTab: React.FC<{ range: DateRange }> = ({ range }) => {
         ) : viewMode === "cards" ? (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5">
             {filtered.map(doc => (
-              <DoctorCard key={doc.id} doc={doc} maxRevenue={maxRevenue} />
+              <DoctorCard key={doc.id} doc={doc} maxRevenue={maxRevenue} onClick={() => setSelectedDoc(doc)} />
             ))}
           </div>
         ) : (
-          <DoctorTable doctors={filtered} />
+          <DoctorTable doctors={filtered} onRowClick={setSelectedDoc} />
         )}
       </div>
+      <DoctorDetailModal doc={selectedDoc} open={!!selectedDoc} onOpenChange={o => { if (!o) setSelectedDoc(null); }} />
     </div>
   );
 };
