@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { Stethoscope, Mic, Save, CheckCircle, FlaskConical, Building2, Smartphone } from "lucide-react";
 import type { OpdToken } from "@/pages/opd/OPDPage";
 import VoiceDictationButton from "@/components/voice/VoiceDictationButton";
-import type { VoiceContextType } from "@/hooks/useVoiceDictation";
+import { useVoiceScribe } from "@/contexts/VoiceScribeContext";
 import ComplaintTab from "./tabs/ComplaintTab";
 import VitalsTab from "./tabs/VitalsTab";
 import ExaminationTab from "./tabs/ExaminationTab";
