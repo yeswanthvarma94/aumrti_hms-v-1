@@ -51,11 +51,34 @@ const EmergencyWorkspace: React.FC<Props> = ({ visit, hospitalId, userId, onRefr
   useEffect(() => {
     const fillFn = (data: Record<string, unknown>) => {
       if (data.presenting_complaint) setComplaint(data.presenting_complaint as string);
-      if (data.history) {
-        // Map history to AMPLE events field
+      if (data.working_diagnosis) setDiagnosis(data.working_diagnosis as string);
+
+      // Map vitals
+      const vd = data.vitals_detected as Record<string, string> | undefined;
+      if (vd) {
+        setVitals(prev => ({
+          bp_s: vd.bp_systolic || prev.bp_s,
+          bp_d: vd.bp_diastolic || prev.bp_d,
+          pulse: vd.pulse || prev.pulse,
+          spo2: vd.spo2 || prev.spo2,
+          gcs: vd.gcs || prev.gcs,
+        }));
+      }
+
+      // Map AMPLE history
+      const amp = data.ample as Record<string, string> | undefined;
+      if (amp) {
+        setAmple(prev => ({
+          a: amp.allergies || prev.a,
+          m: amp.medications || prev.m,
+          p: amp.past_history || prev.p,
+          l: amp.last_meal || prev.l,
+          e: amp.events || prev.e,
+        }));
+      } else if (data.history) {
+        // Fallback: old format puts history in Events
         setAmple(prev => ({ ...prev, e: data.history as string }));
       }
-      if (data.working_diagnosis) setDiagnosis(data.working_diagnosis as string);
 
       // Triage suggestion
       if (data.triage_category && visit) {

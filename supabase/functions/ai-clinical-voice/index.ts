@@ -53,19 +53,36 @@ Return ONLY a JSON object:
 }`,
 
   emergency: `You are a clinical documentation AI. This is an emergency department case.
+Extract vitals as numbers. Split history into AMPLE categories (Allergies, Medications, Past history, Last meal, Events) when possible.
 
 Return ONLY a JSON object:
 {
   "presenting_complaint": "",
-  "triage_category": "P1/P2/P3/P4 if mentioned",
-  "history": "",
+  "vitals_detected": {
+    "bp_systolic": "",
+    "bp_diastolic": "",
+    "pulse": "",
+    "spo2": "",
+    "gcs": ""
+  },
+  "ample": {
+    "allergies": "",
+    "medications": "",
+    "past_history": "",
+    "last_meal": "",
+    "events": ""
+  },
   "examination": "",
   "working_diagnosis": "",
   "immediate_management": "",
+  "triage_category": "P1/P2/P3/P4 if mentioned",
   "investigations_ordered": [],
   "disposition": "admit/discharge/observe/refer",
   "confidence": 0.85
-}`,
+}
+
+For vitals_detected, extract numeric values only (e.g. from "BP 120/80" extract bp_systolic:"120", bp_diastolic:"80").
+If a field cannot be extracted, use empty string or empty array.`,
 
   nursing_note: `You are a clinical documentation AI. This is a nursing note dictated by a nurse.
 
