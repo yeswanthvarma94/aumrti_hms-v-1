@@ -185,6 +185,8 @@ const BillEditor: React.FC<Props> = ({ bill, hospitalId, onRefresh }) => {
   }
 
   return (
+    <>
+    {waCard}
     <div className="flex-1 flex flex-col overflow-hidden bg-muted/30">
       {/* Header */}
       <div className="bg-card border-b border-border px-5 py-3 flex items-center gap-4 flex-shrink-0">
