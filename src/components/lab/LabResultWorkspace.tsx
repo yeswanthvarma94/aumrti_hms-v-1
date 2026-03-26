@@ -387,6 +387,8 @@ const LabResultWorkspace: React.FC<Props> = ({ order, onRefresh }) => {
   }, {});
 
   return (
+    <>
+    {waCard}
     <div className="flex-1 flex flex-col overflow-hidden bg-muted/30">
       {/* Order Header */}
       <div className="h-[68px] shrink-0 bg-card border-b border-border px-5 flex items-center gap-4">
