@@ -5362,6 +5362,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_daily_revenue_30d: {
+        Args: { p_hospital_id: string }
+        Returns: {
+          amount: number
+          bill_date: string
+        }[]
+      }
       get_user_hospital_id: { Args: never; Returns: string }
       has_role: {
         Args: {
