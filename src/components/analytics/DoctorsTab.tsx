@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDoctorScores, type DoctorScore } from "@/hooks/useDoctorDeptData";
 import type { DateRange } from "@/hooks/useAnalyticsData";
+import DoctorDetailModal from "./DoctorDetailModal";
 
 const fmt = (n: number) => {
   if (n >= 10000000) return `₹${(n / 10000000).toFixed(1)}Cr`;
@@ -23,6 +24,7 @@ const DoctorsTab: React.FC<{ range: DateRange }> = ({ range }) => {
   const [deptFilter, setDeptFilter] = useState("all");
   const [sortBy, setSortBy] = useState<SortKey>("revenue");
   const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
+  const [selectedDoc, setSelectedDoc] = useState<DoctorScore | null>(null);
 
   const departments = useMemo(() => {
     const set = new Set((doctors || []).map(d => d.department_name));
@@ -99,23 +101,24 @@ const DoctorsTab: React.FC<{ range: DateRange }> = ({ range }) => {
         ) : viewMode === "cards" ? (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5">
             {filtered.map(doc => (
-              <DoctorCard key={doc.id} doc={doc} maxRevenue={maxRevenue} />
+              <DoctorCard key={doc.id} doc={doc} maxRevenue={maxRevenue} onClick={() => setSelectedDoc(doc)} />
             ))}
           </div>
         ) : (
-          <DoctorTable doctors={filtered} />
+          <DoctorTable doctors={filtered} onRowClick={setSelectedDoc} />
         )}
       </div>
+      <DoctorDetailModal doc={selectedDoc} open={!!selectedDoc} onOpenChange={o => { if (!o) setSelectedDoc(null); }} />
     </div>
   );
 };
 
-const DoctorCard: React.FC<{ doc: DoctorScore; maxRevenue: number }> = ({ doc, maxRevenue }) => {
+const DoctorCard: React.FC<{ doc: DoctorScore; maxRevenue: number; onClick: () => void }> = ({ doc, maxRevenue, onClick }) => {
   const initials = doc.full_name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
   const revPct = Math.round((doc.revenue / maxRevenue) * 100);
 
   return (
-    <div className="bg-card border border-border rounded-xl p-4 hover:shadow-md transition-shadow">
+    <div className="bg-card border border-border rounded-xl p-4 hover:shadow-md transition-shadow cursor-pointer" onClick={onClick}>
       {/* Header */}
       <div className="flex items-center gap-3 mb-3">
         <Avatar className="h-10 w-10">
@@ -158,7 +161,7 @@ const KPIMini: React.FC<{ label: string; value: string; color?: string }> = ({ l
   </div>
 );
 
-const DoctorTable: React.FC<{ doctors: DoctorScore[] }> = ({ doctors }) => (
+const DoctorTable: React.FC<{ doctors: DoctorScore[]; onRowClick: (doc: DoctorScore) => void }> = ({ doctors, onRowClick }) => (
   <div className="bg-card border border-border rounded-xl overflow-hidden">
     <table className="w-full text-xs">
       <thead>
@@ -174,7 +177,7 @@ const DoctorTable: React.FC<{ doctors: DoctorScore[] }> = ({ doctors }) => (
       </thead>
       <tbody>
         {doctors.map(doc => (
-          <tr key={doc.id} className="border-b border-border/50 hover:bg-muted/30">
+          <tr key={doc.id} className="border-b border-border/50 hover:bg-muted/30 cursor-pointer" onClick={() => onRowClick(doc)}>
             <td className="px-4 py-2.5 font-medium text-foreground">{doc.full_name}</td>
             <td className="px-3 py-2.5 text-muted-foreground">{doc.department_name}</td>
             <td className="px-3 py-2.5 text-right">{doc.opdCount}</td>

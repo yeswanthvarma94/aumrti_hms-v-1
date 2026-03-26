@@ -98,20 +98,22 @@ const DepartmentsTab: React.FC<{ range: DateRange }> = ({ range }) => {
             </div>
 
             {/* Top Services Chart */}
-            {topServices && topServices.length > 0 && (
-              <div className="bg-card border border-border rounded-xl p-4">
-                <h3 className="text-sm font-semibold text-foreground mb-3">Top Services</h3>
+            <div className="bg-card border border-border rounded-xl p-4">
+              <h3 className="text-sm font-semibold text-foreground mb-3">Top Services</h3>
+              {topServices && topServices.length > 0 ? (
                 <ResponsiveContainer width="100%" height={Math.max(150, topServices.length * 28)}>
                   <BarChart data={topServices} layout="vertical">
                     <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                     <XAxis type="number" tick={{ fontSize: 10 }} tickFormatter={v => fmt(v)} />
                     <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={140} />
                     <Tooltip formatter={(v: number) => fmt(v)} />
-                    <Bar dataKey="total" name="Revenue" fill="hsl(217, 60%, 50%)" radius={[0, 4, 4, 0]} />
+                    <Bar dataKey="total" name="Revenue" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
-              </div>
-            )}
+              ) : (
+                <p className="text-xs text-muted-foreground text-center py-8">No service data available for this period</p>
+              )}
+            </div>
 
             {/* Doctor Contribution Table */}
             {deptDoctors && deptDoctors.length > 0 && (

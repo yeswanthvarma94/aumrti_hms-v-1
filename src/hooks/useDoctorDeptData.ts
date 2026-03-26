@@ -311,30 +311,45 @@ export function useDeptTopServices(deptId: string | null, range: DateRange) {
 
       const doctorIds = doctors.map(d => d.id);
 
-      // Get encounters for these doctors
-      const { data: encounters } = await supabase.from("opd_encounters")
-        .select("id")
-        .eq("hospital_id", hospitalId)
-        .in("doctor_id", doctorIds)
-        .gte("created_at", range.from).lte("created_at", range.to + "T23:59:59");
+      // Get OPD encounters + IPD admissions for these doctors in range
+      const [encRes, admRes] = await Promise.all([
+        supabase.from("opd_encounters").select("id")
+          .eq("hospital_id", hospitalId)
+          .in("doctor_id", doctorIds)
+          .gte("created_at", range.from).lte("created_at", range.to + "T23:59:59")
+          .limit(5000),
+        supabase.from("admissions").select("id")
+          .eq("hospital_id", hospitalId)
+          .in("admitting_doctor_id", doctorIds)
+          .gte("admitted_at", range.from).lte("admitted_at", range.to + "T23:59:59")
+          .limit(5000),
+      ]);
 
-      if (!encounters?.length) return [];
-      const encIds = encounters.map(e => e.id);
+      const encIds = (encRes.data || []).map(e => e.id);
+      const admIds = (admRes.data || []).map(a => a.id);
 
-      // Get bills for these encounters
-      const { data: bills } = await supabase.from("bills")
-        .select("id")
-        .eq("hospital_id", hospitalId)
-        .in("encounter_id", encIds);
+      // Get bills for these encounters and admissions
+      const billQueries = [];
+      if (encIds.length > 0) {
+        billQueries.push(supabase.from("bills").select("id")
+          .eq("hospital_id", hospitalId).in("encounter_id", encIds).limit(5000));
+      }
+      if (admIds.length > 0) {
+        billQueries.push(supabase.from("bills").select("id")
+          .eq("hospital_id", hospitalId).in("admission_id", admIds).limit(5000));
+      }
+      if (billQueries.length === 0) return [];
 
-      if (!bills?.length) return [];
-      const billIds = bills.map(b => b.id);
+      const billResults = await Promise.all(billQueries);
+      const billIds = billResults.flatMap(r => (r.data || []).map(b => b.id));
+      if (!billIds.length) return [];
 
       // Get line items
       const { data: items } = await supabase.from("bill_line_items")
         .select("description, total_amount")
         .eq("hospital_id", hospitalId)
-        .in("bill_id", billIds);
+        .in("bill_id", billIds)
+        .limit(5000);
 
       const svcMap: Record<string, { total: number; count: number }> = {};
       (items || []).forEach(it => {
