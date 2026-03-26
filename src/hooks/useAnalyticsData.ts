@@ -367,7 +367,8 @@ export function useTopDiagnoses(range: DateRange) {
         .select("chief_complaint")
         .eq("hospital_id", hospitalId)
         .not("chief_complaint", "is", null)
-        .gte("created_at", range.from).lte("created_at", range.to + "T23:59:59");
+        .gte("created_at", range.from).lte("created_at", range.to + "T23:59:59")
+        .limit(5000);
 
       const countMap: Record<string, number> = {};
       (data || []).forEach(r => {
