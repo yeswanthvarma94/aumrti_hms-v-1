@@ -98,16 +98,16 @@ const ExportModal: React.FC<ExportModalProps> = ({ open, onOpenChange, range, ac
 
       if (sections.has("clinical") && (scope !== "current" || activeTab === "clinical")) {
         const { data: opd } = await supabase.from("opd_encounters")
-          .select("created_at, token_number, chief_complaint, status")
+          .select("created_at, token_id, chief_complaint, diagnosis")
           .eq("hospital_id", hospitalId)
           .gte("created_at", range.from).lte("created_at", range.to + "T23:59:59")
           .order("created_at");
 
         const rows = (opd || []).map(o => ({
           Date: o.created_at?.split("T")[0],
-          Token: o.token_number,
+          Token: o.token_id,
           Complaint: o.chief_complaint,
-          Status: o.status,
+          Diagnosis: o.diagnosis,
         }));
 
         const ws = XLSX.utils.json_to_sheet(rows);
@@ -116,11 +116,11 @@ const ExportModal: React.FC<ExportModalProps> = ({ open, onOpenChange, range, ac
 
       if (sections.has("doctors") && (scope !== "current" || activeTab === "doctors")) {
         const { data: docs } = await supabase.from("users")
-          .select("full_name, specialization, role")
+          .select("full_name, role, department_id")
           .eq("hospital_id", hospitalId).eq("role", "doctor").eq("is_active", true);
 
         const ws = XLSX.utils.json_to_sheet((docs || []).map(d => ({
-          Name: d.full_name, Specialization: d.specialization, Role: d.role,
+          Name: d.full_name, Role: d.role, Department: d.department_id,
         })));
         XLSX.utils.book_append_sheet(wb, ws, "Doctors");
       }

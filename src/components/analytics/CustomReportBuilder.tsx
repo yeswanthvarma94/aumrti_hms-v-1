@@ -93,7 +93,7 @@ const CustomReportBuilder: React.FC<{ range: DateRange }> = ({ range }) => {
         }));
       } else if (source === "opd") {
         const { data } = await supabase.from("opd_encounters")
-          .select("created_at, status")
+          .select("created_at")
           .eq("hospital_id", hospitalId)
           .gte("created_at", range.from).lte("created_at", range.to + "T23:59:59");
 
