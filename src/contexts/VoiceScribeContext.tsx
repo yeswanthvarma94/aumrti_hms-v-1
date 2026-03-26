@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useCallback, useRef } from "react";
+import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 
 export type PanelState = "ready" | "recording" | "processing" | "output" | "fallback";
 export type SessionType = "opd_consultation" | "ward_round" | "emergency" | "nursing_note";
@@ -20,6 +21,7 @@ interface VoiceScribeContextType {
   unregisterScreen: (screenId: string) => void;
   applyToCurrentScreen: () => void;
   resetSession: () => void;
+  detectedSessionType: SessionType;
 }
 
 const VoiceScribeContext = createContext<VoiceScribeContextType | null>(null);
@@ -30,7 +32,16 @@ export const useVoiceScribe = () => {
   return ctx;
 };
 
+function detectSessionTypeFromPath(pathname: string): SessionType {
+  if (pathname.startsWith("/opd")) return "opd_consultation";
+  if (pathname.startsWith("/ipd")) return "ward_round";
+  if (pathname.startsWith("/emergency")) return "emergency";
+  if (pathname.startsWith("/nursing")) return "nursing_note";
+  return "opd_consultation";
+}
+
 export const VoiceScribeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const location = useLocation();
   const [isRecording, setIsRecording] = useState(false);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [panelState, setPanelState] = useState<PanelState>("ready");
@@ -38,6 +49,15 @@ export const VoiceScribeProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const [structuredOutput, setStructuredOutput] = useState<Record<string, unknown> | null>(null);
   const [currentSessionType, setCurrentSessionType] = useState<SessionType>("opd_consultation");
   const screenFillFns = useRef<Map<string, (data: Record<string, unknown>) => void>>(new Map());
+
+  const detectedSessionType = detectSessionTypeFromPath(location.pathname);
+
+  // Auto-update session type when route changes (only if not recording)
+  useEffect(() => {
+    if (!isRecording) {
+      setCurrentSessionType(detectedSessionType);
+    }
+  }, [detectedSessionType, isRecording]);
 
   const registerScreen = useCallback((screenId: string, fillFn: (data: Record<string, unknown>) => void) => {
     screenFillFns.current.set(screenId, fillFn);
@@ -49,7 +69,6 @@ export const VoiceScribeProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   const applyToCurrentScreen = useCallback(() => {
     if (!structuredOutput) return;
-    // Call all registered fill functions
     screenFillFns.current.forEach((fn) => fn(structuredOutput));
   }, [structuredOutput]);
 
@@ -66,6 +85,7 @@ export const VoiceScribeProvider: React.FC<{ children: React.ReactNode }> = ({ c
       currentSessionType, setIsRecording, setIsPanelOpen, setPanelState,
       setRawTranscript, setStructuredOutput, setCurrentSessionType,
       registerScreen, unregisterScreen, applyToCurrentScreen, resetSession,
+      detectedSessionType,
     }}>
       {children}
     </VoiceScribeContext.Provider>
