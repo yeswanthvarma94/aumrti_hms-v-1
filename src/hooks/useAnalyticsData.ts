@@ -245,7 +245,9 @@ export function useClinicalKPIs(range: DateRange) {
         supabase.from("beds").select("id").eq("hospital_id", hospitalId).eq("is_active", true),
         supabase.from("lab_order_items").select("id, status")
           .eq("hospital_id", hospitalId)
-          .in("status", ["reported", "validated"]),
+          .in("status", ["reported", "validated"])
+          .gte("created_at", range.from).lte("created_at", range.to + "T23:59:59")
+          .limit(5000),
         supabase.from("ed_visits").select("id, triage_category")
           .eq("hospital_id", hospitalId)
           .gte("arrival_time", range.from).lte("arrival_time", range.to + "T23:59:59"),
