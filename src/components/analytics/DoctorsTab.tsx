@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDoctorScores, type DoctorScore } from "@/hooks/useDoctorDeptData";
 import type { DateRange } from "@/hooks/useAnalyticsData";
+import DoctorDetailModal from "./DoctorDetailModal";
 
 const fmt = (n: number) => {
   if (n >= 10000000) return `₹${(n / 10000000).toFixed(1)}Cr`;
