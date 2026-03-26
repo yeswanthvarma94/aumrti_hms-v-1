@@ -11,6 +11,8 @@ import PaymentsTab from "@/components/billing/tabs/PaymentsTab";
 import InsuranceTab from "@/components/billing/tabs/InsuranceTab";
 import GSTInvoiceModal from "@/components/billing/GSTInvoiceModal";
 import PaymentLinkModal from "@/components/billing/PaymentLinkModal";
+import { useWhatsAppNotification } from "@/components/whatsapp/WhatsAppNotificationCard";
+import { sendBillGenerated } from "@/lib/whatsapp-notifications";
 import type { BillRecord } from "@/pages/billing/BillingPage";
 
 export interface LineItem {
