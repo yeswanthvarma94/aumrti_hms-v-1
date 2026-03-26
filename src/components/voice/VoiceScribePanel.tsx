@@ -74,6 +74,12 @@ const VoiceScribePanel: React.FC = () => {
     }, 1500);
   };
 
+  const applyLabel = currentSessionType === "opd_consultation" ? "Apply to Consultation"
+    : currentSessionType === "ward_round" ? "Apply to Ward Round"
+    : currentSessionType === "emergency" ? "Apply to Emergency Entry"
+    : currentSessionType === "nursing_note" ? "Apply to Nursing Task"
+    : "Apply to Screen";
+
   const handleCopyText = () => {
     let text = "";
     if (currentSessionType === "opd_consultation") {
@@ -92,6 +98,17 @@ Investigations: ${((editableData.investigations as string[]) || []).join(", ") |
 O: ${editableData.objective || ""}
 A: ${editableData.assessment || ""}
 P: ${editableData.plan || ""}`;
+    } else if (currentSessionType === "emergency") {
+      text = `Presenting Complaint: ${editableData.presenting_complaint || ""}
+History: ${editableData.history || ""}
+Working Diagnosis: ${editableData.working_diagnosis || ""}
+Immediate Management: ${editableData.immediate_management || ""}
+Investigations: ${((editableData.investigations_ordered as string[]) || []).join(", ") || "None"}`;
+    } else if (currentSessionType === "nursing_note") {
+      text = `Observation: ${editableData.observation || ""}
+Interventions: ${editableData.interventions || ""}
+Patient Response: ${editableData.patient_response || ""}
+Handover: ${editableData.handover_note || ""}`;
     } else {
       text = JSON.stringify(editableData, null, 2);
     }
