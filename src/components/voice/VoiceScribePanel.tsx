@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { X, Check, Copy, RefreshCw, Loader2, AlertTriangle } from "lucide-react";
-import { useVoiceScribe } from "@/contexts/VoiceScribeContext";
+import { X, Check, Copy, RefreshCw, Loader2, AlertTriangle, Globe } from "lucide-react";
+import { useVoiceScribe, SUPPORTED_LANGUAGES } from "@/contexts/VoiceScribeContext";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -19,6 +19,7 @@ const VoiceScribePanel: React.FC = () => {
     isPanelOpen, setIsPanelOpen, panelState, setPanelState,
     rawTranscript, setRawTranscript, structuredOutput, setStructuredOutput,
     currentSessionType, applyToCurrentScreen, resetSession,
+    selectedLanguage,
   } = useVoiceScribe();
   const { toast } = useToast();
 
@@ -31,6 +32,9 @@ const VoiceScribePanel: React.FC = () => {
       setEditableData({ ...structuredOutput });
     }
   }, [structuredOutput]);
+
+  const currentLangOption = SUPPORTED_LANGUAGES.find(l => l.code === selectedLanguage);
+  const isSarvam = currentLangOption?.engine === "sarvam";
 
   if (!isPanelOpen) return null;
 
@@ -146,18 +150,28 @@ Handover: ${editableData.handover_note || ""}`;
       <div className={cn(
         "flex items-center justify-between px-4 py-3 flex-shrink-0",
         panelState === "output" ? "bg-emerald-500" :
-        panelState === "processing" ? "bg-[#1A2F5A]" :
-        panelState === "fallback" ? "bg-amber-500" : "bg-slate-600"
+        panelState === "processing" || panelState === "transcribing" ? "bg-[#1A2F5A]" :
+        panelState === "fallback" ? "bg-amber-500" :
+        panelState === "recording" && isSarvam ? "bg-red-600" : "bg-slate-600"
       )}>
         <div className="flex items-center gap-2">
-          {panelState === "processing" && <Loader2 className="h-4 w-4 text-white animate-spin" />}
+          {(panelState === "processing" || panelState === "transcribing") && <Loader2 className="h-4 w-4 text-white animate-spin" />}
+          {panelState === "recording" && isSarvam && <Globe className="h-4 w-4 text-white" />}
           <span className="text-sm font-bold text-white">
-            {panelState === "processing" ? "AI structuring your notes…" :
+            {panelState === "transcribing" ? `Transcribing ${currentLangOption?.label || ""}…` :
+             panelState === "processing" ? "AI structuring your notes…" :
              panelState === "output" ? "✓ Notes Structured" :
-             panelState === "fallback" ? "⚠ Raw Transcript" : "Voice Scribe"}
+             panelState === "fallback" ? "⚠ Raw Transcript" :
+             panelState === "recording" && isSarvam ? `🎤 Recording in ${currentLangOption?.label}` :
+             "Voice Scribe"}
           </span>
         </div>
         <div className="flex items-center gap-2">
+          {panelState === "recording" && currentLangOption && (
+            <span className="text-[10px] text-white bg-white/20 rounded-full px-2 py-0.5">
+              {currentLangOption.flag} {currentLangOption.label}
+            </span>
+          )}
           {panelState === "output" && (
             <span className="text-[11px] text-white bg-white/20 rounded-full px-2 py-0.5">
               {confidencePercent}%
@@ -169,12 +183,34 @@ Handover: ${editableData.handover_note || ""}`;
         </div>
       </div>
 
+      {/* RECORDING STATE — Sarvam batch info */}
+      {panelState === "recording" && isSarvam && (
+        <div className="flex-1 flex flex-col items-center justify-center py-12">
+          <div className="flex gap-1 mb-4">
+            <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+            <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse [animation-delay:150ms]" />
+            <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse [animation-delay:300ms]" />
+          </div>
+          <p className="text-sm text-muted-foreground font-medium">Recording in {currentLangOption?.label}…</p>
+          <p className="text-xs text-muted-foreground/60 mt-1.5">Transcript will appear after you stop recording</p>
+        </div>
+      )}
+
+      {/* TRANSCRIBING STATE (Sarvam processing) */}
+      {panelState === "transcribing" && (
+        <div className="flex-1 flex flex-col items-center justify-center py-16">
+          <Loader2 className="h-8 w-8 text-primary animate-spin mb-3" />
+          <p className="text-sm text-muted-foreground">Transcribing your {currentLangOption?.label || ""} dictation…</p>
+          <p className="text-xs text-muted-foreground/60 mt-1">This takes a few seconds</p>
+        </div>
+      )}
+
       {/* PROCESSING STATE */}
       {panelState === "processing" && (
         <div className="flex-1 flex flex-col items-center justify-center py-16">
-          <Loader2 className="h-8 w-8 text-[#1A2F5A] animate-spin mb-3" />
-          <p className="text-sm text-slate-500">Structuring your dictation…</p>
-          <p className="text-xs text-slate-400 mt-1">This takes a few seconds</p>
+          <Loader2 className="h-8 w-8 text-primary animate-spin mb-3" />
+          <p className="text-sm text-muted-foreground">Structuring your dictation…</p>
+          <p className="text-xs text-muted-foreground/60 mt-1">This takes a few seconds</p>
         </div>
       )}
 
