@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import VoiceDictationButton from "@/components/voice/VoiceDictationButton";
+import { useVoiceScribe } from "@/contexts/VoiceScribeContext";
 
 interface Props {
   admissionId: string;
@@ -25,10 +26,25 @@ interface RoundNote {
 }
 
 const IPDWardRoundTab: React.FC<Props> = ({ admissionId, hospitalId, userId, patientId }) => {
+  const { registerScreen, unregisterScreen } = useVoiceScribe();
   const [notes, setNotes] = useState<RoundNote[]>([]);
   const [form, setForm] = useState({ s: "", o: "", a: "", p: "" });
   const [saving, setSaving] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
+
+  // Register fill function for voice scribe
+  useEffect(() => {
+    const fillFn = (data: Record<string, unknown>) => {
+      setForm((prev) => ({
+        s: (data.subjective as string) || prev.s,
+        o: (data.objective as string) || prev.o,
+        a: (data.assessment as string) || prev.a,
+        p: (data.plan as string) || prev.p,
+      }));
+    };
+    registerScreen("ward_round", fillFn);
+    return () => unregisterScreen("ward_round");
+  }, [registerScreen, unregisterScreen]);
 
   const fetchNotes = useCallback(() => {
     if (!admissionId) return;
