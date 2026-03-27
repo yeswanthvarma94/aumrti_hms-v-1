@@ -63,8 +63,14 @@ const PatientsPage: React.FC = () => {
       .order("created_at", { ascending: false });
 
     if (search.trim()) {
-      const q = `%${search.trim()}%`;
-      query = query.or(`full_name.ilike.${q},phone.ilike.${q},uhid.ilike.${q}`);
+      const trimmed = search.trim();
+      // Use exact phone match when input looks like a phone number (uses index)
+      if (/^\d{10,}$/.test(trimmed)) {
+        query = query.eq("phone", trimmed);
+      } else {
+        const q = `%${trimmed}%`;
+        query = query.or(`full_name.ilike.${q},phone.ilike.${q},uhid.ilike.${q}`);
+      }
     }
 
     if (filter === "today") {
