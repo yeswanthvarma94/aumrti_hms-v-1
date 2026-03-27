@@ -51,6 +51,10 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess }) => {
       toast({ title: "Name is required", variant: "destructive" });
       return;
     }
+    if (!dpdpConsent) {
+      toast({ title: "DPDP consent is required", description: "Patient must consent to data collection before registration.", variant: "destructive" });
+      return;
+    }
     setSaving(true);
 
     const { data: userData } = await supabase.from("users").select("hospital_id").limit(1).single();
