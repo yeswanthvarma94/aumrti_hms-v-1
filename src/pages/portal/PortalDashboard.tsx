@@ -260,6 +260,56 @@ const PortalDashboard: React.FC<{ session: PortalSession }> = ({ session }) => {
           </div>
         </div>
       )}
+
+      {/* DPDP Data Download */}
+      <div>
+        <button
+          onClick={async () => {
+            const pid = session.patientId;
+            const hid = session.hospitalId;
+
+            const [patientRes, encountersRes, labRes, billsRes] = await Promise.all([
+              supabase.from("patients").select("full_name, uhid, phone, gender, dob, blood_group, address, allergies").eq("id", pid).maybeSingle(),
+              supabase.from("opd_encounters").select("created_at, chief_complaint, prescriptions(drugs)").eq("patient_id", pid).eq("hospital_id", hid).order("created_at", { ascending: false }).limit(50),
+              supabase.from("lab_orders").select("order_date, status, lab_order_items(test_name, result_value, unit, reference_range)").eq("patient_id", pid).eq("hospital_id", hid).order("order_date", { ascending: false }).limit(50),
+              supabase.from("bills").select("bill_number, bill_date, total_amount, payment_status").eq("patient_id", pid).eq("hospital_id", hid).order("bill_date", { ascending: false }).limit(50),
+            ]);
+
+            const healthRecord = {
+              exportDate: new Date().toISOString(),
+              patient: patientRes.data,
+              opdVisits: encountersRes.data || [],
+              labReports: labRes.data || [],
+              bills: (billsRes.data || []).map((b: any) => ({ bill_number: b.bill_number, date: b.bill_date, total: b.total_amount, status: b.payment_status })),
+            };
+
+            // Log data export for audit
+            await supabase.from("patient_consents").insert({
+              hospital_id: hid,
+              patient_id: pid,
+              consent_type: "data_export",
+              consent_given: true,
+              consent_text: "Patient requested data export under DPDP Act 2023",
+            } as any);
+
+            const blob = new Blob([JSON.stringify(healthRecord, null, 2)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `health-records-${session.uhid}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+          }}
+          className="w-full flex items-center gap-3 rounded-xl p-3.5 active:scale-[0.98] transition-transform"
+          style={{ background: "#FFFFFF", border: "1px solid #E2E8F0" }}
+        >
+          <Download size={20} color="#0E7B7B" />
+          <div className="text-left">
+            <p className="text-xs font-bold" style={{ color: "#374151" }}>📥 Download My Health Records</p>
+            <p className="text-[10px]" style={{ color: "#94A3B8" }}>DPDP Act 2023 — Your data, your right</p>
+          </div>
+        </button>
+      </div>
     </div>
   );
 };
