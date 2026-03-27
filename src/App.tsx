@@ -81,6 +81,7 @@ const App = () => (
             <Route path="/settings/services" element={<SettingsServicesPage />} />
             <Route path="/settings/drugs" element={<SettingsDrugsPage />} />
             <Route path="/settings/profile" element={<SettingsProfilePage />} />
+            <Route path="/settings/roles" element={<SettingsRolesPage />} />
           </Route>
 
           <Route path="*" element={<NotFound />} />
