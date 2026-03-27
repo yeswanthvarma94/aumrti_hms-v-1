@@ -447,10 +447,10 @@ const LabResultWorkspace: React.FC<Props> = ({ order, onRefresh }) => {
         )}
         {allResultsEntered && order.status !== "completed" && (
           <button onClick={handleValidateAll}
-            disabled={hasUnacknowledgedCritical}
-            className="shrink-0 px-3.5 py-1.5 rounded-lg bg-emerald-600 text-white text-[11px] font-semibold hover:bg-emerald-700 active:scale-[0.97] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={hasUnacknowledgedCritical || validating}
+            className="shrink-0 px-3.5 py-1.5 rounded-lg bg-emerald-600 text-white text-[11px] font-semibold hover:bg-emerald-700 active:scale-[0.97] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
             title={hasUnacknowledgedCritical ? "Acknowledge critical values first" : ""}>
-            ✓ Validate & Release
+            {validating ? "⏳ Validating..." : "✓ Validate & Release"}
           </button>
         )}
       </div>
