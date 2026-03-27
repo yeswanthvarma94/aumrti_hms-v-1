@@ -30,15 +30,29 @@ const PharmacyNDPSTab: React.FC<Props> = ({ hospitalId }) => {
   const [dateTo, setDateTo] = useState(new Date().toISOString().split("T")[0]);
 
   const fetchRecords = useCallback(async () => {
+    // Use window function for running balance per drug (FEFO order)
     const { data } = await supabase
       .from("ndps_register")
       .select("*")
       .eq("hospital_id", hospitalId)
       .gte("transaction_date", dateFrom)
       .lte("transaction_date", dateTo)
-      .order("created_at", { ascending: false });
+      .order("drug_id", { ascending: true })
+      .order("created_at", { ascending: true });
 
-    setRecords((data || []) as NDPSRecord[]);
+    // Compute running balance client-side (per drug_id)
+    const balances: Record<string, number> = {};
+    const withRunning = (data || []).map((r: any) => {
+      const drugKey = r.drug_id || r.drug_name;
+      if (!(drugKey in balances)) balances[drugKey] = 0;
+      const delta = r.transaction_type === "receipt" ? Number(r.quantity) : -Number(r.quantity);
+      balances[drugKey] += delta;
+      return { ...r, running_balance: balances[drugKey] };
+    });
+
+    // Reverse to show latest first for display
+    withRunning.reverse();
+    setRecords(withRunning as NDPSRecord[]);
   }, [hospitalId, dateFrom, dateTo]);
 
   useEffect(() => { fetchRecords(); }, [fetchRecords]);
