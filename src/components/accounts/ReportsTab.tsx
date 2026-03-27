@@ -709,38 +709,273 @@ Write a 5-point CFO-level financial analysis:
           </Card>
         </TabsContent>
 
-        {/* ═══ GST SUMMARY ═══ */}
-        <TabsContent value="gst">
+        {/* ═══ GSTR-1 ═══ */}
+        <TabsContent value="gstr1">
           <Card className="border-border mt-4">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm">GST Summary</CardTitle>
-              <p className="text-xs text-muted-foreground">{dateRange.start} to {dateRange.end}</p>
+            <CardHeader className="pb-2 flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-sm">GSTR-1 — Outward Supplies Summary</CardTitle>
+                <p className="text-xs text-muted-foreground">{dateRange.start} to {dateRange.end}</p>
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => {
+                  const blob = new Blob([JSON.stringify(gstr1Json, null, 2)], { type: "application/json" });
+                  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `GSTR1_${dateRange.start}_${dateRange.end}.json`; a.click();
+                }}><Download className="h-3 w-3 mr-1" />GSTR-1 JSON</Button>
+                <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => {
+                  const ws = XLSX.utils.json_to_sheet(gstr1Data);
+                  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "GSTR-1");
+                  XLSX.writeFile(wb, `GSTR1_${dateRange.start}_${dateRange.end}.xlsx`);
+                }}><FileSpreadsheet className="h-3 w-3 mr-1" />Excel</Button>
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <Card className="border-border">
-                  <CardContent className="pt-4">
-                    <p className="text-xs text-muted-foreground">GST Output (Collected)</p>
-                    <p className="text-lg font-bold font-mono text-foreground">{fmt(liabilityBalance("2020"))}</p>
-                  </CardContent>
-                </Card>
-                <Card className="border-border">
-                  <CardContent className="pt-4">
-                    <p className="text-xs text-muted-foreground">GST Input (Paid)</p>
-                    <p className="text-lg font-bold font-mono text-foreground">{fmt(assetBalance("1031"))}</p>
-                  </CardContent>
-                </Card>
-                <Card className="border-border">
-                  <CardContent className="pt-4">
-                    <p className="text-xs text-muted-foreground">Net GST Payable</p>
-                    {(() => {
-                      const net = liabilityBalance("2020") - assetBalance("1031");
-                      return <p className={`text-lg font-bold font-mono ${net > 0 ? "text-red-500" : "text-emerald-700 dark:text-emerald-400"}`}>{net > 0 ? fmt(net) : `(${fmt(net)}) Refundable`}</p>;
-                    })()}
-                  </CardContent>
-                </Card>
+              {/* HSN-wise Taxable */}
+              <p className="text-xs font-semibold mb-2">HSN/SAC-wise Summary (Taxable Supplies)</p>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs">HSN/SAC</TableHead>
+                    <TableHead className="text-xs">Description</TableHead>
+                    <TableHead className="text-xs text-right">Rate %</TableHead>
+                    <TableHead className="text-xs text-right">Taxable Value</TableHead>
+                    <TableHead className="text-xs text-right">CGST</TableHead>
+                    <TableHead className="text-xs text-right">SGST</TableHead>
+                    <TableHead className="text-xs text-right">Total GST</TableHead>
+                    <TableHead className="text-xs text-right">Invoices</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {gstr1Data.filter(r => r.gst_percent > 0).map((r, i) => (
+                    <TableRow key={i}>
+                      <TableCell className="text-xs font-mono">{r.hsn_code || "—"}</TableCell>
+                      <TableCell className="text-xs">{r.description}</TableCell>
+                      <TableCell className="text-xs text-right">{r.gst_percent}%</TableCell>
+                      <TableCell className="text-xs text-right font-mono">{fmt(r.taxable_value)}</TableCell>
+                      <TableCell className="text-xs text-right font-mono">{fmt(r.cgst)}</TableCell>
+                      <TableCell className="text-xs text-right font-mono">{fmt(r.sgst)}</TableCell>
+                      <TableCell className="text-xs text-right font-mono">{fmt(r.total_gst)}</TableCell>
+                      <TableCell className="text-xs text-right">{r.invoice_count}</TableCell>
+                    </TableRow>
+                  ))}
+                  {gstr1Data.filter(r => r.gst_percent > 0).length === 0 && (
+                    <TableRow><TableCell colSpan={8} className="text-center text-xs text-muted-foreground py-6">No taxable supplies found</TableCell></TableRow>
+                  )}
+                  {/* Totals */}
+                  <TableRow className="border-t-2 bg-muted/30 font-bold">
+                    <TableCell colSpan={3} className="text-xs font-bold">TOTALS</TableCell>
+                    <TableCell className="text-xs text-right font-mono font-bold">{fmt(gstr1Data.filter(r => r.gst_percent > 0).reduce((s, r) => s + r.taxable_value, 0))}</TableCell>
+                    <TableCell className="text-xs text-right font-mono font-bold">{fmt(gstr1Data.filter(r => r.gst_percent > 0).reduce((s, r) => s + r.cgst, 0))}</TableCell>
+                    <TableCell className="text-xs text-right font-mono font-bold">{fmt(gstr1Data.filter(r => r.gst_percent > 0).reduce((s, r) => s + r.sgst, 0))}</TableCell>
+                    <TableCell className="text-xs text-right font-mono font-bold">{fmt(gstr1Data.filter(r => r.gst_percent > 0).reduce((s, r) => s + r.total_gst, 0))}</TableCell>
+                    <TableCell></TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+
+              {/* Exempt */}
+              <div className="mt-6 p-4 bg-muted/30 rounded-md">
+                <p className="text-xs font-semibold mb-1">Exempt Services (GST @ 0%)</p>
+                <p className="text-[10px] text-muted-foreground mb-2">Healthcare services exempt under GST Notification 12/2017 — OPD, IPD, Lab, Radiology</p>
+                <p className="text-sm font-bold font-mono text-foreground">
+                  Total Exempt Value: {fmt(gstr1Data.filter(r => !r.gst_percent || r.gst_percent === 0).reduce((s, r) => s + r.taxable_value, 0))}
+                </p>
               </div>
-              <p className="text-xs text-muted-foreground">Detailed GSTR-1 / GSTR-3B reports will be available once GST invoice data is populated.</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ═══ GSTR-3B ═══ */}
+        <TabsContent value="gstr3b">
+          <Card className="border-border mt-4">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">GSTR-3B — Monthly Return Summary</CardTitle>
+              <p className="text-xs text-muted-foreground">{dateRange.start} to {dateRange.end}</p>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {(() => {
+                const outputGST = liabilityBalance("2020");
+                const inputITC = assetBalance("1031");
+                const taxableSupplies = gstr1Data.filter(r => r.gst_percent > 0).reduce((s, r) => s + r.taxable_value, 0);
+                const taxOnTaxable = gstr1Data.filter(r => r.gst_percent > 0).reduce((s, r) => s + r.total_gst, 0);
+                const exemptSupplies = gstr1Data.filter(r => !r.gst_percent || r.gst_percent === 0).reduce((s, r) => s + r.taxable_value, 0);
+                const netPayable = outputGST - inputITC;
+
+                return (
+                  <>
+                    {/* 3.1 Outward Supplies */}
+                    <div>
+                      <p className="text-xs font-bold mb-2">3.1 Details of Outward Supplies</p>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="text-xs">Nature of Supplies</TableHead>
+                            <TableHead className="text-xs text-right">Taxable Value (₹)</TableHead>
+                            <TableHead className="text-xs text-right">Tax (₹)</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          <TableRow><TableCell className="text-xs">a) Taxable outward supplies</TableCell><TableCell className="text-xs text-right font-mono">{fmt(taxableSupplies)}</TableCell><TableCell className="text-xs text-right font-mono">{fmt(taxOnTaxable)}</TableCell></TableRow>
+                          <TableRow><TableCell className="text-xs">b) Zero rated supplies</TableCell><TableCell className="text-xs text-right font-mono">{fmt(0)}</TableCell><TableCell className="text-xs text-right font-mono">{fmt(0)}</TableCell></TableRow>
+                          <TableRow><TableCell className="text-xs">c) Exempt supplies (Healthcare)</TableCell><TableCell className="text-xs text-right font-mono">{fmt(exemptSupplies)}</TableCell><TableCell className="text-xs text-right font-mono">—</TableCell></TableRow>
+                          <TableRow><TableCell className="text-xs">e) Non-GST supplies</TableCell><TableCell className="text-xs text-right font-mono">{fmt(0)}</TableCell><TableCell className="text-xs text-right font-mono">—</TableCell></TableRow>
+                        </TableBody>
+                      </Table>
+                    </div>
+
+                    {/* 4. ITC */}
+                    <div>
+                      <p className="text-xs font-bold mb-2">4. Eligible ITC (Input Tax Credit)</p>
+                      <Table>
+                        <TableBody>
+                          <TableRow><TableCell className="text-xs">Inward supplies from registered persons</TableCell><TableCell className="text-xs text-right font-mono">{fmt(inputITC)}</TableCell></TableRow>
+                          <TableRow className="bg-muted/30"><TableCell className="text-xs font-semibold">Net ITC Available</TableCell><TableCell className="text-xs text-right font-mono font-bold">{fmt(inputITC)}</TableCell></TableRow>
+                        </TableBody>
+                      </Table>
+                      <p className="text-[10px] text-muted-foreground mt-1">Note: ITC on medicines for patient care is blocked under Section 17(5). Only ITC on equipment maintenance, IT, office supplies is eligible.</p>
+                    </div>
+
+                    {/* Net Tax Payable */}
+                    <Card className={`border-2 ${netPayable > 0 ? "border-red-200 dark:border-red-800" : "border-emerald-200 dark:border-emerald-800"}`}>
+                      <CardContent className="pt-4">
+                        <p className="text-xs font-bold mb-3">NET TAX PAYABLE</p>
+                        <div className="space-y-1.5 text-xs">
+                          <div className="flex justify-between"><span>Output GST</span><span className="font-mono">{fmt(outputGST)}</span></div>
+                          <div className="flex justify-between"><span>Less: ITC</span><span className="font-mono">({fmt(inputITC)})</span></div>
+                          <div className="border-t border-border pt-1.5 flex justify-between font-bold text-sm">
+                            <span>Net Payable</span>
+                            <span className={`font-mono ${netPayable > 0 ? "text-red-500" : "text-emerald-700 dark:text-emerald-400"}`}>{netPayable > 0 ? fmt(netPayable) : `(${fmt(netPayable)}) Refundable`}</span>
+                          </div>
+                          {netPayable > 0 && (
+                            <div className="grid grid-cols-2 gap-4 mt-2 pt-2 border-t border-border">
+                              <div className="flex justify-between"><span>CGST</span><span className="font-mono">{fmt(netPayable / 2)}</span></div>
+                              <div className="flex justify-between"><span>SGST</span><span className="font-mono">{fmt(netPayable / 2)}</span></div>
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </>
+                );
+              })()}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ═══ TDS ═══ */}
+        <TabsContent value="tds">
+          <Card className="border-border mt-4">
+            <CardHeader className="pb-2 flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-sm">TDS Summary — Form 26Q Preparation</CardTitle>
+                <p className="text-xs text-muted-foreground">{dateRange.start} to {dateRange.end}</p>
+              </div>
+              <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => {
+                const ws = XLSX.utils.json_to_sheet(tdsData);
+                const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "TDS-26Q");
+                XLSX.writeFile(wb, `TDS_26Q_${dateRange.start}_${dateRange.end}.xlsx`);
+              }}><FileSpreadsheet className="h-3 w-3 mr-1" />Download 26Q Data</Button>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs">Date</TableHead>
+                    <TableHead className="text-xs">Payee / Vendor</TableHead>
+                    <TableHead className="text-xs">Category</TableHead>
+                    <TableHead className="text-xs">Section</TableHead>
+                    <TableHead className="text-xs text-right">Amount Paid</TableHead>
+                    <TableHead className="text-xs text-right">TDS Rate</TableHead>
+                    <TableHead className="text-xs text-right">TDS Deducted</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {tdsData.map((t, i) => (
+                    <TableRow key={i}>
+                      <TableCell className="text-xs font-mono">{t.date}</TableCell>
+                      <TableCell className="text-xs">{t.vendor}</TableCell>
+                      <TableCell className="text-xs capitalize">{t.category}</TableCell>
+                      <TableCell className="text-xs font-mono">{t.section}</TableCell>
+                      <TableCell className="text-xs text-right font-mono">{fmt(t.amount)}</TableCell>
+                      <TableCell className="text-xs text-right">{t.tds_rate}%</TableCell>
+                      <TableCell className="text-xs text-right font-mono">{fmt(t.tds_amount)}</TableCell>
+                    </TableRow>
+                  ))}
+                  {tdsData.length === 0 && (
+                    <TableRow><TableCell colSpan={7} className="text-center text-xs text-muted-foreground py-6">No TDS-applicable expenses found</TableCell></TableRow>
+                  )}
+                  {tdsData.length > 0 && (
+                    <TableRow className="border-t-2 bg-muted/30 font-bold">
+                      <TableCell colSpan={4} className="text-xs font-bold">QUARTER TOTAL</TableCell>
+                      <TableCell className="text-xs text-right font-mono font-bold">{fmt(tdsData.reduce((s, t) => s + t.amount, 0))}</TableCell>
+                      <TableCell></TableCell>
+                      <TableCell className="text-xs text-right font-mono font-bold">{fmt(tdsData.reduce((s, t) => s + t.tds_amount, 0))}</TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ═══ TALLY EXPORT ═══ */}
+        <TabsContent value="tally">
+          <Card className="border-border mt-4">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Tally Export</CardTitle>
+              <p className="text-xs text-muted-foreground">Export journal entries in Tally Prime XML format</p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="p-4 bg-muted/30 rounded-md space-y-2">
+                <p className="text-xs font-semibold">Export Period: {dateRange.start} to {dateRange.end}</p>
+                <p className="text-xs text-muted-foreground">
+                  {journalEntriesForExport.length} journal entries will be exported as Tally vouchers
+                </p>
+                <Button size="sm" className="mt-2" onClick={() => {
+                  const xml = generateTallyXML();
+                  const blob = new Blob([xml], { type: "application/xml" });
+                  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `HMS_Tally_Export_${dateRange.start}_${dateRange.end}.xml`; a.click();
+                }}>
+                  <Download className="h-4 w-4 mr-1" /> Export to Tally XML
+                </Button>
+              </div>
+
+              <div className="p-4 border border-border rounded-md">
+                <p className="text-xs font-semibold mb-2">Import Instructions</p>
+                <ol className="text-xs text-muted-foreground space-y-1 list-decimal pl-4">
+                  <li>Open Tally Prime</li>
+                  <li>Go to: Gateway of Tally → Import → Data</li>
+                  <li>Select the downloaded XML file</li>
+                  <li>Vouchers will import automatically</li>
+                </ol>
+              </div>
+
+              {/* Preview */}
+              <div>
+                <p className="text-xs font-semibold mb-2">Export Preview (first 10 entries)</p>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs">Entry #</TableHead>
+                      <TableHead className="text-xs">Date</TableHead>
+                      <TableHead className="text-xs">Description</TableHead>
+                      <TableHead className="text-xs">Type</TableHead>
+                      <TableHead className="text-xs text-right">Lines</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {journalEntriesForExport.slice(0, 10).map((je: any) => (
+                      <TableRow key={je.id}>
+                        <TableCell className="text-xs font-mono">{je.entry_number}</TableCell>
+                        <TableCell className="text-xs font-mono">{je.entry_date}</TableCell>
+                        <TableCell className="text-xs max-w-[250px] truncate">{je.description}</TableCell>
+                        <TableCell><Badge variant="outline" className="text-[9px]">{je.entry_type?.startsWith("auto") ? "AUTO" : "MANUAL"}</Badge></TableCell>
+                        <TableCell className="text-xs text-right">{exportLineItems.filter((li: any) => li.journal_entry_id === je.id).length}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
