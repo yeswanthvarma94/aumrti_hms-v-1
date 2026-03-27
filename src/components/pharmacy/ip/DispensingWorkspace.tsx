@@ -351,6 +351,13 @@ const DispensingWorkspace: React.FC<Props> = ({ hospitalId, prescription, onDisp
         })
         .eq("id", dispensingId!);
 
+      // NABH evidence: MOM criterion (medication safety / 5-rights)
+      logNABHEvidence(
+        hospitalId,
+        "MOM",
+        `5-rights verified for ${patient.full_name}: ${drugRows.map(r => r.drug_name).join(", ")}. Dispensed ₹${totalAmount.toFixed(0)}.`
+      );
+
       toast({ title: `✓ Dispensed to ${patient.full_name} — ₹${totalAmount.toFixed(0)}` });
       onDispensed();
     } catch (err: any) {

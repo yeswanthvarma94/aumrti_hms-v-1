@@ -96,6 +96,13 @@ const FileIncidentModal: React.FC<Props> = ({ open, onOpenChange, onFiled }) => 
         });
       }
 
+      // NABH evidence auto-log: CQI criterion (incident management)
+      logNABHEvidence(
+        userProfile.hospital_id,
+        "CQI",
+        `Incident #${incidentNumber} reported by ${userProfile.full_name}. Type: ${form.incident_type}. Severity: ${form.severity}.`
+      );
+
       toast({ title: "Incident filed", description: incidentNumber });
       onOpenChange(false);
       onFiled?.();
