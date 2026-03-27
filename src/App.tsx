@@ -62,6 +62,7 @@ import HODDashboardPage from "./pages/hod/HODDashboardPage";
 import TVDisplayPage from "./pages/tv/TVDisplayPage";
 import DesignSystem from "./pages/DesignSystem";
 import PatientPortal from "./pages/portal/PatientPortal";
+import GoLiveChecklistPage from "./pages/admin/GoLiveChecklistPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -134,6 +135,7 @@ const App = () => (
             <Route path="/settings/abdm" element={<SettingsABDMPage />} />
             <Route path="/settings/backup" element={<SettingsBackupPage />} />
             <Route path="/settings/api-keys" element={<SettingsAPIKeysPage />} />
+            <Route path="/admin/go-live" element={<GoLiveChecklistPage />} />
           </Route>
 
           <Route path="*" element={<NotFound />} />

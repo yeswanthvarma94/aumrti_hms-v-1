@@ -117,6 +117,13 @@ const settingsGroups: SettingsGroup[] = [
       { icon: KeyRound, title: "API Keys", desc: "Developer API access tokens", route: "/settings/api-keys" },
     ],
   },
+  {
+    label: "Go-Live",
+    emoji: "🚀",
+    cards: [
+      { icon: ListChecks, title: "Go-Live Checklist", desc: "Pre-launch readiness verification for pilot hospitals", route: "/admin/go-live" },
+    ],
+  },
 ];
 
 const highlightMatch = (text: string, query: string) => {
