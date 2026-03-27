@@ -61,7 +61,7 @@ const FileIncidentModal: React.FC<Props> = ({ open, onOpenChange, onFiled }) => 
 
       const { data: userProfile } = await supabase
         .from("users")
-        .select("hospital_id")
+        .select("hospital_id, full_name")
         .eq("auth_user_id", userId)
         .single();
       if (!userProfile) { toast({ title: "User profile not found", variant: "destructive" }); setSaving(false); return; }
