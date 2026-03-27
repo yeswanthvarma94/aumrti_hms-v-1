@@ -200,9 +200,13 @@ const PrescriptionQueue: React.FC<Props> = ({ hospitalId, selectedId, onSelect, 
       {/* List */}
       <ScrollArea className="flex-1">
         <div className="p-1.5 space-y-1.5">
-          {loading && <p className="text-center text-muted-foreground text-xs py-8">Loading…</p>}
+          {loading && <SkeletonCard count={3} />}
           {!loading && filtered.length === 0 && (
-            <p className="text-center text-muted-foreground text-xs py-8">No pending prescriptions</p>
+            <EmptyState
+              icon="💊"
+              title="No pending prescriptions"
+              description="IP prescriptions from admitted patients appear here"
+            />
           )}
           {filtered.map(item => (
             <button

@@ -138,7 +138,11 @@ const ClaimsStatus: React.FC = () => {
             {loading ? (
               <TableRow><TableCell colSpan={8} className="text-center text-sm py-8">Loading...</TableCell></TableRow>
             ) : claims.length === 0 ? (
-              <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground text-sm py-8">No claims found</TableCell></TableRow>
+              <TableRow>
+                <TableCell colSpan={8} className="p-0 h-48">
+                  <EmptyState icon="🏥" title="No claims to show" description="Insurance claims from billing will appear here" />
+                </TableCell>
+              </TableRow>
             ) : claims.map(c => (
               <TableRow key={c.id}>
                 <TableCell className="text-xs font-mono">{c.claim_number || "—"}</TableCell>

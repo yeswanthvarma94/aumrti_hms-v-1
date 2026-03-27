@@ -124,10 +124,13 @@ const TokenQueue: React.FC<Props> = ({ tokens, selectedTokenId, onSelectToken, h
           {loading
             ? Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-20 rounded-lg" />)
             : filtered.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-slate-400">
-                <span className="text-sm">No tokens yet</span>
-                <span className="text-xs mt-1">Register a walk-in to start</span>
-              </div>
+              <EmptyState
+                icon="🏥"
+                title="No patients in queue"
+                description="Walk-in patients and appointments will appear here"
+                actionLabel="Register Walk-in"
+                onAction={() => setShowModal(true)}
+              />
             ) : filtered.map((token) => {
               const isSelected = token.id === selectedTokenId;
               return (
