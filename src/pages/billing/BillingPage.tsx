@@ -30,6 +30,8 @@ export interface BillRecord {
   balance_due: number;
   payment_status: string;
   notes: string | null;
+  irn: string | null;
+  irn_generated_at: string | null;
   created_at: string;
 }
 
