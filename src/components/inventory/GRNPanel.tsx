@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import InvoiceScanZone, { type ExtractedInvoiceData } from "./InvoiceScanZone";
 
 const qcColors: Record<string, string> = {
   pass: "bg-emerald-100 text-emerald-700",
