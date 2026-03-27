@@ -355,13 +355,16 @@ Write a 5-point CFO-level financial analysis:
   return (
     <div className="p-5 space-y-4">
       <Tabs defaultValue="pnl">
-        <TabsList className="h-9 flex-wrap">
+        <TabsList className="h-9 flex-wrap gap-0.5">
           <TabsTrigger value="pnl" className="text-xs">P&L Statement</TabsTrigger>
           <TabsTrigger value="bs" className="text-xs">Balance Sheet</TabsTrigger>
           <TabsTrigger value="tb" className="text-xs">Trial Balance</TabsTrigger>
           <TabsTrigger value="acct" className="text-xs">Account Statement</TabsTrigger>
           <TabsTrigger value="dept" className="text-xs">Department P&L</TabsTrigger>
-          <TabsTrigger value="gst" className="text-xs">GST Summary</TabsTrigger>
+          <TabsTrigger value="gstr1" className="text-xs">GSTR-1</TabsTrigger>
+          <TabsTrigger value="gstr3b" className="text-xs">GSTR-3B</TabsTrigger>
+          <TabsTrigger value="tds" className="text-xs">TDS</TabsTrigger>
+          <TabsTrigger value="tally" className="text-xs">Tally Export</TabsTrigger>
         </TabsList>
 
         {/* ═══ P&L STATEMENT ═══ */}
