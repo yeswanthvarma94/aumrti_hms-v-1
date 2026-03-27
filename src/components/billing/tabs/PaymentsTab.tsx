@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { autoPostJournalEntry } from "@/lib/accounting";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -64,6 +65,21 @@ const PaymentsTab: React.FC<Props> = ({ bill, hospitalId, payments, onRefresh })
         amount: amt,
         transaction_id: row.reference || null,
         received_by: userData?.id || null,
+      });
+    }
+
+    // Auto-post journal entries for each payment
+    for (const row of rows) {
+      const amt = Number(row.amount) || 0;
+      if (amt <= 0) continue;
+      await autoPostJournalEntry({
+        triggerEvent: `bill_payment_${row.mode}`,
+        sourceModule: "billing",
+        sourceId: bill.id,
+        amount: amt,
+        description: `Payment - Bill ${bill.bill_number} - ${row.mode}`,
+        hospitalId: hospitalId,
+        postedBy: userData?.id || "",
       });
     }
 

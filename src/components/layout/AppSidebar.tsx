@@ -103,6 +103,7 @@ const navGroups: NavGroup[] = [
       { label: "Billing", path: "/billing", icon: Receipt, subtitle: "Patient billing" },
       { label: "Insurance", path: "/insurance", icon: Shield, subtitle: "TPA & claims" },
       { label: "Payments", path: "/payments", icon: CreditCard, subtitle: "Collections & receipts" },
+      { label: "Accounts / ERP", path: "/accounts", icon: BarChart3, subtitle: "Double-entry accounting" },
     ],
   },
   { label: "Analytics", icon: BarChart3, path: "/analytics" },

@@ -8,6 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Banknote, Smartphone, CreditCard, Building2, Printer, MessageSquare, FileText, RotateCcw, Check, Loader2 } from "lucide-react";
 import type { CartItem } from "./RetailCart";
 import { createPatientRecord, findPatientByPhone } from "@/lib/patient-records";
+import { autoPostJournalEntry } from "@/lib/accounting";
 
 type PaymentMode = "cash" | "upi" | "card" | "credit";
 
@@ -186,6 +187,17 @@ const RetailPayment: React.FC<Props> = ({
       });
 
       toast({ title: `✓ Sale complete — ₹${netTotal.toFixed(0)}` });
+
+      // Auto-post journal entry for retail sale
+      await autoPostJournalEntry({
+        triggerEvent: "pharmacy_retail_sale",
+        sourceModule: "pharmacy",
+        sourceId: disp.id,
+        amount: netTotal,
+        description: `Retail Sale ${dispNum}`,
+        hospitalId,
+        postedBy: userData.id,
+      });
     } catch (err: any) {
       toast({ title: "Sale failed", description: err.message, variant: "destructive" });
     } finally {

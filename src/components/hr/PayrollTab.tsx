@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { autoPostJournalEntry } from "@/lib/accounting";
 import { DollarSign, Download, CheckSquare, Loader2 } from "lucide-react";
 
 interface PayrollRun {
@@ -238,6 +239,24 @@ const PayrollTab: React.FC = () => {
 
   const approveRun = async (runId: string) => {
     await (supabase as any).from("payroll_runs").update({ status: "approved" }).eq("id", runId);
+    
+    // Auto-post journal entry for payroll
+    const run = runs.find(r => r.id === runId);
+    if (run) {
+      const { data: userData } = await supabase.from("users").select("id, hospital_id").limit(1).single();
+      if (userData) {
+        await autoPostJournalEntry({
+          triggerEvent: "payroll_processed",
+          sourceModule: "hr",
+          sourceId: runId,
+          amount: run.total_net,
+          description: `Payroll ${run.run_month} - ${run.staff_count} staff`,
+          hospitalId: userData.hospital_id,
+          postedBy: userData.id,
+        });
+      }
+    }
+
     toast({ title: "Payroll approved" });
     loadRuns();
   };
