@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Pill, Save, Check, RotateCcw, AlertTriangle, Loader2 } from "lucide-react";
 import FiveRightsPanel from "./FiveRightsPanel";
+import { logNABHEvidence } from "@/lib/nabh-evidence";
 import type { PrescriptionItem } from "./PrescriptionQueue";
 
 interface DrugRow {
@@ -349,6 +350,13 @@ const DispensingWorkspace: React.FC<Props> = ({ hospitalId, prescription, onDisp
           net_amount: totalAmount,
         })
         .eq("id", dispensingId!);
+
+      // NABH evidence: MOM criterion (medication safety / 5-rights)
+      logNABHEvidence(
+        hospitalId,
+        "MOM",
+        `5-rights verified for ${patient.full_name}: ${drugRows.map(r => r.drug_name).join(", ")}. Dispensed ₹${totalAmount.toFixed(0)}.`
+      );
 
       toast({ title: `✓ Dispensed to ${patient.full_name} — ₹${totalAmount.toFixed(0)}` });
       onDispensed();

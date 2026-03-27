@@ -30,6 +30,8 @@ export interface BillRecord {
   balance_due: number;
   payment_status: string;
   notes: string | null;
+  irn: string | null;
+  irn_generated_at: string | null;
   created_at: string;
 }
 
@@ -305,6 +307,8 @@ const BillingPage: React.FC = () => {
           balance_due: Number(b.balance_due) || 0,
           payment_status: b.payment_status,
           notes: b.notes,
+          irn: b.irn || null,
+          irn_generated_at: b.irn_generated_at || null,
           created_at: b.created_at,
         }))
       );

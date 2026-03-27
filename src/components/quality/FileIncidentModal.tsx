@@ -8,6 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { logNABHEvidence } from "@/lib/nabh-evidence";
 
 interface Props {
   open: boolean;
@@ -60,7 +61,7 @@ const FileIncidentModal: React.FC<Props> = ({ open, onOpenChange, onFiled }) => 
 
       const { data: userProfile } = await supabase
         .from("users")
-        .select("hospital_id")
+        .select("hospital_id, full_name")
         .eq("auth_user_id", userId)
         .single();
       if (!userProfile) { toast({ title: "User profile not found", variant: "destructive" }); setSaving(false); return; }
@@ -94,6 +95,13 @@ const FileIncidentModal: React.FC<Props> = ({ open, onOpenChange, onFiled }) => 
           alert_message: `${form.severity.toUpperCase()} incident reported: ${form.incident_type.replace(/_/g, " ")} — ${incidentNumber}`,
         });
       }
+
+      // NABH evidence auto-log: CQI criterion (incident management)
+      logNABHEvidence(
+        userProfile.hospital_id,
+        "CQI",
+        `Incident #${incidentNumber} reported by ${userProfile.full_name}. Type: ${form.incident_type}. Severity: ${form.severity}.`
+      );
 
       toast({ title: "Incident filed", description: incidentNumber });
       onOpenChange(false);

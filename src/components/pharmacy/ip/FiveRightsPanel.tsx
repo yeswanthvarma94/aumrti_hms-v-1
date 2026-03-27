@@ -3,7 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { X, Check } from "lucide-react";
+import { X, Check, AlertTriangle } from "lucide-react";
+import { validateNDPSDispense } from "@/lib/compliance-checks";
 
 interface DrugInfo {
   drug_name: string;
@@ -17,20 +18,23 @@ interface DrugInfo {
 interface PatientInfo {
   full_name: string;
   uhid: string;
+  address?: string;
 }
 
 interface Props {
   drug: DrugInfo;
   patient: PatientInfo;
   hospitalId: string;
+  currentUserId?: string;
   onConfirm: (secondPharmacistId?: string) => void;
   onClose: () => void;
 }
 
-const FiveRightsPanel: React.FC<Props> = ({ drug, patient, hospitalId, onConfirm, onClose }) => {
+const FiveRightsPanel: React.FC<Props> = ({ drug, patient, hospitalId, currentUserId, onConfirm, onClose }) => {
   const [rights, setRights] = useState([false, false, false, false, false]);
   const [pharmacists, setPharmacists] = useState<{ id: string; full_name: string }[]>([]);
   const [secondPharmacist, setSecondPharmacist] = useState("");
+  const [ndpsError, setNdpsError] = useState<string | null>(null);
 
   useEffect(() => {
     if (drug.is_ndps) {
@@ -52,6 +56,22 @@ const FiveRightsPanel: React.FC<Props> = ({ drug, patient, hospitalId, onConfirm
   const allVerified = rights.every(Boolean);
   const canConfirm = allVerified && (!drug.is_ndps || secondPharmacist);
 
+  const handleConfirm = () => {
+    if (drug.is_ndps) {
+      const result = validateNDPSDispense({
+        secondPharmacistId: secondPharmacist || undefined,
+        currentUserId: currentUserId || "",
+        patientAddress: patient.address,
+      });
+      if (!result.ok) {
+        setNdpsError(`NDPS compliance failed: ${result.reason}. Cannot dispense.`);
+        return;
+      }
+    }
+    setNdpsError(null);
+    onConfirm(secondPharmacist || undefined);
+  };
+
   const rightCards = [
     { label: "PATIENT", value: patient.full_name, sub: `UHID: ${patient.uhid}`, action: "Confirm patient verbally or by wristband" },
     { label: "DRUG", value: drug.drug_name, sub: drug.generic_name || "", action: "Check label matches prescription" },
@@ -61,7 +81,7 @@ const FiveRightsPanel: React.FC<Props> = ({ drug, patient, hospitalId, onConfirm
   ];
 
   return (
-    <div className="absolute bottom-0 left-0 right-0 h-[240px] bg-card border-t-2 border-primary z-20 flex flex-col">
+    <div className="absolute bottom-0 left-0 right-0 h-[280px] bg-card border-t-2 border-primary z-20 flex flex-col">
       <div className="flex items-center justify-between px-5 py-2 border-b border-border/50">
         <span className="text-sm font-bold text-foreground">✅ 5-Rights Verification — {drug.drug_name}</span>
         <button onClick={onClose} className="p-1 rounded hover:bg-muted active:scale-95"><X size={16} /></button>
@@ -90,6 +110,14 @@ const FiveRightsPanel: React.FC<Props> = ({ drug, patient, hospitalId, onConfirm
         ))}
       </div>
 
+      {/* NDPS compliance error */}
+      {ndpsError && (
+        <div className="mx-4 mb-2 px-3 py-2 rounded-lg bg-destructive/10 border border-destructive/30 flex items-center gap-2">
+          <AlertTriangle size={14} className="text-destructive shrink-0" />
+          <span className="text-[11px] text-destructive font-medium">{ndpsError}</span>
+        </div>
+      )}
+
       <div className="px-4 pb-3 flex items-center gap-3">
         <div className="flex items-center gap-1">
           {rights.map((r, i) => (
@@ -101,10 +129,10 @@ const FiveRightsPanel: React.FC<Props> = ({ drug, patient, hospitalId, onConfirm
         {drug.is_ndps && (
           <div className="flex items-center gap-2">
             <span className="text-[11px] text-destructive font-medium">⚠️ NDPS — 2nd Pharmacist:</span>
-            <Select value={secondPharmacist} onValueChange={setSecondPharmacist}>
+            <Select value={secondPharmacist} onValueChange={(v) => { setSecondPharmacist(v); setNdpsError(null); }}>
               <SelectTrigger className="h-7 w-[160px] text-xs"><SelectValue placeholder="Select..." /></SelectTrigger>
               <SelectContent>
-                {pharmacists.map(p => (
+                {pharmacists.filter(p => p.id !== currentUserId).map(p => (
                   <SelectItem key={p.id} value={p.id} className="text-xs">{p.full_name}</SelectItem>
                 ))}
               </SelectContent>
@@ -115,7 +143,7 @@ const FiveRightsPanel: React.FC<Props> = ({ drug, patient, hospitalId, onConfirm
         <Button
           className="ml-auto h-9 text-xs"
           disabled={!canConfirm}
-          onClick={() => onConfirm(secondPharmacist || undefined)}
+          onClick={handleConfirm}
         >
           <Check size={14} className="mr-1" />
           All 5 Rights Verified{drug.is_ndps ? " + 2nd Pharmacist" : ""}

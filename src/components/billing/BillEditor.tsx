@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { Receipt, Printer, MessageSquare, FileText, Send } from "lucide-react";
+import { Receipt, Printer, MessageSquare, FileText, Send, Lock, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -13,6 +13,7 @@ import GSTInvoiceModal from "@/components/billing/GSTInvoiceModal";
 import PaymentLinkModal from "@/components/billing/PaymentLinkModal";
 import { useWhatsAppNotification } from "@/components/whatsapp/WhatsAppNotificationCard";
 import { sendBillGenerated } from "@/lib/whatsapp-notifications";
+import { validateGSTLineItems } from "@/lib/compliance-checks";
 import type { BillRecord } from "@/pages/billing/BillingPage";
 
 export interface LineItem {
@@ -120,6 +121,18 @@ const BillEditor: React.FC<Props> = ({ bill, hospitalId, onRefresh }) => {
 
   const handleFinalize = async () => {
     if (!bill || !hospitalId) return;
+
+    // GST compliance: check HSN codes
+    const missingHSN = validateGSTLineItems(lineItems);
+    if (missingHSN.length > 0) {
+      toast({
+        title: "HSN code missing",
+        description: `HSN code missing for: ${missingHSN.join(", ")}. Add HSN codes in Settings → Service Rates before finalising.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     await supabase.from("bills").update({ bill_status: "final" }).eq("id", bill.id);
     toast({ title: "Bill finalized" });
 
@@ -144,14 +157,17 @@ const BillEditor: React.FC<Props> = ({ bill, hospitalId, onRefresh }) => {
     onRefresh();
   };
 
+  const isIRNLocked = !!bill?.irn;
+
   const handleGenerateGST = async () => {
     if (!bill) return;
     const simulatedIRN = `DEMO-${Date.now()}-${bill.bill_number}`;
     await supabase.from("bills").update({
       irn: simulatedIRN,
       irn_generated_at: new Date().toISOString(),
+      bill_status: "irn_locked",
     }).eq("id", bill.id);
-    toast({ title: "Demo GST Invoice generated", description: "Connect NIC IRP for live e-invoicing" });
+    toast({ title: "Demo GST Invoice generated — bill is now locked", description: "Connect NIC IRP for live e-invoicing" });
     onRefresh();
     setShowGstInvoice(true);
   };
@@ -208,10 +224,15 @@ const BillEditor: React.FC<Props> = ({ bill, hospitalId, onRefresh }) => {
           <Badge className={cn("text-[10px]", statusBadgeStyle[bill.payment_status] || statusBadgeStyle.unpaid)}>
             {bill.payment_status.toUpperCase()}
           </Badge>
+          {isIRNLocked && (
+            <Badge variant="outline" className="text-[10px] gap-1 border-amber-300 text-amber-700">
+              <Lock size={10} /> IRN Locked
+            </Badge>
+          )}
           {bill.bill_status === "draft" && (
             <Button size="sm" className="h-7 text-[11px]" onClick={handleFinalize}>Finalise Bill</Button>
           )}
-          {bill.bill_status === "final" && bill.gst_amount > 0 && (
+          {bill.bill_status === "final" && bill.gst_amount > 0 && !isIRNLocked && (
             <Button size="sm" className="h-7 text-[11px] gap-1 bg-emerald-700 hover:bg-emerald-800 text-white" onClick={handleGenerateGST}>
               <FileText size={12} /> GST Invoice
             </Button>

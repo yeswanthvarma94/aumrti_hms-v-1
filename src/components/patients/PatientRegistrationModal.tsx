@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getDPDPConsentText } from "@/lib/compliance-checks";
 
 interface Props {
   onClose: () => void;
@@ -15,6 +16,8 @@ const genders = ["male", "female", "other"] as const;
 const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess }) => {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
+  const [dpdpConsent, setDpdpConsent] = useState(false);
+  const [hospitalName, setHospitalName] = useState("Hospital");
   const [form, setForm] = useState({
     full_name: "",
     phone: "",
@@ -31,11 +34,25 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess }) => {
     emergency_contact_phone: "",
   });
 
+  useEffect(() => {
+    supabase.from("users").select("hospital_id").limit(1).single().then(({ data }) => {
+      if (data?.hospital_id) {
+        supabase.from("hospitals").select("name").eq("id", data.hospital_id).maybeSingle().then(({ data: h }) => {
+          if (h?.name) setHospitalName(h.name);
+        });
+      }
+    });
+  }, []);
+
   const set = (field: string, value: string) => setForm((f) => ({ ...f, [field]: value }));
 
   const handleSubmit = async () => {
     if (!form.full_name.trim()) {
       toast({ title: "Name is required", variant: "destructive" });
+      return;
+    }
+    if (!dpdpConsent) {
+      toast({ title: "DPDP consent is required", description: "Patient must consent to data collection before registration.", variant: "destructive" });
       return;
     }
     setSaving(true);
@@ -89,6 +106,19 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess }) => {
     if (error) {
       toast({ title: "Registration failed", description: error.message, variant: "destructive" });
     } else {
+      // Log DPDP consent
+      const consentText = getDPDPConsentText(hospitalName);
+      // Get the patient id for consent record
+      const { data: newPatient } = await supabase.from("patients").select("id").eq("hospital_id", hospitalId).eq("uhid", uhid).maybeSingle();
+      if (newPatient) {
+        await supabase.from("patient_consents").insert({
+          hospital_id: hospitalId,
+          patient_id: newPatient.id,
+          consent_type: "data_collection",
+          consent_given: true,
+          consent_text: consentText,
+        } as any);
+      }
       toast({ title: `Patient registered — ${uhid}` });
       onSuccess();
     }
@@ -228,11 +258,26 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess }) => {
           </div>
         </div>
 
+        {/* DPDP Consent */}
+        <div className="px-7 pb-2">
+          <label className="flex items-start gap-2.5 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={dpdpConsent}
+              onChange={(e) => setDpdpConsent(e.target.checked)}
+              className="mt-0.5 w-4 h-4 rounded border-border accent-primary"
+            />
+            <span className="text-[11px] text-muted-foreground leading-relaxed">
+              {getDPDPConsentText(hospitalName)}
+            </span>
+          </label>
+        </div>
+
         {/* Footer */}
         <div className="px-7 py-4 flex-shrink-0 border-t border-border">
           <button
             onClick={handleSubmit}
-            disabled={saving}
+            disabled={saving || !dpdpConsent}
             className="w-full h-[44px] bg-[hsl(222,55%,23%)] text-white rounded-lg text-[14px] font-semibold hover:bg-[hsl(222,55%,18%)] active:scale-[0.98] transition-all disabled:opacity-60"
           >
             {saving ? "Registering…" : "Register Patient →"}

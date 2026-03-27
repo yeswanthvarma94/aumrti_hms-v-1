@@ -16,6 +16,7 @@ interface NDPSRecord {
   transaction_type: string;
   quantity: number;
   balance_after: number;
+  running_balance: number;
   transaction_date: string;
   patient_name: string | null;
   prescription_number: string | null;
@@ -30,15 +31,29 @@ const PharmacyNDPSTab: React.FC<Props> = ({ hospitalId }) => {
   const [dateTo, setDateTo] = useState(new Date().toISOString().split("T")[0]);
 
   const fetchRecords = useCallback(async () => {
+    // Use window function for running balance per drug (FEFO order)
     const { data } = await supabase
       .from("ndps_register")
       .select("*")
       .eq("hospital_id", hospitalId)
       .gte("transaction_date", dateFrom)
       .lte("transaction_date", dateTo)
-      .order("created_at", { ascending: false });
+      .order("drug_id", { ascending: true })
+      .order("created_at", { ascending: true });
 
-    setRecords((data || []) as NDPSRecord[]);
+    // Compute running balance client-side (per drug_id)
+    const balances: Record<string, number> = {};
+    const withRunning = (data || []).map((r: any) => {
+      const drugKey = r.drug_id || r.drug_name;
+      if (!(drugKey in balances)) balances[drugKey] = 0;
+      const delta = r.transaction_type === "receipt" ? Number(r.quantity) : -Number(r.quantity);
+      balances[drugKey] += delta;
+      return { ...r, running_balance: balances[drugKey] };
+    });
+
+    // Reverse to show latest first for display
+    withRunning.reverse();
+    setRecords(withRunning as NDPSRecord[]);
   }, [hospitalId, dateFrom, dateTo]);
 
   useEffect(() => { fetchRecords(); }, [fetchRecords]);
@@ -85,6 +100,7 @@ const PharmacyNDPSTab: React.FC<Props> = ({ hospitalId }) => {
                 <th className="text-center py-2 px-2">Type</th>
                 <th className="text-right py-2 px-2">Qty</th>
                 <th className="text-right py-2 px-2">Balance</th>
+                <th className="text-right py-2 px-2">Running Bal.</th>
                 <th className="text-left py-2 px-2">Patient</th>
                 <th className="text-left py-2 px-2">Prescription #</th>
                 <th className="text-left py-2 px-2">Prescriber</th>
@@ -103,6 +119,7 @@ const PharmacyNDPSTab: React.FC<Props> = ({ hospitalId }) => {
                   <td className="py-2 px-2 text-center capitalize text-xs">{r.transaction_type}</td>
                   <td className="py-2 px-2 text-right tabular-nums font-semibold">{Number(r.quantity)}</td>
                   <td className="py-2 px-2 text-right tabular-nums font-semibold">{Number(r.balance_after)}</td>
+                  <td className="py-2 px-2 text-right tabular-nums font-semibold text-primary">{r.running_balance}</td>
                   <td className="py-2 px-2 text-xs">{r.patient_name || "—"}</td>
                   <td className="py-2 px-2 text-xs font-mono">{r.prescription_number || "—"}</td>
                   <td className="py-2 px-2 text-xs">{r.prescriber_name || "—"}</td>
