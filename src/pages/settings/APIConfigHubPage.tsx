@@ -154,14 +154,14 @@ const APIConfigHubPage: React.FC = () => {
     };
 
     if (existing) {
-      const { error } = await supabase.from("api_configurations").update(payload as Record<string, unknown>).eq("id", existing.id);
+      const { error } = await supabase.from("api_configurations").update(payload).eq("id", existing.id);
       if (error) {
         toast({ title: "Failed to save", description: error.message, variant: "destructive" });
       } else {
         toast({ title: `✓ ${editingKey.service_name} key saved` });
       }
     } else {
-      const { error } = await supabase.from("api_configurations").insert(payload as Record<string, unknown>);
+      const { error } = await supabase.from("api_configurations").insert(payload);
       if (error) {
         toast({ title: "Failed to save", description: error.message, variant: "destructive" });
       } else {
