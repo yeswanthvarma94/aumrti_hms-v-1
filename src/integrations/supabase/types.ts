@@ -1585,6 +1585,7 @@ export type Database = {
           subscription_tier: Database["public"]["Enums"]["subscription_tier"]
           tagline: string | null
           type: Database["public"]["Enums"]["hospital_type"]
+          wati_api_key: string | null
           wati_api_url: string | null
           whatsapp_enabled: boolean
         }
@@ -1613,6 +1614,7 @@ export type Database = {
           subscription_tier?: Database["public"]["Enums"]["subscription_tier"]
           tagline?: string | null
           type?: Database["public"]["Enums"]["hospital_type"]
+          wati_api_key?: string | null
           wati_api_url?: string | null
           whatsapp_enabled?: boolean
         }
@@ -1641,6 +1643,7 @@ export type Database = {
           subscription_tier?: Database["public"]["Enums"]["subscription_tier"]
           tagline?: string | null
           type?: Database["public"]["Enums"]["hospital_type"]
+          wati_api_key?: string | null
           wati_api_url?: string | null
           whatsapp_enabled?: boolean
         }
@@ -5680,6 +5683,50 @@ export type Database = {
             columns: ["patient_id"]
             isOneToOne: false
             referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_templates: {
+        Row: {
+          auto_send: boolean | null
+          created_at: string | null
+          hospital_id: string
+          id: string
+          is_active: boolean | null
+          message_template: string
+          send_delay_hours: number | null
+          template_name: string
+          trigger_event: string
+        }
+        Insert: {
+          auto_send?: boolean | null
+          created_at?: string | null
+          hospital_id: string
+          id?: string
+          is_active?: boolean | null
+          message_template: string
+          send_delay_hours?: number | null
+          template_name: string
+          trigger_event: string
+        }
+        Update: {
+          auto_send?: boolean | null
+          created_at?: string | null
+          hospital_id?: string
+          id?: string
+          is_active?: boolean | null
+          message_template?: string
+          send_delay_hours?: number | null
+          template_name?: string
+          trigger_event?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_templates_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
             referencedColumns: ["id"]
           },
         ]

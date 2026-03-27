@@ -34,6 +34,7 @@ import SettingsDrugsPage from "./pages/settings/SettingsDrugsPage";
 import SettingsProfilePage from "./pages/settings/SettingsProfilePage";
 import SettingsRolesPage from "./pages/settings/SettingsRolesPage";
 import SettingsBrandingPage from "./pages/settings/SettingsBrandingPage";
+import SettingsWhatsAppPage from "./pages/settings/SettingsWhatsAppPage";
 import AnalyticsPage from "./pages/analytics/AnalyticsPage";
 import TelemedicinePage from "./pages/telemedicine/TelemedicinePage";
 import HODDashboardPage from "./pages/hod/HODDashboardPage";
@@ -90,6 +91,7 @@ const App = () => (
             <Route path="/settings/profile" element={<SettingsProfilePage />} />
             <Route path="/settings/roles" element={<SettingsRolesPage />} />
             <Route path="/settings/branding" element={<SettingsBrandingPage />} />
+            <Route path="/settings/whatsapp" element={<SettingsWhatsAppPage />} />
           </Route>
 
           <Route path="*" element={<NotFound />} />
