@@ -449,8 +449,14 @@ const GRNPanel: React.FC = () => {
                   </thead>
                   <tbody>
                     {newGRNItems.map((gi: any, idx: number) => (
-                      <tr key={idx} className="border-b border-border/50">
-                        <td className="px-3 py-1.5 truncate max-w-[140px]">{gi.item_name}</td>
+                      <tr key={idx} className={cn("border-b border-border/50", gi.match_status === "matched" ? "border-l-2 border-l-emerald-500" : gi.match_status === "unmatched" ? "border-l-2 border-l-amber-500" : "")}>
+                        <td className="px-3 py-1.5 truncate max-w-[140px]">
+                          <span>{gi.item_name}</span>
+                          {gi.extracted_name && gi.extracted_name !== gi.item_name && (
+                            <span className="block text-[10px] italic text-muted-foreground">Scanned: {gi.extracted_name}</span>
+                          )}
+                          {gi.match_status === "unmatched" && <span className="block text-[10px] text-amber-600">⚠️ Not in master</span>}
+                        </td>
                         {fromPO && <td className="px-2 py-1.5 text-right text-muted-foreground">{gi.po_qty}</td>}
                         <td className="px-2 py-1.5 text-right">
                           <Input type="number" min={0} value={gi.quantity_received} onChange={(e) => { const c = [...newGRNItems]; c[idx].quantity_received = parseInt(e.target.value) || 0; setNewGRNItems(c); }} className="h-6 w-14 text-xs text-right" />
