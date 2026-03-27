@@ -176,7 +176,7 @@ const IPDWorkspace: React.FC<Props> = ({ bed, hospitalId, onRefresh }) => {
             <IPDVitalsTab admissionId={admissionId} hospitalId={hospitalId} userId={userId} />
           </TabsContent>
           <TabsContent value="medications" className="h-full m-0">
-            <IPDMedicationsTab admissionId={admissionId} hospitalId={hospitalId} userId={userId} />
+            <IPDMedicationsTab admissionId={admissionId} hospitalId={hospitalId} userId={userId} patientAllergies={patient?.allergies ? patient.allergies.split(",").map(a => a.trim()) : []} />
           </TabsContent>
           <TabsContent value="wardround" className="h-full m-0">
             <IPDWardRoundTab admissionId={admissionId} hospitalId={hospitalId} userId={userId} patientId={patient?.id || null} />
