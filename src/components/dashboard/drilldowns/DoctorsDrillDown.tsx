@@ -37,10 +37,10 @@ const DoctorsDrillDown: React.FC = () => {
       deptMap = Object.fromEntries((depts || []).map(d => [d.id, d.name]));
     }
 
-    const rows: StaffRow[] = (doctors || []).map((d) => ({
+    const rows: StaffRow[] = (doctors || []).map((d): StaffRow => ({
       name: d.full_name || "Unknown",
       dept: d.department_id ? (deptMap[d.department_id] || "—") : "—",
-      status: attMap[d.id] === "leave" ? "leave" : attMap[d.id] === "present" ? "present" : "present" as const,
+      status: attMap[d.id] === "leave" ? "leave" as const : "present" as const,
     })).sort((a, b) => {
       const order = { leave: 0, absent: 1, present: 2 };
       return order[a.status] - order[b.status];
