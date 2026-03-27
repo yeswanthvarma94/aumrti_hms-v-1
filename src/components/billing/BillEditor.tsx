@@ -14,6 +14,7 @@ import PaymentLinkModal from "@/components/billing/PaymentLinkModal";
 import { useWhatsAppNotification } from "@/components/whatsapp/WhatsAppNotificationCard";
 import { sendBillGenerated } from "@/lib/whatsapp-notifications";
 import { validateGSTLineItems } from "@/lib/compliance-checks";
+import { autoPostJournalEntry } from "@/lib/accounting";
 import type { BillRecord } from "@/pages/billing/BillingPage";
 
 export interface LineItem {
