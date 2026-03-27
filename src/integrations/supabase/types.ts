@@ -1343,6 +1343,30 @@ export type Database = {
           },
         ]
       }
+      drug_allergy_cross_reactivity: {
+        Row: {
+          allergen: string
+          cross_reacts: string[] | null
+          id: string
+          note: string | null
+          risk_level: string | null
+        }
+        Insert: {
+          allergen: string
+          cross_reacts?: string[] | null
+          id?: string
+          note?: string | null
+          risk_level?: string | null
+        }
+        Update: {
+          allergen?: string
+          cross_reacts?: string[] | null
+          id?: string
+          note?: string | null
+          risk_level?: string | null
+        }
+        Relationships: []
+      }
       drug_batches: {
         Row: {
           batch_number: string
@@ -1417,6 +1441,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      drug_interactions: {
+        Row: {
+          clinical_effect: string | null
+          created_at: string | null
+          drug_a: string
+          drug_b: string
+          id: string
+          mechanism: string | null
+          recommendation: string | null
+          severity: string
+        }
+        Insert: {
+          clinical_effect?: string | null
+          created_at?: string | null
+          drug_a: string
+          drug_b: string
+          id?: string
+          mechanism?: string | null
+          recommendation?: string | null
+          severity: string
+        }
+        Update: {
+          clinical_effect?: string | null
+          created_at?: string | null
+          drug_a?: string
+          drug_b?: string
+          id?: string
+          mechanism?: string | null
+          recommendation?: string | null
+          severity?: string
+        }
+        Relationships: []
       }
       drug_master: {
         Row: {
