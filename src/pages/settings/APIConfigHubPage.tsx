@@ -185,7 +185,7 @@ const APIConfigHubPage: React.FC = () => {
         last_tested_at: now,
         test_status: success ? "success" : "failed",
         test_message: success ? `Connected — response in ${Math.floor(Math.random() * 400 + 100)}ms` : "Connection refused or invalid key",
-      } as Record<string, unknown>).eq("id", existing.id);
+      }).eq("id", existing.id);
       await loadData();
     }
     setTesting(null);
