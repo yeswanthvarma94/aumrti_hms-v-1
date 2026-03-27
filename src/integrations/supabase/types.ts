@@ -487,6 +487,188 @@ export type Database = {
           },
         ]
       }
+      auto_posting_rules: {
+        Row: {
+          created_at: string | null
+          credit_account_id: string
+          debit_account_id: string
+          description_template: string | null
+          hospital_id: string
+          id: string
+          is_active: boolean | null
+          rule_name: string
+          trigger_event: string
+        }
+        Insert: {
+          created_at?: string | null
+          credit_account_id: string
+          debit_account_id: string
+          description_template?: string | null
+          hospital_id: string
+          id?: string
+          is_active?: boolean | null
+          rule_name: string
+          trigger_event: string
+        }
+        Update: {
+          created_at?: string | null
+          credit_account_id?: string
+          debit_account_id?: string
+          description_template?: string | null
+          hospital_id?: string
+          id?: string
+          is_active?: boolean | null
+          rule_name?: string
+          trigger_event?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auto_posting_rules_credit_account_id_fkey"
+            columns: ["credit_account_id"]
+            isOneToOne: false
+            referencedRelation: "chart_of_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "auto_posting_rules_debit_account_id_fkey"
+            columns: ["debit_account_id"]
+            isOneToOne: false
+            referencedRelation: "chart_of_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "auto_posting_rules_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bank_accounts: {
+        Row: {
+          account_name: string
+          account_number: string
+          bank_name: string
+          coa_account_id: string | null
+          created_at: string | null
+          hospital_id: string
+          id: string
+          ifsc_code: string | null
+          is_active: boolean | null
+          opening_balance: number | null
+        }
+        Insert: {
+          account_name: string
+          account_number: string
+          bank_name: string
+          coa_account_id?: string | null
+          created_at?: string | null
+          hospital_id: string
+          id?: string
+          ifsc_code?: string | null
+          is_active?: boolean | null
+          opening_balance?: number | null
+        }
+        Update: {
+          account_name?: string
+          account_number?: string
+          bank_name?: string
+          coa_account_id?: string | null
+          created_at?: string | null
+          hospital_id?: string
+          id?: string
+          ifsc_code?: string | null
+          is_active?: boolean | null
+          opening_balance?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bank_accounts_coa_account_id_fkey"
+            columns: ["coa_account_id"]
+            isOneToOne: false
+            referencedRelation: "chart_of_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bank_accounts_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bank_transactions: {
+        Row: {
+          balance: number | null
+          bank_account_id: string
+          created_at: string | null
+          credit_amount: number | null
+          debit_amount: number | null
+          description: string
+          hospital_id: string
+          id: string
+          import_batch_id: string | null
+          is_reconciled: boolean | null
+          reconciled_with: string | null
+          reference: string | null
+          transaction_date: string
+        }
+        Insert: {
+          balance?: number | null
+          bank_account_id: string
+          created_at?: string | null
+          credit_amount?: number | null
+          debit_amount?: number | null
+          description: string
+          hospital_id: string
+          id?: string
+          import_batch_id?: string | null
+          is_reconciled?: boolean | null
+          reconciled_with?: string | null
+          reference?: string | null
+          transaction_date: string
+        }
+        Update: {
+          balance?: number | null
+          bank_account_id?: string
+          created_at?: string | null
+          credit_amount?: number | null
+          debit_amount?: number | null
+          description?: string
+          hospital_id?: string
+          id?: string
+          import_batch_id?: string | null
+          is_reconciled?: boolean | null
+          reconciled_with?: string | null
+          reference?: string | null
+          transaction_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bank_transactions_bank_account_id_fkey"
+            columns: ["bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bank_transactions_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bank_transactions_reconciled_with_fkey"
+            columns: ["reconciled_with"]
+            isOneToOne: false
+            referencedRelation: "journal_line_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       beds: {
         Row: {
           bed_number: string
@@ -1003,36 +1185,48 @@ export type Database = {
       }
       chart_of_accounts: {
         Row: {
+          account_subtype: string | null
           account_type: string
           code: string
           created_at: string | null
+          description: string | null
           hospital_id: string
           id: string
           is_active: boolean | null
+          is_control: boolean | null
           is_system: boolean | null
           name: string
+          opening_balance: number | null
           parent_id: string | null
         }
         Insert: {
+          account_subtype?: string | null
           account_type: string
           code: string
           created_at?: string | null
+          description?: string | null
           hospital_id: string
           id?: string
           is_active?: boolean | null
+          is_control?: boolean | null
           is_system?: boolean | null
           name: string
+          opening_balance?: number | null
           parent_id?: string | null
         }
         Update: {
+          account_subtype?: string | null
           account_type?: string
           code?: string
           created_at?: string | null
+          description?: string | null
           hospital_id?: string
           id?: string
           is_active?: boolean | null
+          is_control?: boolean | null
           is_system?: boolean | null
           name?: string
+          opening_balance?: number | null
           parent_id?: string | null
         }
         Relationships: [
@@ -1754,6 +1948,92 @@ export type Database = {
             columns: ["patient_id"]
             isOneToOne: false
             referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      expense_records: {
+        Row: {
+          amount: number
+          created_at: string | null
+          created_by: string | null
+          department_id: string | null
+          description: string
+          expense_category: string
+          expense_date: string
+          gst_amount: number | null
+          hospital_id: string
+          id: string
+          journal_id: string | null
+          payment_mode: string | null
+          receipt_url: string | null
+          reference_number: string | null
+          total_amount: number
+          vendor_name: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          created_by?: string | null
+          department_id?: string | null
+          description: string
+          expense_category: string
+          expense_date?: string
+          gst_amount?: number | null
+          hospital_id: string
+          id?: string
+          journal_id?: string | null
+          payment_mode?: string | null
+          receipt_url?: string | null
+          reference_number?: string | null
+          total_amount: number
+          vendor_name?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          created_by?: string | null
+          department_id?: string | null
+          description?: string
+          expense_category?: string
+          expense_date?: string
+          gst_amount?: number | null
+          hospital_id?: string
+          id?: string
+          journal_id?: string | null
+          payment_mode?: string | null
+          receipt_url?: string | null
+          reference_number?: string | null
+          total_amount?: number
+          vendor_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expense_records_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expense_records_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expense_records_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expense_records_journal_id_fkey"
+            columns: ["journal_id"]
+            isOneToOne: false
+            referencedRelation: "journal_entries"
             referencedColumns: ["id"]
           },
         ]
@@ -2852,6 +3132,77 @@ export type Database = {
           {
             foreignKeyName: "journal_entry_lines_journal_entry_id_fkey"
             columns: ["journal_entry_id"]
+            isOneToOne: false
+            referencedRelation: "journal_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      journal_line_items: {
+        Row: {
+          account_code: string
+          account_id: string
+          account_name: string
+          cost_centre_id: string | null
+          created_at: string | null
+          credit_amount: number | null
+          debit_amount: number | null
+          description: string | null
+          hospital_id: string
+          id: string
+          journal_id: string
+        }
+        Insert: {
+          account_code: string
+          account_id: string
+          account_name: string
+          cost_centre_id?: string | null
+          created_at?: string | null
+          credit_amount?: number | null
+          debit_amount?: number | null
+          description?: string | null
+          hospital_id: string
+          id?: string
+          journal_id: string
+        }
+        Update: {
+          account_code?: string
+          account_id?: string
+          account_name?: string
+          cost_centre_id?: string | null
+          created_at?: string | null
+          credit_amount?: number | null
+          debit_amount?: number | null
+          description?: string | null
+          hospital_id?: string
+          id?: string
+          journal_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "journal_line_items_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "chart_of_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "journal_line_items_cost_centre_id_fkey"
+            columns: ["cost_centre_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "journal_line_items_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "journal_line_items_journal_id_fkey"
+            columns: ["journal_id"]
             isOneToOne: false
             referencedRelation: "journal_entries"
             referencedColumns: ["id"]
