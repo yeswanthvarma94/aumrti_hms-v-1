@@ -299,8 +299,8 @@ const RosterTab: React.FC = () => {
             ))}
             {filteredStaff.length === 0 && (
               <tr>
-                <td colSpan={8} className="text-center py-12 text-muted-foreground text-sm">
-                  No staff found. Add staff from Settings → Staff.
+                <td colSpan={8} className="h-48">
+                  <EmptyState icon="👥" title="No roster for this week" description="Assign shifts by clicking empty cells in the grid" />
                 </td>
               </tr>
             )}
