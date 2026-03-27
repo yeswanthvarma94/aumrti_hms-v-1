@@ -91,7 +91,8 @@ export function useDashboardData() {
 
       // 7. Critical alerts
       const { count: criticalAlerts } = await supabase
-        .from("clinical_alerts").select("*", { count: "exact", head: true })
+        .from("clinical_alerts").select("id", { count: "exact", head: true })
+        .eq("hospital_id", hospitalId)
         .eq("is_acknowledged", false);
 
       setKpis({
