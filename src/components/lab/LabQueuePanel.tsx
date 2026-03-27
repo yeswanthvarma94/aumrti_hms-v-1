@@ -2,6 +2,7 @@ import React from "react";
 import { cn } from "@/lib/utils";
 import { Plus, Clock } from "lucide-react";
 import { format } from "date-fns";
+import EmptyState from "@/components/EmptyState";
 
 interface LabOrder {
   id: string;
