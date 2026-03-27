@@ -163,8 +163,9 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess }) => {
           <div className="flex gap-3">
             <div className="flex-[2] min-w-0">
               <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Full Name *</label>
-              <input value={form.full_name} onChange={(e) => set("full_name", e.target.value)}
-                placeholder="Patient's full name" className={inputClass} />
+              <input value={form.full_name} onChange={(e) => { set("full_name", e.target.value); setFieldErrors(prev => ({ ...prev, full_name: "" })); }}
+                placeholder="Patient's full name" className={cn(inputClass, fieldErrors.full_name && "border-destructive")} />
+              {fieldErrors.full_name && <p className="text-destructive text-[11px] mt-0.5">{fieldErrors.full_name}</p>}
             </div>
             <div className="flex-1 min-w-0">
               <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Phone</label>
