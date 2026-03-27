@@ -69,7 +69,7 @@ const HODDashboardPage: React.FC = () => {
     }
 
     // Revenue
-    const { data: billData } = await supabase.from("bills").select("paid_amount, balance_due").eq("bill_date", today);
+    const { data: billData } = await supabase.from("bills").select("paid_amount, balance_due").eq("bill_date", today).limit(500);
     if (billData) {
       setRevenue({
         collected: billData.reduce((s, b) => s + (b.paid_amount || 0), 0),
@@ -78,7 +78,7 @@ const HODDashboardPage: React.FC = () => {
     }
 
     // Alerts
-    const { data: alertData, count: aC } = await supabase.from("clinical_alerts").select("*", { count: "exact" }).eq("is_acknowledged", false).order("created_at", { ascending: false }).limit(10);
+    const { data: alertData, count: aC } = await supabase.from("clinical_alerts").select("id, alert_type, alert_message, severity, created_at, is_acknowledged, patient_id, ward_name, bed_number", { count: "exact" }).eq("is_acknowledged", false).order("created_at", { ascending: false }).limit(10);
     setAlerts(alertData || []);
     setAlertCount(aC || 0);
 
