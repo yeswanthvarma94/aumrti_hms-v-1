@@ -18,6 +18,7 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess }) => {
   const [saving, setSaving] = useState(false);
   const [dpdpConsent, setDpdpConsent] = useState(false);
   const [hospitalName, setHospitalName] = useState("Hospital");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [form, setForm] = useState({
     full_name: "",
     phone: "",
