@@ -109,6 +109,7 @@ const navGroups: NavGroup[] = [
       { label: "HR & Payroll", path: "/hr", icon: Users, subtitle: "Staff, roster & payroll" },
       { label: "Inventory", path: "/inventory", icon: Package, subtitle: "Stores & supplies" },
       { label: "Quality & NABH", path: "/quality", icon: Award },
+      { label: "Settings", path: "/settings", icon: Settings, subtitle: "System configuration" },
     ],
   },
 ];
