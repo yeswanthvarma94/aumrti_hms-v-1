@@ -1,61 +1,37 @@
 
 
-## Fix Settings Hub Routing — Plan
+## Telemedicine Module — Implementation Plan
 
-### Problem
-Clicking settings cards leads to 404 because most sub-routes have no page component. 9 routes already exist; 19 need placeholder pages.
+### Overview
+Build a `/telemedicine` page with 3-panel layout: consult queue, Jitsi Meet video embed, and patient/Rx panel. Uses free Jitsi Meet iframe (no API key needed).
 
-### Already Working (no changes needed)
-`/settings/profile`, `/settings/branding`, `/settings/departments`, `/settings/wards`, `/settings/staff`, `/settings/roles`, `/settings/services`, `/settings/drugs`, `/settings/whatsapp`
+### Database Migration
 
-### Step 1: Create a reusable SettingsPlaceholder component
+**New table: `teleconsult_sessions`**
+- Columns: id, hospital_id, patient_id, doctor_id, encounter_id, room_id (unique), scheduled_at, duration_minutes, status, patient/doctor joined timestamps, ended_at, actual_duration, prescription_sent, bill_generated, patient_phone, notes, created_at
+- Status validation trigger (scheduled, waiting, in_progress, completed, missed, cancelled)
+- RLS policies scoped to hospital_id
 
-**File**: `src/pages/settings/SettingsPlaceholder.tsx`
+### Files to Create
 
-A single shared component that accepts props: `icon`, `title`, `description`, and `fields` (array of label+value pairs). Renders the breadcrumb, back link, content card with icon, title, description, status badge, fields section, and disabled Save button -- exactly matching the spec layout.
+1. **`src/pages/telemedicine/TelemedicinePage.tsx`** — Main page with 3-panel layout:
+   - **Left (300px)**: Queue with status tabs (Waiting/Scheduled/Completed), session cards with Join Call buttons
+   - **Center (flex)**: Dark bg, Jitsi iframe embed (`https://meet.jit.si/HMS-{roomId}`), call info bar with duration timer and End Call
+   - **Right (320px)**: Patient summary card, quick Rx editor (drug search + dose/freq/days), notes textarea, Complete & Bill button
 
-Special handling for `/settings/modules` which needs toggle switches instead of text fields.
+2. **`src/components/telemedicine/ScheduleTeleconsultModal.tsx`** — Modal with patient search, doctor select, date/time pickers, duration pills (15/30/45 min), Send WhatsApp Invite button using existing `whatsapp-notifications.ts` utilities
 
-### Step 2: Create 19 placeholder page files
+### Files to Modify
 
-Each file is a thin wrapper around `SettingsPlaceholder`, passing the specific props from the spec. Files to create in `src/pages/settings/`:
+3. **`src/App.tsx`** — Add route `/telemedicine` inside AppShell
+4. **`src/components/layout/AppSidebar.tsx`** — Add "Telemedicine" entry (Video icon) to the "More" submenu
 
-| Route | File | Title |
-|---|---|---|
-| /settings/language | SettingsLanguagePage.tsx | Language & Region |
-| /settings/plan | SettingsPlanPage.tsx | Plan & Billing |
-| /settings/shifts | SettingsShiftsPage.tsx | Shift Configuration |
-| /settings/modules | SettingsModulesPage.tsx | Modules On/Off |
-| /settings/doctor-schedules | SettingsDoctorSchedulesPage.tsx | Doctor Schedules |
-| /settings/lab-tests | SettingsLabTestsPage.tsx | Lab Test Master |
-| /settings/consent-forms | SettingsConsentFormsPage.tsx | Consent Forms |
-| /settings/ot-checklist | SettingsOTChecklistPage.tsx | OT Checklist Builder |
-| /settings/protocols | SettingsProtocolsPage.tsx | Clinical Protocols |
-| /settings/clinical-thresholds | SettingsClinicalThresholdsPage.tsx | Alert Thresholds |
-| /settings/discharge-workflow | SettingsDischargeWorkflowPage.tsx | Discharge Workflow |
-| /settings/approvals | SettingsApprovalsPage.tsx | Approval Rules |
-| /settings/opd-workflow | SettingsOPDWorkflowPage.tsx | OPD Queue Config |
-| /settings/notifications | SettingsNotificationsPage.tsx | Notification Config |
-| /settings/report-schedules | SettingsReportSchedulesPage.tsx | Scheduled Reports |
-| /settings/razorpay | SettingsRazorpayPage.tsx | Razorpay Payments |
-| /settings/gst | SettingsGSTPage.tsx | GST / NIC IRP |
-| /settings/abdm | SettingsABDMPage.tsx | ABDM / ABHA |
-| /settings/backup | SettingsBackupPage.tsx | Backup & Export |
-| /settings/api-keys | SettingsAPIKeysPage.tsx | API Keys |
+### Technical Details
 
-**Optimization**: To avoid 19 near-identical files, each will be a ~15-line component importing `SettingsPlaceholder` and passing config. Alternatively, a single config-driven approach with one file defining all 19 configs and exporting named components.
-
-### Step 3: Register all 19 routes in App.tsx
-
-Add routes inside the `<Route element={<AppShell />}>` block, importing each placeholder page. No existing routes are modified.
-
-### Step 4: Fix one card route mismatch
-
-In `SettingsPage.tsx`, the "Notification Config" card points to `/settings/notifications` -- this needs its own placeholder (included above). All other card routes already match.
-
-### Technical Notes
-- No existing files are modified except `App.tsx` (adding imports + routes).
-- `SettingsPage.tsx` card routes already match the target routes -- no href changes needed.
-- All placeholder pages share the same layout via the reusable component.
-- Estimated: ~22 new files (1 shared component + 19 page wrappers + route updates in App.tsx).
+- **Video**: Jitsi Meet iframe with `allow="camera; microphone; fullscreen; display-capture"`. Room ID = `HMS-{session.id}` for uniqueness. Doctor display name passed via URL param.
+- **Duration timer**: `useEffect` interval counting seconds from `doctor_joined_at`, displayed as MM:SS in the call info bar.
+- **Quick Rx**: Simple inline drug entry (name, dose, frequency, days) stored as local state array. "Send Rx on WhatsApp" formats as text message via `makeWaUrl`.
+- **Complete & Bill**: Updates session status to `completed`, sets `ended_at`, then navigates to `/billing` with relevant params.
+- **WhatsApp invite**: On schedule, generates a wa.me link with join URL pointing to `meet.jit.si/HMS-{roomId}` (patient joins directly via Jitsi, no portal auth needed).
+- **Data fetching**: Supabase queries filtered by hospital_id and current date for the queue. Status tabs filter locally.
 
