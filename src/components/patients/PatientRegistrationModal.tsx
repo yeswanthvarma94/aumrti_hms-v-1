@@ -169,8 +169,9 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess }) => {
             </div>
             <div className="flex-1 min-w-0">
               <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Phone</label>
-              <input type="tel" value={form.phone} onChange={(e) => set("phone", e.target.value)}
-                placeholder="Mobile number" className={inputClass} />
+              <input type="tel" value={form.phone} onChange={(e) => { set("phone", e.target.value); setFieldErrors(prev => ({ ...prev, phone: "" })); }}
+                placeholder="Mobile number" className={cn(inputClass, fieldErrors.phone && "border-destructive")} />
+              {fieldErrors.phone && <p className="text-destructive text-[11px] mt-0.5">{fieldErrors.phone}</p>}
             </div>
             <div className="flex-1 min-w-0">
               <label className="text-[11px] font-medium text-muted-foreground mb-1 block">DOB</label>
