@@ -13,6 +13,7 @@ import {
   Search, Check, Archive, Paperclip, Filter, ChevronDown, Inbox as InboxIcon,
   User, Phone, ExternalLink, PenSquare, X
 } from "lucide-react";
+import EmptyState from "@/components/EmptyState";
 
 // ── Types ──
 
