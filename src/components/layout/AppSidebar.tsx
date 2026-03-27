@@ -106,6 +106,7 @@ const navGroups: NavGroup[] = [
     ],
   },
   { label: "Analytics", icon: BarChart3, path: "/analytics" },
+  { label: "Inbox", icon: Inbox, path: "/inbox" },
   {
     label: "More",
     icon: MoreHorizontal,
