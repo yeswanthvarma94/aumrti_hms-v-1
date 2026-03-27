@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { Receipt, Printer, MessageSquare, FileText, Send } from "lucide-react";
+import { Receipt, Printer, MessageSquare, FileText, Send, Lock, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -13,6 +13,7 @@ import GSTInvoiceModal from "@/components/billing/GSTInvoiceModal";
 import PaymentLinkModal from "@/components/billing/PaymentLinkModal";
 import { useWhatsAppNotification } from "@/components/whatsapp/WhatsAppNotificationCard";
 import { sendBillGenerated } from "@/lib/whatsapp-notifications";
+import { validateGSTLineItems } from "@/lib/compliance-checks";
 import type { BillRecord } from "@/pages/billing/BillingPage";
 
 export interface LineItem {
