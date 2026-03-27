@@ -245,10 +245,35 @@ const GRNPanel: React.FC = () => {
       await (supabase as any).from("purchase_orders").update({ status: allComplete ? "completed" : "partial_grn" }).eq("id", selectedPO);
     }
 
+    // Save AI log if scan was used
+    if (scanImageFile && extractionConfidence !== null) {
+      let invoiceImageUrl: string | null = null;
+      const filePath = `${userData.hospital_id}/${grnNumber}.${scanImageFile.name.split('.').pop()}`;
+      const { data: uploadData } = await supabase.storage.from("grn-invoices").upload(filePath, scanImageFile);
+      if (uploadData?.path) {
+        const { data: urlData } = supabase.storage.from("grn-invoices").getPublicUrl(uploadData.path);
+        invoiceImageUrl = urlData?.publicUrl || null;
+        await (supabase as any).from("grn_records").update({ invoice_image_url: invoiceImageUrl }).eq("id", grn.id);
+      }
+      await (supabase as any).from("grn_ai_log").insert({
+        hospital_id: userData.hospital_id,
+        grn_id: grn.id,
+        invoice_image_url: invoiceImageUrl,
+        extraction_confidence: extractionConfidence,
+        items_extracted: itemsExtractedCount,
+        items_matched: validItems.filter((i: any) => i.match_status === "matched").length,
+        items_unmatched: validItems.filter((i: any) => i.match_status === "unmatched").length,
+        processing_time_ms: 0,
+        model_used: "gemini-2.5-flash",
+      });
+    }
+
     toast({ title: `GRN ${grnNumber} saved — stock updated` });
     setShowNew(false);
     setNewGRNItems([]);
     setSelectedPO("");
+    setScanImageFile(null);
+    setExtractionConfidence(null);
     setNewGRN({ vendor_id: "", invoice_number: "", invoice_date: "", quality_check: "pass" });
     loadRecords();
     loadMaster();
