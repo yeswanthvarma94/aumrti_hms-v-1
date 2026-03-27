@@ -135,6 +135,56 @@ const BillEditor: React.FC<Props> = ({ bill, hospitalId, onRefresh }) => {
     }
 
     await supabase.from("bills").update({ bill_status: "final" }).eq("id", bill.id);
+
+    // --- Accrual Revenue Recognition ---
+    // Ensure posting rules exist for this hospital
+    await (supabase as any).rpc("ensure_billing_posting_rules", { p_hospital_id: hospitalId });
+
+    // Get current user
+    const { data: { user } } = await supabase.auth.getUser();
+    const postedBy = user?.id || "system";
+
+    // Determine trigger event based on bill type
+    const billTypeMap: Record<string, string> = {
+      opd: "bill_finalized_opd",
+      ipd: "bill_finalized_ipd",
+      lab: "bill_finalized_lab",
+      radiology: "bill_finalized_radiology",
+      pharmacy: "bill_finalized_pharmacy",
+      ot: "bill_finalized_ot",
+    };
+    const triggerEvent = billTypeMap[bill.bill_type] || "bill_finalized_generic";
+
+    // Post revenue journal entry: Dr. AR / Cr. Revenue
+    const totalAmount = bill.total_amount || 0;
+    if (totalAmount > 0) {
+      await autoPostJournalEntry({
+        triggerEvent,
+        sourceModule: "billing",
+        sourceId: bill.id,
+        amount: totalAmount,
+        description: `Revenue: Bill #${bill.bill_number} (${bill.bill_type.toUpperCase()}) — ${bill.patient_name}`,
+        entryDate: bill.bill_date,
+        hospitalId,
+        postedBy,
+      });
+
+      // If insurance component exists, reclassify: Dr. Insurance Receivable / Cr. AR
+      const insuranceAmount = bill.insurance_amount || 0;
+      if (insuranceAmount > 0) {
+        await autoPostJournalEntry({
+          triggerEvent: "bill_insurance_reclassify",
+          sourceModule: "billing",
+          sourceId: bill.id,
+          amount: insuranceAmount,
+          description: `Insurance reclassification: Bill #${bill.bill_number} — ${bill.patient_name}`,
+          entryDate: bill.bill_date,
+          hospitalId,
+          postedBy,
+        });
+      }
+    }
+
     toast({ title: "Bill finalized" });
 
     // Trigger WhatsApp notification
