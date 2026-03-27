@@ -771,9 +771,9 @@ const LabResultWorkspace: React.FC<Props> = ({ order, onRefresh }) => {
           <Save size={14} /> Save All
         </button>
         <button onClick={handleValidateAll}
-          disabled={!allResultsEntered || hasUnacknowledgedCritical}
+          disabled={!allResultsEntered || hasUnacknowledgedCritical || validating}
           className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 active:scale-[0.97] transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5">
-          <CheckCircle2 size={14} /> Validate & Release
+          <CheckCircle2 size={14} /> {validating ? "Validating..." : "Validate & Release"}
         </button>
         <div className="flex-1" />
         <button onClick={() => {
