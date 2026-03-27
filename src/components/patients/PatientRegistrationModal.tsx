@@ -16,6 +16,8 @@ const genders = ["male", "female", "other"] as const;
 const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess }) => {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
+  const [dpdpConsent, setDpdpConsent] = useState(false);
+  const [hospitalName, setHospitalName] = useState("Hospital");
   const [form, setForm] = useState({
     full_name: "",
     phone: "",
@@ -31,6 +33,16 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess }) => {
     emergency_contact_name: "",
     emergency_contact_phone: "",
   });
+
+  useEffect(() => {
+    supabase.from("users").select("hospital_id").limit(1).single().then(({ data }) => {
+      if (data?.hospital_id) {
+        supabase.from("hospitals").select("name").eq("id", data.hospital_id).maybeSingle().then(({ data: h }) => {
+          if (h?.name) setHospitalName(h.name);
+        });
+      }
+    });
+  }, []);
 
   const set = (field: string, value: string) => setForm((f) => ({ ...f, [field]: value }));
 
