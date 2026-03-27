@@ -16,6 +16,7 @@ interface NDPSRecord {
   transaction_type: string;
   quantity: number;
   balance_after: number;
+  running_balance: number;
   transaction_date: string;
   patient_name: string | null;
   prescription_number: string | null;
