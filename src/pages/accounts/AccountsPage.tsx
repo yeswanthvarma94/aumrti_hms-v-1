@@ -104,7 +104,7 @@ const AccountsPage: React.FC = () => {
             <LedgerTab hospitalId={hospitalId} dateRange={dateRange} />
           </TabsContent>
           <TabsContent value="expenses" className="m-0 h-full">
-            <ExpensesTab hospitalId={hospitalId} dateRange={dateRange} />
+            <ExpensesTab hospitalId={hospitalId} dateRange={dateRange} userId={userId} />
           </TabsContent>
           <TabsContent value="journal" className="m-0 h-full">
             <JournalTab hospitalId={hospitalId} dateRange={dateRange} />
