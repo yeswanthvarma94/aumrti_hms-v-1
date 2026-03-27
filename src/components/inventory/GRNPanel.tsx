@@ -350,6 +350,15 @@ const GRNPanel: React.FC = () => {
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-auto">
           <DialogHeader><DialogTitle className="text-sm">New Goods Received Note</DialogTitle></DialogHeader>
           <div className="space-y-3">
+            {/* AI Invoice Scanner */}
+            <InvoiceScanZone onExtracted={handleInvoiceExtracted} />
+
+            {extractionConfidence !== null && (
+              <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-lg px-3 py-2 text-xs text-emerald-700 dark:text-emerald-400 flex items-center gap-2">
+                <span>✓ Extracted {itemsExtractedCount} items (confidence: {Math.round(extractionConfidence * 100)}%)</span>
+                <span className="text-emerald-500">— Please review each item before saving</span>
+              </div>
+            )}
             <div className="flex items-center gap-2 text-xs">
               <span className="text-muted-foreground">Against PO?</span>
               <Switch checked={fromPO} onCheckedChange={setFromPO} />
