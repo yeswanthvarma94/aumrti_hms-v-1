@@ -4844,6 +4844,44 @@ export type Database = {
           },
         ]
       }
+      role_permissions: {
+        Row: {
+          created_at: string | null
+          hospital_id: string
+          id: string
+          is_system_role: boolean | null
+          permissions: Json
+          role_label: string
+          role_name: string
+        }
+        Insert: {
+          created_at?: string | null
+          hospital_id: string
+          id?: string
+          is_system_role?: boolean | null
+          permissions?: Json
+          role_label: string
+          role_name: string
+        }
+        Update: {
+          created_at?: string | null
+          hospital_id?: string
+          id?: string
+          is_system_role?: boolean | null
+          permissions?: Json
+          role_label?: string
+          role_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "role_permissions_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       service_master: {
         Row: {
           category: string
