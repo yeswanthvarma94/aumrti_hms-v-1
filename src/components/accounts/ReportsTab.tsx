@@ -6,8 +6,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Printer, FileSpreadsheet, FileText, Bot, CheckCircle2, XCircle, ChevronDown, ChevronRight, Loader2 } from "lucide-react";
+import { Printer, FileSpreadsheet, FileText, Bot, CheckCircle2, XCircle, ChevronDown, ChevronRight, Loader2, Download } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { callAI } from "@/lib/aiProvider";
+import * as XLSX from "xlsx";
 
 interface Props {
   hospitalId: string | null;
