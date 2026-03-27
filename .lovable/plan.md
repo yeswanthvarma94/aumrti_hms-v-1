@@ -1,54 +1,37 @@
 
 
-## Plan: Fix Analytics Issues & Add Custom Date Range
+## Telemedicine Module — Implementation Plan
 
-### Issues Identified
+### Overview
+Build a `/telemedicine` page with 3-panel layout: consult queue, Jitsi Meet video embed, and patient/Rx panel. Uses free Jitsi Meet iframe (no API key needed).
 
-1. **Heatmap broken**: Currently renders heatmap cells in a flat 7-column grid without filling empty days or aligning to weekday columns. Only days with data appear -- no calendar structure.
-2. **No Discharge TAT chart**: Clinical tab lacks any discharge turnaround time visualization. Data exists in `admissions` table (`admitted_at`, `discharged_at`).
-3. **Last Month inaccurate**: The `getRange("last_month")` logic looks correct (`subMonths` + `startOfMonth`/`endOfMonth`), but clinical queries append `T23:59:59` to `range.to` for timestamp columns while revenue queries use date-only comparison -- this is fine. The real issue is that `useDashboardData` (dashboard page) calculates last month revenue differently than analytics. Will audit and align.
-4. **No custom date picker**: Only preset ranges exist. Need a "Custom" option with from/to date inputs.
+### Database Migration
 
-### Changes
+**New table: `teleconsult_sessions`**
+- Columns: id, hospital_id, patient_id, doctor_id, encounter_id, room_id (unique), scheduled_at, duration_minutes, status, patient/doctor joined timestamps, ended_at, actual_duration, prescription_sent, bill_generated, patient_phone, notes, created_at
+- Status validation trigger (scheduled, waiting, in_progress, completed, missed, cancelled)
+- RLS policies scoped to hospital_id
 
-#### File 1: `src/pages/analytics/AnalyticsPage.tsx`
-- Add a "Custom" button to the quick-range row
-- When "Custom" selected, show two `<input type="date">` fields (from/to) inline in the header
-- Store custom from/to in state, compute `range` from either quickRange or custom dates
-- Add `quickRange` state type to include `"custom"`
+### Files to Create
 
-#### File 2: `src/components/analytics/RevenueTab.tsx` — Fix Heatmap
-- Replace the flat grid with a proper calendar-style heatmap:
-  - Generate all dates in the range (from → to)
-  - Pad the first week with empty cells to align to correct weekday column
-  - Each cell shows the day number + color intensity based on collection amount
-  - Tooltip shows date + amount on hover
-  - Proper month/week labels
+1. **`src/pages/telemedicine/TelemedicinePage.tsx`** — Main page with 3-panel layout:
+   - **Left (300px)**: Queue with status tabs (Waiting/Scheduled/Completed), session cards with Join Call buttons
+   - **Center (flex)**: Dark bg, Jitsi iframe embed (`https://meet.jit.si/HMS-{roomId}`), call info bar with duration timer and End Call
+   - **Right (320px)**: Patient summary card, quick Rx editor (drug search + dose/freq/days), notes textarea, Complete & Bill button
 
-#### File 3: `src/components/analytics/ClinicalTab.tsx` — Add Discharge TAT
-- Add a new "Discharge TAT" chart section
-- Query `admissions` where `status='discharged'` in range
-- Calculate TAT = `discharged_at - admitted_at` in hours
-- Show as a horizontal bar chart grouped by ward or as a distribution histogram
-- Add average TAT KPI card
+2. **`src/components/telemedicine/ScheduleTeleconsultModal.tsx`** — Modal with patient search, doctor select, date/time pickers, duration pills (15/30/45 min), Send WhatsApp Invite button using existing `whatsapp-notifications.ts` utilities
 
-#### File 4: `src/hooks/useAnalyticsData.ts` — Add Discharge TAT hook + fix last month
-- Add `useDischargeTAT(range)` hook: fetches discharged admissions, calculates hours between admit and discharge, returns per-day or per-ward averages
-- Audit `useClinicalKPIs` to include avg discharge TAT and readmission rate
-- Ensure all date comparisons are consistent (date columns use date format, timestamp columns use datetime format)
+### Files to Modify
+
+3. **`src/App.tsx`** — Add route `/telemedicine` inside AppShell
+4. **`src/components/layout/AppSidebar.tsx`** — Add "Telemedicine" entry (Video icon) to the "More" submenu
 
 ### Technical Details
 
-**Heatmap fix**: Generate date array using a loop from `range.from` to `range.to`. Use `getDay()` to determine weekday offset. Render leading empty cells for alignment. Color intensity = `amount / maxAmount`.
-
-**Discharge TAT**: 
-```
-SELECT admitted_at, discharged_at, ward_id 
-FROM admissions 
-WHERE status='discharged' AND hospital_id=X 
-  AND discharged_at BETWEEN range.from AND range.to
-```
-TAT hours = `(discharged_at - admitted_at) / 3600000`
-
-**Custom date range**: Simple two-input approach with `<input type="date" />` styled to match existing UI. The `range` memo switches between `getRange(quickRange)` and `{from: customFrom, to: customTo}`.
+- **Video**: Jitsi Meet iframe with `allow="camera; microphone; fullscreen; display-capture"`. Room ID = `HMS-{session.id}` for uniqueness. Doctor display name passed via URL param.
+- **Duration timer**: `useEffect` interval counting seconds from `doctor_joined_at`, displayed as MM:SS in the call info bar.
+- **Quick Rx**: Simple inline drug entry (name, dose, frequency, days) stored as local state array. "Send Rx on WhatsApp" formats as text message via `makeWaUrl`.
+- **Complete & Bill**: Updates session status to `completed`, sets `ended_at`, then navigates to `/billing` with relevant params.
+- **WhatsApp invite**: On schedule, generates a wa.me link with join URL pointing to `meet.jit.si/HMS-{roomId}` (patient joins directly via Jitsi, no portal auth needed).
+- **Data fetching**: Supabase queries filtered by hospital_id and current date for the queue. Status tabs filter locally.
 
