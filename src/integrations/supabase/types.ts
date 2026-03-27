@@ -233,6 +233,8 @@ export type Database = {
           hospital_id: string
           id: string
           kpi_snapshot: Json
+          provider: string | null
+          tokens_used: number | null
         }
         Insert: {
           anomalies?: Json | null
@@ -243,6 +245,8 @@ export type Database = {
           hospital_id: string
           id?: string
           kpi_snapshot?: Json
+          provider?: string | null
+          tokens_used?: number | null
         }
         Update: {
           anomalies?: Json | null
@@ -253,10 +257,103 @@ export type Database = {
           hospital_id?: string
           id?: string
           kpi_snapshot?: Json
+          provider?: string | null
+          tokens_used?: number | null
         }
         Relationships: [
           {
             foreignKeyName: "ai_digests_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_provider_config: {
+        Row: {
+          api_key_ref: string | null
+          feature_key: string
+          hospital_id: string
+          id: string
+          is_active: boolean | null
+          max_tokens: number | null
+          model_name: string
+          provider: string
+          temperature: number | null
+        }
+        Insert: {
+          api_key_ref?: string | null
+          feature_key: string
+          hospital_id: string
+          id?: string
+          is_active?: boolean | null
+          max_tokens?: number | null
+          model_name: string
+          provider?: string
+          temperature?: number | null
+        }
+        Update: {
+          api_key_ref?: string | null
+          feature_key?: string
+          hospital_id?: string
+          id?: string
+          is_active?: boolean | null
+          max_tokens?: number | null
+          model_name?: string
+          provider?: string
+          temperature?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_provider_config_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      api_configurations: {
+        Row: {
+          config: Json
+          created_at: string | null
+          hospital_id: string
+          id: string
+          is_active: boolean | null
+          last_tested_at: string | null
+          service_key: string
+          service_name: string
+          test_message: string | null
+          test_status: string | null
+        }
+        Insert: {
+          config?: Json
+          created_at?: string | null
+          hospital_id: string
+          id?: string
+          is_active?: boolean | null
+          last_tested_at?: string | null
+          service_key: string
+          service_name: string
+          test_message?: string | null
+          test_status?: string | null
+        }
+        Update: {
+          config?: Json
+          created_at?: string | null
+          hospital_id?: string
+          id?: string
+          is_active?: boolean | null
+          last_tested_at?: string | null
+          service_key?: string
+          service_name?: string
+          test_message?: string | null
+          test_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "api_configurations_hospital_id_fkey"
             columns: ["hospital_id"]
             isOneToOne: false
             referencedRelation: "hospitals"

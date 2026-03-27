@@ -32,6 +32,7 @@ import {
   Landmark,
   HardDrive,
   KeyRound,
+  Cpu,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -115,6 +116,7 @@ const settingsGroups: SettingsGroup[] = [
       { icon: Landmark, title: "ABDM / ABHA", desc: "ABDM HIP/HIU configuration", route: "/settings/abdm" },
       { icon: HardDrive, title: "Backup & Export", desc: "Data export, audit logs", route: "/settings/backup" },
       { icon: KeyRound, title: "API Keys", desc: "Developer API access tokens", route: "/settings/api-keys" },
+      { icon: Cpu, title: "API Configuration Hub", desc: "AI providers, API keys, developer tools", route: "/settings/api-hub" },
     ],
   },
   {

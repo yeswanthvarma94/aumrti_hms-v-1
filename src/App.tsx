@@ -55,6 +55,7 @@ import SettingsGSTPage from "./pages/settings/SettingsGSTPage";
 import SettingsABDMPage from "./pages/settings/SettingsABDMPage";
 import SettingsBackupPage from "./pages/settings/SettingsBackupPage";
 import SettingsAPIKeysPage from "./pages/settings/SettingsAPIKeysPage";
+import APIConfigHubPage from "./pages/settings/APIConfigHubPage";
 import AnalyticsPage from "./pages/analytics/AnalyticsPage";
 import InboxPage from "./pages/inbox/InboxPage";
 import TelemedicinePage from "./pages/telemedicine/TelemedicinePage";
@@ -135,6 +136,7 @@ const App = () => (
             <Route path="/settings/abdm" element={<SettingsABDMPage />} />
             <Route path="/settings/backup" element={<SettingsBackupPage />} />
             <Route path="/settings/api-keys" element={<SettingsAPIKeysPage />} />
+            <Route path="/settings/api-hub" element={<APIConfigHubPage />} />
             <Route path="/admin/go-live" element={<GoLiveChecklistPage />} />
           </Route>
 
