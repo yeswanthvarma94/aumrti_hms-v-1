@@ -1649,6 +1649,94 @@ export type Database = {
         }
         Relationships: []
       }
+      inbox_messages: {
+        Row: {
+          assigned_to: string | null
+          channel: string
+          created_at: string | null
+          direction: string | null
+          hospital_id: string
+          id: string
+          is_read: boolean | null
+          is_starred: boolean | null
+          message_body: string
+          parent_id: string | null
+          patient_id: string | null
+          priority: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          sender_name: string | null
+          sender_phone: string | null
+          status: string | null
+          subject: string | null
+          tags: string[] | null
+        }
+        Insert: {
+          assigned_to?: string | null
+          channel: string
+          created_at?: string | null
+          direction?: string | null
+          hospital_id: string
+          id?: string
+          is_read?: boolean | null
+          is_starred?: boolean | null
+          message_body: string
+          parent_id?: string | null
+          patient_id?: string | null
+          priority?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          sender_name?: string | null
+          sender_phone?: string | null
+          status?: string | null
+          subject?: string | null
+          tags?: string[] | null
+        }
+        Update: {
+          assigned_to?: string | null
+          channel?: string
+          created_at?: string | null
+          direction?: string | null
+          hospital_id?: string
+          id?: string
+          is_read?: boolean | null
+          is_starred?: boolean | null
+          message_body?: string
+          parent_id?: string | null
+          patient_id?: string | null
+          priority?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          sender_name?: string | null
+          sender_phone?: string | null
+          status?: string | null
+          subject?: string | null
+          tags?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inbox_messages_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inbox_messages_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "inbox_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inbox_messages_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       incident_reports: {
         Row: {
           capa_id: string | null

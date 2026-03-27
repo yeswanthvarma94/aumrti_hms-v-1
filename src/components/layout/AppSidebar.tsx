@@ -27,6 +27,7 @@ import {
   Award,
   Settings,
   BarChart3,
+  Inbox,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "./SidebarContext";
@@ -105,6 +106,7 @@ const navGroups: NavGroup[] = [
     ],
   },
   { label: "Analytics", icon: BarChart3, path: "/analytics" },
+  { label: "Inbox", icon: Inbox, path: "/inbox" },
   {
     label: "More",
     icon: MoreHorizontal,
