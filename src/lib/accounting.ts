@@ -36,7 +36,7 @@ export const autoPostJournalEntry = async (data: PostingData) => {
     const entryNumber = `JE-${year}-${String((count || 0) + 1).padStart(4, "0")}`;
 
     // 3. Create journal entry
-    const { data: entry, error } = await supabase
+    const { data: entry, error } = await (supabase as any)
       .from("journal_entries")
       .insert({
         hospital_id: data.hospitalId,
