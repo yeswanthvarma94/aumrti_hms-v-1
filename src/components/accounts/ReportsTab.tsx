@@ -184,7 +184,7 @@ const ReportsTab: React.FC<Props> = ({ hospitalId, dateRange }) => {
 
   const loadData = async () => {
     setLoading(true);
-    const [{ data: accts }, { data: items }, { data: depts }, { data: deptLi }, { data: billItems }] = await Promise.all([
+    const [{ data: accts }, { data: items }, { data: depts }, { data: deptLi }, { data: billItems }, { data: gstItems }, { data: expenses }, { data: jeForExport }, { data: liForExport }] = await Promise.all([
       (supabase as any).from("chart_of_accounts").select("*").eq("hospital_id", hospitalId!).eq("is_active", true).order("code"),
       supabase.from("journal_line_items").select("account_id, account_code, debit_amount, credit_amount").eq("hospital_id", hospitalId!)
         .gte("created_at", dateRange.start).lte("created_at", dateRange.end + "T23:59:59"),
@@ -193,12 +193,28 @@ const ReportsTab: React.FC<Props> = ({ hospitalId, dateRange }) => {
         .gte("created_at", dateRange.start).lte("created_at", dateRange.end + "T23:59:59").not("cost_centre_id", "is", null),
       supabase.from("bill_line_items").select("department, total_amount").eq("hospital_id", hospitalId!)
         .gte("created_at", dateRange.start).lte("created_at", dateRange.end + "T23:59:59"),
+      // GSTR-1: bill_line_items with GST
+      supabase.from("bill_line_items").select("hsn_code, description, gst_percent, taxable_amount, gst_amount, bill_id").eq("hospital_id", hospitalId!)
+        .gte("created_at", dateRange.start).lte("created_at", dateRange.end + "T23:59:59"),
+      // TDS: expense_records
+      (supabase as any).from("expense_records").select("*").eq("hospital_id", hospitalId!)
+        .gte("expense_date", dateRange.start).lte("expense_date", dateRange.end),
+      // Tally: journal entries
+      (supabase as any).from("journal_entries").select("id, entry_number, entry_date, description, entry_type, source_module").eq("hospital_id", hospitalId!)
+        .gte("entry_date", dateRange.start).lte("entry_date", dateRange.end).order("entry_date"),
+      // Tally: all line items
+      (supabase as any).from("journal_line_items").select("journal_entry_id, account_code, debit_amount, credit_amount").eq("hospital_id", hospitalId!)
+        .gte("created_at", dateRange.start).lte("created_at", dateRange.end + "T23:59:59"),
     ]);
     setAccounts(accts || []);
     setLineItems(items || []);
     setDepartments(depts || []);
     setDeptLineItems(deptLi || []);
     setDeptBillItems(billItems || []);
+    setGstBillItems(gstItems || []);
+    setExpenseRecords(expenses || []);
+    setJournalEntriesForExport(jeForExport || []);
+    setExportLineItems(liForExport || []);
     setLoading(false);
   };
 
