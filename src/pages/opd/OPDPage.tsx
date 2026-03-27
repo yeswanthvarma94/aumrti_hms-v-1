@@ -35,10 +35,10 @@ const OPDPage: React.FC = () => {
 
   const fetchTokens = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) { setLoading(false); return; }
     setUserId(user.id);
-    const { data: userData } = await supabase.from("users").select("hospital_id").eq("id", user.id).single();
-    if (!userData) return;
+    const { data: userData, error: userErr } = await supabase.from("users").select("hospital_id").eq("id", user.id).single();
+    if (userErr || !userData) { console.error("OPD user fetch error:", userErr?.message); setLoading(false); return; }
     setHospitalId(userData.hospital_id);
 
     const today = new Date().toISOString().split("T")[0];
@@ -51,6 +51,8 @@ const OPDPage: React.FC = () => {
 
     if (error) {
       console.error("Error fetching tokens:", error);
+      toast({ title: "Failed to load OPD queue", description: "Please try again.", variant: "destructive" });
+      setLoading(false);
       return;
     }
     setTokens((data as unknown as OpdToken[]) || []);

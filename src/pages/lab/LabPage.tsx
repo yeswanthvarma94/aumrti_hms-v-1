@@ -32,12 +32,13 @@ const LabPage: React.FC = () => {
   const fetchHospitalId = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("users")
       .select("hospital_id")
       .eq("auth_user_id", user.id)
       .limit(1)
-      .single();
+      .maybeSingle();
+    if (error) { console.error("Lab hospital fetch error:", error.message); return; }
     if (data) setHospitalId(data.hospital_id);
   }, []);
 

@@ -35,18 +35,20 @@ const EmergencyPage: React.FC = () => {
 
   const fetchData = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) { setLoading(false); return; }
     setUserId(user.id);
-    const { data: ud } = await supabase.from("users").select("hospital_id").eq("id", user.id).single();
-    if (!ud) return;
+    const { data: ud, error: udErr } = await supabase.from("users").select("hospital_id").eq("id", user.id).single();
+    if (udErr || !ud) { console.error("ED user fetch error:", udErr?.message); setLoading(false); return; }
     setHospitalId(ud.hospital_id);
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("ed_visits")
       .select("*, patient:patients(full_name)")
       .eq("hospital_id", ud.hospital_id)
       .eq("is_active", true)
       .order("arrival_time", { ascending: false });
+
+    if (error) { console.error("ED visits fetch error:", error.message); setLoading(false); return; }
 
     const mapped: EDVisit[] = (data || []).map((v: any) => ({
       id: v.id,

@@ -18,6 +18,7 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess }) => {
   const [saving, setSaving] = useState(false);
   const [dpdpConsent, setDpdpConsent] = useState(false);
   const [hospitalName, setHospitalName] = useState("Hospital");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [form, setForm] = useState({
     full_name: "",
     phone: "",
@@ -47,12 +48,23 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess }) => {
   const set = (field: string, value: string) => setForm((f) => ({ ...f, [field]: value }));
 
   const handleSubmit = async () => {
-    if (!form.full_name.trim()) {
-      toast({ title: "Name is required", variant: "destructive" });
-      return;
+    const errors: Record<string, string> = {};
+    if (!form.full_name.trim() || form.full_name.trim().length < 2) {
+      errors.full_name = "Name must be at least 2 characters";
+    }
+    if (form.phone && !/^\d{10}$/.test(form.phone.replace(/\s/g, ""))) {
+      errors.phone = "Phone must be exactly 10 digits";
+    }
+    if (form.dob) {
+      const dobDate = new Date(form.dob);
+      if (dobDate >= new Date()) errors.dob = "Date of birth must be in the past";
     }
     if (!dpdpConsent) {
-      toast({ title: "DPDP consent is required", description: "Patient must consent to data collection before registration.", variant: "destructive" });
+      errors.dpdp = "Patient must consent to data collection";
+    }
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      toast({ title: "Please fix the highlighted errors", variant: "destructive" });
       return;
     }
     setSaving(true);
@@ -151,18 +163,22 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess }) => {
           <div className="flex gap-3">
             <div className="flex-[2] min-w-0">
               <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Full Name *</label>
-              <input value={form.full_name} onChange={(e) => set("full_name", e.target.value)}
-                placeholder="Patient's full name" className={inputClass} />
+              <input value={form.full_name} onChange={(e) => { set("full_name", e.target.value); setFieldErrors(prev => ({ ...prev, full_name: "" })); }}
+                placeholder="Patient's full name" className={cn(inputClass, fieldErrors.full_name && "border-destructive")} />
+              {fieldErrors.full_name && <p className="text-destructive text-[11px] mt-0.5">{fieldErrors.full_name}</p>}
             </div>
             <div className="flex-1 min-w-0">
               <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Phone</label>
-              <input type="tel" value={form.phone} onChange={(e) => set("phone", e.target.value)}
-                placeholder="Mobile number" className={inputClass} />
+              <input type="tel" value={form.phone} onChange={(e) => { set("phone", e.target.value); setFieldErrors(prev => ({ ...prev, phone: "" })); }}
+                placeholder="Mobile number" className={cn(inputClass, fieldErrors.phone && "border-destructive")} />
+              {fieldErrors.phone && <p className="text-destructive text-[11px] mt-0.5">{fieldErrors.phone}</p>}
             </div>
             <div className="flex-1 min-w-0">
               <label className="text-[11px] font-medium text-muted-foreground mb-1 block">DOB</label>
-              <input type="date" value={form.dob} onChange={(e) => set("dob", e.target.value)}
-                className={inputClass} />
+              <input type="date" value={form.dob} onChange={(e) => { set("dob", e.target.value); setFieldErrors(prev => ({ ...prev, dob: "" })); }}
+                max={new Date().toISOString().split("T")[0]}
+                className={cn(inputClass, fieldErrors.dob && "border-destructive")} />
+              {fieldErrors.dob && <p className="text-destructive text-[11px] mt-0.5">{fieldErrors.dob}</p>}
             </div>
           </div>
 
