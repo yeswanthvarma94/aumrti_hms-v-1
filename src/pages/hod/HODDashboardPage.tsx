@@ -69,7 +69,7 @@ const HODDashboardPage: React.FC = () => {
     }
 
     // Revenue
-    const { data: billData } = await supabase.from("bills").select("paid_amount, balance_due").eq("hospital_id", hospitalId).eq("bill_date", today).limit(500);
+    const { data: billData } = await supabase.from("bills").select("paid_amount, balance_due").eq("bill_date", today).limit(500);
     if (billData) {
       setRevenue({
         collected: billData.reduce((s, b) => s + (b.paid_amount || 0), 0),
