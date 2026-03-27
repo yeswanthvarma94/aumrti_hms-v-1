@@ -135,6 +135,7 @@ const App = () => (
             <Route path="/settings/abdm" element={<SettingsABDMPage />} />
             <Route path="/settings/backup" element={<SettingsBackupPage />} />
             <Route path="/settings/api-keys" element={<SettingsAPIKeysPage />} />
+            <Route path="/admin/go-live" element={<GoLiveChecklistPage />} />
           </Route>
 
           <Route path="*" element={<NotFound />} />
