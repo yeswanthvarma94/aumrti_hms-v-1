@@ -31,6 +31,53 @@ const GRNPanel: React.FC = () => {
   const [newGRNItems, setNewGRNItems] = useState<any[]>([]);
   const [itemSearch, setItemSearch] = useState("");
   const [saving, setSaving] = useState(false);
+  const [scanImageFile, setScanImageFile] = useState<File | null>(null);
+  const [extractionConfidence, setExtractionConfidence] = useState<number | null>(null);
+  const [itemsExtractedCount, setItemsExtractedCount] = useState(0);
+
+  const handleInvoiceExtracted = async (data: ExtractedInvoiceData, imageFile: File) => {
+    setScanImageFile(imageFile);
+    setExtractionConfidence(data.confidence);
+    setItemsExtractedCount(data.items?.length || 0);
+    setFromPO(false);
+
+    // Fill header
+    if (data.vendor_name) {
+      const matchedVendor = vendors.find(v => v.vendor_name.toLowerCase().includes(data.vendor_name!.toLowerCase().split(' ')[0]));
+      if (matchedVendor) setNewGRN(prev => ({ ...prev, vendor_id: matchedVendor.id }));
+    }
+    if (data.invoice_number) setNewGRN(prev => ({ ...prev, invoice_number: data.invoice_number! }));
+    if (data.invoice_date) setNewGRN(prev => ({ ...prev, invoice_date: data.invoice_date! }));
+
+    // Match items to inventory
+    const mapped = await Promise.all((data.items || []).map(async (item) => {
+      const searchWord = item.name.split(' ')[0];
+      const { data: matches } = await (supabase as any)
+        .from("inventory_items")
+        .select("id, item_name")
+        .ilike("item_name", `%${searchWord}%`)
+        .eq("is_active", true)
+        .limit(3);
+
+      const match = matches?.length === 1 ? matches[0] : null;
+      return {
+        item_id: match?.id || "",
+        item_name: match?.item_name || item.name,
+        extracted_name: item.name,
+        match_status: match ? "matched" : "unmatched",
+        po_qty: 0,
+        already_received: 0,
+        quantity_received: item.quantity || 0,
+        batch_number: item.batch_number || "",
+        expiry_date: item.expiry_date || "",
+        unit_rate: item.unit_rate || 0,
+        po_item_id: null,
+      };
+    }));
+
+    setNewGRNItems(mapped);
+    toast({ title: `Auto-filled ${mapped.length} items — please review` });
+  };
 
   const loadRecords = async () => {
     const { data } = await (supabase as any)
