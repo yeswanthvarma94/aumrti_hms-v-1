@@ -162,7 +162,11 @@ const LabTab: React.FC<{ session: PortalSession }> = ({ session }) => {
       {loading ? (
         <SkeletonList />
       ) : orders.length === 0 ? (
-        <EmptyCard text="No lab reports found" />
+        <div className="bg-white rounded-xl p-10 text-center" style={{ border: "1px solid #E2E8F0" }}>
+          <span className="text-[32px]">🔬</span>
+          <p className="text-sm font-semibold mt-2" style={{ color: "#374151" }}>No lab reports yet</p>
+          <p className="text-[13px] mt-1" style={{ color: "#94A3B8" }}>Your test results will appear here once ready</p>
+        </div>
       ) : (
         <div className="space-y-2.5">
           {orders.map((o) => {
