@@ -8,6 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Banknote, Smartphone, CreditCard, Building2, Printer, MessageSquare, FileText, RotateCcw, Check, Loader2 } from "lucide-react";
 import type { CartItem } from "./RetailCart";
 import { createPatientRecord, findPatientByPhone } from "@/lib/patient-records";
+import { autoPostJournalEntry } from "@/lib/accounting";
 
 type PaymentMode = "cash" | "upi" | "card" | "credit";
 
