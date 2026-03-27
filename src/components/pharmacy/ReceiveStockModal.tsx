@@ -163,6 +163,15 @@ const ReceiveStockModal: React.FC<Props> = ({ hospitalId, onClose, onSaved }) =>
         </div>
 
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+          {/* AI Invoice Scanner */}
+          <InvoiceScanZone onExtracted={handleInvoiceExtracted} />
+
+          {extractionConfidence !== null && (
+            <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-lg px-3 py-2 text-xs text-emerald-700 dark:text-emerald-400">
+              ✓ Extracted {items.length} drugs (confidence: {Math.round(extractionConfidence * 100)}%) — Please review before saving
+            </div>
+          )}
+
           <div className="grid grid-cols-3 gap-3">
             <div>
               <Label className="text-xs">Supplier Name *</Label>
