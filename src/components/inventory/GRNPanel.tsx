@@ -270,6 +270,18 @@ const GRNPanel: React.FC = () => {
     }
 
     toast({ title: `GRN ${grnNumber} saved — stock updated` });
+
+    // Auto-post journal entry for GRN
+    const vendorName = vendors.find(v => v.id === vendorId)?.vendor_name || "Vendor";
+    await autoPostJournalEntry({
+      triggerEvent: "grn_received",
+      sourceModule: "inventory",
+      sourceId: grn.id,
+      amount: totalAmount,
+      description: `GRN ${grnNumber} - ${vendorName}`,
+      hospitalId: userData.hospital_id,
+      postedBy: userData.id,
+    });
     setShowNew(false);
     setNewGRNItems([]);
     setSelectedPO("");

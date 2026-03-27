@@ -68,6 +68,21 @@ const PaymentsTab: React.FC<Props> = ({ bill, hospitalId, payments, onRefresh })
       });
     }
 
+    // Auto-post journal entries for each payment
+    for (const row of rows) {
+      const amt = Number(row.amount) || 0;
+      if (amt <= 0) continue;
+      await autoPostJournalEntry({
+        triggerEvent: `bill_payment_${row.mode}`,
+        sourceModule: "billing",
+        sourceId: bill.id,
+        amount: amt,
+        description: `Payment - Bill ${bill.bill_number} - ${row.mode}`,
+        hospitalId: hospitalId,
+        postedBy: userData?.id || "",
+      });
+    }
+
     const newPaid = bill.paid_amount + totalCollecting;
     const newBalance = Math.max(0, bill.patient_payable - newPaid);
     const newStatus = newBalance <= 0 ? "paid" : "partial";
