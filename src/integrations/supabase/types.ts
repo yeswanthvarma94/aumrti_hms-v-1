@@ -264,6 +264,60 @@ export type Database = {
           },
         ]
       }
+      api_keys: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          expires_at: string | null
+          hospital_id: string
+          id: string
+          is_active: boolean | null
+          key_hash: string
+          key_name: string
+          key_prefix: string
+          last_used_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          expires_at?: string | null
+          hospital_id: string
+          id?: string
+          is_active?: boolean | null
+          key_hash: string
+          key_name: string
+          key_prefix: string
+          last_used_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          expires_at?: string | null
+          hospital_id?: string
+          id?: string
+          is_active?: boolean | null
+          key_hash?: string
+          key_name?: string
+          key_prefix?: string
+          last_used_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "api_keys_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "api_keys_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_records: {
         Row: {
           audit_title: string
@@ -927,6 +981,88 @@ export type Database = {
           },
         ]
       }
+      clinical_protocols: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          description: string | null
+          hospital_id: string
+          id: string
+          is_active: boolean | null
+          protocol_name: string
+          steps: Json | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          hospital_id: string
+          id?: string
+          is_active?: boolean | null
+          protocol_name: string
+          steps?: Json | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          hospital_id?: string
+          id?: string
+          is_active?: boolean | null
+          protocol_name?: string
+          steps?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clinical_protocols_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      consent_templates: {
+        Row: {
+          content: string | null
+          created_at: string | null
+          form_name: string
+          form_type: string | null
+          hospital_id: string
+          id: string
+          is_active: boolean | null
+          requires_witness: boolean | null
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string | null
+          form_name: string
+          form_type?: string | null
+          hospital_id: string
+          id?: string
+          is_active?: boolean | null
+          requires_witness?: boolean | null
+        }
+        Update: {
+          content?: string | null
+          created_at?: string | null
+          form_name?: string
+          form_type?: string | null
+          hospital_id?: string
+          id?: string
+          is_active?: boolean | null
+          requires_witness?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consent_templates_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       department_indents: {
         Row: {
           approved_at: string | null
@@ -1568,7 +1704,11 @@ export type Database = {
           branding_config: Json | null
           country: string | null
           created_at: string
+          email: string | null
+          emergency_phone: string | null
+          established_year: number | null
           font_family: string | null
+          google_place_id: string | null
           gstin: string | null
           id: string
           is_active: boolean
@@ -1576,6 +1716,7 @@ export type Database = {
           nabh_number: string | null
           name: string
           payment_methods: string[]
+          phone: string | null
           pincode: string | null
           primary_color: string | null
           razorpay_key_id: string | null
@@ -1587,6 +1728,7 @@ export type Database = {
           type: Database["public"]["Enums"]["hospital_type"]
           wati_api_key: string | null
           wati_api_url: string | null
+          website: string | null
           whatsapp_enabled: boolean
         }
         Insert: {
@@ -1597,7 +1739,11 @@ export type Database = {
           branding_config?: Json | null
           country?: string | null
           created_at?: string
+          email?: string | null
+          emergency_phone?: string | null
+          established_year?: number | null
           font_family?: string | null
+          google_place_id?: string | null
           gstin?: string | null
           id?: string
           is_active?: boolean
@@ -1605,6 +1751,7 @@ export type Database = {
           nabh_number?: string | null
           name: string
           payment_methods?: string[]
+          phone?: string | null
           pincode?: string | null
           primary_color?: string | null
           razorpay_key_id?: string | null
@@ -1616,6 +1763,7 @@ export type Database = {
           type?: Database["public"]["Enums"]["hospital_type"]
           wati_api_key?: string | null
           wati_api_url?: string | null
+          website?: string | null
           whatsapp_enabled?: boolean
         }
         Update: {
@@ -1626,7 +1774,11 @@ export type Database = {
           branding_config?: Json | null
           country?: string | null
           created_at?: string
+          email?: string | null
+          emergency_phone?: string | null
+          established_year?: number | null
           font_family?: string | null
+          google_place_id?: string | null
           gstin?: string | null
           id?: string
           is_active?: boolean
@@ -1634,6 +1786,7 @@ export type Database = {
           nabh_number?: string | null
           name?: string
           payment_methods?: string[]
+          phone?: string | null
           pincode?: string | null
           primary_color?: string | null
           razorpay_key_id?: string | null
@@ -1645,6 +1798,7 @@ export type Database = {
           type?: Database["public"]["Enums"]["hospital_type"]
           wati_api_key?: string | null
           wati_api_url?: string | null
+          website?: string | null
           whatsapp_enabled?: boolean
         }
         Relationships: []
@@ -5319,6 +5473,38 @@ export type Database = {
             columns: ["item_id"]
             isOneToOne: false
             referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      system_config: {
+        Row: {
+          created_at: string | null
+          hospital_id: string
+          id: string
+          key: string
+          value: Json
+        }
+        Insert: {
+          created_at?: string | null
+          hospital_id: string
+          id?: string
+          key: string
+          value?: Json
+        }
+        Update: {
+          created_at?: string | null
+          hospital_id?: string
+          id?: string
+          key?: string
+          value?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "system_config_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
             referencedColumns: ["id"]
           },
         ]
