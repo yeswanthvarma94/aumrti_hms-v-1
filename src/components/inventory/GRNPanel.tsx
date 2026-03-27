@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import InvoiceScanZone, { type ExtractedInvoiceData } from "./InvoiceScanZone";
 
 const qcColors: Record<string, string> = {
   pass: "bg-emerald-100 text-emerald-700",
@@ -30,6 +31,53 @@ const GRNPanel: React.FC = () => {
   const [newGRNItems, setNewGRNItems] = useState<any[]>([]);
   const [itemSearch, setItemSearch] = useState("");
   const [saving, setSaving] = useState(false);
+  const [scanImageFile, setScanImageFile] = useState<File | null>(null);
+  const [extractionConfidence, setExtractionConfidence] = useState<number | null>(null);
+  const [itemsExtractedCount, setItemsExtractedCount] = useState(0);
+
+  const handleInvoiceExtracted = async (data: ExtractedInvoiceData, imageFile: File) => {
+    setScanImageFile(imageFile);
+    setExtractionConfidence(data.confidence);
+    setItemsExtractedCount(data.items?.length || 0);
+    setFromPO(false);
+
+    // Fill header
+    if (data.vendor_name) {
+      const matchedVendor = vendors.find(v => v.vendor_name.toLowerCase().includes(data.vendor_name!.toLowerCase().split(' ')[0]));
+      if (matchedVendor) setNewGRN(prev => ({ ...prev, vendor_id: matchedVendor.id }));
+    }
+    if (data.invoice_number) setNewGRN(prev => ({ ...prev, invoice_number: data.invoice_number! }));
+    if (data.invoice_date) setNewGRN(prev => ({ ...prev, invoice_date: data.invoice_date! }));
+
+    // Match items to inventory
+    const mapped = await Promise.all((data.items || []).map(async (item) => {
+      const searchWord = item.name.split(' ')[0];
+      const { data: matches } = await (supabase as any)
+        .from("inventory_items")
+        .select("id, item_name")
+        .ilike("item_name", `%${searchWord}%`)
+        .eq("is_active", true)
+        .limit(3);
+
+      const match = matches?.length === 1 ? matches[0] : null;
+      return {
+        item_id: match?.id || "",
+        item_name: match?.item_name || item.name,
+        extracted_name: item.name,
+        match_status: match ? "matched" : "unmatched",
+        po_qty: 0,
+        already_received: 0,
+        quantity_received: item.quantity || 0,
+        batch_number: item.batch_number || "",
+        expiry_date: item.expiry_date || "",
+        unit_rate: item.unit_rate || 0,
+        po_item_id: null,
+      };
+    }));
+
+    setNewGRNItems(mapped);
+    toast({ title: `Auto-filled ${mapped.length} items — please review` });
+  };
 
   const loadRecords = async () => {
     const { data } = await (supabase as any)
@@ -197,10 +245,35 @@ const GRNPanel: React.FC = () => {
       await (supabase as any).from("purchase_orders").update({ status: allComplete ? "completed" : "partial_grn" }).eq("id", selectedPO);
     }
 
+    // Save AI log if scan was used
+    if (scanImageFile && extractionConfidence !== null) {
+      let invoiceImageUrl: string | null = null;
+      const filePath = `${userData.hospital_id}/${grnNumber}.${scanImageFile.name.split('.').pop()}`;
+      const { data: uploadData } = await supabase.storage.from("grn-invoices").upload(filePath, scanImageFile);
+      if (uploadData?.path) {
+        const { data: urlData } = supabase.storage.from("grn-invoices").getPublicUrl(uploadData.path);
+        invoiceImageUrl = urlData?.publicUrl || null;
+        await (supabase as any).from("grn_records").update({ invoice_image_url: invoiceImageUrl }).eq("id", grn.id);
+      }
+      await (supabase as any).from("grn_ai_log").insert({
+        hospital_id: userData.hospital_id,
+        grn_id: grn.id,
+        invoice_image_url: invoiceImageUrl,
+        extraction_confidence: extractionConfidence,
+        items_extracted: itemsExtractedCount,
+        items_matched: validItems.filter((i: any) => i.match_status === "matched").length,
+        items_unmatched: validItems.filter((i: any) => i.match_status === "unmatched").length,
+        processing_time_ms: 0,
+        model_used: "gemini-2.5-flash",
+      });
+    }
+
     toast({ title: `GRN ${grnNumber} saved — stock updated` });
     setShowNew(false);
     setNewGRNItems([]);
     setSelectedPO("");
+    setScanImageFile(null);
+    setExtractionConfidence(null);
     setNewGRN({ vendor_id: "", invoice_number: "", invoice_date: "", quality_check: "pass" });
     loadRecords();
     loadMaster();
@@ -302,6 +375,15 @@ const GRNPanel: React.FC = () => {
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-auto">
           <DialogHeader><DialogTitle className="text-sm">New Goods Received Note</DialogTitle></DialogHeader>
           <div className="space-y-3">
+            {/* AI Invoice Scanner */}
+            <InvoiceScanZone onExtracted={handleInvoiceExtracted} />
+
+            {extractionConfidence !== null && (
+              <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-lg px-3 py-2 text-xs text-emerald-700 dark:text-emerald-400 flex items-center gap-2">
+                <span>✓ Extracted {itemsExtractedCount} items (confidence: {Math.round(extractionConfidence * 100)}%)</span>
+                <span className="text-emerald-500">— Please review each item before saving</span>
+              </div>
+            )}
             <div className="flex items-center gap-2 text-xs">
               <span className="text-muted-foreground">Against PO?</span>
               <Switch checked={fromPO} onCheckedChange={setFromPO} />
@@ -367,8 +449,14 @@ const GRNPanel: React.FC = () => {
                   </thead>
                   <tbody>
                     {newGRNItems.map((gi: any, idx: number) => (
-                      <tr key={idx} className="border-b border-border/50">
-                        <td className="px-3 py-1.5 truncate max-w-[140px]">{gi.item_name}</td>
+                      <tr key={idx} className={cn("border-b border-border/50", gi.match_status === "matched" ? "border-l-2 border-l-emerald-500" : gi.match_status === "unmatched" ? "border-l-2 border-l-amber-500" : "")}>
+                        <td className="px-3 py-1.5 truncate max-w-[140px]">
+                          <span>{gi.item_name}</span>
+                          {gi.extracted_name && gi.extracted_name !== gi.item_name && (
+                            <span className="block text-[10px] italic text-muted-foreground">Scanned: {gi.extracted_name}</span>
+                          )}
+                          {gi.match_status === "unmatched" && <span className="block text-[10px] text-amber-600">⚠️ Not in master</span>}
+                        </td>
                         {fromPO && <td className="px-2 py-1.5 text-right text-muted-foreground">{gi.po_qty}</td>}
                         <td className="px-2 py-1.5 text-right">
                           <Input type="number" min={0} value={gi.quantity_received} onChange={(e) => { const c = [...newGRNItems]; c[idx].quantity_received = parseInt(e.target.value) || 0; setNewGRNItems(c); }} className="h-6 w-14 text-xs text-right" />

@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import InvoiceScanZone, { type ExtractedInvoiceData } from "@/components/inventory/InvoiceScanZone";
 
 interface Props {
   hospitalId: string;
@@ -21,6 +22,8 @@ interface GRNItem {
   costPrice: number;
   mrp: number;
   gstPercent: number;
+  matchStatus?: string;
+  extractedName?: string;
 }
 
 interface DrugOption {
@@ -42,6 +45,42 @@ const ReceiveStockModal: React.FC<Props> = ({ hospitalId, onClose, onSaved }) =>
   const [drugs, setDrugs] = useState<DrugOption[]>([]);
   const [drugSearch, setDrugSearch] = useState<Record<number, string>>({});
   const [saving, setSaving] = useState(false);
+  const [extractionConfidence, setExtractionConfidence] = useState<number | null>(null);
+
+  const handleInvoiceExtracted = async (data: ExtractedInvoiceData) => {
+    if (data.vendor_name) setSupplierName(data.vendor_name);
+    if (data.invoice_number) setInvoiceNumber(data.invoice_number);
+    if (data.invoice_date) setInvoiceDate(data.invoice_date);
+    setExtractionConfidence(data.confidence);
+
+    const mapped = await Promise.all((data.items || []).map(async (item) => {
+      const searchWord = item.name.split(' ')[0];
+      const { data: matches } = await supabase
+        .from("drug_master")
+        .select("id, drug_name")
+        .eq("hospital_id", hospitalId)
+        .ilike("drug_name", `%${searchWord}%`)
+        .eq("is_active", true)
+        .limit(3);
+
+      const match = matches?.length === 1 ? matches[0] : null;
+      return {
+        drugId: match?.id || "",
+        drugName: match?.drug_name || item.name,
+        extractedName: item.name,
+        matchStatus: match ? "matched" : "unmatched",
+        batchNumber: item.batch_number || "",
+        expiryDate: item.expiry_date || "",
+        quantity: item.quantity || 0,
+        costPrice: item.unit_rate || 0,
+        mrp: item.mrp || 0,
+        gstPercent: item.gst_percent || 12,
+      };
+    }));
+
+    setItems(mapped.length > 0 ? mapped : [emptyItem()]);
+    toast({ title: `Auto-filled ${mapped.length} drugs — please review` });
+  };
 
   const fetchDrugs = useCallback(async () => {
     const { data } = await supabase
@@ -124,6 +163,15 @@ const ReceiveStockModal: React.FC<Props> = ({ hospitalId, onClose, onSaved }) =>
         </div>
 
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+          {/* AI Invoice Scanner */}
+          <InvoiceScanZone onExtracted={handleInvoiceExtracted} />
+
+          {extractionConfidence !== null && (
+            <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-lg px-3 py-2 text-xs text-emerald-700 dark:text-emerald-400">
+              ✓ Extracted {items.length} drugs (confidence: {Math.round(extractionConfidence * 100)}%) — Please review before saving
+            </div>
+          )}
+
           <div className="grid grid-cols-3 gap-3">
             <div>
               <Label className="text-xs">Supplier Name *</Label>
@@ -143,7 +191,11 @@ const ReceiveStockModal: React.FC<Props> = ({ hospitalId, onClose, onSaved }) =>
             <Label className="text-xs font-semibold uppercase text-muted-foreground">Items</Label>
             <div className="mt-2 space-y-3">
               {items.map((it, idx) => (
-                <div key={idx} className="p-3 border border-border rounded-lg space-y-2">
+                <div key={idx} className={`p-3 border rounded-lg space-y-2 ${it.matchStatus === "matched" ? "border-l-2 border-l-emerald-500 border-border" : it.matchStatus === "unmatched" ? "border-l-2 border-l-amber-500 border-border" : "border-border"}`}>
+                  {it.extractedName && it.extractedName !== it.drugName && (
+                    <p className="text-[10px] italic text-muted-foreground">Scanned: {it.extractedName}</p>
+                  )}
+                  {it.matchStatus === "unmatched" && <p className="text-[10px] text-amber-600">⚠️ Not in drug master — search to link</p>}
                   <div className="grid grid-cols-[1fr_auto] gap-2">
                     <div className="relative">
                       <Input
