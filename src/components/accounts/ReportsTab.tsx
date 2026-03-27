@@ -176,13 +176,21 @@ const ReportsTab: React.FC<Props> = ({ hospitalId, dateRange }) => {
 
   const loadData = async () => {
     setLoading(true);
-    const [{ data: accts }, { data: items }] = await Promise.all([
+    const [{ data: accts }, { data: items }, { data: depts }, { data: deptLi }, { data: billItems }] = await Promise.all([
       (supabase as any).from("chart_of_accounts").select("*").eq("hospital_id", hospitalId!).eq("is_active", true).order("code"),
       supabase.from("journal_line_items").select("account_id, account_code, debit_amount, credit_amount").eq("hospital_id", hospitalId!)
+        .gte("created_at", dateRange.start).lte("created_at", dateRange.end + "T23:59:59"),
+      supabase.from("departments").select("id, name").eq("hospital_id", hospitalId!).eq("is_active", true),
+      (supabase as any).from("journal_line_items").select("account_id, account_code, debit_amount, credit_amount, cost_centre_id").eq("hospital_id", hospitalId!)
+        .gte("created_at", dateRange.start).lte("created_at", dateRange.end + "T23:59:59").not("cost_centre_id", "is", null),
+      supabase.from("bill_line_items").select("department, total_amount").eq("hospital_id", hospitalId!)
         .gte("created_at", dateRange.start).lte("created_at", dateRange.end + "T23:59:59"),
     ]);
     setAccounts(accts || []);
     setLineItems(items || []);
+    setDepartments(depts || []);
+    setDeptLineItems(deptLi || []);
+    setDeptBillItems(billItems || []);
     setLoading(false);
   };
 
