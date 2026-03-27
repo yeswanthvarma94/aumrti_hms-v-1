@@ -106,6 +106,19 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess }) => {
     if (error) {
       toast({ title: "Registration failed", description: error.message, variant: "destructive" });
     } else {
+      // Log DPDP consent
+      const consentText = getDPDPConsentText(hospitalName);
+      // Get the patient id for consent record
+      const { data: newPatient } = await supabase.from("patients").select("id").eq("hospital_id", hospitalId).eq("uhid", uhid).maybeSingle();
+      if (newPatient) {
+        await supabase.from("patient_consents").insert({
+          hospital_id: hospitalId,
+          patient_id: newPatient.id,
+          consent_type: "data_collection",
+          consent_given: true,
+          consent_text: consentText,
+        } as any);
+      }
       toast({ title: `Patient registered — ${uhid}` });
       onSuccess();
     }
