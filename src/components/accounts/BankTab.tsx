@@ -185,7 +185,7 @@ const BankTab: React.FC<Props> = ({ hospitalId }) => {
     if (!hospitalId || !selectedBankId) return;
     setAutoMatching(true);
     const unreconciled = transactions.filter(t => !t.is_reconciled);
-    const { data: allLines } = await supabase
+    const { data: allLines } = await (supabase as any)
       .from("journal_line_items")
       .select("id, account_code, debit_amount, credit_amount, created_at, journal_entry_id")
       .eq("hospital_id", hospitalId)
