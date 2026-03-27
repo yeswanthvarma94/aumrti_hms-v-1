@@ -3827,6 +3827,57 @@ export type Database = {
           },
         ]
       }
+      patient_consents: {
+        Row: {
+          consent_given: boolean
+          consent_text: string | null
+          consent_type: string
+          consented_at: string | null
+          created_at: string | null
+          hospital_id: string
+          id: string
+          ip_address: string | null
+          patient_id: string
+        }
+        Insert: {
+          consent_given: boolean
+          consent_text?: string | null
+          consent_type: string
+          consented_at?: string | null
+          created_at?: string | null
+          hospital_id: string
+          id?: string
+          ip_address?: string | null
+          patient_id: string
+        }
+        Update: {
+          consent_given?: boolean
+          consent_text?: string | null
+          consent_type?: string
+          consented_at?: string | null
+          created_at?: string | null
+          hospital_id?: string
+          id?: string
+          ip_address?: string | null
+          patient_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_consents_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_consents_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       patient_feedback: {
         Row: {
           admission_id: string | null
