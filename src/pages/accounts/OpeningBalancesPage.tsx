@@ -110,16 +110,21 @@ const OpeningBalancesPage: React.FC = () => {
       if (entryErr) throw entryErr;
 
       // Insert line items
+      const accountNames: Record<string, string> = {};
+      (accounts || []).forEach((a: any) => { accountNames[a.code] = a.name || a.code; });
+
       const lineItemRows = lines.map(l => ({
         journal_entry_id: entry.id,
+        journal_id: entry.id,
         hospital_id: hospitalId,
         account_id: codeToId[l.code] || null,
         account_code: l.code,
+        account_name: accountNames[l.code] || l.code,
         debit_amount: l.debit,
         credit_amount: l.credit,
       }));
 
-      const { error: liErr } = await supabase.from("journal_line_items").insert(lineItemRows);
+      const { error: liErr } = await (supabase as any).from("journal_line_items").insert(lineItemRows);
       if (liErr) throw liErr;
 
       // Update opening_balance on chart_of_accounts
