@@ -6807,6 +6807,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      ensure_billing_posting_rules: {
+        Args: { p_hospital_id: string }
+        Returns: undefined
+      }
       get_daily_revenue_30d: {
         Args: { p_hospital_id: string }
         Returns: {
