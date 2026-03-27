@@ -62,6 +62,7 @@ import HODDashboardPage from "./pages/hod/HODDashboardPage";
 import TVDisplayPage from "./pages/tv/TVDisplayPage";
 import DesignSystem from "./pages/DesignSystem";
 import PatientPortal from "./pages/portal/PatientPortal";
+import GoLiveChecklistPage from "./pages/admin/GoLiveChecklistPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
