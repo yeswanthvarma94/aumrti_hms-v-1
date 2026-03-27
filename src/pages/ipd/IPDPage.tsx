@@ -49,23 +49,27 @@ const IPDPage: React.FC = () => {
 
   const fetchData = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const { data: ud } = await supabase.from("users").select("hospital_id").eq("id", user.id).single();
-    if (!ud) return;
+    if (!user) { setLoading(false); return; }
+    const { data: ud, error: udErr } = await supabase.from("users").select("hospital_id").eq("id", user.id).single();
+    if (udErr || !ud) { console.error("IPD user fetch error:", udErr?.message); setLoading(false); return; }
     setHospitalId(ud.hospital_id);
 
-    const { data: bedData } = await supabase
+    const { data: bedData, error: bedErr } = await supabase
       .from("beds")
       .select("id, bed_number, status, ward_id, ward:wards(name)")
       .eq("hospital_id", ud.hospital_id)
       .eq("is_active", true)
       .order("bed_number");
 
-    const { data: admData } = await supabase
+    if (bedErr) { console.error("IPD beds fetch error:", bedErr.message); setLoading(false); return; }
+
+    const { data: admData, error: admErr } = await supabase
       .from("admissions")
       .select("id, patient_id, bed_id, ward_id, admission_type, admission_number, admitting_diagnosis, admitted_at, expected_discharge_date, admitting_doctor_id, status, patient:patients(full_name), bed:beds(bed_number), ward:wards(name), doctor:users!admissions_admitting_doctor_id_fkey(full_name)")
       .eq("hospital_id", ud.hospital_id)
       .eq("status", "active");
+
+    if (admErr) { console.error("IPD admissions fetch error:", admErr.message); }
 
     const admMap = new Map<string, any>();
     const admRows: AdmissionRow[] = [];

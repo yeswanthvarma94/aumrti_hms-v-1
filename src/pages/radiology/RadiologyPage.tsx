@@ -60,13 +60,14 @@ const RadiologyPage: React.FC = () => {
 
   const fetchModalities = useCallback(async () => {
     if (!hospitalId) return;
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("radiology_modalities")
       .select("*")
       .eq("hospital_id", hospitalId)
       .eq("is_active", true)
       .order("name");
-    if (data) setModalities(data);
+    if (error) { console.error("Radiology modalities fetch error:", error.message); return; }
+    setModalities(data || []);
   }, [hospitalId]);
 
   const fetchOrders = useCallback(async () => {
