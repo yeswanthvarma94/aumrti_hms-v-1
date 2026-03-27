@@ -27,6 +27,7 @@ import {
   Award,
   Settings,
   BarChart3,
+  Inbox,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "./SidebarContext";
