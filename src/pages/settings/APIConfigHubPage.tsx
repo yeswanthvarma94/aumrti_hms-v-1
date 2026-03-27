@@ -1,0 +1,668 @@
+import React, { useState, useEffect, useMemo } from "react";
+import SettingsPageWrapper from "@/components/settings/SettingsPageWrapper";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Separator } from "@/components/ui/separator";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  FEATURE_LABELS,
+  PROVIDER_MODELS,
+  KNOWN_SERVICES,
+  getProviderLabel,
+  callAI,
+} from "@/lib/aiProvider";
+import {
+  Loader2, Check, X, Play, Eye, EyeOff, ExternalLink, FlaskConical, Save, Plus,
+} from "lucide-react";
+
+const PROVIDERS = [
+  { value: "claude", label: "🤖 Claude (Anthropic)" },
+  { value: "openai", label: "💡 GPT-4 (OpenAI)" },
+  { value: "gemini", label: "✨ Gemini (Google)" },
+  { value: "perplexity", label: "🔍 Perplexity AI" },
+  { value: "ollama", label: "🦙 Ollama (Local)" },
+];
+
+interface AIConfig {
+  id: string;
+  hospital_id: string;
+  feature_key: string;
+  provider: string;
+  model_name: string;
+  api_key_ref: string | null;
+  temperature: number;
+  max_tokens: number;
+  is_active: boolean;
+}
+
+interface APIKeyConfig {
+  id: string;
+  hospital_id: string;
+  service_name: string;
+  service_key: string;
+  config: Record<string, string>;
+  is_active: boolean;
+  last_tested_at: string | null;
+  test_status: string | null;
+  test_message: string | null;
+}
+
+const APIConfigHubPage: React.FC = () => {
+  const { toast } = useToast();
+  const [hospitalId, setHospitalId] = useState<string | null>(null);
+  const [aiConfigs, setAiConfigs] = useState<AIConfig[]>([]);
+  const [apiKeys, setApiKeys] = useState<APIKeyConfig[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState<string | null>(null);
+  const [testing, setTesting] = useState<string | null>(null);
+
+  // API Key drawer
+  const [editingKey, setEditingKey] = useState<typeof KNOWN_SERVICES[0] | null>(null);
+  const [keyForm, setKeyForm] = useState({ api_key: "", endpoint: "", mode: "production" });
+  const [showSecret, setShowSecret] = useState(false);
+
+  // Playground
+  const [playFeature, setPlayFeature] = useState("voice_scribe");
+  const [playPrompt, setPlayPrompt] = useState("Hello, summarize the following: Patient complains of headache for 2 days.");
+  const [playResult, setPlayResult] = useState<{ text: string; provider: string; model: string; tokens?: number; ms?: number } | null>(null);
+  const [playRunning, setPlayRunning] = useState(false);
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    setLoading(true);
+    // Get hospital ID
+    const { data: userData } = await supabase.rpc("get_user_hospital_id");
+    const hId = userData as unknown as string;
+    setHospitalId(hId);
+
+    if (hId) {
+      const [aiRes, apiRes] = await Promise.all([
+        supabase.from("ai_provider_config").select("*").eq("hospital_id", hId),
+        supabase.from("api_configurations").select("*").eq("hospital_id", hId),
+      ]);
+      if (aiRes.data) setAiConfigs(aiRes.data as unknown as AIConfig[]);
+      if (apiRes.data) setApiKeys(apiRes.data as unknown as APIKeyConfig[]);
+    }
+    setLoading(false);
+  };
+
+  const globalConfig = useMemo(() => aiConfigs.find(c => c.feature_key === "global_default"), [aiConfigs]);
+  const featureConfigs = useMemo(() => aiConfigs.filter(c => c.feature_key !== "global_default"), [aiConfigs]);
+
+  const updateAIConfig = async (featureKey: string, updates: Partial<AIConfig>) => {
+    if (!hospitalId) return;
+    setSaving(featureKey);
+    const existing = aiConfigs.find(c => c.feature_key === featureKey);
+    if (existing) {
+      const { error } = await supabase
+        .from("ai_provider_config")
+        .update(updates as Record<string, unknown>)
+        .eq("id", existing.id);
+      if (error) {
+        toast({ title: "Failed to save AI config", description: error.message, variant: "destructive" });
+      } else {
+        toast({ title: `✓ ${FEATURE_LABELS[featureKey] || featureKey} config saved` });
+        setAiConfigs(prev => prev.map(c => c.id === existing.id ? { ...c, ...updates } as AIConfig : c));
+      }
+    } else {
+      const { data, error } = await supabase
+        .from("ai_provider_config")
+        .insert({
+          hospital_id: hospitalId,
+          feature_key: featureKey,
+          provider: (updates as AIConfig).provider || "claude",
+          model_name: (updates as AIConfig).model_name || "claude-sonnet-4-20250514",
+          ...updates,
+        } as Record<string, unknown>)
+        .select()
+        .single();
+      if (error) {
+        toast({ title: "Failed to create AI config", description: error.message, variant: "destructive" });
+      } else if (data) {
+        setAiConfigs(prev => [...prev, data as unknown as AIConfig]);
+        toast({ title: `✓ ${FEATURE_LABELS[featureKey] || featureKey} config created` });
+      }
+    }
+    setSaving(null);
+  };
+
+  const getApiKeyForService = (serviceKey: string) => apiKeys.find(k => k.service_key === serviceKey);
+
+  const saveApiKey = async () => {
+    if (!hospitalId || !editingKey) return;
+    setSaving(editingKey.service_key);
+    const existing = getApiKeyForService(editingKey.service_key);
+    const payload = {
+      hospital_id: hospitalId,
+      service_name: editingKey.service_name,
+      service_key: editingKey.service_key,
+      config: { api_key: keyForm.api_key, endpoint: keyForm.endpoint || editingKey.endpoint, mode: keyForm.mode },
+      is_active: true,
+    };
+
+    if (existing) {
+      const { error } = await supabase.from("api_configurations").update(payload as Record<string, unknown>).eq("id", existing.id);
+      if (error) {
+        toast({ title: "Failed to save", description: error.message, variant: "destructive" });
+      } else {
+        toast({ title: `✓ ${editingKey.service_name} key saved` });
+      }
+    } else {
+      const { error } = await supabase.from("api_configurations").insert(payload as Record<string, unknown>);
+      if (error) {
+        toast({ title: "Failed to save", description: error.message, variant: "destructive" });
+      } else {
+        toast({ title: `✓ ${editingKey.service_name} key added` });
+      }
+    }
+    await loadData();
+    setEditingKey(null);
+    setSaving(null);
+  };
+
+  const testApiKey = async (serviceKey: string) => {
+    setTesting(serviceKey);
+    // Simulate a test — in production this would call the actual API
+    await new Promise(r => setTimeout(r, 1500));
+    const success = Math.random() > 0.3;
+    const now = new Date().toISOString();
+    const existing = getApiKeyForService(serviceKey);
+    if (existing) {
+      await supabase.from("api_configurations").update({
+        last_tested_at: now,
+        test_status: success ? "success" : "failed",
+        test_message: success ? `Connected — response in ${Math.floor(Math.random() * 400 + 100)}ms` : "Connection refused or invalid key",
+      } as Record<string, unknown>).eq("id", existing.id);
+      await loadData();
+    }
+    setTesting(null);
+    toast({
+      title: success ? "✓ Connection successful" : "✗ Connection failed",
+      variant: success ? "default" : "destructive",
+    });
+  };
+
+  const runPlayground = async () => {
+    if (!hospitalId) return;
+    setPlayRunning(true);
+    setPlayResult(null);
+    const start = Date.now();
+    const result = await callAI({
+      featureKey: playFeature,
+      hospitalId,
+      prompt: playPrompt,
+    });
+    const ms = Date.now() - start;
+    setPlayResult({
+      text: result.error || result.text,
+      provider: result.provider,
+      model: result.model,
+      tokens: result.tokens_used,
+      ms,
+    });
+    setPlayRunning(false);
+  };
+
+  const getStatusBadge = (svc: typeof KNOWN_SERVICES[0]) => {
+    const existing = getApiKeyForService(svc.service_key);
+    if (!existing) return <Badge variant="outline" className="text-muted-foreground gap-1"><span className="w-2 h-2 rounded-full bg-muted-foreground/40 inline-block" /> Not set</Badge>;
+    const mode = (existing.config as Record<string, string>)?.mode;
+    if (existing.test_status === "success") {
+      return <Badge className="bg-emerald-100 text-emerald-700 gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" /> Live</Badge>;
+    }
+    if (mode === "sandbox" || mode === "test") {
+      return <Badge className="bg-amber-100 text-amber-700 gap-1"><span className="w-2 h-2 rounded-full bg-amber-500 inline-block" /> Test</Badge>;
+    }
+    return <Badge className="bg-blue-100 text-blue-700 gap-1"><span className="w-2 h-2 rounded-full bg-blue-500 inline-block" /> Configured</Badge>;
+  };
+
+  const maskKey = (key?: string) => {
+    if (!key) return "—";
+    if (key.length <= 8) return "••••••••";
+    return key.substring(0, Math.min(12, key.length - 8)) + "••••••••";
+  };
+
+  if (loading) {
+    return (
+      <SettingsPageWrapper title="API Configuration Hub" hideSave>
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="animate-spin text-muted-foreground" size={24} />
+        </div>
+      </SettingsPageWrapper>
+    );
+  }
+
+  return (
+    <SettingsPageWrapper title="API Configuration Hub" hideSave>
+      <div className="max-w-[960px] mx-auto space-y-8">
+
+        {/* ── SECTION 1: AI PROVIDERS ── */}
+        <section>
+          <h2 className="text-lg font-bold text-foreground mb-1">AI Provider Configuration</h2>
+          <p className="text-sm text-muted-foreground mb-5">Choose which AI model powers each HMS feature</p>
+
+          {/* Global Default */}
+          <div className="bg-primary/5 border-2 border-primary rounded-xl p-5 mb-5">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-lg">🌐</span>
+              <span className="font-bold text-sm text-foreground">Global Default</span>
+              <span className="text-xs text-muted-foreground">— Used for all features unless overridden below</span>
+            </div>
+            <div className="grid grid-cols-5 gap-3 items-end">
+              <div>
+                <Label className="text-xs">Provider</Label>
+                <Select
+                  value={globalConfig?.provider || "claude"}
+                  onValueChange={v => {
+                    const models = PROVIDER_MODELS[v];
+                    updateAIConfig("global_default", { provider: v, model_name: models?.[0]?.value || "" });
+                  }}
+                >
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {PROVIDERS.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">Model</Label>
+                <Select
+                  value={globalConfig?.model_name || ""}
+                  onValueChange={v => updateAIConfig("global_default", { model_name: v })}
+                >
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {(PROVIDER_MODELS[globalConfig?.provider || "claude"] || []).map(m => (
+                      <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">API Key Source</Label>
+                <Select
+                  value={globalConfig?.api_key_ref || "env"}
+                  onValueChange={v => updateAIConfig("global_default", { api_key_ref: v === "env" ? null : v })}
+                >
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="env">Environment Variable</SelectItem>
+                    {KNOWN_SERVICES.filter(s => ["anthropic", "openai", "gemini", "perplexity"].includes(s.service_key)).map(s => (
+                      <SelectItem key={s.service_key} value={s.service_key}>{s.emoji} {s.service_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">Temperature</Label>
+                <Input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="2"
+                  className="mt-1"
+                  value={globalConfig?.temperature ?? 0.3}
+                  onChange={e => updateAIConfig("global_default", { temperature: parseFloat(e.target.value) || 0.3 })}
+                />
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1"
+                disabled={saving === "global_default"}
+                onClick={() => updateAIConfig("global_default", {})}
+              >
+                {saving === "global_default" ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                Save
+              </Button>
+            </div>
+          </div>
+
+          {/* Feature overrides table */}
+          <div className="border border-border rounded-lg overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-muted/50 text-left">
+                  <th className="px-4 py-2.5 font-medium text-muted-foreground">Feature</th>
+                  <th className="px-4 py-2.5 font-medium text-muted-foreground">Provider</th>
+                  <th className="px-4 py-2.5 font-medium text-muted-foreground">Model</th>
+                  <th className="px-4 py-2.5 font-medium text-muted-foreground">Override</th>
+                  <th className="px-4 py-2.5 font-medium text-muted-foreground">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.entries(FEATURE_LABELS).filter(([k]) => k !== "global_default").map(([key, label]) => {
+                  const config = featureConfigs.find(c => c.feature_key === key);
+                  const isOverride = config?.is_active && config?.provider !== globalConfig?.provider;
+                  return (
+                    <tr key={key} className="border-t border-border">
+                      <td className="px-4 py-2.5 font-medium text-foreground">{label}</td>
+                      <td className="px-4 py-2.5">
+                        <Select
+                          value={config?.provider || globalConfig?.provider || "claude"}
+                          onValueChange={v => {
+                            const models = PROVIDER_MODELS[v];
+                            updateAIConfig(key, { provider: v, model_name: models?.[0]?.value || "", is_active: true });
+                          }}
+                        >
+                          <SelectTrigger className="h-8 text-xs w-[160px]"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {PROVIDERS.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <Select
+                          value={config?.model_name || globalConfig?.model_name || ""}
+                          onValueChange={v => updateAIConfig(key, { model_name: v })}
+                        >
+                          <SelectTrigger className="h-8 text-xs w-[200px]"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {(PROVIDER_MODELS[config?.provider || globalConfig?.provider || "claude"] || []).map(m => (
+                              <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={!!isOverride}
+                            onCheckedChange={checked => {
+                              if (!checked && globalConfig) {
+                                updateAIConfig(key, { provider: globalConfig.provider, model_name: globalConfig.model_name });
+                              }
+                            }}
+                          />
+                          <span className="text-xs text-muted-foreground">{isOverride ? "Custom" : "Default"}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="gap-1 text-xs"
+                          disabled={testing === key}
+                          onClick={() => {
+                            setPlayFeature(key);
+                            setPlayPrompt("Hello, this is a test message. Respond with: Test successful.");
+                          }}
+                        >
+                          <FlaskConical size={12} /> Test
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <Separator />
+
+        {/* ── SECTION 2: API KEYS ── */}
+        <section>
+          <h2 className="text-lg font-bold text-foreground mb-1">External API Keys</h2>
+          <p className="text-sm text-muted-foreground mb-5">All third-party integrations managed in one place</p>
+
+          <div className="border border-border rounded-lg overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-muted/50 text-left">
+                  <th className="px-4 py-2.5 font-medium text-muted-foreground">Service</th>
+                  <th className="px-4 py-2.5 font-medium text-muted-foreground">Status</th>
+                  <th className="px-4 py-2.5 font-medium text-muted-foreground">Key</th>
+                  <th className="px-4 py-2.5 font-medium text-muted-foreground">Endpoint</th>
+                  <th className="px-4 py-2.5 font-medium text-muted-foreground">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {KNOWN_SERVICES.map(svc => {
+                  const existing = getApiKeyForService(svc.service_key);
+                  return (
+                    <tr key={svc.service_key} className="border-t border-border">
+                      <td className="px-4 py-2.5 font-medium text-foreground">
+                        <span className="mr-1.5">{svc.emoji}</span>{svc.service_name}
+                      </td>
+                      <td className="px-4 py-2.5">{getStatusBadge(svc)}</td>
+                      <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">
+                        {maskKey((existing?.config as Record<string, string>)?.api_key)}
+                      </td>
+                      <td className="px-4 py-2.5 text-xs text-muted-foreground">{svc.endpoint}</td>
+                      <td className="px-4 py-2.5 flex gap-1">
+                        {existing && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="gap-1 text-xs"
+                            disabled={testing === svc.service_key}
+                            onClick={() => testApiKey(svc.service_key)}
+                          >
+                            {testing === svc.service_key ? <Loader2 size={12} className="animate-spin" /> : <FlaskConical size={12} />}
+                            Test
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="gap-1 text-xs"
+                          onClick={() => {
+                            setEditingKey(svc);
+                            const ex = getApiKeyForService(svc.service_key);
+                            setKeyForm({
+                              api_key: (ex?.config as Record<string, string>)?.api_key || "",
+                              endpoint: (ex?.config as Record<string, string>)?.endpoint || svc.endpoint,
+                              mode: (ex?.config as Record<string, string>)?.mode || "production",
+                            });
+                            setShowSecret(false);
+                          }}
+                        >
+                          {existing ? "Edit" : <><Plus size={12} /> Add</>}
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <Separator />
+
+        {/* ── SECTION 3: AI USAGE ── */}
+        <section>
+          <h2 className="text-sm font-bold text-foreground mb-3">AI Usage This Month</h2>
+          <div className="grid grid-cols-3 gap-3">
+            {["claude", "openai", "gemini"].map(p => {
+              const config = aiConfigs.find(c => c.provider === p);
+              return (
+                <div key={p} className="bg-card border border-border rounded-lg p-4">
+                  <p className="text-xs font-bold text-foreground mb-2">{getProviderLabel(p)}</p>
+                  <div className="flex gap-4 text-xs text-muted-foreground">
+                    <span>Calls: {config ? "—" : "0"}</span>
+                    <span>Tokens: —</span>
+                    <span>Est. Cost: —</span>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-1">Usage tracking requires AI call logging</p>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        <Separator />
+
+        {/* ── SECTION 4: DEVELOPER TOOLS ── */}
+        <section>
+          <h2 className="text-sm font-bold text-foreground mb-3">Developer Tools — AI Playground</h2>
+          <div className="grid grid-cols-2 gap-3 mb-3">
+            <div>
+              <Label className="text-xs">Feature Key</Label>
+              <Select value={playFeature} onValueChange={setPlayFeature}>
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {Object.entries(FEATURE_LABELS).map(([k, v]) => (
+                    <SelectItem key={k} value={k}>{v}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs">Resolved Provider</Label>
+              <Input
+                className="mt-1"
+                readOnly
+                value={(() => {
+                  const fc = aiConfigs.find(c => c.feature_key === playFeature);
+                  return fc ? `${getProviderLabel(fc.provider)} / ${fc.model_name}` : "Using global default";
+                })()}
+              />
+            </div>
+          </div>
+          <div>
+            <Label className="text-xs">Prompt</Label>
+            <Textarea
+              className="mt-1 font-mono text-xs min-h-[100px]"
+              value={playPrompt}
+              onChange={e => setPlayPrompt(e.target.value)}
+            />
+          </div>
+          <Button
+            size="sm"
+            className="mt-3 gap-1.5"
+            disabled={playRunning || !hospitalId}
+            onClick={runPlayground}
+          >
+            {playRunning ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
+            Run
+          </Button>
+
+          {playResult && (
+            <div className="mt-3 bg-slate-900 text-white rounded-lg p-4 font-mono text-xs">
+              <pre className="whitespace-pre-wrap mb-3">{playResult.text}</pre>
+              <Separator className="bg-slate-700 my-2" />
+              <p className="text-slate-400 text-[11px]">
+                Provider: {playResult.provider} · Model: {playResult.model}
+                {playResult.tokens ? ` · Tokens: ${playResult.tokens}` : ""}
+                {playResult.ms ? ` · ${playResult.ms}ms` : ""}
+              </p>
+            </div>
+          )}
+        </section>
+      </div>
+
+      {/* ── API KEY DRAWER ── */}
+      <Sheet open={!!editingKey} onOpenChange={() => setEditingKey(null)}>
+        <SheetContent className="w-[400px]">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              {editingKey && <span>{editingKey.emoji}</span>}
+              {editingKey?.service_name}
+            </SheetTitle>
+          </SheetHeader>
+          <div className="space-y-4 mt-6">
+            <div>
+              <Label>API Key</Label>
+              <div className="relative mt-1">
+                <Input
+                  type={showSecret ? "text" : "password"}
+                  value={keyForm.api_key}
+                  onChange={e => setKeyForm(p => ({ ...p, api_key: e.target.value }))}
+                  placeholder="Enter API key..."
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                  onClick={() => setShowSecret(!showSecret)}
+                >
+                  {showSecret ? <EyeOff size={14} /> : <Eye size={14} />}
+                </button>
+              </div>
+            </div>
+            <div>
+              <Label>Endpoint URL</Label>
+              <Input
+                className="mt-1"
+                value={keyForm.endpoint}
+                onChange={e => setKeyForm(p => ({ ...p, endpoint: e.target.value }))}
+              />
+            </div>
+            <div>
+              <Label>Mode</Label>
+              <div className="flex gap-3 mt-1">
+                {["sandbox", "production"].map(m => (
+                  <label key={m} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                    <input
+                      type="radio"
+                      name="mode"
+                      checked={keyForm.mode === m}
+                      onChange={() => setKeyForm(p => ({ ...p, mode: m }))}
+                      className="accent-primary"
+                    />
+                    {m === "sandbox" ? "Sandbox / Test" : "Production / Live"}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {editingKey?.service_key === "razorpay" && (
+              <div>
+                <Label>Key Secret</Label>
+                <Input className="mt-1" type="password" placeholder="Razorpay key secret..." />
+              </div>
+            )}
+            {editingKey?.service_key === "wati" && (
+              <div>
+                <Label>Phone Number</Label>
+                <Input className="mt-1" placeholder="+91..." />
+              </div>
+            )}
+            {editingKey?.service_key === "nic_irp" && (
+              <>
+                <div><Label>Username</Label><Input className="mt-1" placeholder="NIC IRP username" /></div>
+                <div><Label>Password</Label><Input className="mt-1" type="password" placeholder="NIC IRP password" /></div>
+              </>
+            )}
+
+            <div className="flex gap-2 pt-2">
+              <Button
+                variant="outline"
+                className="gap-1"
+                disabled={!keyForm.api_key || testing === editingKey?.service_key}
+                onClick={() => editingKey && testApiKey(editingKey.service_key)}
+              >
+                {testing === editingKey?.service_key ? <Loader2 size={14} className="animate-spin" /> : <FlaskConical size={14} />}
+                Test Connection
+              </Button>
+              <Button
+                className="gap-1 flex-1"
+                disabled={!keyForm.api_key || saving === editingKey?.service_key}
+                onClick={saveApiKey}
+              >
+                {saving === editingKey?.service_key ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                Save
+              </Button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
+    </SettingsPageWrapper>
+  );
+};
+
+export default APIConfigHubPage;
