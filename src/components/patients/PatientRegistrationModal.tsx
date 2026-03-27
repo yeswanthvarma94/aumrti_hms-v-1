@@ -258,11 +258,26 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess }) => {
           </div>
         </div>
 
+        {/* DPDP Consent */}
+        <div className="px-7 pb-2">
+          <label className="flex items-start gap-2.5 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={dpdpConsent}
+              onChange={(e) => setDpdpConsent(e.target.checked)}
+              className="mt-0.5 w-4 h-4 rounded border-border accent-primary"
+            />
+            <span className="text-[11px] text-muted-foreground leading-relaxed">
+              {getDPDPConsentText(hospitalName)}
+            </span>
+          </label>
+        </div>
+
         {/* Footer */}
         <div className="px-7 py-4 flex-shrink-0 border-t border-border">
           <button
             onClick={handleSubmit}
-            disabled={saving}
+            disabled={saving || !dpdpConsent}
             className="w-full h-[44px] bg-[hsl(222,55%,23%)] text-white rounded-lg text-[14px] font-semibold hover:bg-[hsl(222,55%,18%)] active:scale-[0.98] transition-all disabled:opacity-60"
           >
             {saving ? "Registering…" : "Register Patient →"}

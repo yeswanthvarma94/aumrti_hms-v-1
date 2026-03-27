@@ -232,6 +232,25 @@ const RadiologyReportingWorkspace: React.FC<Props> = ({ order, hospitalId, onSta
       toast({ title: "Findings and Impression are required", variant: "destructive" });
       return;
     }
+
+    // PCPNDT compliance: block signing for USG without Form F
+    if (order.is_pcpndt || order.modality_type === "usg") {
+      const { data: formF } = await supabase
+        .from("pcpndt_form_f")
+        .select("id")
+        .eq("order_id", order.id)
+        .maybeSingle();
+
+      if (!formF) {
+        toast({
+          title: "PCPNDT Form F required before reporting",
+          description: "Please complete Form F in the PCPNDT tab before signing the report.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     setSaving(true);
 
     await supabase.from("radiology_reports").update({
