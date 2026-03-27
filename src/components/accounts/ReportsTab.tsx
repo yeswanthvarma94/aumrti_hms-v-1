@@ -349,6 +349,84 @@ Write a 5-point CFO-level financial analysis:
     setAiLoading(false);
   };
 
+  // ─── GSTR-1 computed data ───
+  const gstr1Data = useMemo(() => {
+    const grouped: Record<string, { hsn_code: string; description: string; gst_percent: number; taxable_value: number; total_gst: number; cgst: number; sgst: number; invoice_count: number; bill_ids: Set<string> }> = {};
+    for (const item of gstBillItems) {
+      const key = `${item.hsn_code || "NONE"}_${item.gst_percent || 0}`;
+      if (!grouped[key]) grouped[key] = { hsn_code: item.hsn_code || "", description: item.description || "", gst_percent: Number(item.gst_percent || 0), taxable_value: 0, total_gst: 0, cgst: 0, sgst: 0, invoice_count: 0, bill_ids: new Set() };
+      grouped[key].taxable_value += Number(item.taxable_amount || item.total_amount || 0);
+      grouped[key].total_gst += Number(item.gst_amount || 0);
+      grouped[key].cgst += Number(item.gst_amount || 0) / 2;
+      grouped[key].sgst += Number(item.gst_amount || 0) / 2;
+      if (item.bill_id) grouped[key].bill_ids.add(item.bill_id);
+    }
+    return Object.values(grouped).map(g => ({ ...g, invoice_count: g.bill_ids.size })).sort((a, b) => b.taxable_value - a.taxable_value);
+  }, [gstBillItems]);
+
+  const gstr1Json = useMemo(() => ({
+    gstin: "", fp: dateRange.start.slice(0, 7).replace("-", ""),
+    hsn: { data: gstr1Data.filter(r => r.gst_percent > 0).map(r => ({ hsn_sc: r.hsn_code, desc: r.description, uqc: "NOS", qty: r.invoice_count, txval: r.taxable_value, camt: r.cgst, samt: r.sgst, rt: r.gst_percent })) }
+  }), [gstr1Data, dateRange]);
+
+  // ─── TDS computed data ───
+  const TDS_CATEGORIES: Record<string, { section: string; rate: number }> = {
+    professional_fees: { section: "194J", rate: 10 },
+    rent: { section: "194I", rate: 10 },
+    contractors: { section: "194C", rate: 2 },
+  };
+
+  const tdsData = useMemo(() => {
+    return expenseRecords
+      .filter((e: any) => TDS_CATEGORIES[e.category])
+      .map((e: any) => {
+        const tdsInfo = TDS_CATEGORIES[e.category];
+        const amount = Number(e.amount || 0);
+        return { date: e.expense_date, vendor: e.vendor_name || e.description || "—", category: e.category, section: tdsInfo.section, amount, tds_rate: tdsInfo.rate, tds_amount: amount * (tdsInfo.rate / 100) };
+      });
+  }, [expenseRecords]);
+
+  // ─── Tally XML generator ───
+  const generateTallyXML = useCallback(() => {
+    const accountMap: Record<string, string> = {};
+    accounts.forEach(a => { accountMap[a.code] = a.name; });
+
+    const vouchers = journalEntriesForExport.map((je: any) => {
+      const lines = exportLineItems.filter((li: any) => li.journal_entry_id === je.id);
+      const ledgerEntries = lines.map((li: any) => {
+        const dr = Number(li.debit_amount || 0);
+        const cr = Number(li.credit_amount || 0);
+        const isDeemedPositive = dr > 0 ? "Yes" : "No";
+        const amount = dr > 0 ? -dr : cr; // Tally: debit = negative
+        return `              <ALLLEDGERENTRIES.LIST>
+                <LEDGERNAME>${accountMap[li.account_code] || li.account_code}</LEDGERNAME>
+                <ISDEEMEDPOSITIVE>${isDeemedPositive}</ISDEEMEDPOSITIVE>
+                <AMOUNT>${amount}</AMOUNT>
+              </ALLLEDGERENTRIES.LIST>`;
+      }).join("\n");
+
+      return `          <TALLYMESSAGE>
+            <VOUCHER VCHTYPE="Journal" ACTION="Create">
+              <DATE>${(je.entry_date || "").replace(/-/g, "")}</DATE>
+              <NARRATION>${je.description || ""}</NARRATION>
+${ledgerEntries}
+            </VOUCHER>
+          </TALLYMESSAGE>`;
+    }).join("\n");
+
+    return `<ENVELOPE>
+  <HEADER><TALLYREQUEST>Import Data</TALLYREQUEST></HEADER>
+  <BODY>
+    <IMPORTDATA>
+      <REQUESTDESC><REPORTNAME>Vouchers</REPORTNAME></REQUESTDESC>
+      <REQUESTDATA>
+${vouchers}
+      </REQUESTDATA>
+    </IMPORTDATA>
+  </BODY>
+</ENVELOPE>`;
+  }, [journalEntriesForExport, exportLineItems, accounts]);
+
   // ─── Render helpers ───
   const SectionRow = ({ label, className }: { label: string; className?: string }) => (
     <TableRow className={className}><TableCell colSpan={2} className="text-xs font-bold py-2">{label}</TableCell></TableRow>
