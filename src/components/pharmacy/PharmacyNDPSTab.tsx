@@ -100,6 +100,7 @@ const PharmacyNDPSTab: React.FC<Props> = ({ hospitalId }) => {
                 <th className="text-center py-2 px-2">Type</th>
                 <th className="text-right py-2 px-2">Qty</th>
                 <th className="text-right py-2 px-2">Balance</th>
+                <th className="text-right py-2 px-2">Running Bal.</th>
                 <th className="text-left py-2 px-2">Patient</th>
                 <th className="text-left py-2 px-2">Prescription #</th>
                 <th className="text-left py-2 px-2">Prescriber</th>
