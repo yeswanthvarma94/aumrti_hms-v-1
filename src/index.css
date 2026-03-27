@@ -133,3 +133,9 @@
   to { transform: translateY(0); }
 }
 .animate-slide-up { animation: slide-up 0.3s ease-out; }
+
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.animate-marquee { animation: marquee 20s linear infinite; }

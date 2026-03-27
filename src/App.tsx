@@ -36,6 +36,8 @@ import SettingsRolesPage from "./pages/settings/SettingsRolesPage";
 import SettingsBrandingPage from "./pages/settings/SettingsBrandingPage";
 import AnalyticsPage from "./pages/analytics/AnalyticsPage";
 import TelemedicinePage from "./pages/telemedicine/TelemedicinePage";
+import HODDashboardPage from "./pages/hod/HODDashboardPage";
+import TVDisplayPage from "./pages/tv/TVDisplayPage";
 import DesignSystem from "./pages/DesignSystem";
 import PatientPortal from "./pages/portal/PatientPortal";
 import NotFound from "./pages/NotFound";
@@ -56,6 +58,8 @@ const App = () => (
           <Route path="/register" element={<Register />} />
           <Route path="/setup/onboarding" element={<OnboardingWizard />} />
           <Route path="/design-system" element={<DesignSystem />} />
+          <Route path="/tv-display" element={<TVDisplayPage />} />
+          <Route path="/hod-dashboard" element={<HODDashboardPage />} />
 
           {/* App shell routes */}
           <Route element={<AppShell />}>
