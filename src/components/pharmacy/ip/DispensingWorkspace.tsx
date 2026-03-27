@@ -587,7 +587,11 @@ const DispensingWorkspace: React.FC<Props> = ({ hospitalId, prescription, onDisp
           disabled={!canDispenseAll}
           onClick={handleDispenseAll}
         >
-          <Check size={14} className="mr-1" /> Dispense All
+          {dispensing ? (
+            <><Loader2 size={14} className="mr-1 animate-spin" /> Processing...</>
+          ) : (
+            <><Check size={14} className="mr-1" /> Dispense All</>
+          )}
         </Button>
       </div>
     </div>
