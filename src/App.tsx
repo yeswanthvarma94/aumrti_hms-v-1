@@ -114,6 +114,26 @@ const App = () => (
             <Route path="/settings/roles" element={<SettingsRolesPage />} />
             <Route path="/settings/branding" element={<SettingsBrandingPage />} />
             <Route path="/settings/whatsapp" element={<SettingsWhatsAppPage />} />
+            <Route path="/settings/language" element={<SettingsLanguagePage />} />
+            <Route path="/settings/plan" element={<SettingsPlanPage />} />
+            <Route path="/settings/shifts" element={<SettingsShiftsPage />} />
+            <Route path="/settings/modules" element={<SettingsModulesPage />} />
+            <Route path="/settings/doctor-schedules" element={<SettingsDoctorSchedulesPage />} />
+            <Route path="/settings/lab-tests" element={<SettingsLabTestsPage />} />
+            <Route path="/settings/consent-forms" element={<SettingsConsentFormsPage />} />
+            <Route path="/settings/ot-checklist" element={<SettingsOTChecklistPage />} />
+            <Route path="/settings/protocols" element={<SettingsProtocolsPage />} />
+            <Route path="/settings/clinical-thresholds" element={<SettingsClinicalThresholdsPage />} />
+            <Route path="/settings/discharge-workflow" element={<SettingsDischargeWorkflowPage />} />
+            <Route path="/settings/approvals" element={<SettingsApprovalsPage />} />
+            <Route path="/settings/opd-workflow" element={<SettingsOPDWorkflowPage />} />
+            <Route path="/settings/notifications" element={<SettingsNotificationsPage />} />
+            <Route path="/settings/report-schedules" element={<SettingsReportSchedulesPage />} />
+            <Route path="/settings/razorpay" element={<SettingsRazorpayPage />} />
+            <Route path="/settings/gst" element={<SettingsGSTPage />} />
+            <Route path="/settings/abdm" element={<SettingsABDMPage />} />
+            <Route path="/settings/backup" element={<SettingsBackupPage />} />
+            <Route path="/settings/api-keys" element={<SettingsAPIKeysPage />} />
           </Route>
 
           <Route path="*" element={<NotFound />} />
