@@ -35,6 +35,26 @@ import SettingsProfilePage from "./pages/settings/SettingsProfilePage";
 import SettingsRolesPage from "./pages/settings/SettingsRolesPage";
 import SettingsBrandingPage from "./pages/settings/SettingsBrandingPage";
 import SettingsWhatsAppPage from "./pages/settings/SettingsWhatsAppPage";
+import SettingsLanguagePage from "./pages/settings/SettingsLanguagePage";
+import SettingsPlanPage from "./pages/settings/SettingsPlanPage";
+import SettingsShiftsPage from "./pages/settings/SettingsShiftsPage";
+import SettingsModulesPage from "./pages/settings/SettingsModulesPage";
+import SettingsDoctorSchedulesPage from "./pages/settings/SettingsDoctorSchedulesPage";
+import SettingsLabTestsPage from "./pages/settings/SettingsLabTestsPage";
+import SettingsConsentFormsPage from "./pages/settings/SettingsConsentFormsPage";
+import SettingsOTChecklistPage from "./pages/settings/SettingsOTChecklistPage";
+import SettingsProtocolsPage from "./pages/settings/SettingsProtocolsPage";
+import SettingsClinicalThresholdsPage from "./pages/settings/SettingsClinicalThresholdsPage";
+import SettingsDischargeWorkflowPage from "./pages/settings/SettingsDischargeWorkflowPage";
+import SettingsApprovalsPage from "./pages/settings/SettingsApprovalsPage";
+import SettingsOPDWorkflowPage from "./pages/settings/SettingsOPDWorkflowPage";
+import SettingsNotificationsPage from "./pages/settings/SettingsNotificationsPage";
+import SettingsReportSchedulesPage from "./pages/settings/SettingsReportSchedulesPage";
+import SettingsRazorpayPage from "./pages/settings/SettingsRazorpayPage";
+import SettingsGSTPage from "./pages/settings/SettingsGSTPage";
+import SettingsABDMPage from "./pages/settings/SettingsABDMPage";
+import SettingsBackupPage from "./pages/settings/SettingsBackupPage";
+import SettingsAPIKeysPage from "./pages/settings/SettingsAPIKeysPage";
 import AnalyticsPage from "./pages/analytics/AnalyticsPage";
 import InboxPage from "./pages/inbox/InboxPage";
 import TelemedicinePage from "./pages/telemedicine/TelemedicinePage";
@@ -94,6 +114,26 @@ const App = () => (
             <Route path="/settings/roles" element={<SettingsRolesPage />} />
             <Route path="/settings/branding" element={<SettingsBrandingPage />} />
             <Route path="/settings/whatsapp" element={<SettingsWhatsAppPage />} />
+            <Route path="/settings/language" element={<SettingsLanguagePage />} />
+            <Route path="/settings/plan" element={<SettingsPlanPage />} />
+            <Route path="/settings/shifts" element={<SettingsShiftsPage />} />
+            <Route path="/settings/modules" element={<SettingsModulesPage />} />
+            <Route path="/settings/doctor-schedules" element={<SettingsDoctorSchedulesPage />} />
+            <Route path="/settings/lab-tests" element={<SettingsLabTestsPage />} />
+            <Route path="/settings/consent-forms" element={<SettingsConsentFormsPage />} />
+            <Route path="/settings/ot-checklist" element={<SettingsOTChecklistPage />} />
+            <Route path="/settings/protocols" element={<SettingsProtocolsPage />} />
+            <Route path="/settings/clinical-thresholds" element={<SettingsClinicalThresholdsPage />} />
+            <Route path="/settings/discharge-workflow" element={<SettingsDischargeWorkflowPage />} />
+            <Route path="/settings/approvals" element={<SettingsApprovalsPage />} />
+            <Route path="/settings/opd-workflow" element={<SettingsOPDWorkflowPage />} />
+            <Route path="/settings/notifications" element={<SettingsNotificationsPage />} />
+            <Route path="/settings/report-schedules" element={<SettingsReportSchedulesPage />} />
+            <Route path="/settings/razorpay" element={<SettingsRazorpayPage />} />
+            <Route path="/settings/gst" element={<SettingsGSTPage />} />
+            <Route path="/settings/abdm" element={<SettingsABDMPage />} />
+            <Route path="/settings/backup" element={<SettingsBackupPage />} />
+            <Route path="/settings/api-keys" element={<SettingsAPIKeysPage />} />
           </Route>
 
           <Route path="*" element={<NotFound />} />
