@@ -224,10 +224,15 @@ const BillEditor: React.FC<Props> = ({ bill, hospitalId, onRefresh }) => {
           <Badge className={cn("text-[10px]", statusBadgeStyle[bill.payment_status] || statusBadgeStyle.unpaid)}>
             {bill.payment_status.toUpperCase()}
           </Badge>
+          {isIRNLocked && (
+            <Badge variant="outline" className="text-[10px] gap-1 border-amber-300 text-amber-700">
+              <Lock size={10} /> IRN Locked
+            </Badge>
+          )}
           {bill.bill_status === "draft" && (
             <Button size="sm" className="h-7 text-[11px]" onClick={handleFinalize}>Finalise Bill</Button>
           )}
-          {bill.bill_status === "final" && bill.gst_amount > 0 && (
+          {bill.bill_status === "final" && bill.gst_amount > 0 && !isIRNLocked && (
             <Button size="sm" className="h-7 text-[11px] gap-1 bg-emerald-700 hover:bg-emerald-800 text-white" onClick={handleGenerateGST}>
               <FileText size={12} /> GST Invoice
             </Button>
