@@ -91,6 +91,7 @@ const App = () => (
             <Route path="/settings/profile" element={<SettingsProfilePage />} />
             <Route path="/settings/roles" element={<SettingsRolesPage />} />
             <Route path="/settings/branding" element={<SettingsBrandingPage />} />
+            <Route path="/settings/whatsapp" element={<SettingsWhatsAppPage />} />
           </Route>
 
           <Route path="*" element={<NotFound />} />

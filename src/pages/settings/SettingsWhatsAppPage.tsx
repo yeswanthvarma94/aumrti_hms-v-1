@@ -113,7 +113,7 @@ const SAMPLE_VALUES: Record<string, string> = {
 function substitutePreview(template: string): string {
   let result = template;
   for (const [key, val] of Object.entries(SAMPLE_VALUES)) {
-    result = result.replaceAll(key, val);
+    result = result.split(key).join(val);
   }
   return result;
 }
