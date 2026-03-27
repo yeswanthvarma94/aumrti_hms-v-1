@@ -1001,57 +1001,6 @@ export type Database = {
           },
         ]
       }
-      chart_of_accounts: {
-        Row: {
-          account_type: string
-          code: string
-          created_at: string | null
-          hospital_id: string
-          id: string
-          is_active: boolean | null
-          is_system: boolean | null
-          name: string
-          parent_id: string | null
-        }
-        Insert: {
-          account_type: string
-          code: string
-          created_at?: string | null
-          hospital_id: string
-          id?: string
-          is_active?: boolean | null
-          is_system?: boolean | null
-          name: string
-          parent_id?: string | null
-        }
-        Update: {
-          account_type?: string
-          code?: string
-          created_at?: string | null
-          hospital_id?: string
-          id?: string
-          is_active?: boolean | null
-          is_system?: boolean | null
-          name?: string
-          parent_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "chart_of_accounts_hospital_id_fkey"
-            columns: ["hospital_id"]
-            isOneToOne: false
-            referencedRelation: "hospitals"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "chart_of_accounts_parent_id_fkey"
-            columns: ["parent_id"]
-            isOneToOne: false
-            referencedRelation: "chart_of_accounts"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       clinical_alerts: {
         Row: {
           acknowledged_at: string | null
@@ -2755,105 +2704,6 @@ export type Database = {
             columns: ["recorded_by"]
             isOneToOne: false
             referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      journal_entries: {
-        Row: {
-          created_at: string | null
-          created_by: string | null
-          entry_date: string
-          entry_number: string
-          hospital_id: string
-          id: string
-          is_auto: boolean | null
-          narration: string | null
-          source_module: string | null
-          source_ref_id: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          created_by?: string | null
-          entry_date?: string
-          entry_number: string
-          hospital_id: string
-          id?: string
-          is_auto?: boolean | null
-          narration?: string | null
-          source_module?: string | null
-          source_ref_id?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          created_by?: string | null
-          entry_date?: string
-          entry_number?: string
-          hospital_id?: string
-          id?: string
-          is_auto?: boolean | null
-          narration?: string | null
-          source_module?: string | null
-          source_ref_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "journal_entries_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "journal_entries_hospital_id_fkey"
-            columns: ["hospital_id"]
-            isOneToOne: false
-            referencedRelation: "hospitals"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      journal_entry_lines: {
-        Row: {
-          account_id: string
-          created_at: string | null
-          credit: number | null
-          debit: number | null
-          id: string
-          journal_entry_id: string
-          narration: string | null
-        }
-        Insert: {
-          account_id: string
-          created_at?: string | null
-          credit?: number | null
-          debit?: number | null
-          id?: string
-          journal_entry_id: string
-          narration?: string | null
-        }
-        Update: {
-          account_id?: string
-          created_at?: string | null
-          credit?: number | null
-          debit?: number | null
-          id?: string
-          journal_entry_id?: string
-          narration?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "journal_entry_lines_account_id_fkey"
-            columns: ["account_id"]
-            isOneToOne: false
-            referencedRelation: "chart_of_accounts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "journal_entry_lines_journal_entry_id_fkey"
-            columns: ["journal_entry_id"]
-            isOneToOne: false
-            referencedRelation: "journal_entries"
             referencedColumns: ["id"]
           },
         ]
@@ -6434,10 +6284,6 @@ export type Database = {
           amount: number
           bill_date: string
         }[]
-      }
-      get_next_journal_number: {
-        Args: { p_hospital_id: string }
-        Returns: string
       }
       get_user_hospital_id: { Args: never; Returns: string }
       has_role: {
