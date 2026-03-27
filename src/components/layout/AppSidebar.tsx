@@ -14,6 +14,7 @@ import {
   Scissors,
   HeartPulse,
   UserPlus,
+  Video,
   TestTube,
   ScanLine,
   Receipt,
@@ -108,6 +109,7 @@ const navGroups: NavGroup[] = [
     subItems: [
       { label: "HR & Payroll", path: "/hr", icon: Users, subtitle: "Staff, roster & payroll" },
       { label: "Inventory", path: "/inventory", icon: Package, subtitle: "Stores & supplies" },
+      { label: "Telemedicine", path: "/telemedicine", icon: Video, subtitle: "Video consultations" },
       { label: "Quality & NABH", path: "/quality", icon: Award },
       { label: "Settings", path: "/settings", icon: Settings, subtitle: "System configuration" },
     ],

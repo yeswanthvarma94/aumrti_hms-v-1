@@ -35,6 +35,7 @@ import SettingsProfilePage from "./pages/settings/SettingsProfilePage";
 import SettingsRolesPage from "./pages/settings/SettingsRolesPage";
 import SettingsBrandingPage from "./pages/settings/SettingsBrandingPage";
 import AnalyticsPage from "./pages/analytics/AnalyticsPage";
+import TelemedicinePage from "./pages/telemedicine/TelemedicinePage";
 import DesignSystem from "./pages/DesignSystem";
 import PatientPortal from "./pages/portal/PatientPortal";
 import NotFound from "./pages/NotFound";
@@ -75,6 +76,7 @@ const App = () => (
             <Route path="/inventory" element={<InventoryPage />} />
             <Route path="/quality" element={<QualityPage />} />
             <Route path="/analytics" element={<AnalyticsPage />} />
+            <Route path="/telemedicine" element={<TelemedicinePage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/settings/staff" element={<SettingsStaffPage />} />
             <Route path="/settings/departments" element={<SettingsDepartmentsPage />} />
