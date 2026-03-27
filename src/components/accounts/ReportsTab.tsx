@@ -358,6 +358,7 @@ Write a 5-point CFO-level financial analysis:
           <TabsTrigger value="bs" className="text-xs">Balance Sheet</TabsTrigger>
           <TabsTrigger value="tb" className="text-xs">Trial Balance</TabsTrigger>
           <TabsTrigger value="acct" className="text-xs">Account Statement</TabsTrigger>
+          <TabsTrigger value="dept" className="text-xs">Department P&L</TabsTrigger>
           <TabsTrigger value="gst" className="text-xs">GST Summary</TabsTrigger>
         </TabsList>
 
