@@ -171,6 +171,12 @@ const ReportsTab: React.FC<Props> = ({ hospitalId, dateRange }) => {
   const [deptBillItems, setDeptBillItems] = useState<any[]>([]);
   const [showOverhead, setShowOverhead] = useState(false);
 
+  // GSTR/TDS state
+  const [gstBillItems, setGstBillItems] = useState<any[]>([]);
+  const [expenseRecords, setExpenseRecords] = useState<any[]>([]);
+  const [journalEntriesForExport, setJournalEntriesForExport] = useState<any[]>([]);
+  const [exportLineItems, setExportLineItems] = useState<any[]>([]);
+
   useEffect(() => {
     if (!hospitalId) return;
     loadData();
