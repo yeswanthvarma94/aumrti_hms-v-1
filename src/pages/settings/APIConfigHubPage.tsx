@@ -108,7 +108,7 @@ const APIConfigHubPage: React.FC = () => {
     if (existing) {
       const { error } = await supabase
         .from("ai_provider_config")
-        .update(updates as Record<string, unknown>)
+        .update(updates)
         .eq("id", existing.id);
       if (error) {
         toast({ title: "Failed to save AI config", description: error.message, variant: "destructive" });
