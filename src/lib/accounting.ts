@@ -136,7 +136,7 @@ export const postManualExpenseJournal = async (data: {
     const { count } = await supabase.from("journal_entries").select("*", { count: "exact", head: true }).eq("hospital_id", data.hospitalId);
     const entryNumber = `JE-${year}-${String((count || 0) + 1).padStart(4, "0")}`;
 
-    const { data: entry, error } = await supabase.from("journal_entries").insert({
+    const { data: entry, error } = await (supabase as any).from("journal_entries").insert({
       hospital_id: data.hospitalId,
       entry_number: entryNumber,
       entry_date: data.entryDate || new Date().toISOString().split("T")[0],
