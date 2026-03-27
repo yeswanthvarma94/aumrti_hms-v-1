@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Pill, Save, Check, RotateCcw, AlertTriangle } from "lucide-react";
+import { Pill, Save, Check, RotateCcw, AlertTriangle, Loader2 } from "lucide-react";
 import FiveRightsPanel from "./FiveRightsPanel";
 import type { PrescriptionItem } from "./PrescriptionQueue";
 
