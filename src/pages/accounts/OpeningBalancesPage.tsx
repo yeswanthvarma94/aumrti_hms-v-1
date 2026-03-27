@@ -54,7 +54,7 @@ const OpeningBalancesPage: React.FC = () => {
       // Get account IDs by code
       const { data: accounts } = await (supabase as any)
         .from("chart_of_accounts")
-        .select("id, code")
+        .select("id, code, name")
         .eq("hospital_id", hospitalId);
 
       const codeToId: Record<string, string> = {};
