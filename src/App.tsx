@@ -58,6 +58,8 @@ const App = () => (
           <Route path="/register" element={<Register />} />
           <Route path="/setup/onboarding" element={<OnboardingWizard />} />
           <Route path="/design-system" element={<DesignSystem />} />
+          <Route path="/tv-display" element={<TVDisplayPage />} />
+          <Route path="/hod-dashboard" element={<HODDashboardPage />} />
 
           {/* App shell routes */}
           <Route element={<AppShell />}>
