@@ -1707,6 +1707,66 @@ export type Database = {
           },
         ]
       }
+      grn_ai_log: {
+        Row: {
+          created_at: string | null
+          extraction_confidence: number | null
+          grn_id: string | null
+          hospital_id: string
+          id: string
+          invoice_image_url: string | null
+          items_extracted: number | null
+          items_matched: number | null
+          items_unmatched: number | null
+          manual_corrections: number | null
+          model_used: string | null
+          processing_time_ms: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          extraction_confidence?: number | null
+          grn_id?: string | null
+          hospital_id: string
+          id?: string
+          invoice_image_url?: string | null
+          items_extracted?: number | null
+          items_matched?: number | null
+          items_unmatched?: number | null
+          manual_corrections?: number | null
+          model_used?: string | null
+          processing_time_ms?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          extraction_confidence?: number | null
+          grn_id?: string | null
+          hospital_id?: string
+          id?: string
+          invoice_image_url?: string | null
+          items_extracted?: number | null
+          items_matched?: number | null
+          items_unmatched?: number | null
+          manual_corrections?: number | null
+          model_used?: string | null
+          processing_time_ms?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grn_ai_log_grn_id_fkey"
+            columns: ["grn_id"]
+            isOneToOne: false
+            referencedRelation: "grn_records"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grn_ai_log_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       grn_items: {
         Row: {
           batch_number: string | null
@@ -1783,6 +1843,7 @@ export type Database = {
           hospital_id: string
           id: string
           invoice_date: string | null
+          invoice_image_url: string | null
           invoice_number: string | null
           po_id: string | null
           quality_check: string | null
@@ -1797,6 +1858,7 @@ export type Database = {
           hospital_id: string
           id?: string
           invoice_date?: string | null
+          invoice_image_url?: string | null
           invoice_number?: string | null
           po_id?: string | null
           quality_check?: string | null
@@ -1811,6 +1873,7 @@ export type Database = {
           hospital_id?: string
           id?: string
           invoice_date?: string | null
+          invoice_image_url?: string | null
           invoice_number?: string | null
           po_id?: string | null
           quality_check?: string | null
