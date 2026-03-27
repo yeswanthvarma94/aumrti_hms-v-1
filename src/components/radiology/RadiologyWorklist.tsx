@@ -1,6 +1,7 @@
 import React from "react";
 import { cn } from "@/lib/utils";
 import { Plus, Clock } from "lucide-react";
+import EmptyState from "@/components/EmptyState";
 import type { RadiologyOrder, Modality } from "@/pages/radiology/RadiologyPage";
 
 interface Props {
