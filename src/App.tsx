@@ -140,6 +140,7 @@ const App = () => (
             <Route path="/settings/api-keys" element={<SettingsAPIKeysPage />} />
             <Route path="/settings/api-hub" element={<APIConfigHubPage />} />
             <Route path="/accounts" element={<AccountsPage />} />
+            <Route path="/accounts/setup" element={<OpeningBalancesPage />} />
             <Route path="/admin/go-live" element={<GoLiveChecklistPage />} />
           </Route>
 
