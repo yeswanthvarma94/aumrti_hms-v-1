@@ -47,7 +47,7 @@ const TelemedicinePage: React.FC = () => {
 
     const { data } = await supabase
       .from("teleconsult_sessions")
-      .select("*, patients(full_name, uhid, phone, gender, date_of_birth)")
+      .select("*, patients(full_name, uhid, phone, gender)")
       .gte("scheduled_at", today.toISOString())
       .lt("scheduled_at", tomorrow.toISOString())
       .order("scheduled_at", { ascending: true });

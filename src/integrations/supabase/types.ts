@@ -5292,6 +5292,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "teleconsult_sessions_doctor_id_fkey"
+            columns: ["doctor_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "teleconsult_sessions_encounter_id_fkey"
             columns: ["encounter_id"]
             isOneToOne: false
