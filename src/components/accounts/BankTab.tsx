@@ -161,7 +161,7 @@ const BankTab: React.FC<Props> = ({ hospitalId }) => {
     setMatchTxn(txn);
     if (!hospitalId) return;
     // Find journal line items for bank/cash accounts around the transaction date
-    const { data } = await supabase
+    const { data } = await (supabase as any)
       .from("journal_line_items")
       .select("id, account_code, debit_amount, credit_amount, created_at, journal_entry_id")
       .eq("hospital_id", hospitalId)
