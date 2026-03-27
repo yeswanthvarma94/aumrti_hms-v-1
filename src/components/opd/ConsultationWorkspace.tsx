@@ -435,7 +435,7 @@ const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onT
         {activeTab === 0 && <ComplaintTab encounter={encounter} onChange={updateEncounter} />}
         {activeTab === 1 && <VitalsTab encounter={encounter} onChange={updateEncounter} />}
         {activeTab === 2 && <ExaminationTab encounter={encounter} onChange={updateEncounter} />}
-        {activeTab === 3 && <RxOrdersTab prescription={prescription} onChange={updatePrescription} hospitalId={hospitalId} />}
+        {activeTab === 3 && <RxOrdersTab prescription={prescription} onChange={updatePrescription} hospitalId={hospitalId} patientAllergies={token?.patient?.allergies ? token.patient.allergies.split(",").map(a => a.trim()) : []} />}
         {activeTab === 4 && <HistoryTab token={token} encounterId={encounterId} />}
       </div>
 
