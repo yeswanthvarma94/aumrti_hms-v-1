@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { ChevronLeft, ChevronRight, Send } from "lucide-react";
+import EmptyState from "@/components/EmptyState";
 import { format, addDays, startOfWeek, isSameDay, isToday } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
