@@ -36,6 +36,7 @@ import SettingsRolesPage from "./pages/settings/SettingsRolesPage";
 import SettingsBrandingPage from "./pages/settings/SettingsBrandingPage";
 import SettingsWhatsAppPage from "./pages/settings/SettingsWhatsAppPage";
 import AnalyticsPage from "./pages/analytics/AnalyticsPage";
+import InboxPage from "./pages/inbox/InboxPage";
 import TelemedicinePage from "./pages/telemedicine/TelemedicinePage";
 import HODDashboardPage from "./pages/hod/HODDashboardPage";
 import TVDisplayPage from "./pages/tv/TVDisplayPage";
