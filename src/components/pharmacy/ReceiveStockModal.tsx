@@ -191,7 +191,11 @@ const ReceiveStockModal: React.FC<Props> = ({ hospitalId, onClose, onSaved }) =>
             <Label className="text-xs font-semibold uppercase text-muted-foreground">Items</Label>
             <div className="mt-2 space-y-3">
               {items.map((it, idx) => (
-                <div key={idx} className="p-3 border border-border rounded-lg space-y-2">
+                <div key={idx} className={`p-3 border rounded-lg space-y-2 ${it.matchStatus === "matched" ? "border-l-2 border-l-emerald-500 border-border" : it.matchStatus === "unmatched" ? "border-l-2 border-l-amber-500 border-border" : "border-border"}`}>
+                  {it.extractedName && it.extractedName !== it.drugName && (
+                    <p className="text-[10px] italic text-muted-foreground">Scanned: {it.extractedName}</p>
+                  )}
+                  {it.matchStatus === "unmatched" && <p className="text-[10px] text-amber-600">⚠️ Not in drug master — search to link</p>}
                   <div className="grid grid-cols-[1fr_auto] gap-2">
                     <div className="relative">
                       <Input
