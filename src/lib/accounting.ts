@@ -91,3 +91,75 @@ export const autoPostJournalEntry = async (data: PostingData) => {
     return null;
   }
 };
+
+// Category → debit account code mapping for manual expense posting
+export const EXPENSE_CATEGORY_ACCOUNT: Record<string, string> = {
+  salary: "5001", rent: "5020", electricity: "5021", water: "5022",
+  telephone: "5023", internet: "5023", fuel: "5060", vehicle: "5060",
+  maintenance: "5030", repair: "5030", housekeeping: "5032",
+  laundry: "5060", catering: "5060", insurance: "5051",
+  professional_fees: "5040", marketing: "5041",
+  printing: "5042", stationery: "5042", bank_charges: "5043",
+  depreciation: "5050", miscellaneous: "5060", other: "5060",
+};
+
+// Payment mode → credit account code
+export const PAYMENT_MODE_ACCOUNT: Record<string, string> = {
+  cash: "1001", bank_transfer: "1002", upi: "1002", cheque: "1002", card: "1002",
+};
+
+// Manual journal entry with specific debit/credit accounts (bypasses auto_posting_rules)
+export const postManualExpenseJournal = async (data: {
+  hospitalId: string;
+  postedBy: string;
+  amount: number;
+  description: string;
+  expenseCategory: string;
+  paymentMode: string;
+  sourceId: string;
+  costCentreId?: string;
+  entryDate?: string;
+}) => {
+  try {
+    const debitCode = EXPENSE_CATEGORY_ACCOUNT[data.expenseCategory] || "5060";
+    const creditCode = PAYMENT_MODE_ACCOUNT[data.paymentMode] || "1001";
+
+    // Lookup accounts
+    const [{ data: debitAcct }, { data: creditAcct }] = await Promise.all([
+      (supabase as any).from("chart_of_accounts").select("id, code, name").eq("hospital_id", data.hospitalId).eq("code", debitCode).maybeSingle(),
+      (supabase as any).from("chart_of_accounts").select("id, code, name").eq("hospital_id", data.hospitalId).eq("code", creditCode).maybeSingle(),
+    ]);
+
+    if (!debitAcct || !creditAcct) return null;
+
+    const year = new Date().getFullYear();
+    const { count } = await supabase.from("journal_entries").select("*", { count: "exact", head: true }).eq("hospital_id", data.hospitalId);
+    const entryNumber = `JE-${year}-${String((count || 0) + 1).padStart(4, "0")}`;
+
+    const { data: entry, error } = await supabase.from("journal_entries").insert({
+      hospital_id: data.hospitalId,
+      entry_number: entryNumber,
+      entry_date: data.entryDate || new Date().toISOString().split("T")[0],
+      description: data.description,
+      entry_type: "manual" as any,
+      source_module: "accounts",
+      source_id: data.sourceId,
+      total_debit: data.amount,
+      total_credit: data.amount,
+      is_balanced: true,
+      posted_by: data.postedBy,
+    }).select().single();
+
+    if (error || !entry) return null;
+
+    await supabase.from("journal_line_items").insert([
+      { hospital_id: data.hospitalId, journal_id: entry.id, account_id: debitAcct.id, account_code: debitAcct.code, account_name: debitAcct.name, debit_amount: data.amount, credit_amount: 0, description: data.description, cost_centre_id: data.costCentreId || null },
+      { hospital_id: data.hospitalId, journal_id: entry.id, account_id: creditAcct.id, account_code: creditAcct.code, account_name: creditAcct.name, debit_amount: 0, credit_amount: data.amount, description: data.description, cost_centre_id: data.costCentreId || null },
+    ]);
+
+    return entry;
+  } catch (err) {
+    console.error("Manual expense posting failed:", err);
+    return null;
+  }
+};
