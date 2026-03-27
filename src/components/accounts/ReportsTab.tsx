@@ -163,6 +163,12 @@ const ReportsTab: React.FC<Props> = ({ hospitalId, dateRange }) => {
   const [selectedAccountId, setSelectedAccountId] = useState<string>("");
   const [acctEntries, setAcctEntries] = useState<(JournalLineDetail & { entry: JournalEntry })[]>([]);
 
+  // Department P&L state
+  const [departments, setDepartments] = useState<{ id: string; name: string }[]>([]);
+  const [deptLineItems, setDeptLineItems] = useState<any[]>([]);
+  const [deptBillItems, setDeptBillItems] = useState<any[]>([]);
+  const [showOverhead, setShowOverhead] = useState(false);
+
   useEffect(() => {
     if (!hospitalId) return;
     loadData();
@@ -170,13 +176,21 @@ const ReportsTab: React.FC<Props> = ({ hospitalId, dateRange }) => {
 
   const loadData = async () => {
     setLoading(true);
-    const [{ data: accts }, { data: items }] = await Promise.all([
+    const [{ data: accts }, { data: items }, { data: depts }, { data: deptLi }, { data: billItems }] = await Promise.all([
       (supabase as any).from("chart_of_accounts").select("*").eq("hospital_id", hospitalId!).eq("is_active", true).order("code"),
       supabase.from("journal_line_items").select("account_id, account_code, debit_amount, credit_amount").eq("hospital_id", hospitalId!)
+        .gte("created_at", dateRange.start).lte("created_at", dateRange.end + "T23:59:59"),
+      supabase.from("departments").select("id, name").eq("hospital_id", hospitalId!).eq("is_active", true),
+      (supabase as any).from("journal_line_items").select("account_id, account_code, debit_amount, credit_amount, cost_centre_id").eq("hospital_id", hospitalId!)
+        .gte("created_at", dateRange.start).lte("created_at", dateRange.end + "T23:59:59").not("cost_centre_id", "is", null),
+      supabase.from("bill_line_items").select("department, total_amount").eq("hospital_id", hospitalId!)
         .gte("created_at", dateRange.start).lte("created_at", dateRange.end + "T23:59:59"),
     ]);
     setAccounts(accts || []);
     setLineItems(items || []);
+    setDepartments(depts || []);
+    setDeptLineItems(deptLi || []);
+    setDeptBillItems(billItems || []);
     setLoading(false);
   };
 
@@ -344,6 +358,7 @@ Write a 5-point CFO-level financial analysis:
           <TabsTrigger value="bs" className="text-xs">Balance Sheet</TabsTrigger>
           <TabsTrigger value="tb" className="text-xs">Trial Balance</TabsTrigger>
           <TabsTrigger value="acct" className="text-xs">Account Statement</TabsTrigger>
+          <TabsTrigger value="dept" className="text-xs">Department P&L</TabsTrigger>
           <TabsTrigger value="gst" className="text-xs">GST Summary</TabsTrigger>
         </TabsList>
 
@@ -699,6 +714,107 @@ Write a 5-point CFO-level financial analysis:
                 </Card>
               </div>
               <p className="text-xs text-muted-foreground">Detailed GSTR-1 / GSTR-3B reports will be available once GST invoice data is populated.</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ═══ DEPARTMENT P&L ═══ */}
+        <TabsContent value="dept">
+          <Card className="border-border mt-4">
+            <CardHeader className="pb-2 flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-sm">Department-wise Profit & Loss</CardTitle>
+                <p className="text-xs text-muted-foreground">{dateRange.start} to {dateRange.end}</p>
+              </div>
+              <label className="flex items-center gap-2 text-xs cursor-pointer">
+                <input type="checkbox" checked={showOverhead} onChange={e => setShowOverhead(e.target.checked)} className="rounded" />
+                Allocate shared overheads
+              </label>
+            </CardHeader>
+            <CardContent>
+              {(() => {
+                // Calculate dept-level P&L
+                const totalSharedExpenses = sumGroup([...PNL_INFRA, ...PNL_ADMIN], expenseBalance);
+                const deptResults = departments.map(dept => {
+                  // Revenue: from bill_line_items attributed to this department
+                  const revenue = deptBillItems
+                    .filter((bi: any) => bi.department === dept.name)
+                    .reduce((s: number, bi: any) => s + Number(bi.total_amount || 0), 0);
+
+                  // Direct expenses: from journal_line_items with cost_centre_id = dept.id
+                  const directExpenses = deptLineItems
+                    .filter((li: any) => li.cost_centre_id === dept.id && li.account_code?.startsWith("5"))
+                    .reduce((s: number, li: any) => s + Number(li.debit_amount || 0) - Number(li.credit_amount || 0), 0);
+
+                  // Overhead allocation: proportional by revenue
+                  const overheadShare = showOverhead && totalIncome > 0
+                    ? (revenue / totalIncome) * totalSharedExpenses
+                    : 0;
+
+                  const profit = revenue - directExpenses - overheadShare;
+                  const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
+
+                  return { ...dept, revenue, directExpenses, overheadShare, profit, margin };
+                }).sort((a, b) => b.profit - a.profit);
+
+                const maxRevenue = Math.max(...deptResults.map(d => d.revenue), 1);
+
+                return (
+                  <>
+                    {/* Comparison Table */}
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="text-xs">Department</TableHead>
+                          <TableHead className="text-xs text-right">Revenue (₹)</TableHead>
+                          <TableHead className="text-xs text-right">Direct Exp (₹)</TableHead>
+                          {showOverhead && <TableHead className="text-xs text-right">Overhead (₹)</TableHead>}
+                          <TableHead className="text-xs text-right">Profit (₹)</TableHead>
+                          <TableHead className="text-xs text-right w-20">Margin</TableHead>
+                          <TableHead className="text-xs w-32">Performance</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {deptResults.map(d => (
+                          <TableRow key={d.id}>
+                            <TableCell className="text-xs font-medium">{d.name}</TableCell>
+                            <TableCell className="text-xs text-right font-mono">{fmt(d.revenue)}</TableCell>
+                            <TableCell className="text-xs text-right font-mono">{fmt(d.directExpenses)}</TableCell>
+                            {showOverhead && <TableCell className="text-xs text-right font-mono text-muted-foreground">{fmt(d.overheadShare)}</TableCell>}
+                            <TableCell className={`text-xs text-right font-mono font-semibold ${d.profit >= 0 ? "text-emerald-700 dark:text-emerald-400" : "text-red-500"}`}>
+                              {d.profit < 0 ? `(${fmt(d.profit)})` : fmt(d.profit)}
+                            </TableCell>
+                            <TableCell className={`text-xs text-right font-mono ${d.margin >= 0 ? "text-emerald-700 dark:text-emerald-400" : "text-red-500"}`}>
+                              {d.margin.toFixed(1)}%
+                            </TableCell>
+                            <TableCell>
+                              <div className="w-full bg-muted rounded-full h-2">
+                                <div
+                                  className={`h-2 rounded-full ${d.margin >= 20 ? "bg-emerald-500" : d.margin >= 0 ? "bg-amber-500" : "bg-red-500"}`}
+                                  style={{ width: `${Math.min((d.revenue / maxRevenue) * 100, 100)}%` }}
+                                />
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        {deptResults.length === 0 && (
+                          <TableRow><TableCell colSpan={showOverhead ? 7 : 6} className="text-center text-xs text-muted-foreground py-8">No department data available. Ensure billing line items have department attribution.</TableCell></TableRow>
+                        )}
+                        {deptResults.length > 0 && (
+                          <TableRow className="border-t-2 bg-muted/30 font-bold">
+                            <TableCell className="text-xs font-bold">TOTAL</TableCell>
+                            <TableCell className="text-xs text-right font-mono font-bold">{fmt(deptResults.reduce((s, d) => s + d.revenue, 0))}</TableCell>
+                            <TableCell className="text-xs text-right font-mono font-bold">{fmt(deptResults.reduce((s, d) => s + d.directExpenses, 0))}</TableCell>
+                            {showOverhead && <TableCell className="text-xs text-right font-mono font-bold">{fmt(deptResults.reduce((s, d) => s + d.overheadShare, 0))}</TableCell>}
+                            <TableCell className="text-xs text-right font-mono font-bold">{fmt(deptResults.reduce((s, d) => s + d.profit, 0))}</TableCell>
+                            <TableCell colSpan={2}></TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </>
+                );
+              })()}
             </CardContent>
           </Card>
         </TabsContent>
