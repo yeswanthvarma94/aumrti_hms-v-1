@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { autoPostJournalEntry } from "@/lib/accounting";
 import { DollarSign, Download, CheckSquare, Loader2 } from "lucide-react";
 
 interface PayrollRun {
