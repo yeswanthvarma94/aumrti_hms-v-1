@@ -15,6 +15,8 @@ import {
   HeartPulse,
   UserPlus,
   Video,
+  Monitor,
+  LayoutDashboard,
   TestTube,
   ScanLine,
   Receipt,
