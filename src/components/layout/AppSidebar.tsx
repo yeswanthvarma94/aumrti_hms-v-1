@@ -14,6 +14,7 @@ import {
   Scissors,
   HeartPulse,
   UserPlus,
+  Video,
   TestTube,
   ScanLine,
   Receipt,
