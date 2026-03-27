@@ -86,6 +86,14 @@ const BookOTModal: React.FC<Props> = ({ rooms, selectedRoomId, selectedDate, pre
       toast({ title: "Please fill all required fields", variant: "destructive" });
       return;
     }
+    if (form.duration <= 0) {
+      toast({ title: "Duration must be greater than 0", variant: "destructive" });
+      return;
+    }
+    if (conflict) {
+      toast({ title: "Cannot book — time slot has a conflict", variant: "destructive" });
+      return;
+    }
     setSaving(true);
     const hid = (await supabase.rpc("get_user_hospital_id")) as any;
     const hospitalId = hid?.data;
