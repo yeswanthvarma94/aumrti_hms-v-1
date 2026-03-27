@@ -329,7 +329,8 @@ const LabResultWorkspace: React.FC<Props> = ({ order, onRefresh }) => {
   };
 
   const handleValidateAll = async () => {
-    if (!currentUserId) return;
+    if (!currentUserId || validating) return;
+    setValidating(true);
     const unacknowledgedCritical = items.filter(i => (i.result_flag === "CH" || i.result_flag === "CL") && !i.critical_acknowledged);
     if (unacknowledgedCritical.length > 0) {
       toast({ title: "Acknowledge critical values before releasing", variant: "destructive" });
