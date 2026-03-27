@@ -121,6 +121,18 @@ const BillEditor: React.FC<Props> = ({ bill, hospitalId, onRefresh }) => {
 
   const handleFinalize = async () => {
     if (!bill || !hospitalId) return;
+
+    // GST compliance: check HSN codes
+    const missingHSN = validateGSTLineItems(lineItems);
+    if (missingHSN.length > 0) {
+      toast({
+        title: "HSN code missing",
+        description: `HSN code missing for: ${missingHSN.join(", ")}. Add HSN codes in Settings → Service Rates before finalising.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     await supabase.from("bills").update({ bill_status: "final" }).eq("id", bill.id);
     toast({ title: "Bill finalized" });
 
