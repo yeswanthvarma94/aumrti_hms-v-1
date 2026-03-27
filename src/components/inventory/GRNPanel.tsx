@@ -7,6 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { autoPostJournalEntry } from "@/lib/accounting";
 import { cn } from "@/lib/utils";
 import InvoiceScanZone, { type ExtractedInvoiceData } from "./InvoiceScanZone";
 
