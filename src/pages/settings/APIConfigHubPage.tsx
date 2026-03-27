@@ -117,15 +117,16 @@ const APIConfigHubPage: React.FC = () => {
         setAiConfigs(prev => prev.map(c => c.id === existing.id ? { ...c, ...updates } as AIConfig : c));
       }
     } else {
-      const { data, error } = await supabase
-        .from("ai_provider_config")
-        .insert({
+      const insertPayload = {
           hospital_id: hospitalId,
           feature_key: featureKey,
           provider: (updates as AIConfig).provider || "claude",
           model_name: (updates as AIConfig).model_name || "claude-sonnet-4-20250514",
           ...updates,
-        } as Record<string, unknown>)
+        };
+      const { data, error } = await supabase
+        .from("ai_provider_config")
+        .insert(insertPayload)
         .select()
         .single();
       if (error) {
