@@ -365,6 +365,7 @@ const LabResultWorkspace: React.FC<Props> = ({ order, onRefresh }) => {
       }
     }
 
+    setValidating(false);
     fetchItems(); onRefresh();
     toast({ title: "✓ Report released" });
   };
