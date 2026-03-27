@@ -3043,38 +3043,59 @@ export type Database = {
         Row: {
           created_at: string | null
           created_by: string | null
+          description: string | null
           entry_date: string
           entry_number: string
+          entry_type: string | null
           hospital_id: string
           id: string
           is_auto: boolean | null
+          is_balanced: boolean | null
           narration: string | null
+          posted_by: string | null
+          source_id: string | null
           source_module: string | null
           source_ref_id: string | null
+          total_credit: number | null
+          total_debit: number | null
         }
         Insert: {
           created_at?: string | null
           created_by?: string | null
+          description?: string | null
           entry_date?: string
           entry_number: string
+          entry_type?: string | null
           hospital_id: string
           id?: string
           is_auto?: boolean | null
+          is_balanced?: boolean | null
           narration?: string | null
+          posted_by?: string | null
+          source_id?: string | null
           source_module?: string | null
           source_ref_id?: string | null
+          total_credit?: number | null
+          total_debit?: number | null
         }
         Update: {
           created_at?: string | null
           created_by?: string | null
+          description?: string | null
           entry_date?: string
           entry_number?: string
+          entry_type?: string | null
           hospital_id?: string
           id?: string
           is_auto?: boolean | null
+          is_balanced?: boolean | null
           narration?: string | null
+          posted_by?: string | null
+          source_id?: string | null
           source_module?: string | null
           source_ref_id?: string | null
+          total_credit?: number | null
+          total_debit?: number | null
         }
         Relationships: [
           {
@@ -3089,6 +3110,13 @@ export type Database = {
             columns: ["hospital_id"]
             isOneToOne: false
             referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "journal_entries_posted_by_fkey"
+            columns: ["posted_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]

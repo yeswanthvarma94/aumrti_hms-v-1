@@ -45,7 +45,7 @@ const JournalTab: React.FC<Props> = ({ hospitalId, dateRange }) => {
   };
 
   const loadEntries = async () => {
-    let query = supabase.from("journal_entries").select("*")
+    let query = (supabase as any).from("journal_entries").select("*")
       .eq("hospital_id", hospitalId!)
       .gte("entry_date", fromDate).lte("entry_date", toDate)
       .order("created_at", { ascending: false }).limit(200);
