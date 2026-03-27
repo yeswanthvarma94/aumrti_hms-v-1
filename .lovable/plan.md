@@ -1,72 +1,56 @@
 
 
-# Fix: Link Billing Revenue to Accounts/ERP
+# Fix: Revenue Not Syncing from Billing to Accounts/ERP
 
-## Problem
-When a bill is finalized, no journal entry is created. Revenue only appears when payments are collected (cash-basis). This means:
-- Unpaid/insurance bills show zero revenue
-- The P&L understates income
-- Accounts Receivable is never booked
+## Root Cause Analysis
 
-## Root Cause
-`BillEditor.handleFinalize()` updates the bill status but never calls `autoPostJournalEntry`. The only accounting hook is in `PaymentsTab`, which posts cash/bank entries on payment collection.
+The `ensure_billing_posting_rules()` database function fails silently because it references a **unique constraint** (`chart_of_accounts_hospital_id_code_key`) that **does not exist** on the table. This means:
 
-## Solution
-Add **accrual-basis revenue recognition** at bill finalization, plus ensure payment collection entries work correctly.
+1. The function crashes every time `handleFinalize()` calls it
+2. No `bill_finalized_*` rules ever get created
+3. Revenue journal entries are never posted
+4. The Accounts Dashboard shows ₹0 revenue despite ₹61,608+ in billing
 
-### Step 1: Add auto-posting rules for bill finalization (DB migration)
+Additionally, payment rules still credit Revenue accounts (4001) directly instead of clearing Accounts Receivable — which would cause double-booking once finalization is fixed.
 
-Seed new rules for revenue recognition at finalization:
-- `bill_finalized_opd`: Dr. Accounts Receivable (1010) / Cr. OPD Revenue (4001)
-- `bill_finalized_ipd`: Dr. Accounts Receivable (1010) / Cr. IPD Revenue (4002)
-- `bill_finalized_lab`: Dr. Accounts Receivable (1010) / Cr. Lab Revenue (4004)
-- `bill_finalized_radiology`: Dr. Accounts Receivable (1010) / Cr. Radiology Revenue (4005)
-- `bill_finalized_pharmacy`: Dr. Accounts Receivable (1010) / Cr. Pharmacy Revenue (4006)
-- `bill_finalized_ot`: Dr. Accounts Receivable (1010) / Cr. OT Revenue (4003)
-- `bill_finalized_generic`: Dr. Accounts Receivable (1010) / Cr. OPD Revenue (4001) — fallback
+There are also duplicate rows in `chart_of_accounts` and `auto_posting_rules` from the initial seeding.
 
-Also add payment-side rules to clear the receivable:
-- `bill_payment_cash`: Dr. Cash (1001) / Cr. Accounts Receivable (1010) — **change from current Cr. 4001**
-- `bill_payment_upi`: Dr. Bank (1002) / Cr. Accounts Receivable (1010)
-- `bill_payment_card`: Dr. Bank (1002) / Cr. Accounts Receivable (1010)
-- `bill_payment_insurance`: Dr. Insurance Receivable (1011) / Cr. Accounts Receivable (1010)
+## Fix Plan
 
-This follows proper double-entry: finalization books revenue + receivable, payment clears receivable.
+### Step 1: Database Migration — Add constraints and fix data
 
-### Step 2: Add revenue posting in `BillEditor.handleFinalize()`
+**Migration SQL to:**
+- Deduplicate `chart_of_accounts` rows (keep first, delete rest per hospital+code)
+- Deduplicate `auto_posting_rules` rows (keep first per hospital+trigger_event)
+- Add unique constraint `chart_of_accounts_hospital_id_code_key` on `(hospital_id, code)`
+- Add unique constraint on `auto_posting_rules(hospital_id, trigger_event)`
+- Re-create `ensure_billing_posting_rules()` function using the now-valid constraints
 
-After updating bill status to "final", call `autoPostJournalEntry` for the full bill amount:
-- Determine bill type (opd/ipd/lab etc.) from `bill.bill_type`
-- Use trigger event `bill_finalized_{type}`
-- Amount = `bill.total_amount` (full revenue)
-- This creates: Dr. Accounts Receivable / Cr. Revenue
+### Step 2: Database Migration — Seed finalization rules + fix payment rules
 
-### Step 3: Update payment rules to clear receivable (not double-book revenue)
+For each hospital:
+- Insert `bill_finalized_opd/ipd/lab/radiology/pharmacy/ot/generic` rules (Dr. AR 1010 / Cr. Revenue 4xxx)
+- Insert `bill_insurance_reclassify` rule (Dr. Insurance AR 1011 / Cr. AR 1010)
+- **Update** existing payment rules (`bill_payment_cash/upi/card`) to credit AR (1010) instead of Revenue (4001)
 
-Update the existing seeded rules so that payment collection entries debit Cash/Bank and credit Accounts Receivable (1010) instead of crediting Revenue (4001). Revenue was already recognized at finalization.
+### Step 3: Backfill journal entries for existing finalized bills
 
-### Step 4: Handle insurance portion separately
+Run a one-time backfill: for each finalized bill that has no corresponding journal entry, create the revenue recognition entry (Dr. AR / Cr. Revenue) using the correct amount and bill type.
 
-When a bill has an insurance component (`bill.insurance_amount > 0`), post an additional entry at finalization:
-- Dr. Insurance Receivable (1011) / Cr. Accounts Receivable (1010) — reclassify the insurance portion
+### Step 4: Verify BillEditor.tsx integration
 
-### Technical Details
+The existing code in `handleFinalize()` is correct — it already calls `ensure_billing_posting_rules` and `autoPostJournalEntry`. No changes needed once the DB constraints are fixed.
+
+## Technical Details
 
 **Files to modify:**
-1. **New migration SQL** — Update `auto_posting_rules`: add `bill_finalized_*` rules, update payment rules to credit 1010 instead of 4001
-2. **`src/components/billing/BillEditor.tsx`** — Add `autoPostJournalEntry` call in `handleFinalize()` after status update
-3. **`src/lib/accounting.ts`** — No changes needed (existing `autoPostJournalEntry` handles everything)
+- New migration SQL (constraints, dedup, rule seeding, backfill)
+- No frontend code changes needed
 
-**Accounting flow after fix:**
-```text
-Bill Finalized (₹10,000 OPD bill):
-  Dr. Accounts Receivable (1010)  ₹10,000
-  Cr. OPD Revenue (4001)          ₹10,000
-
-Payment Received (₹10,000 cash):
-  Dr. Cash in Hand (1001)         ₹10,000
-  Cr. Accounts Receivable (1010)  ₹10,000
-
-Result: Revenue shows in P&L, AR clears on payment
-```
+**Expected result after fix:**
+- Accounts Dashboard shows real revenue from all finalized bills
+- P&L Statement populated with revenue breakdown by department
+- AR balance reflects unpaid bills
+- New bills auto-post journal entries on finalization
+- Payments clear AR instead of double-booking revenue
 
