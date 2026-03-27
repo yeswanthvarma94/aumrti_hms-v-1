@@ -119,6 +119,7 @@ const PharmacyNDPSTab: React.FC<Props> = ({ hospitalId }) => {
                   <td className="py-2 px-2 text-center capitalize text-xs">{r.transaction_type}</td>
                   <td className="py-2 px-2 text-right tabular-nums font-semibold">{Number(r.quantity)}</td>
                   <td className="py-2 px-2 text-right tabular-nums font-semibold">{Number(r.balance_after)}</td>
+                  <td className="py-2 px-2 text-right tabular-nums font-semibold text-primary">{r.running_balance}</td>
                   <td className="py-2 px-2 text-xs">{r.patient_name || "—"}</td>
                   <td className="py-2 px-2 text-xs font-mono">{r.prescription_number || "—"}</td>
                   <td className="py-2 px-2 text-xs">{r.prescriber_name || "—"}</td>
