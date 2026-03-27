@@ -175,8 +175,10 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess }) => {
             </div>
             <div className="flex-1 min-w-0">
               <label className="text-[11px] font-medium text-muted-foreground mb-1 block">DOB</label>
-              <input type="date" value={form.dob} onChange={(e) => set("dob", e.target.value)}
-                className={inputClass} />
+              <input type="date" value={form.dob} onChange={(e) => { set("dob", e.target.value); setFieldErrors(prev => ({ ...prev, dob: "" })); }}
+                max={new Date().toISOString().split("T")[0]}
+                className={cn(inputClass, fieldErrors.dob && "border-destructive")} />
+              {fieldErrors.dob && <p className="text-destructive text-[11px] mt-0.5">{fieldErrors.dob}</p>}
             </div>
           </div>
 
