@@ -136,6 +136,7 @@ const App = () => (
             <Route path="/settings/abdm" element={<SettingsABDMPage />} />
             <Route path="/settings/backup" element={<SettingsBackupPage />} />
             <Route path="/settings/api-keys" element={<SettingsAPIKeysPage />} />
+            <Route path="/settings/api-hub" element={<APIConfigHubPage />} />
             <Route path="/admin/go-live" element={<GoLiveChecklistPage />} />
           </Route>
 
