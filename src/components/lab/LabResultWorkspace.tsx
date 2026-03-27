@@ -97,6 +97,7 @@ const LabResultWorkspace: React.FC<Props> = ({ order, onRefresh }) => {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [samples, setSamples] = useState<any[]>([]);
   const [history, setHistory] = useState<any[]>([]);
+  const [validating, setValidating] = useState(false);
 
   // Get current user id
   useEffect(() => {
@@ -328,7 +329,8 @@ const LabResultWorkspace: React.FC<Props> = ({ order, onRefresh }) => {
   };
 
   const handleValidateAll = async () => {
-    if (!currentUserId) return;
+    if (!currentUserId || validating) return;
+    setValidating(true);
     const unacknowledgedCritical = items.filter(i => (i.result_flag === "CH" || i.result_flag === "CL") && !i.critical_acknowledged);
     if (unacknowledgedCritical.length > 0) {
       toast({ title: "Acknowledge critical values before releasing", variant: "destructive" });
@@ -363,6 +365,7 @@ const LabResultWorkspace: React.FC<Props> = ({ order, onRefresh }) => {
       }
     }
 
+    setValidating(false);
     fetchItems(); onRefresh();
     toast({ title: "✓ Report released" });
   };
@@ -444,10 +447,10 @@ const LabResultWorkspace: React.FC<Props> = ({ order, onRefresh }) => {
         )}
         {allResultsEntered && order.status !== "completed" && (
           <button onClick={handleValidateAll}
-            disabled={hasUnacknowledgedCritical}
-            className="shrink-0 px-3.5 py-1.5 rounded-lg bg-emerald-600 text-white text-[11px] font-semibold hover:bg-emerald-700 active:scale-[0.97] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={hasUnacknowledgedCritical || validating}
+            className="shrink-0 px-3.5 py-1.5 rounded-lg bg-emerald-600 text-white text-[11px] font-semibold hover:bg-emerald-700 active:scale-[0.97] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
             title={hasUnacknowledgedCritical ? "Acknowledge critical values first" : ""}>
-            ✓ Validate & Release
+            {validating ? "⏳ Validating..." : "✓ Validate & Release"}
           </button>
         )}
       </div>
@@ -768,9 +771,9 @@ const LabResultWorkspace: React.FC<Props> = ({ order, onRefresh }) => {
           <Save size={14} /> Save All
         </button>
         <button onClick={handleValidateAll}
-          disabled={!allResultsEntered || hasUnacknowledgedCritical}
+          disabled={!allResultsEntered || hasUnacknowledgedCritical || validating}
           className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 active:scale-[0.97] transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5">
-          <CheckCircle2 size={14} /> Validate & Release
+          <CheckCircle2 size={14} /> {validating ? "Validating..." : "Validate & Release"}
         </button>
         <div className="flex-1" />
         <button onClick={() => {

@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Pill, Save, Check, RotateCcw, AlertTriangle } from "lucide-react";
+import { Pill, Save, Check, RotateCcw, AlertTriangle, Loader2 } from "lucide-react";
 import FiveRightsPanel from "./FiveRightsPanel";
 import type { PrescriptionItem } from "./PrescriptionQueue";
 
@@ -587,7 +587,11 @@ const DispensingWorkspace: React.FC<Props> = ({ hospitalId, prescription, onDisp
           disabled={!canDispenseAll}
           onClick={handleDispenseAll}
         >
-          <Check size={14} className="mr-1" /> Dispense All
+          {dispensing ? (
+            <><Loader2 size={14} className="mr-1 animate-spin" /> Processing...</>
+          ) : (
+            <><Check size={14} className="mr-1" /> Dispense All</>
+          )}
         </Button>
       </div>
     </div>

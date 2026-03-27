@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import EmptyState from "@/components/EmptyState";
 import StockAdjustmentModal from "./StockAdjustmentModal";
 
 interface StockItem {
@@ -250,7 +251,9 @@ const StockOverview: React.FC = () => {
               );
             })}
             {filtered.length === 0 && (
-              <tr><td colSpan={9} className="text-center py-12 text-muted-foreground">No items found.</td></tr>
+              <tr><td colSpan={9} className="h-48">
+                <EmptyState icon="📦" title="No items in stock master" description="Add items or receive stock to populate inventory" />
+              </td></tr>
             )}
           </tbody>
         </table>

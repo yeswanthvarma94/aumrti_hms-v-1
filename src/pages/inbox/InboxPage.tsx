@@ -13,6 +13,7 @@ import {
   Search, Check, Archive, Paperclip, Filter, ChevronDown, Inbox as InboxIcon,
   User, Phone, ExternalLink, PenSquare, X
 } from "lucide-react";
+import EmptyState from "@/components/EmptyState";
 
 // ── Types ──
 
@@ -342,10 +343,11 @@ const InboxPage: React.FC = () => {
         {/* Messages */}
         <div className="flex-1 overflow-y-auto">
           {filteredMessages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center p-6">
-              <InboxIcon size={32} className="text-muted-foreground/40 mb-2" />
-              <p className="text-sm text-muted-foreground">No messages</p>
-            </div>
+            <EmptyState
+              icon="📬"
+              title="Inbox is empty"
+              description="Patient messages, feedback, and grievances appear here"
+            />
           ) : (
             filteredMessages.map((msg) => {
               const ch = CHANNEL_CONFIG[msg.channel];

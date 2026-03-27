@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Receipt, Plus, IndianRupee } from "lucide-react";
+import EmptyState from "@/components/EmptyState";
 import type { BillRecord } from "@/pages/billing/BillingPage";
 
 const STATUS_FILTERS = [
@@ -110,10 +111,13 @@ const BillQueue: React.FC<Props> = ({
       {loading ? (
         <div className="flex items-center justify-center h-32 text-muted-foreground text-sm">Loading...</div>
       ) : bills.length === 0 ? (
-        <div className="flex flex-col items-center justify-center h-32 text-muted-foreground text-sm">
-          <Receipt size={32} className="mb-2 opacity-40" />
-          No bills found
-        </div>
+        <EmptyState
+          icon="🧾"
+          title="No bills for this period"
+          description="Bills created from OPD, IPD, and emergency appear here"
+          actionLabel="+ Create Bill"
+          onAction={onNewBill}
+        />
       ) : (
         bills.map((bill) => {
           const sb = statusBadge[bill.payment_status] || statusBadge.unpaid;

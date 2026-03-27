@@ -2,6 +2,7 @@ import React from "react";
 import { cn } from "@/lib/utils";
 import { Plus, Clock } from "lucide-react";
 import { format } from "date-fns";
+import EmptyState from "@/components/EmptyState";
 
 interface LabOrder {
   id: string;
@@ -103,7 +104,11 @@ const LabQueuePanel: React.FC<Props> = ({
       {/* Order list */}
       <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
         {orders.length === 0 && (
-          <div className="text-center py-12 text-sm text-muted-foreground">No lab orders today</div>
+          <EmptyState
+            icon="🔬"
+            title="No pending lab orders"
+            description="Lab orders from OPD and IPD will appear here"
+          />
         )}
         {orders.map((order) => {
           const items = order.lab_order_items || [];
