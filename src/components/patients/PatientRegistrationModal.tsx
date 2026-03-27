@@ -48,12 +48,23 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess }) => {
   const set = (field: string, value: string) => setForm((f) => ({ ...f, [field]: value }));
 
   const handleSubmit = async () => {
-    if (!form.full_name.trim()) {
-      toast({ title: "Name is required", variant: "destructive" });
-      return;
+    const errors: Record<string, string> = {};
+    if (!form.full_name.trim() || form.full_name.trim().length < 2) {
+      errors.full_name = "Name must be at least 2 characters";
+    }
+    if (form.phone && !/^\d{10}$/.test(form.phone.replace(/\s/g, ""))) {
+      errors.phone = "Phone must be exactly 10 digits";
+    }
+    if (form.dob) {
+      const dobDate = new Date(form.dob);
+      if (dobDate >= new Date()) errors.dob = "Date of birth must be in the past";
     }
     if (!dpdpConsent) {
-      toast({ title: "DPDP consent is required", description: "Patient must consent to data collection before registration.", variant: "destructive" });
+      errors.dpdp = "Patient must consent to data collection";
+    }
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      toast({ title: "Please fix the highlighted errors", variant: "destructive" });
       return;
     }
     setSaving(true);
