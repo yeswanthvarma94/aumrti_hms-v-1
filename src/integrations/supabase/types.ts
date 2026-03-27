@@ -5229,6 +5229,91 @@ export type Database = {
           },
         ]
       }
+      teleconsult_sessions: {
+        Row: {
+          actual_duration: number | null
+          bill_generated: boolean | null
+          created_at: string | null
+          doctor_id: string
+          doctor_joined_at: string | null
+          duration_minutes: number | null
+          encounter_id: string | null
+          ended_at: string | null
+          hospital_id: string
+          id: string
+          notes: string | null
+          patient_id: string
+          patient_joined_at: string | null
+          patient_phone: string | null
+          prescription_sent: boolean | null
+          room_id: string
+          scheduled_at: string
+          status: string
+        }
+        Insert: {
+          actual_duration?: number | null
+          bill_generated?: boolean | null
+          created_at?: string | null
+          doctor_id: string
+          doctor_joined_at?: string | null
+          duration_minutes?: number | null
+          encounter_id?: string | null
+          ended_at?: string | null
+          hospital_id: string
+          id?: string
+          notes?: string | null
+          patient_id: string
+          patient_joined_at?: string | null
+          patient_phone?: string | null
+          prescription_sent?: boolean | null
+          room_id: string
+          scheduled_at: string
+          status?: string
+        }
+        Update: {
+          actual_duration?: number | null
+          bill_generated?: boolean | null
+          created_at?: string | null
+          doctor_id?: string
+          doctor_joined_at?: string | null
+          duration_minutes?: number | null
+          encounter_id?: string | null
+          ended_at?: string | null
+          hospital_id?: string
+          id?: string
+          notes?: string | null
+          patient_id?: string
+          patient_joined_at?: string | null
+          patient_phone?: string | null
+          prescription_sent?: boolean | null
+          room_id?: string
+          scheduled_at?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teleconsult_sessions_encounter_id_fkey"
+            columns: ["encounter_id"]
+            isOneToOne: false
+            referencedRelation: "opd_encounters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teleconsult_sessions_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teleconsult_sessions_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tpa_config: {
         Row: {
           claims_email: string | null
