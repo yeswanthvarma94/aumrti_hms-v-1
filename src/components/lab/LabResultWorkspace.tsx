@@ -97,6 +97,7 @@ const LabResultWorkspace: React.FC<Props> = ({ order, onRefresh }) => {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [samples, setSamples] = useState<any[]>([]);
   const [history, setHistory] = useState<any[]>([]);
+  const [validating, setValidating] = useState(false);
 
   // Get current user id
   useEffect(() => {
