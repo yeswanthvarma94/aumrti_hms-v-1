@@ -78,7 +78,7 @@ const HODDashboardPage: React.FC = () => {
     }
 
     // Alerts
-    const { data: alertData, count: aC } = await supabase.from("clinical_alerts").select("id, alert_type, alert_message, severity, created_at, is_acknowledged, patient_id, ward_name, bed_number", { count: "exact" }).eq("hospital_id", hospitalId).eq("is_acknowledged", false).order("created_at", { ascending: false }).limit(10);
+    const { data: alertData, count: aC } = await supabase.from("clinical_alerts").select("id, alert_type, alert_message, severity, created_at, is_acknowledged, patient_id, ward_name, bed_number", { count: "exact" }).eq("is_acknowledged", false).order("created_at", { ascending: false }).limit(10);
     setAlerts(alertData || []);
     setAlertCount(aC || 0);
 

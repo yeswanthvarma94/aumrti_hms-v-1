@@ -90,10 +90,11 @@ export function useDashboardData() {
       const doctorsOnDuty = (totalDoctors || 0) - doctorsOnLeave;
 
       // 7. Critical alerts
-      const { count: criticalAlerts } = await supabase
+      const alertQuery = supabase
         .from("clinical_alerts").select("id", { count: "exact", head: true })
-        .eq("hospital_id", hospitalId)
         .eq("is_acknowledged", false);
+      if (hospitalIdRef.current) alertQuery.eq("hospital_id", hospitalIdRef.current);
+      const { count: criticalAlerts } = await alertQuery;
 
       setKpis({
         totalPatients: totalPatients || 0,
