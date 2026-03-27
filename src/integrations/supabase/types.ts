@@ -1561,10 +1561,13 @@ export type Database = {
       }
       hospitals: {
         Row: {
+          accent_color: string | null
           address: string | null
           beds_count: number | null
+          branding_config: Json | null
           country: string | null
           created_at: string
+          font_family: string | null
           gstin: string | null
           id: string
           is_active: boolean
@@ -1579,15 +1582,19 @@ export type Database = {
           state: string | null
           subdomain: string | null
           subscription_tier: Database["public"]["Enums"]["subscription_tier"]
+          tagline: string | null
           type: Database["public"]["Enums"]["hospital_type"]
           wati_api_url: string | null
           whatsapp_enabled: boolean
         }
         Insert: {
+          accent_color?: string | null
           address?: string | null
           beds_count?: number | null
+          branding_config?: Json | null
           country?: string | null
           created_at?: string
+          font_family?: string | null
           gstin?: string | null
           id?: string
           is_active?: boolean
@@ -1602,15 +1609,19 @@ export type Database = {
           state?: string | null
           subdomain?: string | null
           subscription_tier?: Database["public"]["Enums"]["subscription_tier"]
+          tagline?: string | null
           type?: Database["public"]["Enums"]["hospital_type"]
           wati_api_url?: string | null
           whatsapp_enabled?: boolean
         }
         Update: {
+          accent_color?: string | null
           address?: string | null
           beds_count?: number | null
+          branding_config?: Json | null
           country?: string | null
           created_at?: string
+          font_family?: string | null
           gstin?: string | null
           id?: string
           is_active?: boolean
@@ -1625,6 +1636,7 @@ export type Database = {
           state?: string | null
           subdomain?: string | null
           subscription_tier?: Database["public"]["Enums"]["subscription_tier"]
+          tagline?: string | null
           type?: Database["public"]["Enums"]["hospital_type"]
           wati_api_url?: string | null
           whatsapp_enabled?: boolean
