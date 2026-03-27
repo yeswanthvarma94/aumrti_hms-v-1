@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,13 @@ import { cn } from "@/lib/utils";
 import RevenueChart from "@/components/dashboard/RevenueChart";
 import BedOccupancy from "@/components/dashboard/BedOccupancy";
 import AlertsPanel from "@/components/dashboard/AlertsPanel";
+import DrillDownDrawer, { DrillDownConfig, KPIType } from "@/components/dashboard/DrillDownDrawer";
+import RevenueDrillDown from "@/components/dashboard/drilldowns/RevenueDrillDown";
+import BedsDrillDown from "@/components/dashboard/drilldowns/BedsDrillDown";
+import OPDDrillDown from "@/components/dashboard/drilldowns/OPDDrillDown";
+import AlertsDrillDown from "@/components/dashboard/drilldowns/AlertsDrillDown";
+import DoctorsDrillDown from "@/components/dashboard/drilldowns/DoctorsDrillDown";
+import { supabase } from "@/integrations/supabase/client";
 
 function formatRevenue(amount: number): string {
   if (amount >= 10000000) return "₹" + (amount / 10000000).toFixed(1) + "Cr";
@@ -75,6 +82,20 @@ const Dashboard: React.FC = () => {
   const { kpis, loading, seeding, seedData, refetch } = useDashboardData();
   const [refreshing, setRefreshing] = useState(false);
   const lastUpdated = useLastUpdated(loading);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerConfig, setDrawerConfig] = useState<DrillDownConfig | null>(null);
+  const [hospitalId, setHospitalId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const getHospitalId = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data } = await supabase.from("users").select("hospital_id").eq("id", user.id).single();
+        if (data) setHospitalId(data.hospital_id);
+      }
+    };
+    getHospitalId();
+  }, []);
 
   const occupancyPct = kpis.bedsTotal > 0 ? Math.round((kpis.bedsOccupied / kpis.bedsTotal) * 100) : 0;
   const revChange = revenueChange(kpis.revenueMTD, kpis.revenueLastMonth);
@@ -84,6 +105,101 @@ const Dashboard: React.FC = () => {
     setRefreshing(true);
     await refetch();
     setRefreshing(false);
+  };
+
+  const openDrillDown = (type: KPIType) => {
+    const configs: Record<KPIType, DrillDownConfig> = {
+      revenue: {
+        type: "revenue",
+        title: "💰 Today's Revenue",
+        icon: "💰",
+        period: "This Month",
+        currentValue: formatRevenue(kpis.revenueMTD),
+        changeText: revChange.text,
+        changePositive: revChange.positive,
+        aiPrompt: `Hospital revenue MTD is ₹${kpis.revenueMTD.toLocaleString()}. Last month was ₹${kpis.revenueLastMonth.toLocaleString()}. Write 2-sentence insight on revenue performance and what needs attention.`,
+        reportLink: "/billing",
+        reportLabel: "View Full Billing →",
+        hospitalId: hospitalId || undefined,
+      },
+      beds: {
+        type: "beds",
+        title: "🛏️ Bed Occupancy",
+        icon: "🛏️",
+        period: "Live",
+        currentValue: `${kpis.bedsOccupied}/${kpis.bedsTotal}`,
+        changeText: `${occupancyPct}% occupancy`,
+        changePositive: occupancyPct < 85,
+        aiPrompt: `Bed occupancy is ${occupancyPct}%. ${kpis.bedsOccupied} of ${kpis.bedsTotal} beds occupied. Write 2-sentence insight on occupancy health and what's blocking beds.`,
+        reportLink: "/ipd",
+        reportLabel: "View IPD Bed Map →",
+        hospitalId: hospitalId || undefined,
+      },
+      opd: {
+        type: "opd",
+        title: "🏥 OPD Today",
+        icon: "🏥",
+        period: "Today",
+        currentValue: String(kpis.opdActive),
+        changeText: `${kpis.opdWaiting} waiting · ${kpis.opdSeen} seen`,
+        changePositive: true,
+        aiPrompt: `OPD had ${kpis.opdActive} patients today. ${kpis.opdWaiting} still waiting, ${kpis.opdSeen} already seen. Write 2-sentence insight on OPD performance.`,
+        reportLink: "/opd",
+        reportLabel: "View OPD Queue →",
+        hospitalId: hospitalId || undefined,
+      },
+      alerts: {
+        type: "alerts",
+        title: "🚨 Clinical Alerts",
+        icon: "🚨",
+        period: "Active",
+        currentValue: String(kpis.criticalAlerts),
+        changeText: kpis.criticalAlerts > 0 ? "Requires attention" : "All clear",
+        changePositive: kpis.criticalAlerts === 0,
+        aiPrompt: `${kpis.criticalAlerts} unacknowledged clinical alerts. Write 2-sentence risk assessment.`,
+        reportLink: "/analytics",
+        reportLabel: "View Analytics →",
+        hospitalId: hospitalId || undefined,
+      },
+      doctors: {
+        type: "doctors",
+        title: "👥 Staff Today",
+        icon: "👥",
+        period: "Today",
+        currentValue: String(kpis.doctorsOnDuty),
+        changeText: `${kpis.doctorsOnLeave} on leave`,
+        changePositive: true,
+        aiPrompt: `${kpis.doctorsOnDuty} doctors on duty, ${kpis.doctorsOnLeave} on leave. Write 2-sentence insight on staffing adequacy.`,
+        reportLink: "/hr",
+        reportLabel: "View HR Dashboard →",
+        hospitalId: hospitalId || undefined,
+      },
+      discounts: {
+        type: "discounts",
+        title: "🎫 Discounts Today",
+        icon: "🎫",
+        period: "Today",
+        currentValue: "—",
+        aiPrompt: "Summarize discount activity today in 2 sentences.",
+        reportLink: "/billing",
+        reportLabel: "View Billing →",
+        hospitalId: hospitalId || undefined,
+      },
+    };
+    setDrawerConfig(configs[type]);
+    setDrawerOpen(true);
+  };
+
+  const drillDownContent = () => {
+    if (!drawerConfig) return null;
+    switch (drawerConfig.type) {
+      case "revenue": return <RevenueDrillDown />;
+      case "beds": return <BedsDrillDown />;
+      case "opd": return <OPDDrillDown />;
+      case "alerts": return <AlertsDrillDown />;
+      case "doctors": return <DoctorsDrillDown />;
+      default: return null;
+    }
   };
 
   return (
@@ -128,11 +244,14 @@ const Dashboard: React.FC = () => {
         <>
           {/* ROW 1 — KPI Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 shrink-0 mb-3">
-            {/* Card 1 */}
-            <Card className="shadow-sm hover:shadow-md transition-shadow">
+            {/* Card 1 - Patients */}
+            <Card
+              className="shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
+              onClick={() => openDrillDown("opd")}
+            >
               <CardHeader className="flex flex-row items-center justify-between pb-1 space-y-0 p-3">
                 <CardTitle className="text-[11px] font-medium text-muted-foreground">Total Patients</CardTitle>
-                <Users size={16} className="text-muted-foreground" />
+                <Users size={16} className="text-muted-foreground group-hover:text-primary transition-colors" />
               </CardHeader>
               <CardContent className="p-3 pt-0">
                 {loading ? <Skeleton className="h-6 w-16" /> : (
@@ -144,11 +263,14 @@ const Dashboard: React.FC = () => {
               </CardContent>
             </Card>
 
-            {/* Card 2 */}
-            <Card className="shadow-sm hover:shadow-md transition-shadow">
+            {/* Card 2 - Beds */}
+            <Card
+              className="shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
+              onClick={() => openDrillDown("beds")}
+            >
               <CardHeader className="flex flex-row items-center justify-between pb-1 space-y-0 p-3">
                 <CardTitle className="text-[11px] font-medium text-muted-foreground">Beds Occupied</CardTitle>
-                <BedDouble size={16} className="text-muted-foreground" />
+                <BedDouble size={16} className="text-muted-foreground group-hover:text-primary transition-colors" />
               </CardHeader>
               <CardContent className="p-3 pt-0">
                 {loading ? <Skeleton className="h-6 w-16" /> : (
@@ -162,11 +284,14 @@ const Dashboard: React.FC = () => {
               </CardContent>
             </Card>
 
-            {/* Card 3 */}
-            <Card className="shadow-sm hover:shadow-md transition-shadow">
+            {/* Card 3 - OPD */}
+            <Card
+              className="shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
+              onClick={() => openDrillDown("opd")}
+            >
               <CardHeader className="flex flex-row items-center justify-between pb-1 space-y-0 p-3">
                 <CardTitle className="text-[11px] font-medium text-muted-foreground">OPD Tokens</CardTitle>
-                <Activity size={16} className="text-muted-foreground" />
+                <Activity size={16} className="text-muted-foreground group-hover:text-primary transition-colors" />
               </CardHeader>
               <CardContent className="p-3 pt-0">
                 {loading ? <Skeleton className="h-6 w-16" /> : (
@@ -178,11 +303,14 @@ const Dashboard: React.FC = () => {
               </CardContent>
             </Card>
 
-            {/* Card 4 */}
-            <Card className="shadow-sm hover:shadow-md transition-shadow">
+            {/* Card 4 - Revenue */}
+            <Card
+              className="shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
+              onClick={() => openDrillDown("revenue")}
+            >
               <CardHeader className="flex flex-row items-center justify-between pb-1 space-y-0 p-3">
                 <CardTitle className="text-[11px] font-medium text-muted-foreground">Revenue (MTD)</CardTitle>
-                <IndianRupee size={16} className="text-muted-foreground" />
+                <IndianRupee size={16} className="text-muted-foreground group-hover:text-primary transition-colors" />
               </CardHeader>
               <CardContent className="p-3 pt-0">
                 {loading ? <Skeleton className="h-6 w-16" /> : (
@@ -194,11 +322,14 @@ const Dashboard: React.FC = () => {
               </CardContent>
             </Card>
 
-            {/* Card 5 */}
-            <Card className="shadow-sm hover:shadow-md transition-shadow">
+            {/* Card 5 - Doctors */}
+            <Card
+              className="shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
+              onClick={() => openDrillDown("doctors")}
+            >
               <CardHeader className="flex flex-row items-center justify-between pb-1 space-y-0 p-3">
                 <CardTitle className="text-[11px] font-medium text-muted-foreground">Doctors On Duty</CardTitle>
-                <Stethoscope size={16} className="text-muted-foreground" />
+                <Stethoscope size={16} className="text-muted-foreground group-hover:text-primary transition-colors" />
               </CardHeader>
               <CardContent className="p-3 pt-0">
                 {loading ? <Skeleton className="h-6 w-16" /> : (
@@ -210,11 +341,14 @@ const Dashboard: React.FC = () => {
               </CardContent>
             </Card>
 
-            {/* Card 6 */}
-            <Card className={cn("shadow-sm hover:shadow-md transition-shadow", kpis.criticalAlerts > 0 && !loading && "border-l-[3px] border-l-destructive")}>
+            {/* Card 6 - Alerts */}
+            <Card
+              className={cn("shadow-sm hover:shadow-md transition-shadow cursor-pointer group", kpis.criticalAlerts > 0 && !loading && "border-l-[3px] border-l-destructive")}
+              onClick={() => openDrillDown("alerts")}
+            >
               <CardHeader className="flex flex-row items-center justify-between pb-1 space-y-0 p-3">
                 <CardTitle className="text-[11px] font-medium text-muted-foreground">Critical Alerts</CardTitle>
-                <AlertTriangle size={16} className="text-muted-foreground" />
+                <AlertTriangle size={16} className="text-muted-foreground group-hover:text-primary transition-colors" />
               </CardHeader>
               <CardContent className="p-3 pt-0">
                 {loading ? <Skeleton className="h-6 w-16" /> : (
@@ -237,6 +371,15 @@ const Dashboard: React.FC = () => {
           </div>
         </>
       )}
+
+      {/* Drill-Down Drawer */}
+      <DrillDownDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        config={drawerConfig}
+      >
+        {drillDownContent()}
+      </DrillDownDrawer>
     </div>
   );
 };
