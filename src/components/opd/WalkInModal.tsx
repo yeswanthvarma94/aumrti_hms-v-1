@@ -39,8 +39,8 @@ const DEFAULT_CONSULTATION_FEE = 500;
 
 const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated }) => {
   const { toast } = useToast();
-  const [step, setStep] = useState<"details" | "payment">("details");
-
+  const [step, setStep] = useState<"details" | "payment" | "receipt">("details");
+  const receiptRef = useRef<HTMLDivElement>(null);
   // Search
   const [phone, setPhone] = useState("");
   const [foundPatient, setFoundPatient] = useState<FoundPatient | null>(null);
