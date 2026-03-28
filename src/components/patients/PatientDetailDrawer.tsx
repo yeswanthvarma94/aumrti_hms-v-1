@@ -199,6 +199,11 @@ const PatientDetailDrawer: React.FC<Props> = ({ patient, onClose }) => {
               </div>
             )}
           </Section>
+
+          {/* Patient Documents */}
+          {hospitalId && currentUserId && (
+            <PatientDocuments patientId={patient.id} hospitalId={hospitalId} userId={currentUserId} />
+          )}
         </div>
       </div>
     </div>
