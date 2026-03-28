@@ -313,6 +313,12 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
 
   return (
     <div className="flex-1 overflow-y-auto p-4">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-semibold text-foreground">Machines ({machines.length})</h3>
+        <Button size="sm" onClick={openAddMachine}><Plus className="w-3.5 h-3.5 mr-1" /> Add Machine</Button>
+      </div>
+
       {/* Machine Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
         {machines.map(m => {
