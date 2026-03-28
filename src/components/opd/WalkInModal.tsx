@@ -322,6 +322,48 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated }) => {
     }
   };
 
+  const handlePrintReceipt = () => {
+    if (!receiptData) return;
+    const printWin = window.open("", "_blank", "width=400,height=600");
+    if (!printWin) return;
+    const paidLabel = receiptData.paid ? "Paid (" + receiptData.paymentMode + ")" : "Pending";
+    const paidClass = receiptData.paid ? "paid" : "pending";
+    const html = [
+      "<html><head><title>OPD Receipt</title>",
+      "<style>",
+      "body{font-family:Arial,sans-serif;padding:20px;margin:0;font-size:13px}",
+      ".r{display:flex;justify-content:space-between;margin-bottom:6px}",
+      ".l{color:#64748b}.v{font-weight:600;color:#1e293b}",
+      ".m{font-family:monospace}.c{text-align:center}",
+      ".db{border-bottom:1px dashed #cbd5e1;padding-bottom:10px;margin-bottom:10px}",
+      ".dt{border-top:1px dashed #cbd5e1;padding-top:10px;margin-top:10px}",
+      ".tk{font-size:22px;font-weight:800;color:#1A2F5A}",
+      ".f{font-weight:700}",
+      ".paid{color:#059669;font-weight:600}",
+      ".pending{color:#d97706;font-weight:600}",
+      ".ft{font-size:10px;color:#94a3b8;text-align:center;margin-top:12px}",
+      "@media print{body{padding:10px}}",
+      "</style></head><body>",
+      '<div class="c db"><strong>OPD CONSULTATION RECEIPT</strong><br/><small>' + receiptData.date + "</small></div>",
+      '<div class="r"><span class="l">Bill No.</span><span class="v m">' + receiptData.billNumber + "</span></div>",
+      '<div class="r"><span class="l">Patient</span><span class="v">' + receiptData.patientName + "</span></div>",
+      '<div class="r"><span class="l">UHID</span><span class="v m">' + receiptData.uhid + "</span></div>",
+      '<div class="r"><span class="l">Department</span><span class="v">' + receiptData.department + "</span></div>",
+      '<div class="r"><span class="l">Doctor</span><span class="v">' + receiptData.doctor + "</span></div>",
+      '<div class="dt">',
+      '<div class="r"><span class="l">Token</span><span class="tk">' + receiptData.token + "</span></div>",
+      '<div class="r"><span class="l">Consultation Fee</span><span class="f">\u20B9' + receiptData.fee.toLocaleString("en-IN") + "</span></div>",
+      '<div class="r"><span class="l">Payment</span><span class="' + paidClass + '">' + paidLabel + "</span></div>",
+      "</div>",
+      '<div class="ft dt">Thank you for visiting. Get well soon!</div>',
+      "</body></html>",
+    ].join("");
+    printWin.document.write(html);
+    printWin.document.close();
+    printWin.focus();
+    printWin.print();
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={onClose}>
       <div className="bg-white rounded-2xl p-7 w-full max-w-[440px] shadow-xl relative max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
