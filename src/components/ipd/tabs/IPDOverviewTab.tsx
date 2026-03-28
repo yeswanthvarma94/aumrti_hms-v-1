@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Activity, Pill, ClipboardList, CheckCircle2 } from "lucide-react";
+import { Activity, Pill, ClipboardList, CheckCircle2, Stethoscope, CreditCard, Package, FileText, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { toast } from "@/hooks/use-toast";
 import DischargeInstructions from "@/components/ipd/DischargeInstructions";
 
 interface Props {
@@ -11,33 +12,40 @@ interface Props {
   onTabChange: (tab: string) => void;
   patientName?: string;
   patientPhone?: string | null;
+  highlightDischarge?: boolean;
 }
 
-const IPDOverviewTab: React.FC<Props> = ({ admissionId, hospitalId, onTabChange, patientName, patientPhone }) => {
+const IPDOverviewTab: React.FC<Props> = ({ admissionId, hospitalId, onTabChange, patientName, patientPhone, highlightDischarge }) => {
   const navigate = useNavigate();
   const [latestVitals, setLatestVitals] = useState<any>(null);
   const [medications, setMedications] = useState<any[]>([]);
-  const [vitalsTime, setVitalsTime] = useState<string>("");
+  const [vitalsTime, setVitalsTime] = useState("");
   const [billingCleared, setBillingCleared] = useState(false);
+  const [medicalCleared, setMedicalCleared] = useState(false);
+  const [pharmacyCleared, setPharmacyCleared] = useState(false);
+  const [dischargeSummaryDone, setDischargeSummaryDone] = useState(false);
   const [admDiagnosis, setAdmDiagnosis] = useState("");
+  const [savingStep, setSavingStep] = useState<string | null>(null);
 
   useEffect(() => {
     if (!admissionId) return;
-    supabase.from("admissions").select("billing_cleared, admitting_diagnosis").eq("id", admissionId).maybeSingle()
+    supabase.from("admissions")
+      .select("billing_cleared, admitting_diagnosis, medical_cleared, pharmacy_cleared, discharge_summary_done")
+      .eq("id", admissionId).maybeSingle()
       .then(({ data }) => {
         setBillingCleared(data?.billing_cleared || false);
+        setMedicalCleared((data as any)?.medical_cleared || false);
+        setPharmacyCleared((data as any)?.pharmacy_cleared || false);
+        setDischargeSummaryDone(data?.discharge_summary_done || false);
         setAdmDiagnosis(data?.admitting_diagnosis || "");
       });
   }, [admissionId]);
 
   useEffect(() => {
     if (!admissionId || !hospitalId) return;
-    // Fetch latest vitals
     supabase.from("ipd_vitals")
-      .select("*")
-      .eq("admission_id", admissionId)
-      .order("recorded_at", { ascending: false })
-      .limit(1)
+      .select("*").eq("admission_id", admissionId)
+      .order("recorded_at", { ascending: false }).limit(1)
       .then(({ data }) => {
         if (data?.[0]) {
           setLatestVitals(data[0]);
@@ -45,27 +53,69 @@ const IPDOverviewTab: React.FC<Props> = ({ admissionId, hospitalId, onTabChange,
           setVitalsTime(mins < 60 ? `${mins} min ago` : `${Math.floor(mins / 60)}h ago`);
         }
       });
-
-    // Fetch active medications
     supabase.from("ipd_medications")
-      .select("*")
-      .eq("admission_id", admissionId)
-      .eq("is_active", true)
+      .select("*").eq("admission_id", admissionId).eq("is_active", true)
       .order("created_at", { ascending: false })
       .then(({ data }) => setMedications(data || []));
   }, [admissionId, hospitalId]);
 
+  const updateAdmission = async (field: string, value: boolean) => {
+    setSavingStep(field);
+    const { error } = await supabase.from("admissions").update({ [field]: value } as any).eq("id", admissionId);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Updated", description: `${field.replace(/_/g, " ")} marked` });
+    }
+    setSavingStep(null);
+    return !error;
+  };
+
+  const handleMedicalClear = async () => {
+    const ok = await updateAdmission("medical_cleared", true);
+    if (ok) setMedicalCleared(true);
+  };
+
+  const handlePharmacyClear = async () => {
+    const ok = await updateAdmission("pharmacy_cleared", true);
+    if (ok) setPharmacyCleared(true);
+  };
+
+  const handleDischargeSummary = async () => {
+    const ok = await updateAdmission("discharge_summary_done", true);
+    if (ok) {
+      setDischargeSummaryDone(true);
+      // Mark admission as discharged
+      await supabase.from("admissions").update({ status: "discharged", discharged_at: new Date().toISOString() } as any).eq("id", admissionId);
+      // Free the bed
+      const { data: adm } = await supabase.from("admissions").select("bed_id").eq("id", admissionId).maybeSingle();
+      if (adm?.bed_id) {
+        await supabase.from("beds").update({ status: "available" as any }).eq("id", adm.bed_id);
+      }
+      toast({ title: "Patient discharged", description: "Bed freed and admission closed" });
+    }
+  };
+
+  const steps = [
+    { key: "medical", label: "Medical", icon: Stethoscope, done: medicalCleared, color: "text-blue-600" },
+    { key: "billing", label: "Billing", icon: CreditCard, done: billingCleared, color: "text-emerald-600" },
+    { key: "pharmacy", label: "Pharmacy", icon: Package, done: pharmacyCleared, color: "text-violet-600" },
+    { key: "summary", label: "Summary", icon: FileText, done: dischargeSummaryDone, color: "text-amber-600" },
+  ];
+
+  const currentStep = !medicalCleared ? 0 : !billingCleared ? 1 : !pharmacyCleared ? 2 : !dischargeSummaryDone ? 3 : 4;
+
   return (
     <div className="h-full p-4 overflow-y-auto">
-      <div className="grid grid-cols-2 gap-3 h-full max-h-full">
+      <div className="grid grid-cols-2 gap-3">
         {/* Card A: Today's Vitals */}
-        <div className="bg-white rounded-lg border border-slate-200 p-4 flex flex-col">
+        <div className="bg-card rounded-lg border border-border p-4 flex flex-col">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Activity className="h-4 w-4 text-blue-500" />
-              <span className="text-[13px] font-bold text-slate-900">Today's Vitals</span>
+              <span className="text-[13px] font-bold text-foreground">Today's Vitals</span>
             </div>
-            {vitalsTime && <span className="text-[11px] text-slate-400">{vitalsTime}</span>}
+            {vitalsTime && <span className="text-[11px] text-muted-foreground">{vitalsTime}</span>}
           </div>
           {latestVitals ? (
             <div className="grid grid-cols-2 gap-2 flex-1">
@@ -75,7 +125,7 @@ const IPDOverviewTab: React.FC<Props> = ({ admissionId, hospitalId, onTabChange,
               <MiniVital label="SpO2" value={latestVitals.spo2 || '—'} unit="%" />
             </div>
           ) : (
-            <p className="text-xs text-slate-400 flex-1 flex items-center">No vitals recorded yet</p>
+            <p className="text-xs text-muted-foreground flex-1 flex items-center">No vitals recorded yet</p>
           )}
           <Button size="sm" variant="outline" className="mt-2 text-xs h-7 w-full" onClick={() => onTabChange("vitals")}>
             Add Vitals
@@ -83,25 +133,25 @@ const IPDOverviewTab: React.FC<Props> = ({ admissionId, hospitalId, onTabChange,
         </div>
 
         {/* Card B: Active Medications */}
-        <div className="bg-white rounded-lg border border-slate-200 p-4 flex flex-col">
+        <div className="bg-card rounded-lg border border-border p-4 flex flex-col">
           <div className="flex items-center gap-2 mb-3">
             <Pill className="h-4 w-4 text-emerald-500" />
-            <span className="text-[13px] font-bold text-slate-900">Active Medications</span>
-            <span className="text-[11px] text-slate-400 ml-auto">{medications.length}</span>
+            <span className="text-[13px] font-bold text-foreground">Active Medications</span>
+            <span className="text-[11px] text-muted-foreground ml-auto">{medications.length}</span>
           </div>
           <div className="flex-1 space-y-1.5 overflow-y-auto">
             {medications.slice(0, 4).map((m) => (
               <div key={m.id} className="text-xs">
-                <span className="font-semibold text-slate-800">{m.drug_name}</span>
-                <span className="text-slate-400 ml-1">{m.dose} · {m.frequency}</span>
+                <span className="font-semibold text-foreground">{m.drug_name}</span>
+                <span className="text-muted-foreground ml-1">{m.dose} · {m.frequency}</span>
               </div>
             ))}
             {medications.length > 4 && (
-              <button onClick={() => onTabChange("medications")} className="text-[11px] text-blue-600 hover:underline">
+              <button onClick={() => onTabChange("medications")} className="text-[11px] text-primary hover:underline">
                 + {medications.length - 4} more
               </button>
             )}
-            {medications.length === 0 && <p className="text-xs text-slate-400">No active medications</p>}
+            {medications.length === 0 && <p className="text-xs text-muted-foreground">No active medications</p>}
           </div>
           <Button size="sm" variant="outline" className="mt-2 text-xs h-7 w-full" onClick={() => onTabChange("medications")}>
             Add Med
@@ -109,50 +159,79 @@ const IPDOverviewTab: React.FC<Props> = ({ admissionId, hospitalId, onTabChange,
         </div>
 
         {/* Card C: Pending Orders */}
-        <div className="bg-white rounded-lg border border-slate-200 p-4 flex flex-col">
+        <div className="bg-card rounded-lg border border-border p-4 flex flex-col">
           <div className="flex items-center gap-2 mb-3">
             <ClipboardList className="h-4 w-4 text-amber-500" />
-            <span className="text-[13px] font-bold text-slate-900">Pending Orders</span>
+            <span className="text-[13px] font-bold text-foreground">Pending Orders</span>
           </div>
           <div className="flex-1 flex items-center justify-center">
             <p className="text-xs text-emerald-500 font-medium">No pending orders ✓</p>
           </div>
         </div>
 
-        {/* Card D: Discharge Progress */}
-        <div className="bg-white rounded-lg border border-slate-200 p-4 flex flex-col">
+        {/* Card D: Discharge Workflow */}
+        <div className={`bg-card rounded-lg border p-4 flex flex-col ${highlightDischarge ? 'border-amber-400 ring-2 ring-amber-200' : 'border-border'}`}>
           <div className="flex items-center gap-2 mb-3">
-            <CheckCircle2 className="h-4 w-4 text-slate-400" />
-            <span className="text-[13px] font-bold text-slate-900">Discharge Progress</span>
+            <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+            <span className="text-[13px] font-bold text-foreground">Discharge Workflow</span>
+            {currentStep === 4 && <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded ml-auto">Done</span>}
           </div>
-          <div className="flex-1 flex flex-col items-center justify-center gap-2">
-            <div className="flex items-center gap-1 w-full">
-              {["Medical", "Billing", "Pharmacy", "Summary"].map((step, i) => {
-                const isCompleted = i === 1 ? billingCleared : false;
-                return (
-                  <React.Fragment key={step}>
-                    <div className="flex flex-col items-center">
-                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${isCompleted ? 'border-emerald-500 bg-emerald-50' : 'border-slate-300'}`}>
-                        <span className={`text-[8px] ${isCompleted ? 'text-emerald-600 font-bold' : 'text-slate-400'}`}>
-                          {isCompleted ? '✓' : i + 1}
-                        </span>
-                      </div>
-                      <span className="text-[9px] text-slate-400 mt-1">{step}</span>
+
+          {/* Stepper */}
+          <div className="flex items-center gap-1 w-full mb-3">
+            {steps.map((step, i) => {
+              const StepIcon = step.icon;
+              const isActive = i === currentStep;
+              return (
+                <React.Fragment key={step.key}>
+                  <div className="flex flex-col items-center">
+                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${
+                      step.done ? 'border-emerald-500 bg-emerald-50' : isActive ? 'border-primary bg-primary/10' : 'border-muted'
+                    }`}>
+                      {step.done ? (
+                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                      ) : (
+                        <StepIcon className={`h-3 w-3 ${isActive ? step.color : 'text-muted-foreground'}`} />
+                      )}
                     </div>
-                    {i < 3 && <div className="flex-1 h-px bg-slate-200 mb-4" />}
-                  </React.Fragment>
-                );
-              })}
-            </div>
-            {!billingCleared && (
-              <Button
-                size="sm"
-                variant="outline"
-                className="text-[10px] h-6 w-full mt-1 border-amber-300 text-amber-700 hover:bg-amber-50"
-                onClick={() => navigate(`/billing?action=new&admission_id=${admissionId}&type=ipd`)}
-              >
-                Clear Billing →
+                    <span className={`text-[9px] mt-1 ${step.done ? 'text-emerald-600 font-semibold' : isActive ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
+                      {step.label}
+                    </span>
+                  </div>
+                  {i < 3 && <div className={`flex-1 h-px mb-4 ${step.done ? 'bg-emerald-400' : 'bg-border'}`} />}
+                </React.Fragment>
+              );
+            })}
+          </div>
+
+          {/* Action for current step */}
+          <div className="flex-1 flex flex-col justify-end">
+            {currentStep === 0 && (
+              <Button size="sm" className="text-[11px] h-7 w-full bg-blue-600 hover:bg-blue-700" onClick={handleMedicalClear} disabled={savingStep === "medical_cleared"}>
+                {savingStep === "medical_cleared" ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Stethoscope className="h-3 w-3 mr-1" />}
+                Mark Medical Clearance
               </Button>
+            )}
+            {currentStep === 1 && (
+              <Button size="sm" variant="outline" className="text-[11px] h-7 w-full border-amber-300 text-amber-700 hover:bg-amber-50"
+                onClick={() => navigate(`/billing?action=new&admission_id=${admissionId}&type=ipd`)}>
+                <CreditCard className="h-3 w-3 mr-1" /> Clear Billing →
+              </Button>
+            )}
+            {currentStep === 2 && (
+              <Button size="sm" className="text-[11px] h-7 w-full bg-violet-600 hover:bg-violet-700" onClick={handlePharmacyClear} disabled={savingStep === "pharmacy_cleared"}>
+                {savingStep === "pharmacy_cleared" ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Package className="h-3 w-3 mr-1" />}
+                Clear Pharmacy
+              </Button>
+            )}
+            {currentStep === 3 && (
+              <Button size="sm" className="text-[11px] h-7 w-full bg-amber-600 hover:bg-amber-700 text-white" onClick={handleDischargeSummary} disabled={savingStep === "discharge_summary_done"}>
+                {savingStep === "discharge_summary_done" ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <FileText className="h-3 w-3 mr-1" />}
+                Generate Summary & Discharge
+              </Button>
+            )}
+            {currentStep === 4 && (
+              <p className="text-[11px] text-emerald-600 font-medium text-center">✅ Patient discharged</p>
             )}
           </div>
         </div>
@@ -175,10 +254,10 @@ const IPDOverviewTab: React.FC<Props> = ({ admissionId, hospitalId, onTabChange,
 };
 
 const MiniVital = ({ label, value, unit }: { label: string; value: string | number; unit: string }) => (
-  <div className="bg-slate-50 rounded-md p-2">
-    <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">{label}</p>
-    <p className="text-lg font-bold text-slate-800 leading-tight">{value}</p>
-    <p className="text-[10px] text-slate-400">{unit}</p>
+  <div className="bg-muted rounded-md p-2">
+    <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">{label}</p>
+    <p className="text-lg font-bold text-foreground leading-tight">{value}</p>
+    <p className="text-[10px] text-muted-foreground">{unit}</p>
   </div>
 );
 
