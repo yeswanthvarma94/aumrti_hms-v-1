@@ -24,8 +24,11 @@ const IPDOverviewTab: React.FC<Props> = ({ admissionId, hospitalId, onTabChange,
 
   useEffect(() => {
     if (!admissionId) return;
-    supabase.from("admissions").select("billing_cleared").eq("id", admissionId).maybeSingle()
-      .then(({ data }) => setBillingCleared(data?.billing_cleared || false));
+    supabase.from("admissions").select("billing_cleared, admitting_diagnosis").eq("id", admissionId).maybeSingle()
+      .then(({ data }) => {
+        setBillingCleared(data?.billing_cleared || false);
+        setAdmDiagnosis(data?.admitting_diagnosis || "");
+      });
   }, [admissionId]);
 
   useEffect(() => {
