@@ -266,6 +266,16 @@ const SterilizeTab: React.FC<Props> = ({ showNewCycle, onCloseNewCycle, onRefres
       await supabase.from("sterilization_cycles").update({ status: "completed" }).eq("id", cycle.id);
     }
 
+    // NABH evidence: cycle completed
+    const { data: cUser } = await supabase.from("users").select("hospital_id").limit(1).single();
+    if (cUser) {
+      logNABHEvidence(
+        cUser.hospital_id,
+        "COP.8",
+        `Sterilization cycle ${cycle.cycle_number} completed. ${cycle.biological_indicator_used ? "BI pending." : "No BI — chemical indicator only."} Sets sterilised: ${cycle.cycle_instruments?.length || 0}`
+      );
+    }
+
     toast({ title: "Cycle completed" });
     fetchData();
     onRefresh();
