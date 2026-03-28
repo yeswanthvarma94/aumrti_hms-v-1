@@ -236,7 +236,7 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
                 <span className="text-sm font-bold">{m.machine_name}</span>
                 <Badge className={`text-[10px] ${ts.bg} ${ts.text}`}>{ts.label}</Badge>
               </div>
-              {m.make_model && <p className="text-[10px] text-muted-foreground mb-2">{m.make_model}</p>}
+              {m.model && <p className="text-[10px] text-muted-foreground mb-2">{m.model}</p>}
 
               <div className="flex items-center gap-2 mb-3">
                 <div className={`w-2.5 h-2.5 rounded-full ${STATUS_DOT[m.status] || "bg-muted"}`} />
