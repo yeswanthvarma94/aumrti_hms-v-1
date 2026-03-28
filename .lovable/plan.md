@@ -1,67 +1,66 @@
 
 
-## Plan: OPD Token — Pay Before Issue
+## Plan: IPD Discharge Workflow, Patient Record Deep Link, and Action Buttons
 
-### Problem
-Currently, clicking "Register & Issue Token" in the OPD Walk-In modal creates the token immediately without any billing step. The hospital wants patients to pay the consultation fee before a token is issued.
+### Three Issues to Fix
 
-### Approach
-Add a **two-step flow** inside the existing `WalkInModal`:
+**1. Full Discharge Workflow from IPD Overview**
 
-1. **Step 1 (current)**: Fill patient details, department, doctor, priority — as today
-2. **Step 2 (new)**: After clicking "Proceed to Payment", show an inline billing step where:
-   - Auto-create a draft OPD bill with a consultation fee line item
-   - Show the bill amount (fetched from department/service rates or a default ₹500 configurable)
-   - Offer payment modes: **Cash**, **UPI**, **Card**, **Skip (Pay Later)**
-   - On payment confirmation → mark bill as paid → then create the token
-   - "Pay Later" option creates the bill as unpaid but still issues the token (for hospitals that want flexibility)
+Currently the Discharge Progress card only has a "Clear Billing" link. Need a complete step-by-step discharge process manageable from this screen.
 
-### Technical Changes
+**Changes to `src/components/ipd/tabs/IPDOverviewTab.tsx`:**
+- Track 4 discharge steps with state: Medical Clearance, Billing, Pharmacy, Summary
+- **Medical**: "Mark Medical Clearance" button → updates `admissions.medical_cleared = true`
+- **Billing**: "Clear Billing →" navigates to billing (existing) — checks `billing_cleared` from admissions
+- **Pharmacy**: "Clear Pharmacy →" checks if all dispensing is done (query `pharmacy_dispensing` for pending items) or marks cleared
+- **Summary**: "Generate Discharge Summary" → triggers AI discharge summary generation + print
+- Each step unlocks sequentially (step N+1 disabled until step N done)
+- Add `medical_cleared` and `pharmacy_cleared` columns to admissions read (if not present, use local state with Supabase update)
 
-**File: `src/components/opd/WalkInModal.tsx`**
-- Add `step` state: `'details' | 'payment'`
-- Step 1 renders current form; submit button becomes "Proceed to Payment →"
-- Step 2 renders inline payment panel:
-  - Shows: Patient name, department, doctor, consultation fee amount
-  - Payment mode pills: Cash / UPI / Card / Pay Later
-  - Amount input (pre-filled from consultation fee, editable)
-  - "Pay & Issue Token →" button
-- On payment submit:
-  1. Create/find patient (existing logic)
-  2. Create bill (`bills` table) with type `opd`
-  3. Insert `bill_line_items` with consultation fee
-  4. Insert `bill_payments` with selected payment mode + amount
-  5. Update bill totals and payment_status
-  6. Create `opd_tokens` entry
-  7. Close modal with success toast
+**Changes to `src/components/ipd/IPDWorkspace.tsx` (Initiate Discharge button):**
+- Instead of just sending WhatsApp, switch to Overview tab and highlight the discharge stepper
+- The actual discharge status update (`admissions.status = 'discharged'`) happens at Step 4 completion
 
-- "← Back" button on step 2 to return to details
-- "Skip — Pay Later" link creates bill as `pending` payment but still issues token
+**2. View Patient Record — Open Specific Patient**
 
-**No new tables or routes needed.** Uses existing `bills`, `bill_line_items`, `bill_payments` tables.
+Currently navigates to `/patients?id={patientId}` but `PatientsPage` ignores the `?id=` query param.
 
-### UI Layout (Step 2)
-```text
-┌─────────────────────────────┐
-│  💳 Collect Consultation Fee │
-│                             │
-│  Patient: Ravi Kumar        │
-│  Dept: General Medicine     │
-│  Doctor: Dr. Sharma         │
-│                             │
-│  Consultation Fee           │
-│  ┌─────────────────────┐    │
-│  │  ₹ 500              │    │
-│  └─────────────────────┘    │
-│                             │
-│  Payment Mode               │
-│  [Cash] [UPI] [Card]        │
-│                             │
-│  ┌─────────────────────────┐│
-│  │  💳 Pay & Issue Token → ││
-│  └─────────────────────────┘│
-│  Skip — Pay Later →         │
-│  ← Back to details          │
-└─────────────────────────────┘
-```
+**Changes to `src/pages/patients/PatientsPage.tsx`:**
+- Read `id` from `useSearchParams()`
+- On mount, if `id` param exists, fetch that specific patient and auto-open `PatientDetailDrawer`
+- Clear the param after opening so subsequent navigation works normally
+
+**3. Initiate Discharge, Transfer, Escalate Buttons Not Working**
+
+Currently these just show toasts. Make them functional:
+
+**Initiate Discharge** (`IPDWorkspace.tsx`):
+- Switch to Overview tab and scroll to Discharge Progress card
+- Set a flag to highlight the discharge stepper
+
+**Transfer** (`IPDWorkspace.tsx`):
+- Open a Transfer modal with: destination ward select, destination bed select, reason textarea
+- On submit: update `admissions` with new ward/bed, update old bed status to `available`, new bed to `occupied`
+
+**Escalate** (`IPDWorkspace.tsx`):
+- Insert a `clinical_alert` record with severity `critical`, type `escalation`
+- Show confirmation toast with details
+
+### Technical Details
+
+**New component:** `src/components/ipd/BedTransferModal.tsx`
+- Ward dropdown (from `wards` table)
+- Available bed dropdown (from `beds` where status = 'available' in selected ward)
+- Reason textarea
+- On confirm: update `admissions.ward_id`, `admissions.bed_id`, update both bed statuses
+
+**Database reads/writes:**
+- READ: `admissions`, `pharmacy_dispensing`, `wards`, `beds`, `patients`
+- WRITE: `admissions` (medical_cleared, pharmacy_cleared, status, ward_id, bed_id), `beds` (status), `clinical_alerts`
+
+**Files modified:**
+1. `src/components/ipd/tabs/IPDOverviewTab.tsx` — full discharge stepper with 4 actionable steps
+2. `src/components/ipd/IPDWorkspace.tsx` — wire up Initiate Discharge (tab switch), Transfer (modal), Escalate (alert insert)
+3. `src/pages/patients/PatientsPage.tsx` — read `?id=` param and auto-open patient drawer
+4. `src/components/ipd/BedTransferModal.tsx` — new transfer modal
 
