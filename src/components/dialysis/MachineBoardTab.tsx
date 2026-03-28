@@ -117,20 +117,43 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
     setStep(3);
   };
 
+  const checkDialyzerReuse = async (dId: string, patientId: string): Promise<string | null> => {
+    if (!dId) return null;
+    const { data } = await (supabase as any).from("dialysis_sessions")
+      .select("dialysis_patient_id, dialysis_patients(patients(full_name))")
+      .eq("dialyzer_id", dId)
+      .neq("dialysis_patient_id", patientId)
+      .limit(1);
+    if (data && data.length > 0) {
+      return `HARD BLOCK: Dialyzer "${dId}" was previously used by ${data[0].dialysis_patients?.patients?.full_name || "another patient"}.\nDialyzers CANNOT be reused across different patients — infection risk.\nThis session CANNOT proceed with this dialyzer.`;
+    }
+    return null;
+  };
+
   const startSession = async () => {
     if (!selectedPatient || !startMachine) return;
+
+    // Dialyzer reuse check
+    if (dialyzerId) {
+      const reuseBlock = await checkDialyzerReuse(dialyzerId, selectedPatient.id);
+      if (reuseBlock) {
+        setSafetyBlock(reuseBlock);
+        return;
+      }
+    }
+
     const { data: user } = await supabase.from("users").select("id, hospital_id").limit(1).single();
     if (!user) return;
 
     const ufGoal = selectedPatient.dry_weight_kg ? Math.round((parseFloat(preWeight) - selectedPatient.dry_weight_kg) * 1000) : null;
 
-    const { data: session } = await (supabase as any).from("dialysis_sessions").insert({
+    await (supabase as any).from("dialysis_sessions").insert({
       hospital_id: user.hospital_id,
       dialysis_patient_id: selectedPatient.id,
       machine_id: startMachine.id,
       session_date: new Date().toISOString().split("T")[0],
       scheduled_start: new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
-      actual_start: new Date().toISOString(),
+      started_at: new Date().toISOString(),
       pre_weight_kg: parseFloat(preWeight) || null,
       pre_bp_systolic: parseInt(preBpSys) || null,
       pre_bp_diastolic: parseInt(preBpDia) || null,
@@ -142,10 +165,10 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
       uf_goal_ml: ufGoal && ufGoal > 0 ? ufGoal : null,
       dialyzer_id: dialyzerId || null,
       status: "in_progress",
-      conducted_by: user.id,
-    }).select().single();
+      performed_by: user.id,
+    });
 
-    await (supabase as any).from("dialysis_machines").update({ status: "in_use" }).eq("id", startMachine.id);
+    await (supabase as any).from("dialysis_machines").update({ status: "in_use", current_patient_id: selectedPatient.patient_id }).eq("id", startMachine.id);
 
     toast({ title: `Session started on ${startMachine.machine_name}` });
     resetStartForm();
