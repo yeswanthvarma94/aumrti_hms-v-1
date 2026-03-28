@@ -295,11 +295,26 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated }) => {
       });
       if (tokenErr) throw tokenErr;
 
+      // Set receipt data and go to receipt step
+      const rData = {
+        billNumber,
+        patientName: patientDisplayName || "—",
+        uhid: useExisting ? foundPatient?.uhid || "" : "New",
+        department: selectedDeptName,
+        doctor: doctorId ? `Dr. ${selectedDoctorName}` : "—",
+        token: nextToken,
+        fee,
+        paymentMode: isPaid ? paymentMode : "—",
+        date: today,
+        paid: isPaid,
+      };
+      setReceiptData(rData);
+      setStep("receipt");
+
       const statusMsg = isPaid
         ? `Token ${nextToken} issued · ₹${fee.toLocaleString("en-IN")} collected ✓`
         : `Token ${nextToken} issued · Payment pending`;
       toast({ title: statusMsg });
-      onCreated();
     } catch (err: unknown) {
       toast({ title: "Registration failed", description: (err as Error).message, variant: "destructive" });
     } finally {
