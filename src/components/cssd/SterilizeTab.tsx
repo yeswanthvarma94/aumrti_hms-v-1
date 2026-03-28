@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { useToast } from "@/hooks/use-toast";
 import { AlertTriangle, ShieldX, Clock, CheckCircle, Plus } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { logNABHEvidence } from "@/lib/nabh-evidence";
 
 interface Props {
   showNewCycle: boolean;
