@@ -265,6 +265,47 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
     setUreaPre(""); setUreaPost(""); setUfAchieved(""); setComplications([]); setSessionNotes("");
   };
 
+  const openAddMachine = () => {
+    setMName(""); setMModel(""); setMType("clean"); setMLocation("");
+    setMachineModal({ open: true, editing: null });
+  };
+
+  const openEditMachine = (m: any) => {
+    setMName(m.machine_name || ""); setMModel(m.model || ""); setMType(m.machine_type || "clean"); setMLocation(m.location || "");
+    setMachineModal({ open: true, editing: m });
+  };
+
+  const saveMachine = async () => {
+    if (!mName.trim()) return;
+    const { data: user } = await supabase.from("users").select("id, hospital_id").limit(1).single();
+    if (!user) return;
+
+    if (machineModal.editing) {
+      await (supabase as any).from("dialysis_machines").update({
+        machine_name: mName.trim(), model: mModel.trim() || null, machine_type: mType, location: mLocation.trim() || null,
+      }).eq("id", machineModal.editing.id);
+      toast({ title: `${mName} updated` });
+    } else {
+      await (supabase as any).from("dialysis_machines").insert({
+        hospital_id: user.hospital_id, machine_name: mName.trim(), model: mModel.trim() || null,
+        machine_type: mType, location: mLocation.trim() || null, status: "available", is_active: true,
+      });
+      toast({ title: `${mName} added` });
+    }
+    setMachineModal({ open: false, editing: null });
+    fetchData();
+  };
+
+  const deactivateMachine = async (m: any) => {
+    if (activeSessions[m.id]) {
+      toast({ title: "Cannot deactivate", description: "Machine has an active session", variant: "destructive" });
+      return;
+    }
+    await (supabase as any).from("dialysis_machines").update({ is_active: false }).eq("id", m.id);
+    toast({ title: `${m.machine_name} deactivated` });
+    fetchData();
+  };
+
   const filteredPatients = patients.filter(p =>
     p.patients?.full_name?.toLowerCase().includes(patientSearch.toLowerCase()) ||
     p.patients?.uhid?.toLowerCase().includes(patientSearch.toLowerCase())
