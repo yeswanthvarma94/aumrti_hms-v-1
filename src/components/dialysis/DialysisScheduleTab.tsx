@@ -40,9 +40,9 @@ const DialysisScheduleTab: React.FC<Props> = ({ showSchedule, onCloseSchedule, o
     const endDate = format(addDays(weekStart, 6), "yyyy-MM-dd");
 
     const [mRes, sRes, pRes] = await Promise.all([
-      supabase.from("dialysis_machines").select("*").eq("is_active", true).order("machine_code"),
-      supabase.from("dialysis_sessions").select("*, dialysis_patients(*, patients(full_name))").gte("session_date", startDate).lte("session_date", endDate),
-      supabase.from("dialysis_patients").select("*, patients(full_name, uhid)").eq("is_active", true),
+      (supabase as any).from("dialysis_machines").select("*").eq("is_active", true).order("machine_code"),
+      (supabase as any).from("dialysis_sessions").select("*, dialysis_patients(*, patients(full_name))").gte("session_date", startDate).lte("session_date", endDate),
+      (supabase as any).from("dialysis_patients").select("*, patients(full_name, uhid)").eq("is_active", true),
     ]);
     if (mRes.data) setMachines(mRes.data);
     if (sRes.data) setSessions(sRes.data);
