@@ -322,6 +322,14 @@ const SterilizeTab: React.FC<Props> = ({ showNewCycle, onCloseNewCycle, onRefres
           alert_message: `STERILITY FAILURE — Cycle ${cycle.cycle_number} BI FAIL. All items quarantined. Do NOT use until re-sterilized and BI passed.`,
         });
       }
+      // NABH evidence: BI failure — critical
+      if (user) {
+        logNABHEvidence(
+          user.hospital_id,
+          "COP.8",
+          `STERILITY FAILURE — Cycle ${cycle.cycle_number} BI FAILED. ${items?.length || 0} sets quarantined. Clinical alert raised to IC team.`
+        );
+      }
       toast({ title: "🔴 STERILITY FAILURE", description: "All items quarantined. Clinical alert raised.", variant: "destructive" });
     }
 
