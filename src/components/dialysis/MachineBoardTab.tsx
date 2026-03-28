@@ -70,7 +70,7 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
   const fetchData = async () => {
     const today = new Date().toISOString().split("T")[0];
     const [mRes, sRes, pRes] = await Promise.all([
-      (supabase as any).from("dialysis_machines").select("*").eq("is_active", true).order("machine_code"),
+      (supabase as any).from("dialysis_machines").select("*").eq("is_active", true).order("machine_name"),
       (supabase as any).from("dialysis_sessions").select("*, dialysis_patients(*, patients(full_name))").eq("status", "in_progress"),
       (supabase as any).from("dialysis_patients").select("*, patients(full_name, uhid)").eq("is_active", true),
     ]);
