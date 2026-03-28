@@ -8,6 +8,7 @@ import MobileTabBar from "./MobileTabBar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { VoiceScribeProvider } from "@/contexts/VoiceScribeContext";
 import VoiceScribePanel from "@/components/voice/VoiceScribePanel";
+import CommandPalette from "./CommandPalette";
 
 const ShellContent: React.FC = () => {
   const { collapsed } = useSidebar();
@@ -18,13 +19,14 @@ const ShellContent: React.FC = () => {
     <div className="h-screen w-screen overflow-hidden bg-background">
       <AppHeader />
       {!isMobile && <AppSidebar />}
+      <CommandPalette />
 
       <main
         className={cn(
           "mt-14 overflow-hidden transition-[margin-left] duration-200",
           isMobile ? "ml-0 h-[calc(100vh-56px-56px)]" : "",
           !isMobile && collapsed ? "ml-16 h-[calc(100vh-56px)]" : "",
-          !isMobile && !collapsed ? "ml-60 h-[calc(100vh-56px)]" : ""
+          !isMobile && !collapsed ? "ml-56 h-[calc(100vh-56px)]" : ""
         )}
       >
         <div

@@ -8,13 +8,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import NotificationCentre from "./NotificationCentre";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -53,7 +46,6 @@ const AppHeader: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [searchOpen, setSearchOpen] = useState(false);
   const [online, setOnline] = useState(navigator.onLine);
   const [hospitalId, setHospitalId] = useState<string | null>(null);
 
@@ -83,16 +75,7 @@ const AppHeader: React.FC = () => {
     };
   }, []);
 
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault();
-        setSearchOpen(true);
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, []);
+  // Cmd+K is now handled by CommandPalette component
 
   const currentLabel = routeLabels[location.pathname] || "Page";
   const isHome = location.pathname === "/";
@@ -127,14 +110,16 @@ const AppHeader: React.FC = () => {
           </Breadcrumb>
         </div>
 
-        {/* Center: search */}
+        {/* Center: search — triggers Cmd+K palette */}
         <div className="flex-1 flex justify-center max-w-md mx-auto">
           <button
-            onClick={() => setSearchOpen(true)}
+            onClick={() => {
+              window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true, bubbles: true }));
+            }}
             className="flex items-center gap-2 w-full max-w-sm h-9 rounded-md border border-input bg-background px-3 text-sm text-muted-foreground hover:bg-muted transition-colors"
           >
             <Search size={16} />
-            <span className="flex-1 text-left">Search patients, bills...</span>
+            <span className="flex-1 text-left">Search modules...</span>
             <kbd className="hidden sm:inline-flex h-5 items-center gap-1 rounded border border-border bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">
               ⌘K
             </kbd>
@@ -185,22 +170,6 @@ const AppHeader: React.FC = () => {
         </div>
       </header>
 
-      {/* Search dialog */}
-      <Dialog open={searchOpen} onOpenChange={setSearchOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Search</DialogTitle>
-          </DialogHeader>
-          <Input
-            placeholder="Search patients, bills, doctors..."
-            autoFocus
-            className="h-11"
-          />
-          <p className="text-sm text-muted-foreground text-center py-6">
-            Start typing to search across patients, bills, and doctors.
-          </p>
-        </DialogContent>
-      </Dialog>
     </>
   );
 };
