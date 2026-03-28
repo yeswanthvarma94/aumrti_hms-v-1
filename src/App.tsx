@@ -96,6 +96,7 @@ const App = () => (
           {/* App shell routes */}
           <Route element={<AppShell />}>
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/modules" element={<ModulesPage />} />
             <Route path="/patients" element={<PatientsPage />} />
             <Route path="/opd" element={<OPDPage />} />
             <Route path="/ipd" element={<IPDPage />} />
