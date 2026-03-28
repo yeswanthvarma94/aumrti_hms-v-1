@@ -72,6 +72,7 @@ import CSSDPage from "./pages/cssd/CSSDPage";
 import DialysisPage from "./pages/dialysis/DialysisPage";
 import OncologyPage from "./pages/oncology/OncologyPage";
 import ModulesPage from "./pages/modules/ModulesPage";
+import MRDPage from "./pages/mrd/MRDPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
