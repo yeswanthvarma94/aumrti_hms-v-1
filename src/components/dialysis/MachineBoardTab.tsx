@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Play, CheckCircle, ShieldX } from "lucide-react";
+import { Play, CheckCircle, ShieldX, Plus, Pencil, Power } from "lucide-react";
 
 interface Props { onRefresh: () => void }
 
