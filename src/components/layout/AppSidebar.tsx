@@ -15,6 +15,7 @@ import {
   LogOut,
   HeartPulse,
   Activity,
+  FolderOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "./SidebarContext";
