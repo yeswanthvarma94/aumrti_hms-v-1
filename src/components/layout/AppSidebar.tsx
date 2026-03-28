@@ -15,6 +15,7 @@ import {
   LogOut,
   HeartPulse,
   Activity,
+  FolderOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "./SidebarContext";
@@ -41,6 +42,10 @@ const quickAccessItems: SidebarItem[] = [
   { label: "Billing", path: "/billing", icon: Receipt },
   { label: "Lab", path: "/lab", icon: FlaskConical },
   { label: "Analytics", path: "/analytics", icon: BarChart3 },
+];
+
+const recordsItems: SidebarItem[] = [
+  { label: "Medical Records", path: "/mrd", icon: FolderOpen },
 ];
 
 const bottomItems: SidebarItem[] = [
@@ -105,8 +110,20 @@ const AppSidebar: React.FC = () => {
       </div>
 
       {/* Quick access items */}
-      <nav className="flex-1 flex flex-col gap-1 px-2">
+      <nav className="flex flex-col gap-1 px-2">
         {quickAccessItems.map(renderItem)}
+      </nav>
+
+      {/* Records & Compliance */}
+      <div className="px-4 pt-4 pb-1">
+        {!collapsed && (
+          <span className="text-[10px] font-bold uppercase tracking-wider text-sidebar-foreground/40">
+            Records
+          </span>
+        )}
+      </div>
+      <nav className="flex-1 flex flex-col gap-1 px-2">
+        {recordsItems.map(renderItem)}
       </nav>
 
       {/* Bottom items */}

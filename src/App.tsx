@@ -72,6 +72,7 @@ import CSSDPage from "./pages/cssd/CSSDPage";
 import DialysisPage from "./pages/dialysis/DialysisPage";
 import OncologyPage from "./pages/oncology/OncologyPage";
 import ModulesPage from "./pages/modules/ModulesPage";
+import MRDPage from "./pages/mrd/MRDPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -153,6 +154,7 @@ const App = () => (
             <Route path="/cssd" element={<CSSDPage />} />
             <Route path="/dialysis" element={<DialysisPage />} />
             <Route path="/oncology" element={<OncologyPage />} />
+            <Route path="/mrd" element={<MRDPage />} />
             <Route path="/admin/go-live" element={<GoLiveChecklistPage />} />
           </Route>
 
