@@ -266,7 +266,7 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
   };
 
   const openAddMachine = () => {
-    setMName(""); setMModel(""); setMType("clean"); setMLocation("");
+    setMName(""); setMModel(""); setMType("clean");
     setMachineModal({ open: true, editing: null });
   };
 
