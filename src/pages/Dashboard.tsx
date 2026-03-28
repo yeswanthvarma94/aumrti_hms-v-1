@@ -243,6 +243,9 @@ const Dashboard: React.FC = () => {
 
       {!isEmpty && (
         <>
+          {/* Chronic Disease Follow-up Alerts */}
+          <ChronicFollowupAlert hospitalId={hospitalId} />
+
           {/* ROW 1 — KPI Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 shrink-0 mb-3">
             {/* Card 1 - Patients */}

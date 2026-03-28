@@ -431,6 +431,9 @@ const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onT
         </div>
       </div>
 
+      {/* Overdue follow-up banner */}
+      {token && <OverdueFollowupBanner patientId={token.patient_id} />}
+
       {/* Tab content */}
       <div className="flex-1 overflow-hidden">
         {activeTab === 0 && <ComplaintTab encounter={encounter} onChange={updateEncounter} />}
