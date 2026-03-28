@@ -464,6 +464,18 @@ const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onT
         {activeTab === 2 && <ExaminationTab encounter={encounter} onChange={updateEncounter} />}
         {activeTab === 3 && <RxOrdersTab prescription={prescription} onChange={updatePrescription} hospitalId={hospitalId} patientAllergies={token?.patient?.allergies ? token.patient.allergies.split(",").map(a => a.trim()) : []} />}
         {activeTab === 4 && <HistoryTab token={token} encounterId={encounterId} />}
+        {activeTab === 5 && specialty === 'obstetric' && hospitalId && (
+          <ObstetricSheet patientId={token.patient_id} hospitalId={hospitalId} encounterId={encounterId} />
+        )}
+        {activeTab === 5 && specialty === 'neonatal' && hospitalId && (
+          <NeonatalSheet patientId={token.patient_id} hospitalId={hospitalId} encounterId={encounterId} />
+        )}
+        {activeTab === 5 && specialty === 'anaesthesia' && hospitalId && (
+          <AnaesthesiaSheet patientId={token.patient_id} hospitalId={hospitalId} encounterId={encounterId} />
+        )}
+        {activeTab === 5 && specialty === 'ophthalmology' && hospitalId && (
+          <OphthalmologySheet patientId={token.patient_id} hospitalId={hospitalId} encounterId={encounterId} />
+        )}
       </div>
 
       {/* Bottom action bar */}
