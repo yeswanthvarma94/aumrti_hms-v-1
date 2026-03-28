@@ -170,22 +170,6 @@ const AppHeader: React.FC = () => {
         </div>
       </header>
 
-      {/* Search dialog */}
-      <Dialog open={searchOpen} onOpenChange={setSearchOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Search</DialogTitle>
-          </DialogHeader>
-          <Input
-            placeholder="Search patients, bills, doctors..."
-            autoFocus
-            className="h-11"
-          />
-          <p className="text-sm text-muted-foreground text-center py-6">
-            Start typing to search across patients, bills, and doctors.
-          </p>
-        </DialogContent>
-      </Dialog>
     </>
   );
 };
