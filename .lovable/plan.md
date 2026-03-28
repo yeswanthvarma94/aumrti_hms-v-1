@@ -1,36 +1,67 @@
 
 
-# Add Machine Management to Dialysis Module
+## Plan: OPD Token — Pay Before Issue
 
-## Problem
-The Machine Board tab displays machines but provides no way to add, edit, or deactivate machines through the UI. Currently machines were only seeded via migration.
+### Problem
+Currently, clicking "Register & Issue Token" in the OPD Walk-In modal creates the token immediately without any billing step. The hospital wants patients to pay the consultation fee before a token is issued.
 
-## Plan
+### Approach
+Add a **two-step flow** inside the existing `WalkInModal`:
 
-### 1. Add "Add Machine" button to Machine Board header
-- Place a `+ Add Machine` button in the top-right of `MachineBoardTab.tsx`
-- Opens a dialog/modal form
+1. **Step 1 (current)**: Fill patient details, department, doctor, priority — as today
+2. **Step 2 (new)**: After clicking "Proceed to Payment", show an inline billing step where:
+   - Auto-create a draft OPD bill with a consultation fee line item
+   - Show the bill amount (fetched from department/service rates or a default ₹500 configurable)
+   - Offer payment modes: **Cash**, **UPI**, **Card**, **Skip (Pay Later)**
+   - On payment confirmation → mark bill as paid → then create the token
+   - "Pay Later" option creates the bill as unpaid but still issues the token (for hospitals that want flexibility)
 
-### 2. Create Add Machine dialog
-Fields:
-- Machine Name (text, required)
-- Model (text, e.g. "Fresenius 5008S")
-- Machine Type (select: Clean, HBV, HCV, HIV, Universal — required)
-- Location (text, optional)
-- Status defaults to `available`
-- `hospital_id` auto-set from current context
-- `is_active` defaults to `true`
+### Technical Changes
 
-On save: insert into `dialysis_machines`, refresh the board.
+**File: `src/components/opd/WalkInModal.tsx`**
+- Add `step` state: `'details' | 'payment'`
+- Step 1 renders current form; submit button becomes "Proceed to Payment →"
+- Step 2 renders inline payment panel:
+  - Shows: Patient name, department, doctor, consultation fee amount
+  - Payment mode pills: Cash / UPI / Card / Pay Later
+  - Amount input (pre-filled from consultation fee, editable)
+  - "Pay & Issue Token →" button
+- On payment submit:
+  1. Create/find patient (existing logic)
+  2. Create bill (`bills` table) with type `opd`
+  3. Insert `bill_line_items` with consultation fee
+  4. Insert `bill_payments` with selected payment mode + amount
+  5. Update bill totals and payment_status
+  6. Create `opd_tokens` entry
+  7. Close modal with success toast
 
-### 3. Add edit/deactivate actions per machine card
-- Small edit icon on each machine card → opens same form pre-filled
-- "Deactivate" option → sets `is_active = false` (soft delete)
-- Cannot deactivate if machine has an active session
+- "← Back" button on step 2 to return to details
+- "Skip — Pay Later" link creates bill as `pending` payment but still issues token
 
-### 4. Technical details
-- All changes in `src/components/dialysis/MachineBoardTab.tsx`
-- Reuses existing Supabase patterns with `(supabase as any).from("dialysis_machines")`
-- RLS already applied via `hospital_id`
-- Hospital ID sourced from existing machine data or system config
+**No new tables or routes needed.** Uses existing `bills`, `bill_line_items`, `bill_payments` tables.
+
+### UI Layout (Step 2)
+```text
+┌─────────────────────────────┐
+│  💳 Collect Consultation Fee │
+│                             │
+│  Patient: Ravi Kumar        │
+│  Dept: General Medicine     │
+│  Doctor: Dr. Sharma         │
+│                             │
+│  Consultation Fee           │
+│  ┌─────────────────────┐    │
+│  │  ₹ 500              │    │
+│  └─────────────────────┘    │
+│                             │
+│  Payment Mode               │
+│  [Cash] [UPI] [Card]        │
+│                             │
+│  ┌─────────────────────────┐│
+│  │  💳 Pay & Issue Token → ││
+│  └─────────────────────────┘│
+│  Skip — Pay Later →         │
+│  ← Back to details          │
+└─────────────────────────────┘
+```
 
