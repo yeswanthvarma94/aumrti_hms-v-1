@@ -11,6 +11,7 @@ import VitalsTab from "./tabs/VitalsTab";
 import ExaminationTab from "./tabs/ExaminationTab";
 import RxOrdersTab from "./tabs/RxOrdersTab";
 import HistoryTab from "./tabs/HistoryTab";
+import OverdueFollowupBanner from "@/components/clinical/OverdueFollowupBanner";
 
 interface Props {
   token: OpdToken | null;
