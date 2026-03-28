@@ -13,6 +13,7 @@ import {
   Siren,
   Scissors,
   Droplets,
+  ShieldCheck,
   HeartPulse,
   UserPlus,
   Video,
