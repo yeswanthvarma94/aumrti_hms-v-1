@@ -61,6 +61,17 @@ const DaycareBoardTab: React.FC<DaycareBoardTabProps> = ({ showNewOrder, onClose
     const protocol = pat.chemo_protocols || protocols.find((p: any) => p.id === pat.protocol_id);
     if (!protocol) { toast({ title: "No protocol assigned to this patient", variant: "destructive" }); return; }
 
+    // Get current user's users.id for ordered_by FK
+    let orderedBy = pat.treating_oncologist;
+    if (!orderedBy) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: userData } = await supabase.from("users").select("id").eq("auth_user_id", user.id).maybeSingle();
+        orderedBy = userData?.id;
+      }
+    }
+    if (!orderedBy) { toast({ title: "Cannot determine ordering doctor", description: "Please log in or assign a treating oncologist", variant: "destructive" }); return; }
+
     const drugs = (protocol.drugs || []) as any[];
     const { data, error } = await (supabase as any).from("chemo_orders").insert({
       hospital_id: pat.hospital_id,
@@ -70,7 +81,7 @@ const DaycareBoardTab: React.FC<DaycareBoardTabProps> = ({ showNewOrder, onClose
       cycle_number: newOrder.cycleNumber,
       day_of_cycle: newOrder.dayOfCycle,
       scheduled_date: newOrder.scheduledDate,
-      ordered_by: pat.treating_oncologist || pat.patient_id,
+      ordered_by: orderedBy,
       bsa_used: pat.bsa_m2 || 1.7,
       weight_at_order: pat.weight_kg || 60,
       anc: newOrder.anc ? parseFloat(newOrder.anc) : null,

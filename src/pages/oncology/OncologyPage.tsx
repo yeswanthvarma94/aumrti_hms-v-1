@@ -74,7 +74,7 @@ const OncologyPage: React.FC = () => {
           <ChemoOrdersTab onRefresh={loadKpis} />
         </TabsContent>
         <TabsContent value="patients" className="flex-1 overflow-auto px-4 pb-4">
-          <OncologyPatientsTab showRegister={showRegister} onCloseRegister={() => setShowRegister(false)} />
+          <OncologyPatientsTab showRegister={false} onCloseRegister={() => {}} />
         </TabsContent>
         <TabsContent value="protocols" className="flex-1 overflow-auto px-4 pb-4">
           <ProtocolsTab />
