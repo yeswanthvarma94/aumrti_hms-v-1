@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -12,6 +12,11 @@ import ExaminationTab from "./tabs/ExaminationTab";
 import RxOrdersTab from "./tabs/RxOrdersTab";
 import HistoryTab from "./tabs/HistoryTab";
 import OverdueFollowupBanner from "@/components/clinical/OverdueFollowupBanner";
+import { getSpecialtySheet, specialtyTabMeta } from "@/lib/specialtyDetection";
+import ObstetricSheet from "@/components/specialty/ObstetricSheet";
+import NeonatalSheet from "@/components/specialty/NeonatalSheet";
+import AnaesthesiaSheet from "@/components/specialty/AnaesthesiaSheet";
+import OphthalmologySheet from "@/components/specialty/OphthalmologySheet";
 
 interface Props {
   token: OpdToken | null;
