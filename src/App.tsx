@@ -144,6 +144,7 @@ const App = () => (
             <Route path="/settings/api-hub" element={<APIConfigHubPage />} />
             <Route path="/accounts" element={<AccountsPage />} />
             <Route path="/accounts/setup" element={<OpeningBalancesPage />} />
+            <Route path="/blood-bank" element={<BloodBankPage />} />
             <Route path="/admin/go-live" element={<GoLiveChecklistPage />} />
           </Route>
 

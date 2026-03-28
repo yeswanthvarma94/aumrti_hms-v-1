@@ -12,6 +12,7 @@ import {
   BedDouble,
   Siren,
   Scissors,
+  Droplets,
   HeartPulse,
   UserPlus,
   Video,
