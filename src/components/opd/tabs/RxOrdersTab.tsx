@@ -5,6 +5,7 @@ import { X, Plus, AlertTriangle, ShieldX, CheckCircle2 } from "lucide-react";
 import type { PrescriptionData, DrugEntry, LabOrder, RadiologyOrder } from "../ConsultationWorkspace";
 import { checkDrugSafety, type DrugSafetyResult } from "@/lib/drugSafetyCheck";
 import DrugSafetyAlertModal from "@/components/opd/DrugSafetyAlertModal";
+import AllergyBanner from "@/components/clinical/AllergyBanner";
 
 interface Props {
   prescription: PrescriptionData;
