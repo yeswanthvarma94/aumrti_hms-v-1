@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
@@ -47,6 +48,7 @@ function getAge(dob: string | null): string {
 
 const PatientsPage: React.FC = () => {
   const { toast } = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -54,6 +56,18 @@ const PatientsPage: React.FC = () => {
   const [filter, setFilter] = useState<FilterPeriod>("all");
   const [showRegister, setShowRegister] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+
+  // Deep-link: auto-open patient by ?id= param
+  useEffect(() => {
+    const patientId = searchParams.get("id");
+    if (!patientId) return;
+    supabase.from("patients").select("*").eq("id", patientId).maybeSingle()
+      .then(({ data }) => {
+        if (data) setSelectedPatient(data as Patient);
+        // Clear param so it doesn't re-trigger
+        setSearchParams({}, { replace: true });
+      });
+  }, []); // run once on mount
 
   const fetchPatients = useCallback(async () => {
     setLoading(true);
@@ -64,7 +78,6 @@ const PatientsPage: React.FC = () => {
 
     if (search.trim()) {
       const trimmed = search.trim();
-      // Use exact phone match when input looks like a phone number (uses index)
       if (/^\d{10,}$/.test(trimmed)) {
         query = query.eq("phone", trimmed);
       } else {
@@ -76,12 +89,10 @@ const PatientsPage: React.FC = () => {
     if (filter === "today") {
       query = query.gte("created_at", new Date(new Date().setHours(0, 0, 0, 0)).toISOString());
     } else if (filter === "week") {
-      const d = new Date();
-      d.setDate(d.getDate() - 7);
+      const d = new Date(); d.setDate(d.getDate() - 7);
       query = query.gte("created_at", d.toISOString());
     } else if (filter === "month") {
-      const d = new Date();
-      d.setMonth(d.getMonth() - 1);
+      const d = new Date(); d.setMonth(d.getMonth() - 1);
       query = query.gte("created_at", d.toISOString());
     }
 
@@ -102,7 +113,6 @@ const PatientsPage: React.FC = () => {
 
   return (
     <div className="h-full flex flex-col overflow-hidden bg-background">
-      {/* Header */}
       <div className="flex items-center justify-between px-5 h-14 flex-shrink-0 border-b border-border bg-card">
         <div className="flex items-center gap-3">
           <Users size={20} className="text-primary" />
@@ -110,40 +120,25 @@ const PatientsPage: React.FC = () => {
           <Badge variant="secondary" className="text-xs">{totalCount}</Badge>
         </div>
         <Button size="sm" onClick={() => setShowRegister(true)}>
-          <UserPlus size={16} />
-          Register New Patient
+          <UserPlus size={16} /> Register New Patient
         </Button>
       </div>
 
-      {/* Search + Filters */}
       <div className="flex items-center gap-3 px-5 h-12 flex-shrink-0 border-b border-border bg-card">
         <div className="relative flex-1 max-w-md">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search by name, phone, or UHID..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 h-8 text-sm"
-          />
+          <Input placeholder="Search by name, phone, or UHID..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 h-8 text-sm" />
         </div>
         <div className="flex gap-1.5">
           {filterLabels.map((f) => (
-            <button
-              key={f.key}
-              onClick={() => setFilter(f.key)}
-              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                filter === f.key
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground hover:bg-muted/80"
-              }`}
-            >
+            <button key={f.key} onClick={() => setFilter(f.key)}
+              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${filter === f.key ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}>
               {f.label}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Table */}
       <div className="flex-1 overflow-auto">
         <Table>
           <TableHeader>
@@ -159,51 +154,28 @@ const PatientsPage: React.FC = () => {
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center py-16 text-muted-foreground">
-                  Loading…
-                </TableCell>
-              </TableRow>
+              <TableRow><TableCell colSpan={7} className="text-center py-16 text-muted-foreground">Loading…</TableCell></TableRow>
             ) : patients.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} className="text-center py-16">
                   <Users size={40} className="mx-auto text-muted-foreground/40 mb-2" />
                   <p className="text-sm text-muted-foreground">No patients found</p>
-                  <Button variant="link" size="sm" onClick={() => setShowRegister(true)} className="mt-1">
-                    Register your first patient
-                  </Button>
+                  <Button variant="link" size="sm" onClick={() => setShowRegister(true)} className="mt-1">Register your first patient</Button>
                 </TableCell>
               </TableRow>
             ) : (
               patients.map((p) => (
-                <TableRow
-                  key={p.id}
-                  className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => setSelectedPatient(p)}
-                >
+                <TableRow key={p.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setSelectedPatient(p)}>
                   <TableCell className="font-mono text-xs">{p.uhid}</TableCell>
                   <TableCell className="font-medium">{p.full_name}</TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
-                    {getAge(p.dob)} {p.gender ? `/ ${p.gender.charAt(0).toUpperCase()}` : ""}
-                  </TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{getAge(p.dob)} {p.gender ? `/ ${p.gender.charAt(0).toUpperCase()}` : ""}</TableCell>
                   <TableCell className="text-sm">{p.phone || "—"}</TableCell>
                   <TableCell>
-                    {p.blood_group ? (
-                      <Badge variant="outline" className="text-[10px] border-destructive/30 text-destructive">
-                        {p.blood_group}
-                      </Badge>
-                    ) : "—"}
+                    {p.blood_group ? <Badge variant="outline" className="text-[10px] border-destructive/30 text-destructive">{p.blood_group}</Badge> : "—"}
                   </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
-                    {new Date(p.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
-                  </TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{new Date(p.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</TableCell>
                   <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={(e) => { e.stopPropagation(); setSelectedPatient(p); }}
-                    >
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); setSelectedPatient(p); }}>
                       <Eye size={14} />
                     </Button>
                   </TableCell>
@@ -214,19 +186,8 @@ const PatientsPage: React.FC = () => {
         </Table>
       </div>
 
-      {showRegister && (
-        <PatientRegistrationModal
-          onClose={() => setShowRegister(false)}
-          onSuccess={() => { setShowRegister(false); fetchPatients(); }}
-        />
-      )}
-
-      {selectedPatient && (
-        <PatientDetailDrawer
-          patient={selectedPatient}
-          onClose={() => setSelectedPatient(null)}
-        />
-      )}
+      {showRegister && <PatientRegistrationModal onClose={() => setShowRegister(false)} onSuccess={() => { setShowRegister(false); fetchPatients(); }} />}
+      {selectedPatient && <PatientDetailDrawer patient={selectedPatient} onClose={() => setSelectedPatient(null)} />}
     </div>
   );
 };

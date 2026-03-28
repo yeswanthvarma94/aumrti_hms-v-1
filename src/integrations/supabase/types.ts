@@ -34,7 +34,9 @@ export type Database = {
           id: string
           insurance_id: string | null
           insurance_type: string
+          medical_cleared: boolean | null
           patient_id: string
+          pharmacy_cleared: boolean | null
           status: string
           ward_id: string
         }
@@ -57,7 +59,9 @@ export type Database = {
           id?: string
           insurance_id?: string | null
           insurance_type?: string
+          medical_cleared?: boolean | null
           patient_id: string
+          pharmacy_cleared?: boolean | null
           status?: string
           ward_id: string
         }
@@ -80,7 +84,9 @@ export type Database = {
           id?: string
           insurance_id?: string | null
           insurance_type?: string
+          medical_cleared?: boolean | null
           patient_id?: string
+          pharmacy_cleared?: boolean | null
           status?: string
           ward_id?: string
         }
