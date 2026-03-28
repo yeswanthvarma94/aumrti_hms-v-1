@@ -692,50 +692,7 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated }) => {
             {/* Print + Done buttons */}
             <div className="flex gap-3 mt-4">
               <button
-                onClick={() => {
-                  const content = receiptRef.current;
-                  if (!content) return;
-                  const printWin = window.open("", "_blank", "width=400,height=600");
-                  if (!printWin) return;
-                  printWin.document.write(`
-                    <html><head><title>OPD Receipt</title>
-                    <style>
-                      body { font-family: Arial, sans-serif; padding: 20px; margin: 0; font-size: 13px; }
-                      .flex { display: flex; justify-content: space-between; margin-bottom: 6px; }
-                      .label { color: #64748b; }
-                      .value { font-weight: 600; color: #1e293b; }
-                      .mono { font-family: monospace; }
-                      .center { text-align: center; }
-                      .border-b { border-bottom: 1px dashed #cbd5e1; padding-bottom: 10px; margin-bottom: 10px; }
-                      .border-t { border-top: 1px dashed #cbd5e1; padding-top: 10px; margin-top: 10px; }
-                      .token { font-size: 22px; font-weight: 800; color: #1A2F5A; }
-                      .fee { font-weight: 700; }
-                      .paid { color: #059669; font-weight: 600; }
-                      .pending { color: #d97706; font-weight: 600; }
-                      .footer { font-size: 10px; color: #94a3b8; text-align: center; margin-top: 12px; }
-                      @media print { body { padding: 10px; } }
-                    </style></head><body>
-                    <div class="center border-b">
-                      <strong>OPD CONSULTATION RECEIPT</strong><br/>
-                      <small>${receiptData?.date || ""}</small>
-                    </div>
-                    <div class="flex"><span class="label">Bill No.</span><span class="value mono">${receiptData?.billNumber || ""}</span></div>
-                    <div class="flex"><span class="label">Patient</span><span class="value">${receiptData?.patientName || ""}</span></div>
-                    <div class="flex"><span class="label">UHID</span><span class="value mono">${receiptData?.uhid || ""}</span></div>
-                    <div class="flex"><span class="label">Department</span><span class="value">${receiptData?.department || ""}</span></div>
-                    <div class="flex"><span class="label">Doctor</span><span class="value">${receiptData?.doctor || ""}</span></div>
-                    <div class="border-t">
-                      <div class="flex"><span class="label">Token</span><span class="token">${receiptData?.token || ""}</span></div>
-                      <div class="flex"><span class="label">Consultation Fee</span><span class="fee">₹${receiptData?.fee?.toLocaleString("en-IN") || "0"}</span></div>
-                      <div class="flex"><span class="label">Payment</span><span class="${receiptData?.paid ? "paid" : "pending"}">${receiptData?.paid ? `Paid (${receiptData.paymentMode})` : "Pending"}</span></div>
-                    </div>
-                    <div class="footer border-t">Thank you for visiting. Get well soon!</div>
-                    </body></html>
-                  `);
-                  printWin.document.close();
-                  printWin.focus();
-                  printWin.print();
-                }}
+                onClick={handlePrintReceipt}
                 className="flex-1 h-11 bg-[#1A2F5A] text-white rounded-lg text-[13px] font-semibold hover:bg-[#152647] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
               >
                 <Printer className="h-4 w-4" /> Print Receipt
