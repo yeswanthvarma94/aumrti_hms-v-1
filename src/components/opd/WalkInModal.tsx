@@ -104,14 +104,14 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated }) => {
   useEffect(() => {
     supabase
       .from("service_master")
-      .select("base_rate")
+      .select("fee")
       .eq("hospital_id", hospitalId)
       .ilike("name", "%consultation%")
       .eq("is_active", true)
       .limit(1)
       .then(({ data }) => {
-        if (data && data.length > 0 && data[0].base_rate) {
-          setConsultationFee(data[0].base_rate);
+        if (data && data.length > 0 && data[0].fee) {
+          setConsultationFee(data[0].fee);
         }
       });
   }, [hospitalId]);
