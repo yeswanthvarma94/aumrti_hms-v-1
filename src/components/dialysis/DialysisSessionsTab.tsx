@@ -16,7 +16,7 @@ const DialysisSessionsTab: React.FC = () => {
   const [sessions, setSessions] = useState<any[]>([]);
 
   useEffect(() => {
-    supabase.from("dialysis_sessions")
+    (supabase as any).from("dialysis_sessions")
       .select("*, dialysis_patients(patients(full_name, uhid)), dialysis_machines(machine_name)")
       .order("session_date", { ascending: false })
       .limit(100)

@@ -109,7 +109,7 @@ const DialysisPatientsTab: React.FC<Props> = ({ showRegister, onCloseRegister, o
 
   const viewDetail = async (dp: any) => {
     setSelectedDetail(dp);
-    const { data } = await supabase.from("dialysis_sessions").select("*").eq("dialysis_patient_id", dp.id).order("session_date", { ascending: false }).limit(20);
+    const { data } = await (supabase as any).from("dialysis_sessions").select("*").eq("dialysis_patient_id", dp.id).order("session_date", { ascending: false }).limit(20);
     if (data) setSessions(data);
   };
 

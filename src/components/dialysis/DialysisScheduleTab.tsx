@@ -87,7 +87,7 @@ const DialysisScheduleTab: React.FC<Props> = ({ showSchedule, onCloseSchedule, o
 
   const markMissed = async (session: any) => {
     const { data: user } = await supabase.from("users").select("id, hospital_id").limit(1).single();
-    await supabase.from("dialysis_sessions").update({ status: "missed" }).eq("id", session.id);
+    await (supabase as any).from("dialysis_sessions").update({ status: "missed" }).eq("id", session.id);
     if (user) {
       await supabase.from("clinical_alerts").insert({
         hospital_id: user.hospital_id,

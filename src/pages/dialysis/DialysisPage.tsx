@@ -27,10 +27,10 @@ const DialysisPage: React.FC = () => {
     const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().split("T")[0];
 
     const [pRes, sRes, mRes, kRes] = await Promise.all([
-      supabase.from("dialysis_patients").select("id", { count: "exact" }).eq("is_active", true),
-      supabase.from("dialysis_sessions").select("id", { count: "exact" }).eq("session_date", today),
-      supabase.from("dialysis_sessions").select("id", { count: "exact" }).eq("status", "missed").gte("session_date", weekAgo),
-      supabase.from("dialysis_sessions").select("id", { count: "exact" }).eq("status", "completed").lt("kt_v", 1.2).not("kt_v", "is", null),
+      (supabase as any).from("dialysis_patients").select("id", { count: "exact" }).eq("is_active", true),
+      (supabase as any).from("dialysis_sessions").select("id", { count: "exact" }).eq("session_date", today),
+      (supabase as any).from("dialysis_sessions").select("id", { count: "exact" }).eq("status", "missed").gte("session_date", weekAgo),
+      (supabase as any).from("dialysis_sessions").select("id", { count: "exact" }).eq("status", "completed").lt("kt_v", 1.2).not("kt_v", "is", null),
     ]);
 
     setKpis({

@@ -11,10 +11,10 @@ const DialysisReportsTab: React.FC = () => {
 
   useEffect(() => {
     Promise.all([
-      supabase.from("dialysis_patients").select("*, patients(full_name, uhid)").eq("is_active", true),
-      supabase.from("dialysis_sessions").select("*, dialysis_patients(patients(full_name))").order("session_date", { ascending: false }).limit(500),
-      supabase.from("dialysis_machines").select("*").eq("is_active", true),
-    ]).then(([pRes, sRes, mRes]) => {
+      (supabase as any).from("dialysis_patients").select("*, patients(full_name, uhid)").eq("is_active", true),
+      (supabase as any).from("dialysis_sessions").select("*, dialysis_patients(patients(full_name))").order("session_date", { ascending: false }).limit(500),
+      (supabase as any).from("dialysis_machines").select("*").eq("is_active", true),
+    ]).then(([pRes, sRes, mRes]: any[]) => {
       if (pRes.data) setPatients(pRes.data);
       if (sRes.data) setSessions(sRes.data);
       if (mRes.data) setMachines(mRes.data);

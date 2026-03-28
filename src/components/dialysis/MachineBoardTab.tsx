@@ -187,7 +187,7 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
       status: "completed",
     }).eq("id", session.id);
 
-    await supabase.from("dialysis_machines").update({ status: "disinfecting" }).eq("id", endMachine.id);
+    await (supabase as any).from("dialysis_machines").update({ status: "disinfecting" }).eq("id", endMachine.id);
 
     if (ktv !== null && ktv < 1.2 && user) {
       await supabase.from("clinical_alerts").insert({
