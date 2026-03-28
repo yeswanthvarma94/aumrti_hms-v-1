@@ -342,9 +342,18 @@ Write a 5-point CFO-level financial analysis:
 5. One specific recommendation`;
 
       const res = await callAI({ featureKey: "financial_analysis", prompt, hospitalId, maxTokens: 800, systemPrompt: "You are a hospital CFO advisor. Provide concise, actionable analysis." });
-      setAiAnalysis(res.text || "Analysis unavailable.");
-    } catch {
-      setAiAnalysis("AI analysis failed. Check AI provider configuration.");
+      if (res.text) {
+        setAiAnalysis(res.text);
+      } else {
+        setAiAnalysis("AI analysis unavailable. Please configure an AI provider in Settings → API Configuration Hub (/settings/api-hub) with a valid API key.");
+      }
+    } catch (err: any) {
+      const msg = err?.message || String(err);
+      if (msg.toLowerCase().includes("no ai provider") || msg.toLowerCase().includes("not configured")) {
+        setAiAnalysis("No AI provider configured. Go to Settings → API Configuration Hub (/settings/api-hub) to add an API key for Claude, GPT-4o, or Gemini.");
+      } else {
+        setAiAnalysis(`AI analysis failed: ${msg}. Check Settings → API Configuration Hub.`);
+      }
     }
     setAiLoading(false);
   };

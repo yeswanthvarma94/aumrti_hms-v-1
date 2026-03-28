@@ -195,15 +195,20 @@ const BankTab: React.FC<Props> = ({ hospitalId }) => {
     const usedLineIds = new Set<string>();
 
     for (const txn of unreconciled) {
-      const txnAmount = Number(txn.debit_amount || 0) + Number(txn.credit_amount || 0);
+      const txnDebit = Number(txn.debit_amount || 0);
+      const txnCredit = Number(txn.credit_amount || 0);
       const txnDate = new Date(txn.transaction_date);
 
       const match = (allLines || []).find(li => {
         if (usedLineIds.has(li.id)) return false;
-        const liAmount = Number(li.debit_amount || 0) + Number(li.credit_amount || 0);
+        const liDebit = Number(li.debit_amount || 0);
+        const liCredit = Number(li.credit_amount || 0);
         const liDate = new Date(li.created_at);
         const dayDiff = Math.abs(txnDate.getTime() - liDate.getTime()) / 86400000;
-        return Math.abs(txnAmount - liAmount) < 0.01 && dayDiff <= 2;
+        // Bank debit matches journal credit and vice versa
+        const amountMatch = (txnDebit > 0 && Math.abs(txnDebit - liCredit) < 0.01) ||
+                           (txnCredit > 0 && Math.abs(txnCredit - liDebit) < 0.01);
+        return amountMatch && dayDiff <= 2;
       });
 
       if (match) {

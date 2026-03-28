@@ -70,6 +70,7 @@ const settingsGroups: SettingsGroup[] = [
       { icon: BedDouble, title: "Wards & Beds", desc: "Configure wards, bed count and categories", route: "/settings/wards" },
       { icon: Clock, title: "Shifts", desc: "Define shift timings and patterns", route: "/settings/shifts" },
       { icon: ToggleLeft, title: "Modules On/Off", desc: "Enable or disable system modules", route: "/settings/modules" },
+      { icon: Landmark, title: "Bank Accounts", desc: "Configure bank accounts for reconciliation", route: "/settings/bank-accounts" },
     ],
   },
   {

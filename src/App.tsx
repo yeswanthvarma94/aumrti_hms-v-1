@@ -26,6 +26,7 @@ import NursingPage from "./pages/nursing/NursingPage";
 import HRPage from "./pages/hr/HRPage";
 import InventoryPage from "./pages/inventory/InventoryPage";
 import SettingsPage from "./pages/settings/SettingsPage";
+import SettingsBankAccountsPage from "./pages/settings/SettingsBankAccountsPage";
 import SettingsStaffPage from "./pages/settings/SettingsStaffPage";
 import SettingsDepartmentsPage from "./pages/settings/SettingsDepartmentsPage";
 import SettingsWardsPage from "./pages/settings/SettingsWardsPage";
@@ -109,6 +110,7 @@ const App = () => (
             <Route path="/telemedicine" element={<TelemedicinePage />} />
             <Route path="/inbox" element={<InboxPage />} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/settings/bank-accounts" element={<SettingsBankAccountsPage />} />
             <Route path="/settings/staff" element={<SettingsStaffPage />} />
             <Route path="/settings/departments" element={<SettingsDepartmentsPage />} />
             <Route path="/settings/wards" element={<SettingsWardsPage />} />
