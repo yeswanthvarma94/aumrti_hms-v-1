@@ -485,7 +485,6 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
                 </SelectContent>
               </Select>
             </div>
-            <div><Label className="text-xs">Location</Label><Input value={mLocation} onChange={e => setMLocation(e.target.value)} className="h-9" placeholder="e.g. Room 3" /></div>
             <Button className="w-full" onClick={saveMachine} disabled={!mName.trim()}>{machineModal.editing ? "Update" : "Add Machine"}</Button>
           </div>
         </DialogContent>
