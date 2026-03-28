@@ -13,11 +13,13 @@ interface Props {
   patientPhone?: string | null;
 }
 
-const IPDOverviewTab: React.FC<Props> = ({ admissionId, hospitalId, onTabChange }) => {
+const IPDOverviewTab: React.FC<Props> = ({ admissionId, hospitalId, onTabChange, patientName, patientPhone }) => {
   const navigate = useNavigate();
   const [latestVitals, setLatestVitals] = useState<any>(null);
   const [medications, setMedications] = useState<any[]>([]);
   const [vitalsTime, setVitalsTime] = useState<string>("");
+  const [billingCleared, setBillingCleared] = useState(false);
+  const [admDiagnosis, setAdmDiagnosis] = useState("");
   const [billingCleared, setBillingCleared] = useState(false);
 
   useEffect(() => {
