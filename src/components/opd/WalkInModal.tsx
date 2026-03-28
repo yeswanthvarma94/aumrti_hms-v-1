@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { X, Search, CheckCircle2, ArrowLeft, CreditCard } from "lucide-react";
+import { X, Search, CheckCircle2, ArrowLeft, CreditCard, Printer } from "lucide-react";
 import { autoPostJournalEntry } from "@/lib/accounting";
 
 interface Props {
