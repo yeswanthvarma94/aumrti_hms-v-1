@@ -101,6 +101,24 @@ const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onT
   const [saved, setSaved] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout>>();
   const prevTokenId = useRef<string | null>(null);
+  const [deptName, setDeptName] = useState<string | null>(null);
+
+  // Fetch department name for specialty detection
+  useEffect(() => {
+    if (!token?.department_id) { setDeptName(null); return; }
+    supabase.from('departments').select('name').eq('id', token.department_id).maybeSingle()
+      .then(({ data }) => setDeptName(data?.name || null));
+  }, [token?.department_id]);
+
+  const specialty = useMemo(() => getSpecialtySheet(deptName), [deptName]);
+  const TABS = useMemo(() => {
+    const base = [...BASE_TABS] as string[];
+    if (specialty) {
+      const meta = specialtyTabMeta[specialty];
+      base.push(`${meta.icon} ${meta.label}`);
+    }
+    return base;
+  }, [specialty]);
   const encounterRef = useRef(encounter);
   const prescriptionRef = useRef(prescription);
   encounterRef.current = encounter;
