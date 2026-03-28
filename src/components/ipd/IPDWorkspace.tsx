@@ -45,11 +45,26 @@ const IPDWorkspace: React.FC<Props> = ({ bed, hospitalId, onRefresh }) => {
   const [patient, setPatient] = useState<PatientDetails | null>(null);
   const [activeTab, setActiveTab] = useState("overview");
   const [userId, setUserId] = useState<string | null>(null);
+  const [deptName, setDeptName] = useState<string | null>(null);
   const { show: showWaNotif, card: waCard } = useWhatsAppNotification();
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id || null));
   }, []);
+
+  // Fetch department name for specialty detection
+  useEffect(() => {
+    if (!bed?.admission) { setDeptName(null); return; }
+    const admData = bed.admission as any;
+    if (admData.department_id) {
+      supabase.from('departments').select('name').eq('id', admData.department_id).maybeSingle()
+        .then(({ data }) => setDeptName(data?.name || null));
+    } else {
+      setDeptName(null);
+    }
+  }, [bed]);
+
+  const specialty = useMemo(() => getSpecialtySheet(deptName), [deptName]);
 
   useEffect(() => {
     if (!bed?.admission) { setPatient(null); return; }
