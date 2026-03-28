@@ -208,6 +208,14 @@ const IPDWorkspace: React.FC<Props> = ({ bed, hospitalId, onRefresh }) => {
           <TabsContent value="documents" className="h-full m-0">
             <IPDDocumentsTab admissionId={admissionId} hospitalId={hospitalId} patientId={patient?.id || null} />
           </TabsContent>
+          {specialty && hospitalId && patient && (
+            <TabsContent value="specialty" className="h-full m-0">
+              {specialty === 'obstetric' && <ObstetricSheet patientId={patient.id} hospitalId={hospitalId} admissionId={admissionId} />}
+              {specialty === 'neonatal' && <NeonatalSheet patientId={patient.id} hospitalId={hospitalId} admissionId={admissionId} />}
+              {specialty === 'anaesthesia' && <AnaesthesiaSheet patientId={patient.id} hospitalId={hospitalId} admissionId={admissionId} />}
+              {specialty === 'ophthalmology' && <OphthalmologySheet patientId={patient.id} hospitalId={hospitalId} />}
+            </TabsContent>
+          )}
         </div>
       </Tabs>
 
