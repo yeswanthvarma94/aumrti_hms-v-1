@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Play, CheckCircle, ShieldX } from "lucide-react";
+import { Play, CheckCircle, ShieldX, Plus, Pencil, Power } from "lucide-react";
 
 interface Props { onRefresh: () => void }
 
@@ -54,6 +54,13 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
   const [dialysateFlow, setDialysateFlow] = useState("500");
   const [heparinDose, setHeparinDose] = useState("5000");
   const [dialyzerId, setDialyzerId] = useState("");
+
+  // Add/Edit machine state
+  const [machineModal, setMachineModal] = useState<{ open: boolean; editing: any | null }>({ open: false, editing: null });
+  const [mName, setMName] = useState("");
+  const [mModel, setMModel] = useState("");
+  const [mType, setMType] = useState("clean");
+  const [mLocation, setMLocation] = useState("");
 
   // End session state
   const [endMachine, setEndMachine] = useState<any>(null);
@@ -258,6 +265,47 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
     setUreaPre(""); setUreaPost(""); setUfAchieved(""); setComplications([]); setSessionNotes("");
   };
 
+  const openAddMachine = () => {
+    setMName(""); setMModel(""); setMType("clean"); setMLocation("");
+    setMachineModal({ open: true, editing: null });
+  };
+
+  const openEditMachine = (m: any) => {
+    setMName(m.machine_name || ""); setMModel(m.model || ""); setMType(m.machine_type || "clean"); setMLocation(m.location || "");
+    setMachineModal({ open: true, editing: m });
+  };
+
+  const saveMachine = async () => {
+    if (!mName.trim()) return;
+    const { data: user } = await supabase.from("users").select("id, hospital_id").limit(1).single();
+    if (!user) return;
+
+    if (machineModal.editing) {
+      await (supabase as any).from("dialysis_machines").update({
+        machine_name: mName.trim(), model: mModel.trim() || null, machine_type: mType, location: mLocation.trim() || null,
+      }).eq("id", machineModal.editing.id);
+      toast({ title: `${mName} updated` });
+    } else {
+      await (supabase as any).from("dialysis_machines").insert({
+        hospital_id: user.hospital_id, machine_name: mName.trim(), model: mModel.trim() || null,
+        machine_type: mType, location: mLocation.trim() || null, status: "available", is_active: true,
+      });
+      toast({ title: `${mName} added` });
+    }
+    setMachineModal({ open: false, editing: null });
+    fetchData();
+  };
+
+  const deactivateMachine = async (m: any) => {
+    if (activeSessions[m.id]) {
+      toast({ title: "Cannot deactivate", description: "Machine has an active session", variant: "destructive" });
+      return;
+    }
+    await (supabase as any).from("dialysis_machines").update({ is_active: false }).eq("id", m.id);
+    toast({ title: `${m.machine_name} deactivated` });
+    fetchData();
+  };
+
   const filteredPatients = patients.filter(p =>
     p.patients?.full_name?.toLowerCase().includes(patientSearch.toLowerCase()) ||
     p.patients?.uhid?.toLowerCase().includes(patientSearch.toLowerCase())
@@ -265,6 +313,12 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
 
   return (
     <div className="flex-1 overflow-y-auto p-4">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-semibold text-foreground">Machines ({machines.length})</h3>
+        <Button size="sm" onClick={openAddMachine}><Plus className="w-3.5 h-3.5 mr-1" /> Add Machine</Button>
+      </div>
+
       {/* Machine Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
         {machines.map(m => {
@@ -305,6 +359,12 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
                     <CheckCircle className="w-3 h-3 mr-1" /> End Session
                   </Button>
                 )}
+                <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => openEditMachine(m)}>
+                  <Pencil className="w-3 h-3" />
+                </Button>
+                <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-destructive" onClick={() => deactivateMachine(m)}>
+                  <Power className="w-3 h-3" />
+                </Button>
               </div>
             </div>
           );
@@ -399,6 +459,32 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
             </div>
             <p className="text-sm text-red-700 whitespace-pre-line">{safetyBlock}</p>
             <Button className="w-full" variant="destructive" onClick={() => setSafetyBlock(null)}>Close</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ADD/EDIT MACHINE DIALOG */}
+      <Dialog open={machineModal.open} onOpenChange={() => setMachineModal({ open: false, editing: null })}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>{machineModal.editing ? "Edit Machine" : "Add Machine"}</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div><Label className="text-xs">Machine Name *</Label><Input value={mName} onChange={e => setMName(e.target.value)} className="h-9" placeholder="e.g. HD-09" /></div>
+            <div><Label className="text-xs">Model</Label><Input value={mModel} onChange={e => setMModel(e.target.value)} className="h-9" placeholder="e.g. Fresenius 5008S" /></div>
+            <div>
+              <Label className="text-xs">Machine Type *</Label>
+              <Select value={mType} onValueChange={setMType}>
+                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="clean">Clean (HBsAg Negative)</SelectItem>
+                  <SelectItem value="hbv">HBV Dedicated</SelectItem>
+                  <SelectItem value="hcv">HCV Dedicated</SelectItem>
+                  <SelectItem value="hiv">HIV Dedicated</SelectItem>
+                  <SelectItem value="universal">Universal</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div><Label className="text-xs">Location</Label><Input value={mLocation} onChange={e => setMLocation(e.target.value)} className="h-9" placeholder="e.g. Room 3" /></div>
+            <Button className="w-full" onClick={saveMachine} disabled={!mName.trim()}>{machineModal.editing ? "Update" : "Add Machine"}</Button>
           </div>
         </DialogContent>
       </Dialog>
