@@ -148,6 +148,7 @@ const App = () => (
             <Route path="/accounts/setup" element={<OpeningBalancesPage />} />
             <Route path="/blood-bank" element={<BloodBankPage />} />
             <Route path="/cssd" element={<CSSDPage />} />
+            <Route path="/dialysis" element={<DialysisPage />} />
             <Route path="/admin/go-live" element={<GoLiveChecklistPage />} />
           </Route>
 
