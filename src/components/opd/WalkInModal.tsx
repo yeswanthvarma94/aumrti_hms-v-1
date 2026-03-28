@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { X, Search, CheckCircle2, ArrowLeft, CreditCard } from "lucide-react";
+import { X, Search, CheckCircle2, ArrowLeft, CreditCard, Printer } from "lucide-react";
 import { autoPostJournalEntry } from "@/lib/accounting";
 
 interface Props {
@@ -39,8 +39,8 @@ const DEFAULT_CONSULTATION_FEE = 500;
 
 const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated }) => {
   const { toast } = useToast();
-  const [step, setStep] = useState<"details" | "payment">("details");
-
+  const [step, setStep] = useState<"details" | "payment" | "receipt">("details");
+  const receiptRef = useRef<HTMLDivElement>(null);
   // Search
   const [phone, setPhone] = useState("");
   const [foundPatient, setFoundPatient] = useState<FoundPatient | null>(null);
@@ -70,6 +70,18 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated }) => {
   const [consultationFee, setConsultationFee] = useState(DEFAULT_CONSULTATION_FEE);
   const [paymentMode, setPaymentMode] = useState("cash");
   const [paymentRef, setPaymentRef] = useState("");
+  const [receiptData, setReceiptData] = useState<{
+    billNumber: string;
+    patientName: string;
+    uhid: string;
+    department: string;
+    doctor: string;
+    token: string;
+    fee: number;
+    paymentMode: string;
+    date: string;
+    paid: boolean;
+  } | null>(null);
 
   // Fetch departments + doctors
   useEffect(() => {
@@ -218,8 +230,8 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated }) => {
         patient_payable: fee,
         paid_amount: isPaid ? fee : 0,
         balance_due: isPaid ? 0 : fee,
-        payment_status: isPaid ? "paid" : "pending",
-        bill_status: "finalized",
+        payment_status: isPaid ? "paid" : "unpaid",
+        bill_status: "final",
         created_by: userId,
       }).select("id").single();
       if (billErr) throw billErr;
@@ -283,16 +295,73 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated }) => {
       });
       if (tokenErr) throw tokenErr;
 
+      // Set receipt data and go to receipt step
+      const rData = {
+        billNumber,
+        patientName: patientDisplayName || "—",
+        uhid: useExisting ? foundPatient?.uhid || "" : "New",
+        department: selectedDeptName,
+        doctor: doctorId ? `Dr. ${selectedDoctorName}` : "—",
+        token: nextToken,
+        fee,
+        paymentMode: isPaid ? paymentMode : "—",
+        date: today,
+        paid: isPaid,
+      };
+      setReceiptData(rData);
+      setStep("receipt");
+
       const statusMsg = isPaid
         ? `Token ${nextToken} issued · ₹${fee.toLocaleString("en-IN")} collected ✓`
         : `Token ${nextToken} issued · Payment pending`;
       toast({ title: statusMsg });
-      onCreated();
     } catch (err: unknown) {
       toast({ title: "Registration failed", description: (err as Error).message, variant: "destructive" });
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handlePrintReceipt = () => {
+    if (!receiptData) return;
+    const printWin = window.open("", "_blank", "width=400,height=600");
+    if (!printWin) return;
+    const paidLabel = receiptData.paid ? "Paid (" + receiptData.paymentMode + ")" : "Pending";
+    const paidClass = receiptData.paid ? "paid" : "pending";
+    const html = [
+      "<html><head><title>OPD Receipt</title>",
+      "<style>",
+      "body{font-family:Arial,sans-serif;padding:20px;margin:0;font-size:13px}",
+      ".r{display:flex;justify-content:space-between;margin-bottom:6px}",
+      ".l{color:#64748b}.v{font-weight:600;color:#1e293b}",
+      ".m{font-family:monospace}.c{text-align:center}",
+      ".db{border-bottom:1px dashed #cbd5e1;padding-bottom:10px;margin-bottom:10px}",
+      ".dt{border-top:1px dashed #cbd5e1;padding-top:10px;margin-top:10px}",
+      ".tk{font-size:22px;font-weight:800;color:#1A2F5A}",
+      ".f{font-weight:700}",
+      ".paid{color:#059669;font-weight:600}",
+      ".pending{color:#d97706;font-weight:600}",
+      ".ft{font-size:10px;color:#94a3b8;text-align:center;margin-top:12px}",
+      "@media print{body{padding:10px}}",
+      "</style></head><body>",
+      '<div class="c db"><strong>OPD CONSULTATION RECEIPT</strong><br/><small>' + receiptData.date + "</small></div>",
+      '<div class="r"><span class="l">Bill No.</span><span class="v m">' + receiptData.billNumber + "</span></div>",
+      '<div class="r"><span class="l">Patient</span><span class="v">' + receiptData.patientName + "</span></div>",
+      '<div class="r"><span class="l">UHID</span><span class="v m">' + receiptData.uhid + "</span></div>",
+      '<div class="r"><span class="l">Department</span><span class="v">' + receiptData.department + "</span></div>",
+      '<div class="r"><span class="l">Doctor</span><span class="v">' + receiptData.doctor + "</span></div>",
+      '<div class="dt">',
+      '<div class="r"><span class="l">Token</span><span class="tk">' + receiptData.token + "</span></div>",
+      '<div class="r"><span class="l">Consultation Fee</span><span class="f">\u20B9' + receiptData.fee.toLocaleString("en-IN") + "</span></div>",
+      '<div class="r"><span class="l">Payment</span><span class="' + paidClass + '">' + paidLabel + "</span></div>",
+      "</div>",
+      '<div class="ft dt">Thank you for visiting. Get well soon!</div>',
+      "</body></html>",
+    ].join("");
+    printWin.document.write(html);
+    printWin.document.close();
+    printWin.focus();
+    printWin.print();
   };
 
   return (
@@ -459,7 +528,7 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated }) => {
               Proceed to Payment →
             </button>
           </>
-        ) : (
+        ) : step === "payment" ? (
           /* ══════════ STEP 2: PAYMENT ══════════ */
           <>
             <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
@@ -557,6 +626,82 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated }) => {
                 className="text-xs text-amber-600 font-medium hover:underline"
               >
                 Skip — Pay Later →
+              </button>
+            </div>
+          </>
+        ) : (
+          /* ══════════ STEP 3: RECEIPT ══════════ */
+          <>
+            <h2 className="text-lg font-bold text-emerald-700 flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5" />
+              Token Issued Successfully
+            </h2>
+
+            {/* Printable Receipt */}
+            <div ref={receiptRef} className="mt-4 border border-slate-200 rounded-lg p-5 bg-white" id="opd-receipt">
+              <div className="text-center border-b border-dashed border-slate-300 pb-3 mb-3">
+                <p className="text-sm font-bold text-slate-800">OPD CONSULTATION RECEIPT</p>
+                <p className="text-[11px] text-slate-500 mt-0.5">{receiptData?.date}</p>
+              </div>
+
+              <div className="space-y-1.5 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Bill No.</span>
+                  <span className="font-mono font-medium text-slate-800">{receiptData?.billNumber}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Patient</span>
+                  <span className="font-medium text-slate-800">{receiptData?.patientName}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">UHID</span>
+                  <span className="font-mono text-slate-800">{receiptData?.uhid}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Department</span>
+                  <span className="text-slate-800">{receiptData?.department}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Doctor</span>
+                  <span className="text-slate-800">{receiptData?.doctor}</span>
+                </div>
+              </div>
+
+              <div className="border-t border-dashed border-slate-300 mt-3 pt-3 space-y-1.5">
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-500">Token</span>
+                  <span className="text-lg font-bold text-[#1A2F5A]">{receiptData?.token}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-500">Consultation Fee</span>
+                  <span className="font-bold text-slate-800">₹{receiptData?.fee?.toLocaleString("en-IN")}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-500">Payment</span>
+                  <span className={cn("font-medium", receiptData?.paid ? "text-emerald-600" : "text-amber-600")}>
+                    {receiptData?.paid ? `Paid (${receiptData.paymentMode})` : "Pending"}
+                  </span>
+                </div>
+              </div>
+
+              <div className="border-t border-dashed border-slate-300 mt-3 pt-2 text-center">
+                <p className="text-[10px] text-slate-400">Thank you for visiting. Get well soon!</p>
+              </div>
+            </div>
+
+            {/* Print + Done buttons */}
+            <div className="flex gap-3 mt-4">
+              <button
+                onClick={handlePrintReceipt}
+                className="flex-1 h-11 bg-[#1A2F5A] text-white rounded-lg text-[13px] font-semibold hover:bg-[#152647] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+              >
+                <Printer className="h-4 w-4" /> Print Receipt
+              </button>
+              <button
+                onClick={() => { onCreated(); onClose(); }}
+                className="flex-1 h-11 bg-slate-100 text-slate-700 rounded-lg text-[13px] font-semibold hover:bg-slate-200 active:scale-[0.98] transition-all"
+              >
+                Done
               </button>
             </div>
           </>
