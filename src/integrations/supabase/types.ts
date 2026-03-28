@@ -6375,6 +6375,70 @@ export type Database = {
           },
         ]
       }
+      patient_documents: {
+        Row: {
+          created_at: string | null
+          document_name: string
+          document_type: string | null
+          file_url: string
+          hospital_id: string
+          id: string
+          ocr_summary: string | null
+          ocr_text: string | null
+          patient_id: string
+          upload_date: string | null
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          document_name: string
+          document_type?: string | null
+          file_url: string
+          hospital_id: string
+          id?: string
+          ocr_summary?: string | null
+          ocr_text?: string | null
+          patient_id: string
+          upload_date?: string | null
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          document_name?: string
+          document_type?: string | null
+          file_url?: string
+          hospital_id?: string
+          id?: string
+          ocr_summary?: string | null
+          ocr_text?: string | null
+          patient_id?: string
+          upload_date?: string | null
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_documents_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_documents_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_documents_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       patient_feedback: {
         Row: {
           admission_id: string | null

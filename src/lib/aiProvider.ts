@@ -44,6 +44,8 @@ export const FEATURE_LABELS: Record<string, string> = {
   appeal_letter: "Appeal Letter Writer",
   discharge_summary: "Discharge Summary",
   icd_coding: "ICD-10 Code Suggester",
+  document_ocr: "Document OCR (Vision)",
+  discharge_instructions: "Discharge Instructions",
 };
 
 export const PROVIDER_MODELS: Record<string, { label: string; value: string }[]> = {

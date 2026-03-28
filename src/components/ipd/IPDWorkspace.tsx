@@ -170,7 +170,7 @@ const IPDWorkspace: React.FC<Props> = ({ bed, hospitalId, onRefresh }) => {
 
         <div className="flex-1 overflow-hidden">
           <TabsContent value="overview" className="h-full m-0">
-            <IPDOverviewTab admissionId={admissionId} hospitalId={hospitalId} onTabChange={setActiveTab} />
+            <IPDOverviewTab admissionId={admissionId} hospitalId={hospitalId} onTabChange={setActiveTab} patientName={patient?.full_name} patientPhone={patient?.phone} />
           </TabsContent>
           <TabsContent value="vitals" className="h-full m-0">
             <IPDVitalsTab admissionId={admissionId} hospitalId={hospitalId} userId={userId} />
