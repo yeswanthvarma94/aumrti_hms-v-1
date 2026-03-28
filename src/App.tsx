@@ -67,6 +67,7 @@ import PatientPortal from "./pages/portal/PatientPortal";
 import GoLiveChecklistPage from "./pages/admin/GoLiveChecklistPage";
 import AccountsPage from "./pages/accounts/AccountsPage";
 import OpeningBalancesPage from "./pages/accounts/OpeningBalancesPage";
+import BloodBankPage from "./pages/blood-bank/BloodBankPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();

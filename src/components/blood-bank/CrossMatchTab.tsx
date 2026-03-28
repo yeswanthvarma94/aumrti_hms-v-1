@@ -61,7 +61,7 @@ const CrossMatchTab: React.FC<Props> = ({ onRefresh }) => {
       // Parse patient blood group (could be "A+", "O-", "B positive" etc)
       const pg = parseBloodGroup(selectedPatient.blood_group);
       if (pg) {
-        const check = isFullyCompatible(pg.group as any, pg.rh as any, data.blood_group, data.rh_factor);
+        const check = isFullyCompatible(pg.group as any, pg.rh as any, data.blood_group as any, data.rh_factor as any);
         setCompatibility(check);
       }
     }
