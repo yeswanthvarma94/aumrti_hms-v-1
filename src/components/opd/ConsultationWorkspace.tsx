@@ -87,7 +87,7 @@ const emptyPrescription: PrescriptionData = {
   advice_notes: "", review_date: "", is_signed: false,
 };
 
-const TABS = ["Complaint", "Vitals", "Examination", "Rx & Orders", "History"] as const;
+const BASE_TABS = ["Complaint", "Vitals", "Examination", "Rx & Orders", "History"] as const;
 
 const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onTokenUpdate }) => {
   const { toast } = useToast();
