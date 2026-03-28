@@ -158,12 +158,21 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated }) => {
     const seq = String((count || 0) + 1).padStart(4, "0");
     const uhid = `UHID-${dateStr}-${seq}`;
 
-    const patientData: Record<string, unknown> = {
+    const patientData: {
+      hospital_id: string;
+      full_name: string;
+      uhid: string;
+      phone: string | null;
+      gender: "male" | "female" | "other";
+      dob?: string;
+      blood_group?: string;
+      address?: string;
+    } = {
       hospital_id: hospitalId,
       full_name: fullName.trim(),
       uhid,
       phone: phone || null,
-      gender,
+      gender: gender as "male" | "female" | "other",
     };
     if (age) {
       const y = new Date().getFullYear() - parseInt(age);
