@@ -70,7 +70,7 @@ const DialysisScheduleTab: React.FC<Props> = ({ showSchedule, onCloseSchedule, o
 
     const machineId = compatibleMachines[0].id;
 
-    await supabase.from("dialysis_sessions").insert({
+    await (supabase as any).from("dialysis_sessions").insert({
       hospital_id: user.hospital_id,
       dialysis_patient_id: schedPatient,
       machine_id: machineId,
