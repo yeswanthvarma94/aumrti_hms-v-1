@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { useToast } from "@/hooks/use-toast";
 import { AlertTriangle, ShieldX, Clock, CheckCircle, Plus } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { logNABHEvidence } from "@/lib/nabh-evidence";
 
 interface Props {
   showNewCycle: boolean;
@@ -228,6 +229,13 @@ const SterilizeTab: React.FC<Props> = ({ showNewCycle, onCloseNewCycle, onRefres
       }
     }
 
+    // NABH evidence: CSSD sterilization cycle started
+    logNABHEvidence(
+      user.hospital_id,
+      "COP.8",
+      `Sterilization cycle ${cycleNum} started. Method: ${method}, Load: ${loadType}, Sets: ${selectedSets.length}, BI used: ${biUsed}, Chem indicator: ${chemResult}${loadType === "flash" ? ` [FLASH OVERRIDE — Justification: ${flashJustification.slice(0, 100)}]` : ""}`
+    );
+
     toast({ title: `Cycle ${cycleNum} started with ${selectedSets.length} sets` });
     setSelectedSets([]);
     setLoadType("routine");
@@ -258,6 +266,16 @@ const SterilizeTab: React.FC<Props> = ({ showNewCycle, onCloseNewCycle, onRefres
       await supabase.from("sterilization_cycles").update({ status: "completed" }).eq("id", cycle.id);
     }
 
+    // NABH evidence: cycle completed
+    const { data: cUser } = await supabase.from("users").select("hospital_id").limit(1).single();
+    if (cUser) {
+      logNABHEvidence(
+        cUser.hospital_id,
+        "COP.8",
+        `Sterilization cycle ${cycle.cycle_number} completed. ${cycle.biological_indicator_used ? "BI pending." : "No BI — chemical indicator only."} Sets sterilised: ${cycle.cycle_instruments?.length || 0}`
+      );
+    }
+
     toast({ title: "Cycle completed" });
     fetchData();
     onRefresh();
@@ -281,6 +299,14 @@ const SterilizeTab: React.FC<Props> = ({ showNewCycle, onCloseNewCycle, onRefres
           if (item.set_id) await supabase.from("instrument_sets").update({ status: "sterile" }).eq("id", item.set_id);
         }
       }
+      // NABH evidence: BI passed
+      if (user) {
+        logNABHEvidence(
+          user.hospital_id,
+          "COP.8",
+          `Biological Indicator PASSED for cycle ${cycle.cycle_number}. ${items?.length || 0} sets released as sterile.`
+        );
+      }
       toast({ title: "✓ BI Passed — sets marked sterile" });
     } else {
       if (items) {
@@ -295,6 +321,14 @@ const SterilizeTab: React.FC<Props> = ({ showNewCycle, onCloseNewCycle, onRefres
           severity: "critical",
           alert_message: `STERILITY FAILURE — Cycle ${cycle.cycle_number} BI FAIL. All items quarantined. Do NOT use until re-sterilized and BI passed.`,
         });
+      }
+      // NABH evidence: BI failure — critical
+      if (user) {
+        logNABHEvidence(
+          user.hospital_id,
+          "COP.8",
+          `STERILITY FAILURE — Cycle ${cycle.cycle_number} BI FAILED. ${items?.length || 0} sets quarantined. Clinical alert raised to IC team.`
+        );
       }
       toast({ title: "🔴 STERILITY FAILURE", description: "All items quarantined. Clinical alert raised.", variant: "destructive" });
     }
