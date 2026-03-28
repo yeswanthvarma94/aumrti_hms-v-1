@@ -159,6 +159,9 @@ const PatientDetailDrawer: React.FC<Props> = ({ patient, onClose }) => {
             </Section>
           )}
 
+          {/* Chronic Disease Programs */}
+          <ChronicDiseaseSection patientId={patient.id} hospitalId={hospitalId} />
+
           {/* Visit History */}
           <Section title="Recent OPD Visits">
             {visits.length === 0 ? (
