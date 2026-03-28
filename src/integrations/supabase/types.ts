@@ -2424,11 +2424,15 @@ export type Database = {
       dialysis_sessions: {
         Row: {
           access_used: string | null
+          blood_flow_rate_ml: number | null
           complications: string | null
           created_at: string | null
+          dialysate_flow_rate: number | null
           dialysis_patient_id: string
+          dialyzer_id: string | null
           ended_at: string | null
           heparin_dose: string | null
+          heparin_dose_units: number | null
           hospital_id: string
           id: string
           kt_v: number | null
@@ -2437,24 +2441,35 @@ export type Database = {
           performed_by: string | null
           post_bp_diastolic: number | null
           post_bp_systolic: number | null
+          post_pulse: number | null
           post_weight_kg: number | null
           pre_bp_diastolic: number | null
           pre_bp_systolic: number | null
+          pre_pulse: number | null
+          pre_temp: number | null
           pre_weight_kg: number | null
+          scheduled_start: string | null
           session_date: string
+          session_notes: string | null
           shift: string | null
           started_at: string | null
           status: string
           uf_achieved_ml: number | null
           uf_goal_ml: number | null
+          urea_post: number | null
+          urea_pre: number | null
         }
         Insert: {
           access_used?: string | null
+          blood_flow_rate_ml?: number | null
           complications?: string | null
           created_at?: string | null
+          dialysate_flow_rate?: number | null
           dialysis_patient_id: string
+          dialyzer_id?: string | null
           ended_at?: string | null
           heparin_dose?: string | null
+          heparin_dose_units?: number | null
           hospital_id: string
           id?: string
           kt_v?: number | null
@@ -2463,24 +2478,35 @@ export type Database = {
           performed_by?: string | null
           post_bp_diastolic?: number | null
           post_bp_systolic?: number | null
+          post_pulse?: number | null
           post_weight_kg?: number | null
           pre_bp_diastolic?: number | null
           pre_bp_systolic?: number | null
+          pre_pulse?: number | null
+          pre_temp?: number | null
           pre_weight_kg?: number | null
+          scheduled_start?: string | null
           session_date?: string
+          session_notes?: string | null
           shift?: string | null
           started_at?: string | null
           status?: string
           uf_achieved_ml?: number | null
           uf_goal_ml?: number | null
+          urea_post?: number | null
+          urea_pre?: number | null
         }
         Update: {
           access_used?: string | null
+          blood_flow_rate_ml?: number | null
           complications?: string | null
           created_at?: string | null
+          dialysate_flow_rate?: number | null
           dialysis_patient_id?: string
+          dialyzer_id?: string | null
           ended_at?: string | null
           heparin_dose?: string | null
+          heparin_dose_units?: number | null
           hospital_id?: string
           id?: string
           kt_v?: number | null
@@ -2489,16 +2515,23 @@ export type Database = {
           performed_by?: string | null
           post_bp_diastolic?: number | null
           post_bp_systolic?: number | null
+          post_pulse?: number | null
           post_weight_kg?: number | null
           pre_bp_diastolic?: number | null
           pre_bp_systolic?: number | null
+          pre_pulse?: number | null
+          pre_temp?: number | null
           pre_weight_kg?: number | null
+          scheduled_start?: string | null
           session_date?: string
+          session_notes?: string | null
           shift?: string | null
           started_at?: string | null
           status?: string
           uf_achieved_ml?: number | null
           uf_goal_ml?: number | null
+          urea_post?: number | null
+          urea_pre?: number | null
         }
         Relationships: [
           {
