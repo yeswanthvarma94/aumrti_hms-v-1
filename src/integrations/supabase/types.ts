@@ -1944,6 +1944,64 @@ export type Database = {
           },
         ]
       }
+      coding_audits: {
+        Row: {
+          audit_date: string | null
+          audited_by: string
+          coding_id: string
+          corrected_code: string
+          correction_reason: string | null
+          hospital_id: string
+          id: string
+          original_code: string
+          revenue_impact: number | null
+        }
+        Insert: {
+          audit_date?: string | null
+          audited_by: string
+          coding_id: string
+          corrected_code: string
+          correction_reason?: string | null
+          hospital_id: string
+          id?: string
+          original_code: string
+          revenue_impact?: number | null
+        }
+        Update: {
+          audit_date?: string | null
+          audited_by?: string
+          coding_id?: string
+          corrected_code?: string
+          correction_reason?: string | null
+          hospital_id?: string
+          id?: string
+          original_code?: string
+          revenue_impact?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coding_audits_audited_by_fkey"
+            columns: ["audited_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coding_audits_coding_id_fkey"
+            columns: ["coding_id"]
+            isOneToOne: false
+            referencedRelation: "icd_codings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coding_audits_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       consent_templates: {
         Row: {
           content: string | null
@@ -2166,6 +2224,98 @@ export type Database = {
             columns: ["hospital_id"]
             isOneToOne: false
             referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      death_certificates: {
+        Row: {
+          admission_id: string | null
+          cause_1a: string
+          cause_1b: string | null
+          cause_1c: string | null
+          cause_2: string | null
+          certified_by: string
+          civil_reg_submitted: boolean | null
+          created_at: string | null
+          digital_signed: boolean | null
+          hospital_id: string
+          icd_code: string | null
+          id: string
+          is_mlc: boolean | null
+          issued_at: string | null
+          manner_of_death: string | null
+          mccd_form_number: string | null
+          patient_id: string
+          time_of_death: string
+        }
+        Insert: {
+          admission_id?: string | null
+          cause_1a: string
+          cause_1b?: string | null
+          cause_1c?: string | null
+          cause_2?: string | null
+          certified_by: string
+          civil_reg_submitted?: boolean | null
+          created_at?: string | null
+          digital_signed?: boolean | null
+          hospital_id: string
+          icd_code?: string | null
+          id?: string
+          is_mlc?: boolean | null
+          issued_at?: string | null
+          manner_of_death?: string | null
+          mccd_form_number?: string | null
+          patient_id: string
+          time_of_death: string
+        }
+        Update: {
+          admission_id?: string | null
+          cause_1a?: string
+          cause_1b?: string | null
+          cause_1c?: string | null
+          cause_2?: string | null
+          certified_by?: string
+          civil_reg_submitted?: boolean | null
+          created_at?: string | null
+          digital_signed?: boolean | null
+          hospital_id?: string
+          icd_code?: string | null
+          id?: string
+          is_mlc?: boolean | null
+          issued_at?: string | null
+          manner_of_death?: string | null
+          mccd_form_number?: string | null
+          patient_id?: string
+          time_of_death?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "death_certificates_admission_id_fkey"
+            columns: ["admission_id"]
+            isOneToOne: false
+            referencedRelation: "admissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "death_certificates_certified_by_fkey"
+            columns: ["certified_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "death_certificates_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "death_certificates_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
             referencedColumns: ["id"]
           },
         ]
@@ -3540,6 +3690,85 @@ export type Database = {
           whatsapp_enabled?: boolean
         }
         Relationships: []
+      }
+      icd_codings: {
+        Row: {
+          ai_confidence: number | null
+          ai_suggestion: string | null
+          coded_at: string | null
+          coded_by: string | null
+          created_at: string | null
+          hospital_id: string
+          id: string
+          pcs_code: string | null
+          primary_icd_code: string | null
+          primary_icd_desc: string | null
+          secondary_codes: Json | null
+          status: string | null
+          validated_at: string | null
+          validated_by: string | null
+          visit_id: string
+          visit_type: string | null
+        }
+        Insert: {
+          ai_confidence?: number | null
+          ai_suggestion?: string | null
+          coded_at?: string | null
+          coded_by?: string | null
+          created_at?: string | null
+          hospital_id: string
+          id?: string
+          pcs_code?: string | null
+          primary_icd_code?: string | null
+          primary_icd_desc?: string | null
+          secondary_codes?: Json | null
+          status?: string | null
+          validated_at?: string | null
+          validated_by?: string | null
+          visit_id: string
+          visit_type?: string | null
+        }
+        Update: {
+          ai_confidence?: number | null
+          ai_suggestion?: string | null
+          coded_at?: string | null
+          coded_by?: string | null
+          created_at?: string | null
+          hospital_id?: string
+          id?: string
+          pcs_code?: string | null
+          primary_icd_code?: string | null
+          primary_icd_desc?: string | null
+          secondary_codes?: Json | null
+          status?: string | null
+          validated_at?: string | null
+          validated_by?: string | null
+          visit_id?: string
+          visit_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "icd_codings_coded_by_fkey"
+            columns: ["coded_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "icd_codings_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "icd_codings_validated_by_fkey"
+            columns: ["validated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       inbox_messages: {
         Row: {
@@ -5005,6 +5234,66 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      medical_records: {
+        Row: {
+          archived_at: string | null
+          barcode: string | null
+          created_at: string | null
+          destroy_after: string | null
+          digital_ref: string | null
+          hospital_id: string
+          id: string
+          patient_id: string
+          physical_location: string | null
+          record_type: string
+          status: string | null
+          visit_id: string | null
+        }
+        Insert: {
+          archived_at?: string | null
+          barcode?: string | null
+          created_at?: string | null
+          destroy_after?: string | null
+          digital_ref?: string | null
+          hospital_id: string
+          id?: string
+          patient_id: string
+          physical_location?: string | null
+          record_type: string
+          status?: string | null
+          visit_id?: string | null
+        }
+        Update: {
+          archived_at?: string | null
+          barcode?: string | null
+          created_at?: string | null
+          destroy_after?: string | null
+          digital_ref?: string | null
+          hospital_id?: string
+          id?: string
+          patient_id?: string
+          physical_location?: string | null
+          record_type?: string
+          status?: string | null
+          visit_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "medical_records_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "medical_records_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
             referencedColumns: ["id"]
           },
         ]
@@ -7280,6 +7569,156 @@ export type Database = {
             columns: ["validated_by"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      record_requests: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string | null
+          documents_provided: string[] | null
+          documents_requested: string[] | null
+          fulfilled_at: string | null
+          hospital_id: string
+          id: string
+          patient_id: string
+          purpose: string
+          record_id: string | null
+          rejection_reason: string | null
+          requester_contact: string | null
+          requester_name: string
+          requester_type: string
+          status: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string | null
+          documents_provided?: string[] | null
+          documents_requested?: string[] | null
+          fulfilled_at?: string | null
+          hospital_id: string
+          id?: string
+          patient_id: string
+          purpose: string
+          record_id?: string | null
+          rejection_reason?: string | null
+          requester_contact?: string | null
+          requester_name: string
+          requester_type: string
+          status?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string | null
+          documents_provided?: string[] | null
+          documents_requested?: string[] | null
+          fulfilled_at?: string | null
+          hospital_id?: string
+          id?: string
+          patient_id?: string
+          purpose?: string
+          record_id?: string | null
+          rejection_reason?: string | null
+          requester_contact?: string | null
+          requester_name?: string
+          requester_type?: string
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "record_requests_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "record_requests_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "record_requests_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "record_requests_record_id_fkey"
+            columns: ["record_id"]
+            isOneToOne: false
+            referencedRelation: "medical_records"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      retention_schedules: {
+        Row: {
+          created_at: string | null
+          destruction_authorized_by: string | null
+          destruction_date: string | null
+          hospital_id: string
+          id: string
+          is_destroyed: boolean | null
+          patient_id: string
+          record_date: string
+          record_type: string
+          retain_until: string
+          retention_basis: string
+        }
+        Insert: {
+          created_at?: string | null
+          destruction_authorized_by?: string | null
+          destruction_date?: string | null
+          hospital_id: string
+          id?: string
+          is_destroyed?: boolean | null
+          patient_id: string
+          record_date: string
+          record_type: string
+          retain_until: string
+          retention_basis: string
+        }
+        Update: {
+          created_at?: string | null
+          destruction_authorized_by?: string | null
+          destruction_date?: string | null
+          hospital_id?: string
+          id?: string
+          is_destroyed?: boolean | null
+          patient_id?: string
+          record_date?: string
+          record_type?: string
+          retain_until?: string
+          retention_basis?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "retention_schedules_destruction_authorized_by_fkey"
+            columns: ["destruction_authorized_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "retention_schedules_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "retention_schedules_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
             referencedColumns: ["id"]
           },
         ]
