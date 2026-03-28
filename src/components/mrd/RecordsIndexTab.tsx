@@ -4,8 +4,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ClipboardList } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import CaseBundleModal from "./CaseBundleModal";
 
 const typeColors: Record<string, string> = {
   ipd: "bg-blue-100 text-blue-800",
@@ -21,32 +23,30 @@ const statusColors: Record<string, string> = {
   transferred: "bg-amber-100 text-amber-700",
 };
 
-const icdStatusColors: Record<string, string> = {
-  pending: "bg-amber-100 text-amber-700",
-  coded: "bg-blue-100 text-blue-700",
-  validated: "bg-green-100 text-green-700",
-  billed: "bg-gray-100 text-gray-600",
-};
-
 const RecordsIndexTab: React.FC = () => {
   const [records, setRecords] = useState<any[]>([]);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("active");
   const [loading, setLoading] = useState(true);
+  const [hospitalId, setHospitalId] = useState("");
 
-  useEffect(() => {
-    fetchRecords();
-  }, [typeFilter, statusFilter]);
+  // Bundle modal
+  const [bundleRecord, setBundleRecord] = useState<any>(null);
 
-  const fetchRecords = async () => {
-    setLoading(true);
+  useEffect(() => { init(); }, []);
+  useEffect(() => { if (hospitalId) fetchRecords(); }, [typeFilter, statusFilter, hospitalId]);
+
+  const init = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     const { data: userData } = await (supabase as any).from("users").select("hospital_id").eq("auth_user_id", user.id).single();
-    if (!userData) return;
+    if (userData) setHospitalId(userData.hospital_id);
+  };
 
-    let query = (supabase as any).from("medical_records").select("*, patients(full_name, uhid)").eq("hospital_id", userData.hospital_id).order("created_at", { ascending: false }).limit(50);
+  const fetchRecords = async () => {
+    setLoading(true);
+    let query = (supabase as any).from("medical_records").select("*, patients(full_name, uhid)").eq("hospital_id", hospitalId).order("created_at", { ascending: false }).limit(50);
 
     if (typeFilter !== "all") query = query.eq("record_type", typeFilter);
     if (statusFilter !== "all") query = query.eq("status", statusFilter);
@@ -97,13 +97,14 @@ const RecordsIndexTab: React.FC = () => {
               <TableHead>Location</TableHead>
               <TableHead>Barcode</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
             ) : filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No records found</TableCell></TableRow>
+              <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No records found</TableCell></TableRow>
             ) : filtered.map((r) => (
               <TableRow key={r.id}>
                 <TableCell>
@@ -115,11 +116,28 @@ const RecordsIndexTab: React.FC = () => {
                 <TableCell className="text-xs text-muted-foreground">{r.physical_location || "—"}</TableCell>
                 <TableCell className="text-[10px] font-mono">{r.barcode || "—"}</TableCell>
                 <TableCell><Badge variant="secondary" className={statusColors[r.status] || ""}>{r.status}</Badge></TableCell>
+                <TableCell>
+                  {r.record_type === "ipd" && (
+                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setBundleRecord(r)}>
+                      <ClipboardList className="h-3 w-3 mr-1" /> Bundle →
+                    </Button>
+                  )}
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </div>
+
+      {/* Case Bundle Modal */}
+      {bundleRecord && (
+        <CaseBundleModal
+          open={!!bundleRecord}
+          onClose={() => setBundleRecord(null)}
+          record={bundleRecord}
+          hospitalId={hospitalId}
+        />
+      )}
     </div>
   );
 };

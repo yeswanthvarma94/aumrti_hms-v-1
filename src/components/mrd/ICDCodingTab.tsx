@@ -1,14 +1,14 @@
-import React, { useState, useEffect } from "react";
-import { Card } from "@/components/ui/card";
+import React, { useState, useEffect, useCallback } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Check, X, Bot } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Check, X, Bot, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { callAI } from "@/lib/aiProvider";
 import { toast } from "sonner";
 
 const statusColors: Record<string, string> = {
@@ -17,6 +17,14 @@ const statusColors: Record<string, string> = {
   validated: "bg-green-100 text-green-700",
   billed: "bg-gray-100 text-gray-600",
 };
+
+interface AISuggestion {
+  primary_code: string;
+  primary_description: string;
+  confidence: number;
+  secondary_suggestions?: { code: string; description: string }[];
+  reasoning?: string;
+}
 
 const ICDCodingTab: React.FC = () => {
   const [items, setItems] = useState<any[]>([]);
@@ -27,30 +35,144 @@ const ICDCodingTab: React.FC = () => {
   const [primaryDesc, setPrimaryDesc] = useState("");
   const [pcsCode, setPcsCode] = useState("");
   const [saving, setSaving] = useState(false);
+  const [hospitalId, setHospitalId] = useState("");
 
-  useEffect(() => { fetchItems(); }, [filter]);
+  // AI suggestion state
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiSuggestion, setAiSuggestion] = useState<AISuggestion | null>(null);
+  const [aiDismissed, setAiDismissed] = useState(false);
+
+  useEffect(() => { init(); }, []);
+  useEffect(() => { if (hospitalId) fetchItems(); }, [filter, hospitalId]);
+
+  const init = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data: userData } = await (supabase as any).from("users").select("id, hospital_id").eq("auth_user_id", user.id).single();
+    if (userData) setHospitalId(userData.hospital_id);
+  };
 
   const fetchItems = async () => {
     setLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const { data: userData } = await (supabase as any).from("users").select("hospital_id").eq("auth_user_id", user.id).single();
-    if (!userData) return;
-
-    let query = (supabase as any).from("icd_codings").select("*").eq("hospital_id", userData.hospital_id).order("created_at", { ascending: false }).limit(100);
+    let query = (supabase as any).from("icd_codings").select("*").eq("hospital_id", hospitalId).order("created_at", { ascending: false }).limit(100);
     if (filter !== "all") query = query.eq("status", filter);
-
     const { data, error } = await query;
     if (error) { toast.error(error.message); setLoading(false); return; }
     setItems(data || []);
     setLoading(false);
   };
 
+  const suggestICDCode = useCallback(async (item: any) => {
+    if (!item.visit_id || !item.visit_type || !hospitalId) return;
+    if (item.ai_suggestion) return; // already has suggestion
+
+    setAiLoading(true);
+    setAiSuggestion(null);
+    setAiDismissed(false);
+
+    let clinicalText = "";
+
+    try {
+      if (item.visit_type === "ipd") {
+        const { data: admission } = await (supabase as any).from("admissions")
+          .select("admitting_diagnosis, status").eq("id", item.visit_id).single();
+        clinicalText = [admission?.admitting_diagnosis].filter(Boolean).join("\n");
+      }
+
+      if (item.visit_type === "opd") {
+        const { data: encounter } = await (supabase as any).from("opd_encounters")
+          .select("chief_complaint, soap_notes, diagnosis").eq("id", item.visit_id).single();
+        clinicalText = [encounter?.chief_complaint, encounter?.soap_notes, encounter?.diagnosis].filter(Boolean).join("\n");
+      }
+
+      if (!clinicalText) {
+        setAiLoading(false);
+        return;
+      }
+
+      const response = await callAI({
+        featureKey: "icd_coding",
+        hospitalId,
+        prompt: `You are a medical coding specialist trained in ICD-10-CM.
+
+Based on this clinical documentation, suggest the most appropriate primary ICD-10 code.
+
+Return ONLY a JSON object:
+{
+  "primary_code": "J18.9",
+  "primary_description": "Pneumonia, unspecified organism",
+  "confidence": 0.87,
+  "secondary_suggestions": [
+    {"code": "E11.9", "description": "Type 2 diabetes mellitus without complications"}
+  ],
+  "reasoning": "One sentence explaining why this code fits"
+}
+
+Clinical documentation:
+${clinicalText}`,
+        maxTokens: 400,
+      });
+
+      if (response.error) {
+        console.error("AI ICD suggestion error:", response.error);
+        setAiLoading(false);
+        return;
+      }
+
+      const parsed: AISuggestion = JSON.parse(
+        response.text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim()
+      );
+
+      // Save to DB
+      await (supabase as any).from("icd_codings").update({
+        ai_suggestion: parsed.primary_code,
+        ai_confidence: parsed.confidence,
+      }).eq("id", item.id);
+
+      setAiSuggestion(parsed);
+    } catch (e) {
+      console.error("ICD suggestion failed:", e);
+      // Graceful degradation — coder enters manually
+    }
+    setAiLoading(false);
+  }, [hospitalId]);
+
   const selectItem = (item: any) => {
     setSelected(item);
     setPrimaryCode(item.primary_icd_code || "");
     setPrimaryDesc(item.primary_icd_desc || "");
     setPcsCode(item.pcs_code || "");
+    setAiDismissed(false);
+
+    // If item already has AI suggestion in DB, show it
+    if (item.ai_suggestion) {
+      setAiSuggestion({
+        primary_code: item.ai_suggestion,
+        primary_description: item.primary_icd_desc || item.ai_suggestion,
+        confidence: item.ai_confidence || 0,
+      });
+      setAiLoading(false);
+    } else {
+      setAiSuggestion(null);
+      // Auto-trigger AI for pending items without suggestion
+      if (item.status === "pending") {
+        suggestICDCode(item);
+      }
+    }
+  };
+
+  const acceptAll = () => {
+    if (!aiSuggestion) return;
+    setPrimaryCode(aiSuggestion.primary_code);
+    setPrimaryDesc(aiSuggestion.primary_description);
+    toast.success("AI suggestion accepted");
+  };
+
+  const acceptPrimaryOnly = () => {
+    if (!aiSuggestion) return;
+    setPrimaryCode(aiSuggestion.primary_code);
+    setPrimaryDesc(aiSuggestion.primary_description);
+    toast.success("Primary code accepted");
   };
 
   const saveCoding = async (validate = false) => {
@@ -80,14 +202,15 @@ const ICDCodingTab: React.FC = () => {
     if (error) { toast.error(error.message); setSaving(false); return; }
     toast.success(validate ? "Coding validated" : "Coding saved");
     setSelected(null);
+    setAiSuggestion(null);
     setSaving(false);
     fetchItems();
   };
 
-  const acceptAI = () => {
-    if (!selected?.ai_suggestion) return;
-    setPrimaryCode(selected.ai_suggestion);
-    setPrimaryDesc(`AI-suggested: ${selected.ai_suggestion}`);
+  const confidenceColor = (c: number) => {
+    if (c >= 0.8) return "text-green-700";
+    if (c >= 0.6) return "text-amber-600";
+    return "text-red-600";
   };
 
   return (
@@ -118,7 +241,7 @@ const ICDCodingTab: React.FC = () => {
                 <Badge variant="secondary" className={`text-[10px] ${statusColors[item.status]}`}>{item.status}</Badge>
               </div>
               {item.ai_suggestion && (
-                <div className="text-[10px] text-teal-600 mt-1 flex items-center gap-1">
+                <div className="text-[10px] text-accent-foreground mt-1 flex items-center gap-1">
                   <Bot className="h-3 w-3" /> AI: {item.ai_suggestion} ({Math.round((item.ai_confidence || 0) * 100)}%)
                 </div>
               )}
@@ -140,22 +263,62 @@ const ICDCodingTab: React.FC = () => {
           <div className="space-y-4">
             <h3 className="font-semibold text-sm">ICD Coding Workspace</h3>
 
+            {/* AI Loading State */}
+            {aiLoading && (
+              <div className="bg-accent/10 border border-accent/30 rounded-lg p-3 flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin text-accent-foreground" />
+                <span className="text-sm text-accent-foreground">🤖 Analysing clinical notes...</span>
+              </div>
+            )}
+
             {/* AI Suggestion Box */}
-            {selected.ai_suggestion && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <div className="flex items-center gap-2 mb-1">
-                  <Bot className="h-4 w-4 text-teal-600" />
-                  <span className="text-sm font-medium text-teal-700">AI Suggests: {selected.ai_suggestion}</span>
+            {aiSuggestion && !aiDismissed && !aiLoading && (
+              <div className="bg-accent/5 border border-accent/20 rounded-lg p-3 space-y-2">
+                <div className="flex items-center gap-2">
+                  <Bot className="h-4 w-4 text-accent-foreground" />
+                  <span className="text-sm font-semibold text-accent-foreground">AI Suggestion</span>
                 </div>
-                <p className="text-xs text-muted-foreground mb-2">
-                  Confidence: {Math.round((selected.ai_confidence || 0) * 100)}%
-                </p>
-                <div className="flex gap-2">
-                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={acceptAI}>
-                    <Check className="h-3 w-3 mr-1" /> Accept
+
+                {/* Primary Code */}
+                <div className="text-sm font-bold">
+                  {aiSuggestion.primary_code} — {aiSuggestion.primary_description}
+                </div>
+
+                {/* Confidence Bar */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">Confidence:</span>
+                  <Progress value={(aiSuggestion.confidence || 0) * 100} className="h-2 flex-1 max-w-[200px]" />
+                  <span className={`text-xs font-medium ${confidenceColor(aiSuggestion.confidence)}`}>
+                    {Math.round((aiSuggestion.confidence || 0) * 100)}%
+                  </span>
+                </div>
+
+                {/* Reasoning */}
+                {aiSuggestion.reasoning && (
+                  <p className="text-xs italic text-muted-foreground">{aiSuggestion.reasoning}</p>
+                )}
+
+                {/* Secondary suggestions */}
+                {aiSuggestion.secondary_suggestions && aiSuggestion.secondary_suggestions.length > 0 && (
+                  <div className="flex flex-wrap gap-1 pt-1">
+                    {aiSuggestion.secondary_suggestions.map((s, i) => (
+                      <Badge key={i} variant="outline" className="text-[10px]">
+                        {s.code} — {s.description}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="flex gap-2 pt-1">
+                  <Button size="sm" className="h-7 text-xs" onClick={acceptAll}>
+                    <Check className="h-3 w-3 mr-1" /> Accept All
                   </Button>
-                  <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive">
-                    <X className="h-3 w-3 mr-1" /> Reject
+                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={acceptPrimaryOnly}>
+                    Accept Primary Only
+                  </Button>
+                  <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive" onClick={() => setAiDismissed(true)}>
+                    <X className="h-3 w-3 mr-1" /> Dismiss
                   </Button>
                 </div>
               </div>
