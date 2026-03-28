@@ -44,6 +44,10 @@ const quickAccessItems: SidebarItem[] = [
   { label: "Analytics", path: "/analytics", icon: BarChart3 },
 ];
 
+const recordsItems: SidebarItem[] = [
+  { label: "Medical Records", path: "/mrd", icon: FolderOpen },
+];
+
 const bottomItems: SidebarItem[] = [
   { label: "Inbox", path: "/inbox", icon: Inbox },
   { label: "Settings", path: "/settings", icon: Settings },
