@@ -172,7 +172,7 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
       ktv = parseFloat((-Math.log(r - 0.008 * t) + (4 - 3.5 * r) * (uf || 0) / 1000 / postW).toFixed(2));
     }
 
-    await supabase.from("dialysis_sessions").update({
+    await (supabase as any).from("dialysis_sessions").update({
       actual_end: new Date().toISOString(),
       post_weight_kg: postW || null,
       post_bp_systolic: parseInt(postBpSys) || null,
