@@ -145,7 +145,7 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
       conducted_by: user.id,
     }).select().single();
 
-    await supabase.from("dialysis_machines").update({ status: "in_use" }).eq("id", startMachine.id);
+    await (supabase as any).from("dialysis_machines").update({ status: "in_use" }).eq("id", startMachine.id);
 
     toast({ title: `Session started on ${startMachine.machine_name}` });
     resetStartForm();
