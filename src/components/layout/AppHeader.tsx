@@ -83,16 +83,7 @@ const AppHeader: React.FC = () => {
     };
   }, []);
 
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault();
-        setSearchOpen(true);
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, []);
+  // Cmd+K is now handled by CommandPalette component
 
   const currentLabel = routeLabels[location.pathname] || "Page";
   const isHome = location.pathname === "/";
