@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { AlertTriangle, ShieldX, Clock, CheckCircle } from "lucide-react";
+import { AlertTriangle, ShieldX, Clock, CheckCircle, Plus } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 interface Props {
@@ -55,11 +55,17 @@ const SterilizeTab: React.FC<Props> = ({ showNewCycle, onCloseNewCycle, onRefres
   const [flashJustification, setFlashJustification] = useState("");
   const [flashApprovedBy, setFlashApprovedBy] = useState("");
   const [flashAcknowledged, setFlashAcknowledged] = useState(false);
+  const [flashOverridden, setFlashOverridden] = useState(false);
+
+  // Quick-add set
+  const [quickSetName, setQuickSetName] = useState("");
+  const [quickSetCode, setQuickSetCode] = useState("");
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
 
   const fetchData = async () => {
     const [cyclesRes, setsRes, usersRes] = await Promise.all([
       supabase.from("sterilization_cycles").select("*, cycle_instruments(*, instrument_sets(set_name))").eq("status", "in_progress").order("cycle_start_at", { ascending: false }),
-      supabase.from("instrument_sets").select("*").in("status", ["dirty", "processing", "sterile"]),
+      supabase.from("instrument_sets").select("*").order("set_name"),
       supabase.from("users").select("id, full_name, role"),
     ]);
     if (cyclesRes.data) {
@@ -73,9 +79,12 @@ const SterilizeTab: React.FC<Props> = ({ showNewCycle, onCloseNewCycle, onRefres
   useEffect(() => { fetchData(); }, []);
 
   const handleLoadTypeChange = (val: string) => {
-    setLoadType(val);
     if (val === "flash") {
       setFlashModalOpen(true);
+      setFlashOverridden(false);
+    } else {
+      setLoadType(val);
+      setFlashOverridden(false);
     }
   };
 
@@ -95,6 +104,7 @@ const SterilizeTab: React.FC<Props> = ({ showNewCycle, onCloseNewCycle, onRefres
     setFlashJustification("");
     setFlashApprovedBy("");
     setFlashAcknowledged(false);
+    setFlashOverridden(false);
   };
 
   const proceedFlash = async () => {
@@ -111,20 +121,65 @@ const SterilizeTab: React.FC<Props> = ({ showNewCycle, onCloseNewCycle, onRefres
       return;
     }
 
-    // Log clinical alert
-    const { data: user } = await supabase.from("users").select("id, hospital_id").limit(1).single();
-    if (user) {
-      await supabase.from("clinical_alerts").insert({
-        hospital_id: user.hospital_id,
-        alert_type: "flash_sterilization",
-        severity: "high",
-        alert_message: `Flash sterilization used — IC team notified. Justification: ${flashJustification.substring(0, 100)}...`,
-        patient_id: null,
-      });
+    // Create clinical alert for IC team
+    try {
+      const { data: user } = await supabase.from("users").select("id, hospital_id").limit(1).single();
+      const hospitalId = user?.hospital_id;
+      if (hospitalId) {
+        const approver = users.find(u => u.id === flashApprovedBy);
+        const { error } = await supabase.from("clinical_alerts").insert({
+          hospital_id: hospitalId,
+          alert_type: "flash_sterilization",
+          severity: "high",
+          alert_message: `⚠️ FLASH STERILIZATION OVERRIDE — Authorised by: ${approver?.full_name || "Unknown"}. Justification: ${flashJustification}. This is a NABH reportable event. IC team must review within 24 hours.`,
+          patient_id: null,
+        });
+        if (error) {
+          console.error("Failed to create clinical alert:", error);
+          toast({ title: "Warning: Could not create IC alert", description: error.message, variant: "destructive" });
+        } else {
+          toast({ title: "⚠️ IC Alert Created", description: "Infection Control team has been notified of this flash sterilization event." });
+        }
+      } else {
+        toast({ title: "Warning: No hospital context found — IC alert not created", variant: "destructive" });
+      }
+    } catch (err) {
+      console.error("Flash alert error:", err);
     }
 
+    // Set flash as overridden and update load type
+    setLoadType("flash");
+    setFlashOverridden(true);
     setFlashModalOpen(false);
-    toast({ title: "⚠️ Flash sterilization authorised", description: "Logged and IC team notified" });
+    toast({ title: "⚠️ Flash sterilization authorised & logged", description: "Clinical alert raised for Infection Control Committee" });
+  };
+
+  const quickAddSet = async () => {
+    if (!quickSetName.trim() || !quickSetCode.trim()) {
+      toast({ title: "Set name and code are required", variant: "destructive" });
+      return;
+    }
+    const { data: user } = await supabase.from("users").select("hospital_id").limit(1).single();
+    if (!user) return;
+    const { data, error } = await supabase.from("instrument_sets").insert({
+      hospital_id: user.hospital_id,
+      set_name: quickSetName.trim(),
+      set_code: quickSetCode.trim(),
+      status: "dirty",
+    }).select().single();
+    if (error) {
+      toast({ title: "Failed to create set", description: error.message, variant: "destructive" });
+      return;
+    }
+    if (data) {
+      setSelectedSets(prev => [...prev, data.id]);
+    }
+    toast({ title: `Set "${quickSetName}" created & added to load` });
+    setQuickSetName("");
+    setQuickSetCode("");
+    setShowQuickAdd(false);
+    fetchData();
+    onRefresh();
   };
 
   const startCycle = async () => {
@@ -137,7 +192,7 @@ const SterilizeTab: React.FC<Props> = ({ showNewCycle, onCloseNewCycle, onRefres
 
     const cycleNum = `CYC-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
 
-    const { data: cycle } = await supabase.from("sterilization_cycles").insert({
+    const { data: cycle, error } = await supabase.from("sterilization_cycles").insert({
       hospital_id: user.hospital_id,
       cycle_number: cycleNum,
       autoclave_id: autoclave,
@@ -154,8 +209,12 @@ const SterilizeTab: React.FC<Props> = ({ showNewCycle, onCloseNewCycle, onRefres
       flash_approved_by: loadType === "flash" ? flashApprovedBy : null,
     }).select().single();
 
+    if (error) {
+      toast({ title: "Failed to start cycle", description: error.message, variant: "destructive" });
+      return;
+    }
+
     if (cycle) {
-      // Add sets to cycle
       const items = selectedSets.map(sid => ({
         hospital_id: user.hospital_id,
         cycle_id: cycle.id,
@@ -164,15 +223,18 @@ const SterilizeTab: React.FC<Props> = ({ showNewCycle, onCloseNewCycle, onRefres
       }));
       await supabase.from("cycle_instruments").insert(items);
 
-      // Update set statuses
       for (const sid of selectedSets) {
         await supabase.from("instrument_sets").update({ status: "processing" }).eq("id", sid);
       }
     }
 
-    toast({ title: `Cycle ${cycleNum} started` });
+    toast({ title: `Cycle ${cycleNum} started with ${selectedSets.length} sets` });
     setSelectedSets([]);
     setLoadType("routine");
+    setFlashOverridden(false);
+    setFlashJustification("");
+    setFlashApprovedBy("");
+    setFlashAcknowledged(false);
     onCloseNewCycle();
     fetchData();
     onRefresh();
@@ -184,7 +246,6 @@ const SterilizeTab: React.FC<Props> = ({ showNewCycle, onCloseNewCycle, onRefres
       status: cycle.biological_indicator_used && cycle.bi_result === "pending" ? "in_progress" : "completed",
     }).eq("id", cycle.id);
 
-    // If no BI or BI already passed, mark sets sterile
     if (!cycle.biological_indicator_used || cycle.bi_result === "pass") {
       const { data: items } = await supabase.from("cycle_instruments").select("set_id").eq("cycle_id", cycle.id);
       if (items) {
@@ -222,7 +283,6 @@ const SterilizeTab: React.FC<Props> = ({ showNewCycle, onCloseNewCycle, onRefres
       }
       toast({ title: "✓ BI Passed — sets marked sterile" });
     } else {
-      // STERILITY FAILURE
       if (items) {
         for (const item of items) {
           if (item.set_id) await supabase.from("instrument_sets").update({ status: "quarantine" }).eq("id", item.set_id);
@@ -243,7 +303,9 @@ const SterilizeTab: React.FC<Props> = ({ showNewCycle, onCloseNewCycle, onRefres
     onRefresh();
   };
 
-  const dirtySets = sets.filter(s => s.status === "dirty" || s.status === "processing" || s.status === "sterile");
+  // Show all sets (any status) so user can always pick sets for the load
+  const availableSets = sets.filter(s => s.status !== "condemned");
+  const flashProceedEnabled = flashJustification.length >= 50 && !!flashApprovedBy && flashAcknowledged;
 
   return (
     <div className="flex h-full overflow-hidden">
@@ -266,12 +328,17 @@ const SterilizeTab: React.FC<Props> = ({ showNewCycle, onCloseNewCycle, onRefres
           <div className="grid grid-cols-2 gap-1.5 mt-1">
             {["routine", "emergency", "implant", "flash"].map(lt => (
               <Button key={lt} size="sm" variant={loadType === lt ? "default" : "outline"}
-                className={`text-xs capitalize ${lt === "flash" && loadType === lt ? "bg-red-600 hover:bg-red-700" : ""}`}
+                className={`text-xs capitalize ${lt === "flash" && loadType === lt ? "bg-destructive hover:bg-destructive/90 text-destructive-foreground" : ""}`}
                 onClick={() => handleLoadTypeChange(lt)}>
                 {lt === "flash" ? "⚠️ Flash" : lt === "implant" ? "🔬 Implant" : lt === "emergency" ? "⚡ Emergency" : "📋 Routine"}
               </Button>
             ))}
           </div>
+          {flashOverridden && loadType === "flash" && (
+            <div className="mt-1.5 p-2 bg-destructive/10 border border-destructive/30 rounded text-[11px] text-destructive font-medium">
+              ⚠️ Flash override active — IC team notified. Clinical alert logged.
+            </div>
+          )}
         </div>
 
         <div>
@@ -295,19 +362,42 @@ const SterilizeTab: React.FC<Props> = ({ showNewCycle, onCloseNewCycle, onRefres
         </div>
 
         <div>
-          <Label className="text-xs">Sets in this Load</Label>
-          <div className="mt-1 space-y-1 max-h-32 overflow-y-auto border border-border rounded p-2">
-            {dirtySets.map(s => (
-              <label key={s.id} className="flex items-center gap-2 text-xs cursor-pointer">
+          <div className="flex items-center justify-between">
+            <Label className="text-xs">Sets in this Load</Label>
+            <Button size="sm" variant="ghost" className="h-6 text-[10px] px-2" onClick={() => setShowQuickAdd(!showQuickAdd)}>
+              <Plus className="w-3 h-3 mr-0.5" /> Quick Add Set
+            </Button>
+          </div>
+
+          {showQuickAdd && (
+            <div className="mt-1 p-2 border border-dashed border-primary/40 rounded bg-primary/5 space-y-1.5">
+              <Input value={quickSetName} onChange={e => setQuickSetName(e.target.value)} placeholder="Set name (e.g. General Surgery Tray)" className="h-8 text-xs" />
+              <div className="flex gap-1.5">
+                <Input value={quickSetCode} onChange={e => setQuickSetCode(e.target.value)} placeholder="Code (e.g. SET-GS-001)" className="h-8 text-xs flex-1" />
+                <Button size="sm" className="h-8 text-xs" onClick={quickAddSet} disabled={!quickSetName.trim() || !quickSetCode.trim()}>Add</Button>
+              </div>
+            </div>
+          )}
+
+          <div className="mt-1 space-y-1 max-h-36 overflow-y-auto border border-border rounded p-2">
+            {availableSets.map(s => (
+              <label key={s.id} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-muted/50 rounded px-1 py-0.5">
                 <Checkbox checked={selectedSets.includes(s.id)}
                   onCheckedChange={checked => {
                     setSelectedSets(prev => checked ? [...prev, s.id] : prev.filter(id => id !== s.id));
                   }} />
-                <span>{s.set_name}</span>
-                <Badge className="text-[9px] ml-auto" variant="outline">{s.status}</Badge>
+                <span className="flex-1">{s.set_name}</span>
+                <Badge className="text-[9px]" variant="outline">{s.status}</Badge>
               </label>
             ))}
-            {dirtySets.length === 0 && <p className="text-xs text-muted-foreground">No sets available</p>}
+            {availableSets.length === 0 && (
+              <div className="text-center py-3">
+                <p className="text-xs text-muted-foreground mb-1">No sets found</p>
+                <Button size="sm" variant="link" className="text-xs h-auto p-0" onClick={() => setShowQuickAdd(true)}>
+                  + Create your first set
+                </Button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -319,8 +409,8 @@ const SterilizeTab: React.FC<Props> = ({ showNewCycle, onCloseNewCycle, onRefres
         <div>
           <Label className="text-xs">Chemical Indicator</Label>
           <div className="flex gap-2 mt-1">
-            <Button size="sm" variant={chemResult === "pass" ? "default" : "outline"} className={chemResult === "pass" ? "bg-green-600" : ""} onClick={() => setChemResult("pass")}>✓ Pass</Button>
-            <Button size="sm" variant={chemResult === "fail" ? "default" : "outline"} className={chemResult === "fail" ? "bg-red-600" : ""} onClick={() => setChemResult("fail")}>✗ Fail</Button>
+            <Button size="sm" variant={chemResult === "pass" ? "default" : "outline"} className={chemResult === "pass" ? "bg-green-600 hover:bg-green-700" : ""} onClick={() => setChemResult("pass")}>✓ Pass</Button>
+            <Button size="sm" variant={chemResult === "fail" ? "default" : "outline"} className={chemResult === "fail" ? "bg-destructive hover:bg-destructive/90" : ""} onClick={() => setChemResult("fail")}>✗ Fail</Button>
           </div>
         </div>
 
@@ -336,12 +426,12 @@ const SterilizeTab: React.FC<Props> = ({ showNewCycle, onCloseNewCycle, onRefres
           {activeCycles.length === 0 && <p className="text-xs text-muted-foreground py-4 text-center">No active cycles</p>}
           <div className="space-y-2">
             {activeCycles.map(c => (
-              <div key={c.id} className={`border rounded-lg p-3 ${c.load_type === "flash" ? "border-red-300 bg-red-50" : "border-border"}`}>
+              <div key={c.id} className={`border rounded-lg p-3 ${c.load_type === "flash" ? "border-destructive/40 bg-destructive/5" : "border-border"}`}>
                 <div className="flex items-center justify-between">
                   <div>
                     <span className="text-sm font-mono font-semibold">{c.cycle_number}</span>
                     <Badge className="ml-2 text-[10px]" variant="outline">{c.autoclave_id}</Badge>
-                    <Badge className={`ml-1 text-[10px] ${c.load_type === "flash" ? "bg-red-100 text-red-700" : "bg-muted"}`}>{c.load_type}</Badge>
+                    <Badge className={`ml-1 text-[10px] ${c.load_type === "flash" ? "bg-destructive/10 text-destructive" : "bg-muted"}`}>{c.load_type}</Badge>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-muted-foreground flex items-center gap-1">
@@ -376,7 +466,7 @@ const SterilizeTab: React.FC<Props> = ({ showNewCycle, onCloseNewCycle, onRefres
                   </div>
                   <div className="flex gap-2 mt-2">
                     <Button size="sm" className="bg-green-600 hover:bg-green-700 text-xs" onClick={() => enterBIResult(c, "pass")}>✓ BI Pass</Button>
-                    <Button size="sm" className="bg-red-600 hover:bg-red-700 text-xs" onClick={() => enterBIResult(c, "fail")}>✗ BI Fail</Button>
+                    <Button size="sm" className="bg-destructive hover:bg-destructive/90 text-xs" onClick={() => enterBIResult(c, "fail")}>✗ BI Fail</Button>
                   </div>
                 </div>
               ))}
@@ -387,13 +477,13 @@ const SterilizeTab: React.FC<Props> = ({ showNewCycle, onCloseNewCycle, onRefres
 
       {/* FLASH STERILIZATION HARD BLOCK MODAL */}
       <Dialog open={flashModalOpen} onOpenChange={() => {}}>
-        <DialogContent className="max-w-lg border-2 border-red-500 bg-red-50" onPointerDownOutside={e => e.preventDefault()} onEscapeKeyDown={e => e.preventDefault()}>
+        <DialogContent className="max-w-lg border-2 border-destructive bg-destructive/5" onPointerDownOutside={e => e.preventDefault()} onEscapeKeyDown={e => e.preventDefault()}>
           <div className="space-y-4">
-            <div className="flex items-center gap-2 text-red-700">
+            <div className="flex items-center gap-2 text-destructive">
               <ShieldX className="w-7 h-7" />
               <span className="text-lg font-bold">🚫 FLASH STERILIZATION — NABH VIOLATION</span>
             </div>
-            <div className="text-sm text-red-700 space-y-2">
+            <div className="text-sm text-destructive space-y-2">
               <p>Flash sterilization is <strong>prohibited by NABH standards</strong> and increases Surgical Site Infection (SSI) risk.</p>
               <p>SSIs cost <strong>₹50,000–₹5,00,000</strong> per case.</p>
               <p className="font-semibold">Flash sterilization may ONLY be used when:</p>
@@ -405,17 +495,19 @@ const SterilizeTab: React.FC<Props> = ({ showNewCycle, onCloseNewCycle, onRefres
             </div>
 
             <div>
-              <Label className="text-xs font-semibold text-red-700">Clinical Justification (min 50 characters) *</Label>
+              <Label className="text-xs font-semibold text-destructive">Clinical Justification (min 50 characters) *</Label>
               <Textarea value={flashJustification} onChange={e => setFlashJustification(e.target.value)}
                 placeholder="Instrument dropped during procedure and no sterile replacement available..."
-                rows={3} className="border-red-300" />
-              <p className="text-[10px] text-red-500 mt-0.5">{flashJustification.length}/50 characters</p>
+                rows={3} className="border-destructive/30" />
+              <p className={`text-[10px] mt-0.5 ${flashJustification.length >= 50 ? "text-green-600" : "text-destructive"}`}>
+                {flashJustification.length}/50 characters {flashJustification.length >= 50 ? "✓" : ""}
+              </p>
             </div>
 
             <div>
-              <Label className="text-xs font-semibold text-red-700">Authorised By *</Label>
+              <Label className="text-xs font-semibold text-destructive">Authorised By *</Label>
               <Select value={flashApprovedBy} onValueChange={setFlashApprovedBy}>
-                <SelectTrigger className="h-9 border-red-300"><SelectValue placeholder="Select authoriser..." /></SelectTrigger>
+                <SelectTrigger className="h-9 border-destructive/30"><SelectValue placeholder="Select authoriser..." /></SelectTrigger>
                 <SelectContent>
                   {users.filter(u => u.role === "doctor" || u.role === "super_admin" || u.role === "admin").map(u => (
                     <SelectItem key={u.id} value={u.id}>{u.full_name}</SelectItem>
@@ -426,19 +518,23 @@ const SterilizeTab: React.FC<Props> = ({ showNewCycle, onCloseNewCycle, onRefres
 
             <label className="flex items-start gap-2 cursor-pointer">
               <Checkbox checked={flashAcknowledged} onCheckedChange={v => setFlashAcknowledged(!!v)} className="mt-0.5" />
-              <span className="text-xs text-red-700">
+              <span className="text-xs text-destructive">
                 I confirm this is a genuine emergency requiring flash sterilization. This event will be logged and reported to the Infection Control Committee.
               </span>
             </label>
 
-            <div className="flex gap-2">
-              <Button className="flex-1 bg-green-600 hover:bg-green-700" onClick={cancelFlash}>
-                Cancel — Use Routine Cycle Instead
+            <div className="flex flex-col gap-2">
+              <Button className="w-full bg-green-600 hover:bg-green-700 text-white" onClick={cancelFlash}>
+                ✓ Cancel — Use Routine Cycle Instead (Recommended)
               </Button>
-              <Button variant="outline" size="sm" className="text-xs text-muted-foreground border-muted"
-                disabled={flashJustification.length < 50 || !flashApprovedBy || !flashAcknowledged}
-                onClick={proceedFlash}>
-                Proceed with Flash (Logged)
+              <Button
+                className={`w-full ${flashProceedEnabled ? "bg-destructive hover:bg-destructive/90 text-destructive-foreground" : ""}`}
+                variant={flashProceedEnabled ? "default" : "outline"}
+                disabled={!flashProceedEnabled}
+                onClick={proceedFlash}
+              >
+                <AlertTriangle className="w-4 h-4 mr-1" />
+                {flashProceedEnabled ? "Proceed with Flash — IC Alert Will Be Created" : "Fill all fields to enable override"}
               </Button>
             </div>
           </div>
