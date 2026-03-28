@@ -68,13 +68,23 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
   const [sessionNotes, setSessionNotes] = useState("");
 
   const fetchData = async () => {
-    const today = new Date().toISOString().split("T")[0];
     const [mRes, sRes, pRes] = await Promise.all([
       (supabase as any).from("dialysis_machines").select("*").eq("is_active", true).order("machine_name"),
       (supabase as any).from("dialysis_sessions").select("*, dialysis_patients(*, patients(full_name))").eq("status", "in_progress"),
       (supabase as any).from("dialysis_patients").select("*, patients(full_name, uhid)").eq("is_active", true),
     ]);
-    if (mRes.data) setMachines(mRes.data);
+
+    // Auto-transition disinfecting machines back to available after 30 min
+    if (mRes.data) {
+      const now = new Date();
+      for (const m of mRes.data) {
+        if (m.status === "disinfecting" && m.disinfection_due_at && new Date(m.disinfection_due_at) <= now) {
+          await (supabase as any).from("dialysis_machines").update({ status: "available" }).eq("id", m.id);
+          m.status = "available";
+        }
+      }
+      setMachines(mRes.data);
+    }
     if (sRes.data) {
       const map: Record<string, any> = {};
       sRes.data.forEach((s: any) => { map[s.machine_id] = s; });
