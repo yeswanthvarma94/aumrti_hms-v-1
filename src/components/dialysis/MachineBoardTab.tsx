@@ -281,15 +281,17 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
     if (!user) return;
 
     if (machineModal.editing) {
-      await (supabase as any).from("dialysis_machines").update({
-        machine_name: mName.trim(), model: mModel.trim() || null, machine_type: mType, location: mLocation.trim() || null,
+      const { error } = await (supabase as any).from("dialysis_machines").update({
+        machine_name: mName.trim(), model: mModel.trim() || null, machine_type: mType,
       }).eq("id", machineModal.editing.id);
+      if (error) { toast({ title: "Update failed", description: error.message, variant: "destructive" }); return; }
       toast({ title: `${mName} updated` });
     } else {
-      await (supabase as any).from("dialysis_machines").insert({
+      const { error } = await (supabase as any).from("dialysis_machines").insert({
         hospital_id: user.hospital_id, machine_name: mName.trim(), model: mModel.trim() || null,
-        machine_type: mType, location: mLocation.trim() || null, status: "available", is_active: true,
+        machine_type: mType, status: "available", is_active: true,
       });
+      if (error) { toast({ title: "Add failed", description: error.message, variant: "destructive" }); return; }
       toast({ title: `${mName} added` });
     }
     setMachineModal({ open: false, editing: null });
