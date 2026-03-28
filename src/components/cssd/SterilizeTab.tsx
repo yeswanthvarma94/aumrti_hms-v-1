@@ -229,6 +229,13 @@ const SterilizeTab: React.FC<Props> = ({ showNewCycle, onCloseNewCycle, onRefres
       }
     }
 
+    // NABH evidence: CSSD sterilization cycle started
+    logNABHEvidence(
+      user.hospital_id,
+      "COP.8",
+      `Sterilization cycle ${cycleNum} started. Method: ${method}, Load: ${loadType}, Sets: ${selectedSets.length}, BI used: ${biUsed}, Chem indicator: ${chemResult}${loadType === "flash" ? ` [FLASH OVERRIDE — Justification: ${flashJustification.slice(0, 100)}]` : ""}`
+    );
+
     toast({ title: `Cycle ${cycleNum} started with ${selectedSets.length} sets` });
     setSelectedSets([]);
     setLoadType("routine");
