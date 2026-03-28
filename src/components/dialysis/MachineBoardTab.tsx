@@ -55,6 +55,13 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
   const [heparinDose, setHeparinDose] = useState("5000");
   const [dialyzerId, setDialyzerId] = useState("");
 
+  // Add/Edit machine state
+  const [machineModal, setMachineModal] = useState<{ open: boolean; editing: any | null }>({ open: false, editing: null });
+  const [mName, setMName] = useState("");
+  const [mModel, setMModel] = useState("");
+  const [mType, setMType] = useState("clean");
+  const [mLocation, setMLocation] = useState("");
+
   // End session state
   const [endMachine, setEndMachine] = useState<any>(null);
   const [postWeight, setPostWeight] = useState("");
