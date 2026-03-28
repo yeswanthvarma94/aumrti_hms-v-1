@@ -46,7 +46,6 @@ const AppHeader: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [searchOpen, setSearchOpen] = useState(false);
   const [online, setOnline] = useState(navigator.onLine);
   const [hospitalId, setHospitalId] = useState<string | null>(null);
 
