@@ -20,7 +20,6 @@ const IPDOverviewTab: React.FC<Props> = ({ admissionId, hospitalId, onTabChange,
   const [vitalsTime, setVitalsTime] = useState<string>("");
   const [billingCleared, setBillingCleared] = useState(false);
   const [admDiagnosis, setAdmDiagnosis] = useState("");
-  const [billingCleared, setBillingCleared] = useState(false);
 
   useEffect(() => {
     if (!admissionId) return;
