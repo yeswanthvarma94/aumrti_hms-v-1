@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { X, Search, CheckCircle2 } from "lucide-react";
+import { X, Search, CheckCircle2, ArrowLeft, CreditCard } from "lucide-react";
+import { autoPostJournalEntry } from "@/lib/accounting";
 
 interface Props {
   hospitalId: string;
@@ -28,12 +29,24 @@ const priorityLabels: Record<string, { label: string; active: string }> = {
   disabled: { label: "Disabled", active: "bg-violet-600 text-white" },
 };
 
+const PAYMENT_MODES = [
+  { value: "cash", label: "💵 Cash" },
+  { value: "upi", label: "📱 UPI" },
+  { value: "card", label: "💳 Card" },
+];
+
+const DEFAULT_CONSULTATION_FEE = 500;
+
 const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated }) => {
   const { toast } = useToast();
+  const [step, setStep] = useState<"details" | "payment">("details");
+
+  // Search
   const [phone, setPhone] = useState("");
   const [foundPatient, setFoundPatient] = useState<FoundPatient | null>(null);
   const [searching, setSearching] = useState(false);
   const [useExisting, setUseExisting] = useState(false);
+  const [searchResults, setSearchResults] = useState<FoundPatient[]>([]);
 
   // New patient fields
   const [fullName, setFullName] = useState("");
@@ -52,6 +65,11 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated }) => {
   const [priority, setPriority] = useState("normal");
   const [nextToken, setNextToken] = useState("A-1");
   const [submitting, setSubmitting] = useState(false);
+
+  // Payment fields
+  const [consultationFee, setConsultationFee] = useState(DEFAULT_CONSULTATION_FEE);
+  const [paymentMode, setPaymentMode] = useState("cash");
+  const [paymentRef, setPaymentRef] = useState("");
 
   // Fetch departments + doctors
   useEffect(() => {
@@ -82,8 +100,23 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated }) => {
       });
   }, [hospitalId]);
 
+  // Fetch consultation fee from service_master
+  useEffect(() => {
+    supabase
+      .from("service_master")
+      .select("base_rate")
+      .eq("hospital_id", hospitalId)
+      .ilike("name", "%consultation%")
+      .eq("is_active", true)
+      .limit(1)
+      .then(({ data }) => {
+        if (data && data.length > 0 && data[0].base_rate) {
+          setConsultationFee(data[0].base_rate);
+        }
+      });
+  }, [hospitalId]);
+
   // Phone/name/UHID search
-  const [searchResults, setSearchResults] = useState<FoundPatient[]>([]);
   const searchPatient = useCallback(async (val: string) => {
     if (val.length < 3) { setFoundPatient(null); setSearchResults([]); return; }
     setSearching(true);
@@ -105,53 +138,127 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated }) => {
   }, [phone, searchPatient]);
 
   const filteredDoctors = deptId ? doctors.filter((d) => d.department_id === deptId) : doctors;
+  const selectedDeptName = departments.find(d => d.id === deptId)?.name || "—";
+  const selectedDoctorName = doctors.find(d => d.id === doctorId)?.full_name || "—";
+  const patientDisplayName = useExisting ? foundPatient?.full_name || "" : fullName;
 
-  const handleSubmit = async () => {
+  const handleProceedToPayment = () => {
     if (!useExisting && !fullName.trim()) {
       toast({ title: "Patient name is required", variant: "destructive" });
       return;
     }
+    setStep("payment");
+  };
+
+  const createPatient = async (): Promise<string> => {
+    if (useExisting && foundPatient) return foundPatient.id;
+
+    const dateStr = new Date().toISOString().split("T")[0].replace(/-/g, "");
+    const { count } = await supabase.from("patients").select("id", { count: "exact", head: true }).eq("hospital_id", hospitalId);
+    const seq = String((count || 0) + 1).padStart(4, "0");
+    const uhid = `UHID-${dateStr}-${seq}`;
+
+    const patientData: Record<string, unknown> = {
+      hospital_id: hospitalId,
+      full_name: fullName.trim(),
+      uhid,
+      phone: phone || null,
+      gender,
+    };
+    if (age) {
+      const y = new Date().getFullYear() - parseInt(age);
+      patientData.dob = `${y}-01-01`;
+    }
+    if (dob) patientData.dob = dob;
+    if (bloodGroup) patientData.blood_group = bloodGroup;
+    if (address) patientData.address = address;
+
+    const { data: newPatient, error } = await supabase.from("patients").insert([patientData]).select("id").single();
+    if (error) throw error;
+    return newPatient.id;
+  };
+
+  const handlePayAndIssue = async (skipPayment = false) => {
     setSubmitting(true);
     try {
-      let patientId: string;
+      const patientId = await createPatient();
 
-      if (useExisting && foundPatient) {
-        patientId = foundPatient.id;
-      } else {
-        // Generate UHID
-        const dateStr = new Date().toISOString().split("T")[0].replace(/-/g, "");
-        const { count } = await supabase.from("patients").select("id", { count: "exact", head: true }).eq("hospital_id", hospitalId);
-        const seq = String((count || 0) + 1).padStart(4, "0");
-        const uhid = `UHID-${dateStr}-${seq}`;
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: userData } = await supabase
+        .from("users").select("id").eq("auth_user_id", user?.id || "").maybeSingle();
+      const userId = userData?.id || null;
 
-        const patientData: {
-          hospital_id: string;
-          full_name: string;
-          uhid: string;
-          phone: string | null;
-          gender: "male" | "female" | "other";
-          dob?: string;
-          blood_group?: string;
-          address?: string;
-        } = {
+      const today = new Date().toISOString().split("T")[0];
+
+      // Generate bill number
+      const { count: billCount } = await supabase.from("bills").select("id", { count: "exact", head: true }).eq("hospital_id", hospitalId);
+      const billNumber = `OPD-${today.replace(/-/g, "")}-${String((billCount || 0) + 1).padStart(4, "0")}`;
+
+      const fee = consultationFee;
+      const isPaid = !skipPayment && fee > 0;
+
+      // Create bill
+      const { data: bill, error: billErr } = await supabase.from("bills").insert({
+        hospital_id: hospitalId,
+        patient_id: patientId,
+        bill_number: billNumber,
+        bill_type: "opd",
+        bill_date: today,
+        subtotal: fee,
+        total_amount: fee,
+        patient_payable: fee,
+        paid_amount: isPaid ? fee : 0,
+        balance_due: isPaid ? 0 : fee,
+        payment_status: isPaid ? "paid" : "pending",
+        bill_status: "finalized",
+        created_by: userId,
+      }).select("id").single();
+      if (billErr) throw billErr;
+
+      // Insert line item
+      await supabase.from("bill_line_items").insert({
+        hospital_id: hospitalId,
+        bill_id: bill.id,
+        description: "Consultation Fee",
+        item_type: "consultation",
+        unit_rate: fee,
+        quantity: 1,
+        total_amount: fee,
+      });
+
+      // Insert payment if paid
+      if (isPaid) {
+        await supabase.from("bill_payments").insert({
           hospital_id: hospitalId,
-          full_name: fullName.trim(),
-          uhid,
-          phone: phone || null,
-          gender: gender as "male" | "female" | "other",
-        };
-        if (age) {
-          const y = new Date().getFullYear() - parseInt(age);
-          patientData.dob = `${y}-01-01`;
-        }
-        if (dob) patientData.dob = dob;
-        if (bloodGroup) patientData.blood_group = bloodGroup;
-        if (address) patientData.address = address;
+          bill_id: bill.id,
+          payment_mode: paymentMode,
+          amount: fee,
+          transaction_id: paymentRef || null,
+          received_by: userId,
+        });
 
-        const { data: newPatient, error } = await supabase.from("patients").insert([patientData]).select("id").single();
-        if (error) throw error;
-        patientId = newPatient.id;
+        // Auto-post journal entry
+        await autoPostJournalEntry({
+          triggerEvent: `bill_payment_${paymentMode}`,
+          sourceModule: "billing",
+          sourceId: bill.id,
+          amount: fee,
+          description: `OPD Consultation - Bill ${billNumber} - ${paymentMode}`,
+          hospitalId,
+          postedBy: userId || "",
+        });
       }
+
+      // Revenue recognition journal entry
+      await autoPostJournalEntry({
+        triggerEvent: "bill_finalized_opd",
+        sourceModule: "billing",
+        sourceId: bill.id,
+        amount: fee,
+        description: `OPD Revenue - Bill ${billNumber}`,
+        hospitalId,
+        postedBy: userId || "",
+      });
 
       // Insert token
       const { error: tokenErr } = await supabase.from("opd_tokens").insert({
@@ -161,13 +268,16 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated }) => {
         department_id: deptId || null,
         token_number: nextToken,
         token_prefix: "A",
-        visit_date: new Date().toISOString().split("T")[0],
+        visit_date: today,
         status: "waiting",
         priority,
       });
       if (tokenErr) throw tokenErr;
 
-      toast({ title: `Token ${nextToken} issued for ${useExisting ? foundPatient?.full_name : fullName}` });
+      const statusMsg = isPaid
+        ? `Token ${nextToken} issued · ₹${fee.toLocaleString("en-IN")} collected ✓`
+        : `Token ${nextToken} issued · Payment pending`;
+      toast({ title: statusMsg });
       onCreated();
     } catch (err: unknown) {
       toast({ title: "Registration failed", description: (err as Error).message, variant: "destructive" });
@@ -178,172 +288,270 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={onClose}>
-      <div className="bg-white rounded-2xl p-7 w-full max-w-[440px] shadow-xl relative" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-white rounded-2xl p-7 w-full max-w-[440px] shadow-xl relative max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"><X className="h-5 w-5" /></button>
 
-        <h2 className="text-lg font-bold text-slate-900">Quick Registration</h2>
-        <p className="text-[13px] text-slate-500 mt-0.5">Register patient in under 30 seconds</p>
+        {step === "details" ? (
+          <>
+            <h2 className="text-lg font-bold text-slate-900">Quick Registration</h2>
+            <p className="text-[13px] text-slate-500 mt-0.5">Register patient in under 30 seconds</p>
 
-        {/* Search */}
-        <div className="mt-5">
-          <label className="text-xs font-medium text-slate-600">Search Patient (Name, Phone, or UHID)</label>
-          <div className="relative mt-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <input
-              type="text"
-              value={phone}
-              onChange={(e) => { setPhone(e.target.value); setUseExisting(false); setFoundPatient(null); }}
-              placeholder="Search by name, phone, or UHID..."
-              className="w-full h-10 pl-9 pr-3 border border-slate-200 rounded-lg text-sm focus:border-[#1A2F5A] focus:ring-2 focus:ring-[#1A2F5A]/10 outline-none"
-            />
-          </div>
-          {searchResults.length > 0 && !useExisting && (
-            <div className="mt-2 border border-slate-200 rounded-lg overflow-hidden">
-              {searchResults.map((p) => (
-                <button key={p.id} onClick={() => { setFoundPatient(p); setUseExisting(true); setSearchResults([]); }}
-                  className="w-full text-left px-3 py-2 hover:bg-emerald-50 border-b border-slate-100 last:border-0 flex items-center gap-2">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" />
-                  <div>
-                    <p className="text-sm font-medium text-slate-800">{p.full_name}</p>
-                    <p className="text-[11px] text-slate-500">{p.uhid} · {p.phone || "No phone"}</p>
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-          {useExisting && foundPatient && (
-            <div className="mt-2 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                <span className="text-xs font-medium text-emerald-700">Patient selected</span>
+            {/* Search */}
+            <div className="mt-5">
+              <label className="text-xs font-medium text-slate-600">Search Patient (Name, Phone, or UHID)</label>
+              <div className="relative mt-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <input
+                  type="text"
+                  value={phone}
+                  onChange={(e) => { setPhone(e.target.value); setUseExisting(false); setFoundPatient(null); }}
+                  placeholder="Search by name, phone, or UHID..."
+                  className="w-full h-10 pl-9 pr-3 border border-slate-200 rounded-lg text-sm focus:border-[#1A2F5A] focus:ring-2 focus:ring-[#1A2F5A]/10 outline-none"
+                />
               </div>
-              <p className="text-sm font-medium text-slate-800 mt-1">{foundPatient.full_name} · {foundPatient.uhid}</p>
-              <button onClick={() => { setUseExisting(false); setFoundPatient(null); }} className="mt-1 text-[11px] text-slate-500 hover:underline">Change</button>
-            </div>
-          )}
-        </div>
-
-        {/* New patient fields */}
-        {!useExisting && (
-          <div className="mt-4 space-y-3">
-            <div>
-              <label className="text-xs font-medium text-slate-600">Full Name *</label>
-              <input value={fullName} onChange={(e) => setFullName(e.target.value)} className="w-full h-10 px-3 border border-slate-200 rounded-lg text-sm mt-1 focus:border-[#1A2F5A] focus:ring-2 focus:ring-[#1A2F5A]/10 outline-none" placeholder="Patient full name" />
-            </div>
-            <div className="flex gap-3">
-              <div className="w-24">
-                <label className="text-xs font-medium text-slate-600">Age</label>
-                <input type="number" value={age} onChange={(e) => setAge(e.target.value)} min={0} max={120} className="w-full h-10 px-3 border border-slate-200 rounded-lg text-sm mt-1 focus:border-[#1A2F5A] focus:ring-2 focus:ring-[#1A2F5A]/10 outline-none" placeholder="Age" />
-              </div>
-              <div className="flex-1">
-                <label className="text-xs font-medium text-slate-600">Gender</label>
-                <div className="flex gap-1.5 mt-1">
-                  {genders.map((g) => (
-                    <button
-                      key={g}
-                      onClick={() => setGender(g)}
-                      className={cn("flex-1 h-10 rounded-lg text-xs font-medium capitalize transition-colors",
-                        gender === g ? "bg-[#1A2F5A] text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                      )}
-                    >
-                      {g}
+              {searchResults.length > 0 && !useExisting && (
+                <div className="mt-2 border border-slate-200 rounded-lg overflow-hidden">
+                  {searchResults.map((p) => (
+                    <button key={p.id} onClick={() => { setFoundPatient(p); setUseExisting(true); setSearchResults([]); }}
+                      className="w-full text-left px-3 py-2 hover:bg-emerald-50 border-b border-slate-100 last:border-0 flex items-center gap-2">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" />
+                      <div>
+                        <p className="text-sm font-medium text-slate-800">{p.full_name}</p>
+                        <p className="text-[11px] text-slate-500">{p.uhid} · {p.phone || "No phone"}</p>
+                      </div>
                     </button>
                   ))}
                 </div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              {!showOptional && (
-                <button onClick={() => setShowOptional(true)} className="text-xs text-[#1A2F5A] font-medium hover:underline">
-                  + Add more details (optional)
-                </button>
               )}
-              <a href="/patients?register=true" target="_blank" rel="noopener noreferrer" className="text-xs text-slate-500 hover:text-[#1A2F5A] hover:underline">
-                Need full registration? →
-              </a>
+              {useExisting && foundPatient && (
+                <div className="mt-2 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                    <span className="text-xs font-medium text-emerald-700">Patient selected</span>
+                  </div>
+                  <p className="text-sm font-medium text-slate-800 mt-1">{foundPatient.full_name} · {foundPatient.uhid}</p>
+                  <button onClick={() => { setUseExisting(false); setFoundPatient(null); }} className="mt-1 text-[11px] text-slate-500 hover:underline">Change</button>
+                </div>
+              )}
             </div>
-            {showOptional && (
-              <div className="space-y-3 pt-1">
-                <div className="flex gap-3">
-                  <div className="flex-1">
-                    <label className="text-xs font-medium text-slate-600">DOB</label>
-                    <input type="date" value={dob} onChange={(e) => setDob(e.target.value)} className="w-full h-10 px-3 border border-slate-200 rounded-lg text-sm mt-1 outline-none" />
-                  </div>
-                  <div className="w-28">
-                    <label className="text-xs font-medium text-slate-600">Blood Group</label>
-                    <select value={bloodGroup} onChange={(e) => setBloodGroup(e.target.value)} className="w-full h-10 px-2 border border-slate-200 rounded-lg text-sm mt-1 outline-none">
-                      <option value="">—</option>
-                      {["A+","A-","B+","B-","AB+","AB-","O+","O-"].map((bg) => <option key={bg} value={bg}>{bg}</option>)}
-                    </select>
-                  </div>
-                </div>
+
+            {/* New patient fields */}
+            {!useExisting && (
+              <div className="mt-4 space-y-3">
                 <div>
-                  <label className="text-xs font-medium text-slate-600">Address</label>
-                  <input value={address} onChange={(e) => setAddress(e.target.value)} className="w-full h-10 px-3 border border-slate-200 rounded-lg text-sm mt-1 outline-none" placeholder="Address (optional)" />
+                  <label className="text-xs font-medium text-slate-600">Full Name *</label>
+                  <input value={fullName} onChange={(e) => setFullName(e.target.value)} className="w-full h-10 px-3 border border-slate-200 rounded-lg text-sm mt-1 focus:border-[#1A2F5A] focus:ring-2 focus:ring-[#1A2F5A]/10 outline-none" placeholder="Patient full name" />
                 </div>
+                <div className="flex gap-3">
+                  <div className="w-24">
+                    <label className="text-xs font-medium text-slate-600">Age</label>
+                    <input type="number" value={age} onChange={(e) => setAge(e.target.value)} min={0} max={120} className="w-full h-10 px-3 border border-slate-200 rounded-lg text-sm mt-1 focus:border-[#1A2F5A] focus:ring-2 focus:ring-[#1A2F5A]/10 outline-none" placeholder="Age" />
+                  </div>
+                  <div className="flex-1">
+                    <label className="text-xs font-medium text-slate-600">Gender</label>
+                    <div className="flex gap-1.5 mt-1">
+                      {genders.map((g) => (
+                        <button key={g} onClick={() => setGender(g)}
+                          className={cn("flex-1 h-10 rounded-lg text-xs font-medium capitalize transition-colors",
+                            gender === g ? "bg-[#1A2F5A] text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                          )}>
+                          {g}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  {!showOptional && (
+                    <button onClick={() => setShowOptional(true)} className="text-xs text-[#1A2F5A] font-medium hover:underline">
+                      + Add more details (optional)
+                    </button>
+                  )}
+                  <a href="/patients?register=true" target="_blank" rel="noopener noreferrer" className="text-xs text-slate-500 hover:text-[#1A2F5A] hover:underline">
+                    Need full registration? →
+                  </a>
+                </div>
+                {showOptional && (
+                  <div className="space-y-3 pt-1">
+                    <div className="flex gap-3">
+                      <div className="flex-1">
+                        <label className="text-xs font-medium text-slate-600">DOB</label>
+                        <input type="date" value={dob} onChange={(e) => setDob(e.target.value)} className="w-full h-10 px-3 border border-slate-200 rounded-lg text-sm mt-1 outline-none" />
+                      </div>
+                      <div className="w-28">
+                        <label className="text-xs font-medium text-slate-600">Blood Group</label>
+                        <select value={bloodGroup} onChange={(e) => setBloodGroup(e.target.value)} className="w-full h-10 px-2 border border-slate-200 rounded-lg text-sm mt-1 outline-none">
+                          <option value="">—</option>
+                          {["A+","A-","B+","B-","AB+","AB-","O+","O-"].map((bg) => <option key={bg} value={bg}>{bg}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-slate-600">Address</label>
+                      <input value={address} onChange={(e) => setAddress(e.target.value)} className="w-full h-10 px-3 border border-slate-200 rounded-lg text-sm mt-1 outline-none" placeholder="Address (optional)" />
+                    </div>
+                  </div>
+                )}
               </div>
             )}
-          </div>
-        )}
 
-        {/* Department + Doctor */}
-        <div className="flex gap-3 mt-4">
-          <div className="flex-1">
-            <label className="text-xs font-medium text-slate-600">Department</label>
-            <select value={deptId} onChange={(e) => { setDeptId(e.target.value); setDoctorId(""); }} className="w-full h-10 px-2 border border-slate-200 rounded-lg text-sm mt-1 outline-none">
-              <option value="">Select...</option>
-              {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-            </select>
-            {departments.length === 0 && (
-              <a href="/settings/departments" className="text-[10px] text-amber-600 hover:underline mt-0.5 block">No departments — add in Settings →</a>
-            )}
-          </div>
-          <div className="flex-1">
-            <label className="text-xs font-medium text-slate-600">Doctor</label>
-            <select value={doctorId} onChange={(e) => setDoctorId(e.target.value)} className="w-full h-10 px-2 border border-slate-200 rounded-lg text-sm mt-1 outline-none">
-              <option value="">Select...</option>
-              {filteredDoctors.map((d) => <option key={d.id} value={d.id}>Dr. {d.full_name}</option>)}
-            </select>
-            {doctors.length === 0 && (
-              <a href="/settings/staff" className="text-[10px] text-amber-600 hover:underline mt-0.5 block">No doctors — add in Settings →</a>
-            )}
-          </div>
-        </div>
-
-        {/* Priority */}
-        <div className="mt-4">
-          <label className="text-xs font-medium text-slate-600">Priority</label>
-          <div className="flex gap-1.5 mt-1">
-            {priorities.map((p) => (
-              <button
-                key={p}
-                onClick={() => setPriority(p)}
-                className={cn("flex-1 h-8 rounded-lg text-[11px] font-medium capitalize transition-colors",
-                  priority === p ? priorityLabels[p].active : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+            {/* Department + Doctor */}
+            <div className="flex gap-3 mt-4">
+              <div className="flex-1">
+                <label className="text-xs font-medium text-slate-600">Department</label>
+                <select value={deptId} onChange={(e) => { setDeptId(e.target.value); setDoctorId(""); }} className="w-full h-10 px-2 border border-slate-200 rounded-lg text-sm mt-1 outline-none">
+                  <option value="">Select...</option>
+                  {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                </select>
+                {departments.length === 0 && (
+                  <a href="/settings/departments" className="text-[10px] text-amber-600 hover:underline mt-0.5 block">No departments — add in Settings →</a>
                 )}
+              </div>
+              <div className="flex-1">
+                <label className="text-xs font-medium text-slate-600">Doctor</label>
+                <select value={doctorId} onChange={(e) => setDoctorId(e.target.value)} className="w-full h-10 px-2 border border-slate-200 rounded-lg text-sm mt-1 outline-none">
+                  <option value="">Select...</option>
+                  {filteredDoctors.map((d) => <option key={d.id} value={d.id}>Dr. {d.full_name}</option>)}
+                </select>
+                {doctors.length === 0 && (
+                  <a href="/settings/staff" className="text-[10px] text-amber-600 hover:underline mt-0.5 block">No doctors — add in Settings →</a>
+                )}
+              </div>
+            </div>
+
+            {/* Priority */}
+            <div className="mt-4">
+              <label className="text-xs font-medium text-slate-600">Priority</label>
+              <div className="flex gap-1.5 mt-1">
+                {priorities.map((p) => (
+                  <button key={p} onClick={() => setPriority(p)}
+                    className={cn("flex-1 h-8 rounded-lg text-[11px] font-medium capitalize transition-colors",
+                      priority === p ? priorityLabels[p].active : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    )}>
+                    {priorityLabels[p].label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Token preview */}
+            <div className="mt-4 p-3 bg-slate-50 rounded-lg border border-slate-100 text-center">
+              <span className="text-xs text-slate-500">Token </span>
+              <span className="text-lg font-bold text-[#1A2F5A]">{nextToken}</span>
+              <span className="text-xs text-slate-500"> will be assigned</span>
+            </div>
+
+            {/* Proceed to Payment */}
+            <button
+              onClick={handleProceedToPayment}
+              className="w-full h-11 mt-4 bg-[#1A2F5A] text-white rounded-lg text-[13px] font-semibold hover:bg-[#152647] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+            >
+              <CreditCard className="h-4 w-4" />
+              Proceed to Payment →
+            </button>
+          </>
+        ) : (
+          /* ══════════ STEP 2: PAYMENT ══════════ */
+          <>
+            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <CreditCard className="h-5 w-5 text-[#0E7B7B]" />
+              Collect Consultation Fee
+            </h2>
+            <p className="text-[13px] text-slate-500 mt-0.5">Pay before token issuance</p>
+
+            {/* Patient summary */}
+            <div className="mt-5 p-3 bg-slate-50 rounded-lg border border-slate-100 space-y-1">
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-500">Patient</span>
+                <span className="font-medium text-slate-800">{patientDisplayName || "—"}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-500">Department</span>
+                <span className="font-medium text-slate-800">{selectedDeptName}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-500">Doctor</span>
+                <span className="font-medium text-slate-800">{doctorId ? `Dr. ${selectedDoctorName}` : "—"}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-500">Token</span>
+                <span className="font-bold text-[#1A2F5A]">{nextToken}</span>
+              </div>
+            </div>
+
+            {/* Consultation Fee */}
+            <div className="mt-4">
+              <label className="text-xs font-medium text-slate-600">Consultation Fee (₹)</label>
+              <input
+                type="number"
+                value={consultationFee}
+                onChange={(e) => setConsultationFee(Number(e.target.value) || 0)}
+                min={0}
+                className="w-full h-12 px-4 border border-slate-200 rounded-lg text-lg font-bold mt-1 focus:border-[#0E7B7B] focus:ring-2 focus:ring-[#0E7B7B]/10 outline-none"
+              />
+            </div>
+
+            {/* Payment Mode */}
+            <div className="mt-4">
+              <label className="text-xs font-medium text-slate-600">Payment Mode</label>
+              <div className="flex gap-2 mt-1.5">
+                {PAYMENT_MODES.map((m) => (
+                  <button
+                    key={m.value}
+                    onClick={() => setPaymentMode(m.value)}
+                    className={cn(
+                      "flex-1 h-11 rounded-lg text-sm font-medium transition-colors",
+                      paymentMode === m.value
+                        ? "bg-[#0E7B7B] text-white shadow-md"
+                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    )}
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Reference for UPI/Card */}
+            {paymentMode !== "cash" && (
+              <div className="mt-3">
+                <label className="text-xs font-medium text-slate-600">Reference / Txn ID</label>
+                <input
+                  value={paymentRef}
+                  onChange={(e) => setPaymentRef(e.target.value)}
+                  placeholder="Transaction reference..."
+                  className="w-full h-10 px-3 border border-slate-200 rounded-lg text-sm mt-1 focus:border-[#0E7B7B] focus:ring-2 focus:ring-[#0E7B7B]/10 outline-none"
+                />
+              </div>
+            )}
+
+            {/* Pay & Issue Token */}
+            <button
+              onClick={() => handlePayAndIssue(false)}
+              disabled={submitting || consultationFee <= 0}
+              className="w-full h-12 mt-5 bg-[#0E7B7B] text-white rounded-lg text-[14px] font-bold hover:bg-[#0a6565] active:scale-[0.98] transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+            >
+              {submitting ? "Processing..." : `💳 Pay ₹${consultationFee.toLocaleString("en-IN")} & Issue Token →`}
+            </button>
+
+            {/* Skip / Back */}
+            <div className="flex items-center justify-between mt-3">
+              <button
+                onClick={() => setStep("details")}
+                className="text-xs text-slate-500 hover:text-slate-700 flex items-center gap-1"
               >
-                {priorityLabels[p].label}
+                <ArrowLeft className="h-3 w-3" /> Back to details
               </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Token preview */}
-        <div className="mt-4 p-3 bg-slate-50 rounded-lg border border-slate-100 text-center">
-          <span className="text-xs text-slate-500">Token </span>
-          <span className="text-lg font-bold text-[#1A2F5A]">{nextToken}</span>
-          <span className="text-xs text-slate-500"> will be assigned</span>
-        </div>
-
-        {/* Submit */}
-        <button
-          onClick={handleSubmit}
-          disabled={submitting}
-          className="w-full h-11 mt-4 bg-[#1A2F5A] text-white rounded-lg text-[13px] font-semibold hover:bg-[#152647] active:scale-[0.98] transition-all disabled:opacity-60"
-        >
-          {submitting ? "Registering..." : "Register & Issue Token →"}
-        </button>
+              <button
+                onClick={() => handlePayAndIssue(true)}
+                disabled={submitting}
+                className="text-xs text-amber-600 font-medium hover:underline"
+              >
+                Skip — Pay Later →
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
