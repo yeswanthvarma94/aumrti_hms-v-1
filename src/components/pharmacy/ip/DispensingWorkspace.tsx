@@ -413,6 +413,13 @@ const DispensingWorkspace: React.FC<Props> = ({ hospitalId, prescription, onDisp
         </div>
       </div>
 
+      {/* Allergy Banner */}
+      {patient?.allergies && (
+        <div className="flex-shrink-0 px-5">
+          <AllergyBanner allergies={patient.allergies} />
+        </div>
+      )}
+
       {/* Table */}
       <div className="flex-1 overflow-auto">
         {loading ? (
