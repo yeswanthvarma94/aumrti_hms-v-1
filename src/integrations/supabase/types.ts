@@ -1048,6 +1048,278 @@ export type Database = {
           },
         ]
       }
+      blood_issues: {
+        Row: {
+          admission_id: string | null
+          adverse_event: boolean | null
+          adverse_event_type: string | null
+          cross_match_id: string | null
+          hospital_id: string
+          id: string
+          issued_at: string | null
+          issued_by: string
+          ot_id: string | null
+          patient_id: string
+          return_reason: string | null
+          returned: boolean | null
+          transfusion_end: string | null
+          transfusion_reaction_form_completed: boolean | null
+          transfusion_start: string | null
+          unit_id: string
+        }
+        Insert: {
+          admission_id?: string | null
+          adverse_event?: boolean | null
+          adverse_event_type?: string | null
+          cross_match_id?: string | null
+          hospital_id: string
+          id?: string
+          issued_at?: string | null
+          issued_by: string
+          ot_id?: string | null
+          patient_id: string
+          return_reason?: string | null
+          returned?: boolean | null
+          transfusion_end?: string | null
+          transfusion_reaction_form_completed?: boolean | null
+          transfusion_start?: string | null
+          unit_id: string
+        }
+        Update: {
+          admission_id?: string | null
+          adverse_event?: boolean | null
+          adverse_event_type?: string | null
+          cross_match_id?: string | null
+          hospital_id?: string
+          id?: string
+          issued_at?: string | null
+          issued_by?: string
+          ot_id?: string | null
+          patient_id?: string
+          return_reason?: string | null
+          returned?: boolean | null
+          transfusion_end?: string | null
+          transfusion_reaction_form_completed?: boolean | null
+          transfusion_start?: string | null
+          unit_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blood_issues_admission_id_fkey"
+            columns: ["admission_id"]
+            isOneToOne: false
+            referencedRelation: "admissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "blood_issues_cross_match_id_fkey"
+            columns: ["cross_match_id"]
+            isOneToOne: false
+            referencedRelation: "cross_match_records"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "blood_issues_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "blood_issues_issued_by_fkey"
+            columns: ["issued_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "blood_issues_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "blood_issues_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "blood_units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      blood_requests: {
+        Row: {
+          admission_id: string | null
+          blood_group: string
+          component: string
+          created_at: string | null
+          hospital_id: string
+          id: string
+          indication: string
+          ot_id: string | null
+          patient_id: string
+          requested_by: string
+          rh_factor: string
+          status: string | null
+          units_required: number
+          urgency: string | null
+        }
+        Insert: {
+          admission_id?: string | null
+          blood_group: string
+          component: string
+          created_at?: string | null
+          hospital_id: string
+          id?: string
+          indication: string
+          ot_id?: string | null
+          patient_id: string
+          requested_by: string
+          rh_factor: string
+          status?: string | null
+          units_required: number
+          urgency?: string | null
+        }
+        Update: {
+          admission_id?: string | null
+          blood_group?: string
+          component?: string
+          created_at?: string | null
+          hospital_id?: string
+          id?: string
+          indication?: string
+          ot_id?: string | null
+          patient_id?: string
+          requested_by?: string
+          rh_factor?: string
+          status?: string | null
+          units_required?: number
+          urgency?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blood_requests_admission_id_fkey"
+            columns: ["admission_id"]
+            isOneToOne: false
+            referencedRelation: "admissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "blood_requests_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "blood_requests_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "blood_requests_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      blood_units: {
+        Row: {
+          bag_number: string | null
+          blood_group: string
+          collected_at: string
+          component: string
+          created_at: string | null
+          discarded_reason: string | null
+          donor_id: string | null
+          expiry_at: string
+          hospital_id: string
+          id: string
+          issued_to: string | null
+          reserved_for: string | null
+          reserved_for_ot: string | null
+          rh_factor: string
+          status: string | null
+          storage_location: string | null
+          unit_number: string
+          volume_ml: number | null
+        }
+        Insert: {
+          bag_number?: string | null
+          blood_group: string
+          collected_at: string
+          component: string
+          created_at?: string | null
+          discarded_reason?: string | null
+          donor_id?: string | null
+          expiry_at: string
+          hospital_id: string
+          id?: string
+          issued_to?: string | null
+          reserved_for?: string | null
+          reserved_for_ot?: string | null
+          rh_factor: string
+          status?: string | null
+          storage_location?: string | null
+          unit_number: string
+          volume_ml?: number | null
+        }
+        Update: {
+          bag_number?: string | null
+          blood_group?: string
+          collected_at?: string
+          component?: string
+          created_at?: string | null
+          discarded_reason?: string | null
+          donor_id?: string | null
+          expiry_at?: string
+          hospital_id?: string
+          id?: string
+          issued_to?: string | null
+          reserved_for?: string | null
+          reserved_for_ot?: string | null
+          rh_factor?: string
+          status?: string | null
+          storage_location?: string | null
+          unit_number?: string
+          volume_ml?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blood_units_donor_id_fkey"
+            columns: ["donor_id"]
+            isOneToOne: false
+            referencedRelation: "donors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "blood_units_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "blood_units_issued_to_fkey"
+            columns: ["issued_to"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "blood_units_reserved_for_fkey"
+            columns: ["reserved_for"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       branches: {
         Row: {
           address: string | null
@@ -1405,6 +1677,84 @@ export type Database = {
           },
         ]
       }
+      cross_match_records: {
+        Row: {
+          admission_id: string | null
+          hospital_id: string
+          id: string
+          notes: string | null
+          ot_id: string | null
+          patient_id: string
+          performed_at: string | null
+          performed_by: string
+          result: string
+          technique: string
+          unit_id: string
+        }
+        Insert: {
+          admission_id?: string | null
+          hospital_id: string
+          id?: string
+          notes?: string | null
+          ot_id?: string | null
+          patient_id: string
+          performed_at?: string | null
+          performed_by: string
+          result: string
+          technique: string
+          unit_id: string
+        }
+        Update: {
+          admission_id?: string | null
+          hospital_id?: string
+          id?: string
+          notes?: string | null
+          ot_id?: string | null
+          patient_id?: string
+          performed_at?: string | null
+          performed_by?: string
+          result?: string
+          technique?: string
+          unit_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cross_match_records_admission_id_fkey"
+            columns: ["admission_id"]
+            isOneToOne: false
+            referencedRelation: "admissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cross_match_records_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cross_match_records_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cross_match_records_performed_by_fkey"
+            columns: ["performed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cross_match_records_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "blood_units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       department_indents: {
         Row: {
           approved_at: string | null
@@ -1584,6 +1934,98 @@ export type Database = {
             columns: ["requested_by"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      donors: {
+        Row: {
+          address: string | null
+          age: number | null
+          blood_group: string
+          bp_diastolic: number | null
+          bp_systolic: number | null
+          created_at: string | null
+          dob: string | null
+          donation_count: number | null
+          donor_code: string
+          full_name: string
+          gender: string | null
+          hb_at_donation: number | null
+          hbsag_status: string | null
+          hcv_status: string | null
+          hiv_status: string | null
+          hospital_id: string
+          id: string
+          is_eligible: boolean | null
+          last_donation: string | null
+          malaria_status: string | null
+          next_eligible: string | null
+          phone: string | null
+          rh_factor: string
+          vdrl_status: string | null
+          weight_kg: number | null
+        }
+        Insert: {
+          address?: string | null
+          age?: number | null
+          blood_group: string
+          bp_diastolic?: number | null
+          bp_systolic?: number | null
+          created_at?: string | null
+          dob?: string | null
+          donation_count?: number | null
+          donor_code: string
+          full_name: string
+          gender?: string | null
+          hb_at_donation?: number | null
+          hbsag_status?: string | null
+          hcv_status?: string | null
+          hiv_status?: string | null
+          hospital_id: string
+          id?: string
+          is_eligible?: boolean | null
+          last_donation?: string | null
+          malaria_status?: string | null
+          next_eligible?: string | null
+          phone?: string | null
+          rh_factor: string
+          vdrl_status?: string | null
+          weight_kg?: number | null
+        }
+        Update: {
+          address?: string | null
+          age?: number | null
+          blood_group?: string
+          bp_diastolic?: number | null
+          bp_systolic?: number | null
+          created_at?: string | null
+          dob?: string | null
+          donation_count?: number | null
+          donor_code?: string
+          full_name?: string
+          gender?: string | null
+          hb_at_donation?: number | null
+          hbsag_status?: string | null
+          hcv_status?: string | null
+          hiv_status?: string | null
+          hospital_id?: string
+          id?: string
+          is_eligible?: boolean | null
+          last_donation?: string | null
+          malaria_status?: string | null
+          next_eligible?: string | null
+          phone?: string | null
+          rh_factor?: string
+          vdrl_status?: string | null
+          weight_kg?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "donors_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
             referencedColumns: ["id"]
           },
         ]
