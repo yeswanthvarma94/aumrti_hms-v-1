@@ -70,6 +70,18 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated }) => {
   const [consultationFee, setConsultationFee] = useState(DEFAULT_CONSULTATION_FEE);
   const [paymentMode, setPaymentMode] = useState("cash");
   const [paymentRef, setPaymentRef] = useState("");
+  const [receiptData, setReceiptData] = useState<{
+    billNumber: string;
+    patientName: string;
+    uhid: string;
+    department: string;
+    doctor: string;
+    token: string;
+    fee: number;
+    paymentMode: string;
+    date: string;
+    paid: boolean;
+  } | null>(null);
 
   // Fetch departments + doctors
   useEffect(() => {
