@@ -1826,6 +1826,85 @@ export type Database = {
           },
         ]
       }
+      chronic_disease_programs: {
+        Row: {
+          condition: string
+          condition_label: string
+          created_at: string | null
+          diagnosed_date: string | null
+          enrolled_at: string | null
+          followup_interval_days: number | null
+          followup_tests: string[] | null
+          hospital_id: string
+          id: string
+          is_active: boolean | null
+          last_bp_systolic: number | null
+          last_creatinine: number | null
+          last_hba1c: number | null
+          next_followup: string | null
+          patient_id: string
+          treating_doctor: string | null
+        }
+        Insert: {
+          condition: string
+          condition_label: string
+          created_at?: string | null
+          diagnosed_date?: string | null
+          enrolled_at?: string | null
+          followup_interval_days?: number | null
+          followup_tests?: string[] | null
+          hospital_id: string
+          id?: string
+          is_active?: boolean | null
+          last_bp_systolic?: number | null
+          last_creatinine?: number | null
+          last_hba1c?: number | null
+          next_followup?: string | null
+          patient_id: string
+          treating_doctor?: string | null
+        }
+        Update: {
+          condition?: string
+          condition_label?: string
+          created_at?: string | null
+          diagnosed_date?: string | null
+          enrolled_at?: string | null
+          followup_interval_days?: number | null
+          followup_tests?: string[] | null
+          hospital_id?: string
+          id?: string
+          is_active?: boolean | null
+          last_bp_systolic?: number | null
+          last_creatinine?: number | null
+          last_hba1c?: number | null
+          next_followup?: string | null
+          patient_id?: string
+          treating_doctor?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chronic_disease_programs_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chronic_disease_programs_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chronic_disease_programs_treating_doctor_fkey"
+            columns: ["treating_doctor"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clinical_alerts: {
         Row: {
           acknowledged_at: string | null
