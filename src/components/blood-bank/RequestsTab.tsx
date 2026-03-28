@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { formatBloodGroup, componentLabel } from "@/lib/bloodCompatibility";
+import { formatBloodGroup, componentLabel, isABOCompatible, isRhCompatible } from "@/lib/bloodCompatibility";
 import { formatDistanceToNow } from "date-fns";
 
 interface Props {
@@ -16,6 +16,9 @@ interface Props {
   onCloseModal: () => void;
   onRefresh: () => void;
 }
+
+type BloodGroup = 'A' | 'B' | 'AB' | 'O';
+type RhFactor = 'positive' | 'negative';
 
 const RequestsTab: React.FC<Props> = ({ showModal, onCloseModal, onRefresh }) => {
   const { toast } = useToast();
@@ -39,15 +42,21 @@ const RequestsTab: React.FC<Props> = ({ showModal, onCloseModal, onRefresh }) =>
 
   const selectRequest = async (req: any) => {
     setSelectedReq(req);
+    // Fetch ALL available units of the requested component, then filter by ABO+Rh compatibility
     const { data } = await supabase.from("blood_units")
       .select("*")
-      .eq("blood_group", req.blood_group)
-      .eq("rh_factor", req.rh_factor)
       .eq("component", req.component)
       .eq("status", "available")
       .gt("expiry_at", new Date().toISOString())
       .order("expiry_at", { ascending: true });
-    if (data) setMatchingUnits(data);
+
+    if (data) {
+      const compatible = data.filter(u =>
+        isABOCompatible(req.blood_group as BloodGroup, u.blood_group as BloodGroup) &&
+        isRhCompatible(req.rh_factor as RhFactor, u.rh_factor as RhFactor)
+      );
+      setMatchingUnits(compatible);
+    }
   };
 
   const reserveUnit = async (unitId: string) => {
@@ -125,19 +134,25 @@ const RequestsTab: React.FC<Props> = ({ showModal, onCloseModal, onRefresh }) =>
               <p className="text-xs text-muted-foreground">Indication: {selectedReq.indication}</p>
             </div>
             <div>
-              <p className="text-sm font-semibold mb-2">Available Matching Units (FEFO)</p>
+              <p className="text-sm font-semibold mb-2">Available Compatible Units (FEFO)</p>
               {matchingUnits.length === 0 ? (
-                <p className="text-xs text-red-600">No matching units available. Consider external requisition.</p>
+                <p className="text-xs text-red-600">No compatible units available. Consider external requisition.</p>
               ) : (
                 <div className="space-y-1">
-                  {matchingUnits.map(u => (
-                    <div key={u.id} className="flex items-center justify-between p-2 border border-border rounded text-xs">
-                      <span className="font-mono">{u.unit_number}</span>
-                      <span>{u.volume_ml}ml</span>
-                      <span>{u.storage_location}</span>
-                      <Button size="sm" variant="outline" className="h-6 text-[10px]" onClick={() => reserveUnit(u.id)}>Reserve</Button>
-                    </div>
-                  ))}
+                  {matchingUnits.map(u => {
+                    const isExact = u.blood_group === selectedReq.blood_group && u.rh_factor === selectedReq.rh_factor;
+                    return (
+                      <div key={u.id} className={`flex items-center justify-between p-2 border rounded text-xs ${isExact ? "border-green-300 bg-green-50" : "border-amber-300 bg-amber-50"}`}>
+                        <span className="font-mono">{u.unit_number}</span>
+                        <span className="font-semibold">{formatBloodGroup(u.blood_group, u.rh_factor)}</span>
+                        <span>{componentLabel(u.component)}</span>
+                        <span>{u.volume_ml}ml</span>
+                        <span>{u.storage_location}</span>
+                        {!isExact && <Badge className="bg-amber-100 text-amber-700 text-[9px]">Compatible</Badge>}
+                        <Button size="sm" variant="outline" className="h-6 text-[10px]" onClick={() => reserveUnit(u.id)}>Reserve</Button>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>

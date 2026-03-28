@@ -8,12 +8,22 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { formatBloodGroup } from "@/lib/bloodCompatibility";
 import { format } from "date-fns";
-import { Search, MessageCircle } from "lucide-react";
+import { Search, MessageCircle, Send } from "lucide-react";
 
 interface Props { showModal: boolean; onCloseModal: () => void }
+
+// Component separation shelf lives in days
+const COMPONENT_SHELF_LIFE: Record<string, number> = {
+  whole_blood: 35,
+  rbc: 42,
+  ffp: 365,
+  platelets: 5,
+  cryoprecipitate: 365,
+};
 
 const DonorsTab: React.FC<Props> = ({ showModal, onCloseModal }) => {
   const { toast } = useToast();
@@ -24,9 +34,11 @@ const DonorsTab: React.FC<Props> = ({ showModal, onCloseModal }) => {
     phone: "", address: "", hb_at_donation: "", weight_kg: "", bp_systolic: "", bp_diastolic: "",
     hiv_status: "not_tested", hbsag_status: "not_tested", hcv_status: "not_tested",
     vdrl_status: "not_tested", malaria_status: "not_tested",
+    separate_components: true,
   });
   const [deferralMsg, setDeferralMsg] = useState("");
   const [step, setStep] = useState<"personal" | "screening" | "tti">("personal");
+  const [showCampaign, setShowCampaign] = useState(false);
 
   const fetchDonors = async () => {
     const { data } = await supabase.from("donors").select("*").order("created_at", { ascending: false });
@@ -39,6 +51,10 @@ const DonorsTab: React.FC<Props> = ({ showModal, onCloseModal }) => {
     d.full_name.toLowerCase().includes(search.toLowerCase()) ||
     d.donor_code.toLowerCase().includes(search.toLowerCase()) ||
     d.blood_group.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const eligibleDonors = donors.filter(d =>
+    d.is_eligible && d.next_eligible && new Date(d.next_eligible) <= new Date() && d.phone
   );
 
   const validateScreening = (): boolean => {
@@ -62,7 +78,7 @@ const DonorsTab: React.FC<Props> = ({ showModal, onCloseModal }) => {
     const donorCode = `BB-${new Date().getFullYear()}-${String(donors.length + 1).padStart(4, "0")}`;
     const today = new Date().toISOString().split("T")[0];
 
-    await supabase.from("donors").insert({
+    const { data: donorData } = await supabase.from("donors").insert({
       hospital_id: user.hospital_id,
       donor_code: donorCode,
       full_name: form.full_name,
@@ -85,26 +101,57 @@ const DonorsTab: React.FC<Props> = ({ showModal, onCloseModal }) => {
       donation_count: reactive ? 0 : 1,
       last_donation: reactive ? null : today,
       next_eligible: reactive ? null : new Date(Date.now() + 90 * 86400000).toISOString().split("T")[0],
-    });
+    }).select("id").single();
 
     if (reactive) {
       toast({ title: "REACTIVE — Donor permanently deferred", variant: "destructive" });
     } else {
-      // Create blood unit
-      const unitNum = `BU-${user.hospital_id.substring(0, 8)}-${String(Date.now()).slice(-4)}`;
-      await supabase.from("blood_units").insert({
-        hospital_id: user.hospital_id,
-        unit_number: unitNum,
-        component: "whole_blood",
-        blood_group: form.blood_group,
-        rh_factor: form.rh_factor,
-        volume_ml: 450,
-        collected_at: new Date().toISOString(),
-        expiry_at: new Date(Date.now() + 35 * 86400000).toISOString(),
-        storage_location: "Processing Area",
-        status: "available",
-      });
-      toast({ title: "Donor registered & unit collected", description: `${donorCode} — ${unitNum}` });
+      const donorId = donorData?.id || null;
+      const now = Date.now();
+
+      if (form.separate_components) {
+        // Component separation: create RBC, FFP, Platelets from whole blood
+        const components = [
+          { component: "rbc", volume_ml: 280, shelf_days: COMPONENT_SHELF_LIFE.rbc },
+          { component: "ffp", volume_ml: 150, shelf_days: COMPONENT_SHELF_LIFE.ffp },
+          { component: "platelets", volume_ml: 50, shelf_days: COMPONENT_SHELF_LIFE.platelets },
+        ];
+
+        for (const comp of components) {
+          const unitNum = `BU-${user.hospital_id.substring(0, 8)}-${comp.component.toUpperCase()}-${String(now).slice(-4)}`;
+          await supabase.from("blood_units").insert({
+            hospital_id: user.hospital_id,
+            unit_number: unitNum,
+            donor_id: donorId,
+            component: comp.component,
+            blood_group: form.blood_group,
+            rh_factor: form.rh_factor,
+            volume_ml: comp.volume_ml,
+            collected_at: new Date().toISOString(),
+            expiry_at: new Date(now + comp.shelf_days * 86400000).toISOString(),
+            storage_location: comp.component === "platelets" ? "Platelet Agitator" : comp.component === "ffp" ? "Deep Freezer" : "Blood Bank Fridge",
+            status: "available",
+          });
+        }
+        toast({ title: "Donor registered & components separated", description: `${donorCode} → RBC + FFP + Platelets created` });
+      } else {
+        // Store as whole blood
+        const unitNum = `BU-${user.hospital_id.substring(0, 8)}-WB-${String(now).slice(-4)}`;
+        await supabase.from("blood_units").insert({
+          hospital_id: user.hospital_id,
+          unit_number: unitNum,
+          donor_id: donorId,
+          component: "whole_blood",
+          blood_group: form.blood_group,
+          rh_factor: form.rh_factor,
+          volume_ml: 450,
+          collected_at: new Date().toISOString(),
+          expiry_at: new Date(now + COMPONENT_SHELF_LIFE.whole_blood * 86400000).toISOString(),
+          storage_location: "Processing Area",
+          status: "available",
+        });
+        toast({ title: "Donor registered & whole blood unit collected", description: donorCode });
+      }
     }
 
     onCloseModal();
@@ -112,14 +159,18 @@ const DonorsTab: React.FC<Props> = ({ showModal, onCloseModal }) => {
     fetchDonors();
   };
 
-  const inviteEligible = () => {
-    const eligible = donors.filter(d => d.is_eligible && d.next_eligible && new Date(d.next_eligible) <= new Date() && d.phone);
-    if (eligible.length === 0) { toast({ title: "No eligible donors with phone numbers found" }); return; }
-    toast({ title: `${eligible.length} eligible donors found`, description: "Opening WhatsApp for each..." });
-    // Open first one as demo
-    const d = eligible[0];
-    const msg = encodeURIComponent(`Dear ${d.full_name}, you are eligible to donate blood again. Your blood type ${formatBloodGroup(d.blood_group, d.rh_factor)} is needed. Please visit our Blood Bank. Thank you! 🩸`);
-    window.open(`https://wa.me/${d.phone?.replace(/\D/g, "")}?text=${msg}`, "_blank");
+  const sendCampaignWhatsApp = (donor: any) => {
+    const msg = encodeURIComponent(`Dear ${donor.full_name}, you are eligible to donate blood again. Your blood type ${formatBloodGroup(donor.blood_group, donor.rh_factor)} is needed. Please visit our Blood Bank. Thank you! 🩸`);
+    window.open(`https://wa.me/${donor.phone?.replace(/\D/g, "")}?text=${msg}`, "_blank");
+  };
+
+  const sendToAll = () => {
+    if (eligibleDonors.length === 0) { toast({ title: "No eligible donors found" }); return; }
+    eligibleDonors.forEach((d, i) => {
+      setTimeout(() => sendCampaignWhatsApp(d), i * 500);
+    });
+    toast({ title: `Campaign sent to ${eligibleDonors.length} donors` });
+    setShowCampaign(false);
   };
 
   return (
@@ -129,8 +180,8 @@ const DonorsTab: React.FC<Props> = ({ showModal, onCloseModal }) => {
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search donors..." className="h-8 pl-8 text-xs" />
         </div>
-        <Button size="sm" variant="outline" onClick={inviteEligible} className="gap-1.5">
-          <MessageCircle className="w-4 h-4" /> Invite Eligible Donors
+        <Button size="sm" variant="outline" onClick={() => setShowCampaign(true)} className="gap-1.5">
+          <MessageCircle className="w-4 h-4" /> Campaign → Eligible ({eligibleDonors.length})
         </Button>
       </div>
 
@@ -141,6 +192,7 @@ const DonorsTab: React.FC<Props> = ({ showModal, onCloseModal }) => {
               <TableHead className="text-xs">Code</TableHead>
               <TableHead className="text-xs">Name</TableHead>
               <TableHead className="text-xs">Group</TableHead>
+              <TableHead className="text-xs">Phone</TableHead>
               <TableHead className="text-xs">Last Donation</TableHead>
               <TableHead className="text-xs">Next Eligible</TableHead>
               <TableHead className="text-xs">Donations</TableHead>
@@ -153,6 +205,7 @@ const DonorsTab: React.FC<Props> = ({ showModal, onCloseModal }) => {
                 <TableCell className="text-xs font-mono">{d.donor_code}</TableCell>
                 <TableCell className="text-xs font-medium">{d.full_name}</TableCell>
                 <TableCell className="text-xs font-semibold">{formatBloodGroup(d.blood_group, d.rh_factor)}</TableCell>
+                <TableCell className="text-xs">{d.phone || "—"}</TableCell>
                 <TableCell className="text-xs">{d.last_donation ? format(new Date(d.last_donation), "dd/MM/yyyy") : "—"}</TableCell>
                 <TableCell className="text-xs">{d.next_eligible ? format(new Date(d.next_eligible), "dd/MM/yyyy") : "—"}</TableCell>
                 <TableCell className="text-xs">{d.donation_count}</TableCell>
@@ -165,11 +218,42 @@ const DonorsTab: React.FC<Props> = ({ showModal, onCloseModal }) => {
               </TableRow>
             ))}
             {filtered.length === 0 && (
-              <TableRow><TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-8">No donors registered yet</TableCell></TableRow>
+              <TableRow><TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-8">No donors registered yet</TableCell></TableRow>
             )}
           </TableBody>
         </Table>
       </div>
+
+      {/* Campaign Modal */}
+      <Dialog open={showCampaign} onOpenChange={setShowCampaign}>
+        <DialogContent className="max-w-lg max-h-[70vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>🩸 Donor Recall Campaign</DialogTitle></DialogHeader>
+          {eligibleDonors.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">No eligible donors available for recall at this time.</p>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-xs text-muted-foreground">{eligibleDonors.length} donors are past their cooldown period and can donate again.</p>
+              <div className="space-y-1 max-h-[40vh] overflow-y-auto">
+                {eligibleDonors.map(d => (
+                  <div key={d.id} className="flex items-center justify-between p-2 border border-border rounded text-xs">
+                    <div>
+                      <span className="font-medium">{d.full_name}</span>
+                      <span className="ml-2 text-muted-foreground">{formatBloodGroup(d.blood_group, d.rh_factor)}</span>
+                      <span className="ml-2 text-muted-foreground">{d.phone}</span>
+                    </div>
+                    <Button size="sm" variant="outline" className="h-6 text-[10px] gap-1" onClick={() => sendCampaignWhatsApp(d)}>
+                      <Send className="w-3 h-3" /> WhatsApp
+                    </Button>
+                  </div>
+                ))}
+              </div>
+              <Button className="w-full gap-1.5" onClick={sendToAll}>
+                <MessageCircle className="w-4 h-4" /> Send WhatsApp to All ({eligibleDonors.length})
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Donor Registration Modal */}
       <Dialog open={showModal} onOpenChange={onCloseModal}>
@@ -220,6 +304,16 @@ const DonorsTab: React.FC<Props> = ({ showModal, onCloseModal }) => {
                 <div><Label className="text-xs">BP Diastolic *</Label><Input type="number" value={form.bp_diastolic} onChange={e => setForm(f => ({ ...f, bp_diastolic: e.target.value }))} className="h-9" placeholder="60-100" /></div>
               </div>
               {deferralMsg && <div className="bg-red-50 border border-red-300 rounded p-3 text-sm text-red-700 font-semibold">{deferralMsg}</div>}
+              <div className="flex items-center gap-2 p-3 bg-muted/30 rounded-lg">
+                <Checkbox
+                  id="separate"
+                  checked={form.separate_components}
+                  onCheckedChange={(v) => setForm(f => ({ ...f, separate_components: !!v }))}
+                />
+                <Label htmlFor="separate" className="text-xs cursor-pointer">
+                  Separate into components (RBC + FFP + Platelets)
+                </Label>
+              </div>
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => setStep("personal")}>← Back</Button>
                 <Button className="flex-1" onClick={() => { if (validateScreening()) setStep("tti"); }}>Next → TTI Results</Button>
@@ -250,7 +344,9 @@ const DonorsTab: React.FC<Props> = ({ showModal, onCloseModal }) => {
               )}
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => setStep("screening")}>← Back</Button>
-                <Button className="flex-1" onClick={submitDonor}>Register Donor & Collect Unit</Button>
+                <Button className="flex-1" onClick={submitDonor}>
+                  Register Donor & {form.separate_components ? "Separate Components" : "Collect Whole Blood"}
+                </Button>
               </div>
             </div>
           )}
