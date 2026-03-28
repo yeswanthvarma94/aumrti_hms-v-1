@@ -69,6 +69,7 @@ import AccountsPage from "./pages/accounts/AccountsPage";
 import OpeningBalancesPage from "./pages/accounts/OpeningBalancesPage";
 import BloodBankPage from "./pages/blood-bank/BloodBankPage";
 import CSSDPage from "./pages/cssd/CSSDPage";
+import DialysisPage from "./pages/dialysis/DialysisPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
