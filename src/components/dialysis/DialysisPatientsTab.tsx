@@ -60,7 +60,7 @@ const DialysisPatientsTab: React.FC<Props> = ({ showRegister, onCloseRegister, o
   const [patientSearch, setPatientSearch] = useState("");
 
   const fetchData = async () => {
-    const res = await supabase.from("dialysis_patients").select("*, patients(full_name, uhid, age, gender)").eq("is_active", true).order("registered_at", { ascending: false });
+    const res = await (supabase as any).from("dialysis_patients").select("*, patients(full_name, uhid, age, gender)").eq("is_active", true).order("registered_at", { ascending: false });
     if (res.data) setDPatients(res.data);
   };
 
