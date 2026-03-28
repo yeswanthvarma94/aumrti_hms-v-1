@@ -110,8 +110,20 @@ const AppSidebar: React.FC = () => {
       </div>
 
       {/* Quick access items */}
-      <nav className="flex-1 flex flex-col gap-1 px-2">
+      <nav className="flex flex-col gap-1 px-2">
         {quickAccessItems.map(renderItem)}
+      </nav>
+
+      {/* Records & Compliance */}
+      <div className="px-4 pt-4 pb-1">
+        {!collapsed && (
+          <span className="text-[10px] font-bold uppercase tracking-wider text-sidebar-foreground/40">
+            Records
+          </span>
+        )}
+      </div>
+      <nav className="flex-1 flex flex-col gap-1 px-2">
+        {recordsItems.map(renderItem)}
       </nav>
 
       {/* Bottom items */}

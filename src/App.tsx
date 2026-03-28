@@ -154,6 +154,7 @@ const App = () => (
             <Route path="/cssd" element={<CSSDPage />} />
             <Route path="/dialysis" element={<DialysisPage />} />
             <Route path="/oncology" element={<OncologyPage />} />
+            <Route path="/mrd" element={<MRDPage />} />
             <Route path="/admin/go-live" element={<GoLiveChecklistPage />} />
           </Route>
 
