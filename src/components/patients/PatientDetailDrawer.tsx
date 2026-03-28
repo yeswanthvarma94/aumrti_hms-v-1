@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { X, Phone, MapPin, Shield, Heart } from "lucide-react";
 import ChronicDiseaseSection from "@/components/clinical/ChronicDiseaseSection";
+import PatientDocuments from "@/components/clinical/PatientDocuments";
 
 interface Patient {
   id: string;
