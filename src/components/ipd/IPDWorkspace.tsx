@@ -181,6 +181,7 @@ const IPDWorkspace: React.FC<Props> = ({ bed, hospitalId, onRefresh }) => {
             { v: "wardround", l: "Ward Round" },
             { v: "notes", l: "Notes" },
             { v: "documents", l: "Documents" },
+            ...(specialty ? [{ v: "specialty", l: `${specialtyTabMeta[specialty].icon} ${specialtyTabMeta[specialty].label}` }] : []),
           ].map((t) => (
             <TabsTrigger key={t.v} value={t.v}
               className="text-[13px] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A2F5A] data-[state=active]:text-[#1A2F5A] data-[state=active]:shadow-none data-[state=active]:bg-transparent px-4 h-full"
