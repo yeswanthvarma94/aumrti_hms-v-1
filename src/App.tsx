@@ -26,6 +26,7 @@ import NursingPage from "./pages/nursing/NursingPage";
 import HRPage from "./pages/hr/HRPage";
 import InventoryPage from "./pages/inventory/InventoryPage";
 import SettingsPage from "./pages/settings/SettingsPage";
+import SettingsBankAccountsPage from "./pages/settings/SettingsBankAccountsPage";
 import SettingsStaffPage from "./pages/settings/SettingsStaffPage";
 import SettingsDepartmentsPage from "./pages/settings/SettingsDepartmentsPage";
 import SettingsWardsPage from "./pages/settings/SettingsWardsPage";
