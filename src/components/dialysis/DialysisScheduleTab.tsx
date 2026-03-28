@@ -40,7 +40,7 @@ const DialysisScheduleTab: React.FC<Props> = ({ showSchedule, onCloseSchedule, o
     const endDate = format(addDays(weekStart, 6), "yyyy-MM-dd");
 
     const [mRes, sRes, pRes] = await Promise.all([
-      (supabase as any).from("dialysis_machines").select("*").eq("is_active", true).order("machine_code"),
+      (supabase as any).from("dialysis_machines").select("*").eq("is_active", true).order("machine_name"),
       (supabase as any).from("dialysis_sessions").select("*, dialysis_patients(*, patients(full_name))").gte("session_date", startDate).lte("session_date", endDate),
       (supabase as any).from("dialysis_patients").select("*, patients(full_name, uhid)").eq("is_active", true),
     ]);
@@ -59,12 +59,21 @@ const DialysisScheduleTab: React.FC<Props> = ({ showSchedule, onCloseSchedule, o
     const patient = patients.find(p => p.id === schedPatient);
     if (!patient) return;
 
-    // Auto-assign machine based on type
+    const pType = patient.machine_type_required;
+
+    // Find compatible machine: exact match OR universal
     const compatibleMachines = machines.filter(m =>
-      m.machine_type === patient.machine_type_required || m.machine_type === "universal"
+      m.machine_type === pType || m.machine_type === "universal" ||
+      (pType === "clean" && m.machine_type === "clean") ||
+      (pType === "isolated" && m.machine_type !== "clean") // isolated can use any non-clean
     );
+
     if (compatibleMachines.length === 0) {
-      toast({ title: `No ${patient.machine_type_required.toUpperCase()} machine available`, variant: "destructive" });
+      toast({
+        title: `No compatible machine available`,
+        description: `Patient requires ${pType.toUpperCase()} machine. Please add a ${pType.toUpperCase()} dedicated machine first.`,
+        variant: "destructive"
+      });
       return;
     }
 

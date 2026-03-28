@@ -68,13 +68,23 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
   const [sessionNotes, setSessionNotes] = useState("");
 
   const fetchData = async () => {
-    const today = new Date().toISOString().split("T")[0];
     const [mRes, sRes, pRes] = await Promise.all([
-      (supabase as any).from("dialysis_machines").select("*").eq("is_active", true).order("machine_code"),
+      (supabase as any).from("dialysis_machines").select("*").eq("is_active", true).order("machine_name"),
       (supabase as any).from("dialysis_sessions").select("*, dialysis_patients(*, patients(full_name))").eq("status", "in_progress"),
       (supabase as any).from("dialysis_patients").select("*, patients(full_name, uhid)").eq("is_active", true),
     ]);
-    if (mRes.data) setMachines(mRes.data);
+
+    // Auto-transition disinfecting machines back to available after 30 min
+    if (mRes.data) {
+      const now = new Date();
+      for (const m of mRes.data) {
+        if (m.status === "disinfecting" && m.disinfection_due_at && new Date(m.disinfection_due_at) <= now) {
+          await (supabase as any).from("dialysis_machines").update({ status: "available" }).eq("id", m.id);
+          m.status = "available";
+        }
+      }
+      setMachines(mRes.data);
+    }
     if (sRes.data) {
       const map: Record<string, any> = {};
       sRes.data.forEach((s: any) => { map[s.machine_id] = s; });
@@ -117,20 +127,43 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
     setStep(3);
   };
 
+  const checkDialyzerReuse = async (dId: string, patientId: string): Promise<string | null> => {
+    if (!dId) return null;
+    const { data } = await (supabase as any).from("dialysis_sessions")
+      .select("dialysis_patient_id, dialysis_patients(patients(full_name))")
+      .eq("dialyzer_id", dId)
+      .neq("dialysis_patient_id", patientId)
+      .limit(1);
+    if (data && data.length > 0) {
+      return `HARD BLOCK: Dialyzer "${dId}" was previously used by ${data[0].dialysis_patients?.patients?.full_name || "another patient"}.\nDialyzers CANNOT be reused across different patients — infection risk.\nThis session CANNOT proceed with this dialyzer.`;
+    }
+    return null;
+  };
+
   const startSession = async () => {
     if (!selectedPatient || !startMachine) return;
+
+    // Dialyzer reuse check
+    if (dialyzerId) {
+      const reuseBlock = await checkDialyzerReuse(dialyzerId, selectedPatient.id);
+      if (reuseBlock) {
+        setSafetyBlock(reuseBlock);
+        return;
+      }
+    }
+
     const { data: user } = await supabase.from("users").select("id, hospital_id").limit(1).single();
     if (!user) return;
 
     const ufGoal = selectedPatient.dry_weight_kg ? Math.round((parseFloat(preWeight) - selectedPatient.dry_weight_kg) * 1000) : null;
 
-    const { data: session } = await (supabase as any).from("dialysis_sessions").insert({
+    await (supabase as any).from("dialysis_sessions").insert({
       hospital_id: user.hospital_id,
       dialysis_patient_id: selectedPatient.id,
       machine_id: startMachine.id,
       session_date: new Date().toISOString().split("T")[0],
       scheduled_start: new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
-      actual_start: new Date().toISOString(),
+      started_at: new Date().toISOString(),
       pre_weight_kg: parseFloat(preWeight) || null,
       pre_bp_systolic: parseInt(preBpSys) || null,
       pre_bp_diastolic: parseInt(preBpDia) || null,
@@ -142,10 +175,10 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
       uf_goal_ml: ufGoal && ufGoal > 0 ? ufGoal : null,
       dialyzer_id: dialyzerId || null,
       status: "in_progress",
-      conducted_by: user.id,
-    }).select().single();
+      performed_by: user.id,
+    });
 
-    await (supabase as any).from("dialysis_machines").update({ status: "in_use" }).eq("id", startMachine.id);
+    await (supabase as any).from("dialysis_machines").update({ status: "in_use", current_patient_id: selectedPatient.patient_id }).eq("id", startMachine.id);
 
     toast({ title: `Session started on ${startMachine.machine_name}` });
     resetStartForm();
@@ -166,14 +199,14 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
     const uPost = parseFloat(ureaPost);
     const postW = parseFloat(postWeight);
     const uf = parseFloat(ufAchieved);
-    if (uPre > 0 && uPost > 0 && postW > 0 && session.actual_start) {
-      const t = (Date.now() - new Date(session.actual_start).getTime()) / 3600000;
+    if (uPre > 0 && uPost > 0 && postW > 0 && session.started_at) {
+      const t = (Date.now() - new Date(session.started_at).getTime()) / 3600000;
       const r = uPost / uPre;
       ktv = parseFloat((-Math.log(r - 0.008 * t) + (4 - 3.5 * r) * (uf || 0) / 1000 / postW).toFixed(2));
     }
 
     await (supabase as any).from("dialysis_sessions").update({
-      actual_end: new Date().toISOString(),
+      ended_at: new Date().toISOString(),
       post_weight_kg: postW || null,
       post_bp_systolic: parseInt(postBpSys) || null,
       post_bp_diastolic: parseInt(postBpDia) || null,
@@ -187,7 +220,14 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
       status: "completed",
     }).eq("id", session.id);
 
-    await (supabase as any).from("dialysis_machines").update({ status: "disinfecting" }).eq("id", endMachine.id);
+    // Machine → disinfecting for 30 min, then auto-available
+    const disinfectUntil = new Date(Date.now() + 30 * 60000).toISOString();
+    await (supabase as any).from("dialysis_machines").update({
+      status: "disinfecting",
+      current_patient_id: null,
+      last_disinfected_at: new Date().toISOString(),
+      disinfection_due_at: disinfectUntil,
+    }).eq("id", endMachine.id);
 
     if (ktv !== null && ktv < 1.2 && user) {
       await supabase.from("clinical_alerts").insert({
@@ -236,7 +276,7 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
                 <span className="text-sm font-bold">{m.machine_name}</span>
                 <Badge className={`text-[10px] ${ts.bg} ${ts.text}`}>{ts.label}</Badge>
               </div>
-              {m.make_model && <p className="text-[10px] text-muted-foreground mb-2">{m.make_model}</p>}
+              {m.model && <p className="text-[10px] text-muted-foreground mb-2">{m.model}</p>}
 
               <div className="flex items-center gap-2 mb-3">
                 <div className={`w-2.5 h-2.5 rounded-full ${STATUS_DOT[m.status] || "bg-muted"}`} />
