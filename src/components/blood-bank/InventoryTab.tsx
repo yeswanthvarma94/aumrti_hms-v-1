@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertTriangle } from "lucide-react";
 import { formatBloodGroup, componentLabel } from "@/lib/bloodCompatibility";
@@ -35,9 +34,18 @@ const InventoryTab: React.FC<Props> = ({ onRefresh }) => {
     return hrs > 0 && hrs <= 48 && u.status === "available";
   });
 
+  // Platelets expiring within 24 hours get special treatment
+  const plateletAlerts = units.filter(u => {
+    if (u.component !== "platelets" || u.status !== "available") return false;
+    const hrs = differenceInHours(new Date(u.expiry_at), new Date());
+    return hrs > 0 && hrs <= 120; // PLT shelf life is 5 days, show timer for all
+  });
+
   const getRowClass = (u: any) => {
     const hrs = differenceInHours(new Date(u.expiry_at), new Date());
     if (hrs < 0) return "bg-muted/50 opacity-60";
+    if (u.component === "platelets" && hrs < 24) return "bg-red-100";
+    if (u.component === "platelets" && hrs < 72) return "bg-amber-100";
     if (hrs < 24) return "bg-red-50";
     if (hrs < 72) return "bg-amber-50";
     if (u.status === "reserved") return "bg-blue-50";
@@ -123,23 +131,29 @@ const InventoryTab: React.FC<Props> = ({ onRefresh }) => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {units.map(u => (
-              <TableRow key={u.id} className={getRowClass(u)}>
-                <TableCell className="text-xs font-mono">{u.unit_number}</TableCell>
-                <TableCell className="text-xs">{componentLabel(u.component)}</TableCell>
-                <TableCell className="text-xs font-semibold">{formatBloodGroup(u.blood_group, u.rh_factor)}</TableCell>
-                <TableCell className="text-xs">{u.volume_ml} ml</TableCell>
-                <TableCell className="text-xs">{format(new Date(u.collected_at), "dd/MM/yyyy")}</TableCell>
-                <TableCell className="text-xs">
-                  {format(new Date(u.expiry_at), "dd/MM/yyyy")}
-                  {u.component === "platelets" && differenceInHours(new Date(u.expiry_at), new Date()) > 0 && (
-                    <span className="ml-1 text-amber-600">({formatDistanceToNow(new Date(u.expiry_at))})</span>
-                  )}
-                </TableCell>
-                <TableCell className="text-xs">{u.storage_location}</TableCell>
-                <TableCell>{statusBadge(u.status)}</TableCell>
-              </TableRow>
-            ))}
+            {units.map(u => {
+              const hrs = differenceInHours(new Date(u.expiry_at), new Date());
+              const showTimer = u.status === "available" && hrs > 0;
+              return (
+                <TableRow key={u.id} className={getRowClass(u)}>
+                  <TableCell className="text-xs font-mono">{u.unit_number}</TableCell>
+                  <TableCell className="text-xs">{componentLabel(u.component)}</TableCell>
+                  <TableCell className="text-xs font-semibold">{formatBloodGroup(u.blood_group, u.rh_factor)}</TableCell>
+                  <TableCell className="text-xs">{u.volume_ml} ml</TableCell>
+                  <TableCell className="text-xs">{format(new Date(u.collected_at), "dd/MM/yyyy")}</TableCell>
+                  <TableCell className="text-xs">
+                    {format(new Date(u.expiry_at), "dd/MM/yyyy")}
+                    {showTimer && (u.component === "platelets" || hrs <= 72) && (
+                      <span className={`ml-1 ${hrs < 24 ? "text-red-600 font-semibold" : "text-amber-600"}`}>
+                        ({formatDistanceToNow(new Date(u.expiry_at))})
+                      </span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-xs">{u.storage_location}</TableCell>
+                  <TableCell>{statusBadge(u.status)}</TableCell>
+                </TableRow>
+              );
+            })}
             {units.length === 0 && (
               <TableRow><TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-8">No units found</TableCell></TableRow>
             )}
