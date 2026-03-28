@@ -1518,6 +1518,314 @@ export type Database = {
           },
         ]
       }
+      chemo_order_drugs: {
+        Row: {
+          administered_at: string | null
+          administered_by: string | null
+          administered_dose_mg: number | null
+          diluent: string | null
+          drug_name: string
+          hospital_id: string
+          id: string
+          infusion_time_min: number | null
+          order_id: string
+          planned_dose_mg: number
+          planned_dose_mg_m2: number | null
+          route: string
+        }
+        Insert: {
+          administered_at?: string | null
+          administered_by?: string | null
+          administered_dose_mg?: number | null
+          diluent?: string | null
+          drug_name: string
+          hospital_id: string
+          id?: string
+          infusion_time_min?: number | null
+          order_id: string
+          planned_dose_mg: number
+          planned_dose_mg_m2?: number | null
+          route: string
+        }
+        Update: {
+          administered_at?: string | null
+          administered_by?: string | null
+          administered_dose_mg?: number | null
+          diluent?: string | null
+          drug_name?: string
+          hospital_id?: string
+          id?: string
+          infusion_time_min?: number | null
+          order_id?: string
+          planned_dose_mg?: number
+          planned_dose_mg_m2?: number | null
+          route?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chemo_order_drugs_administered_by_fkey"
+            columns: ["administered_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chemo_order_drugs_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chemo_order_drugs_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "chemo_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chemo_orders: {
+        Row: {
+          anc: number | null
+          bilirubin: number | null
+          bsa_used: number
+          created_at: string | null
+          creatinine: number | null
+          cycle_number: number
+          day_of_cycle: number
+          dispensing_allowed: boolean | null
+          hold_reason: string | null
+          hospital_id: string
+          id: string
+          lab_date: string | null
+          notes: string | null
+          oncology_patient_id: string
+          order_date: string
+          ordered_by: string
+          patient_id: string
+          platelets: number | null
+          protocol_id: string
+          scheduled_date: string
+          status: string | null
+          v1_at: string | null
+          v1_by: string | null
+          v1_protocol_confirmed: boolean | null
+          v2_at: string | null
+          v2_by: string | null
+          v2_dose_correct: boolean | null
+          v3_allergies_checked: boolean | null
+          v3_at: string | null
+          v3_by: string | null
+          v4_at: string | null
+          v4_by: string | null
+          v4_labs_reviewed: boolean | null
+          v5_at: string | null
+          v5_by: string | null
+          v5_pharmacist_signoff: boolean | null
+          weight_at_order: number
+        }
+        Insert: {
+          anc?: number | null
+          bilirubin?: number | null
+          bsa_used: number
+          created_at?: string | null
+          creatinine?: number | null
+          cycle_number: number
+          day_of_cycle?: number
+          dispensing_allowed?: boolean | null
+          hold_reason?: string | null
+          hospital_id: string
+          id?: string
+          lab_date?: string | null
+          notes?: string | null
+          oncology_patient_id: string
+          order_date?: string
+          ordered_by: string
+          patient_id: string
+          platelets?: number | null
+          protocol_id: string
+          scheduled_date: string
+          status?: string | null
+          v1_at?: string | null
+          v1_by?: string | null
+          v1_protocol_confirmed?: boolean | null
+          v2_at?: string | null
+          v2_by?: string | null
+          v2_dose_correct?: boolean | null
+          v3_allergies_checked?: boolean | null
+          v3_at?: string | null
+          v3_by?: string | null
+          v4_at?: string | null
+          v4_by?: string | null
+          v4_labs_reviewed?: boolean | null
+          v5_at?: string | null
+          v5_by?: string | null
+          v5_pharmacist_signoff?: boolean | null
+          weight_at_order: number
+        }
+        Update: {
+          anc?: number | null
+          bilirubin?: number | null
+          bsa_used?: number
+          created_at?: string | null
+          creatinine?: number | null
+          cycle_number?: number
+          day_of_cycle?: number
+          dispensing_allowed?: boolean | null
+          hold_reason?: string | null
+          hospital_id?: string
+          id?: string
+          lab_date?: string | null
+          notes?: string | null
+          oncology_patient_id?: string
+          order_date?: string
+          ordered_by?: string
+          patient_id?: string
+          platelets?: number | null
+          protocol_id?: string
+          scheduled_date?: string
+          status?: string | null
+          v1_at?: string | null
+          v1_by?: string | null
+          v1_protocol_confirmed?: boolean | null
+          v2_at?: string | null
+          v2_by?: string | null
+          v2_dose_correct?: boolean | null
+          v3_allergies_checked?: boolean | null
+          v3_at?: string | null
+          v3_by?: string | null
+          v4_at?: string | null
+          v4_by?: string | null
+          v4_labs_reviewed?: boolean | null
+          v5_at?: string | null
+          v5_by?: string | null
+          v5_pharmacist_signoff?: boolean | null
+          weight_at_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chemo_orders_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chemo_orders_oncology_patient_id_fkey"
+            columns: ["oncology_patient_id"]
+            isOneToOne: false
+            referencedRelation: "oncology_patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chemo_orders_ordered_by_fkey"
+            columns: ["ordered_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chemo_orders_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chemo_orders_protocol_id_fkey"
+            columns: ["protocol_id"]
+            isOneToOne: false
+            referencedRelation: "chemo_protocols"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chemo_orders_v1_by_fkey"
+            columns: ["v1_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chemo_orders_v2_by_fkey"
+            columns: ["v2_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chemo_orders_v3_by_fkey"
+            columns: ["v3_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chemo_orders_v4_by_fkey"
+            columns: ["v4_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chemo_orders_v5_by_fkey"
+            columns: ["v5_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chemo_protocols: {
+        Row: {
+          cancer_type: string
+          created_at: string | null
+          cycle_duration_days: number
+          drugs: Json
+          hospital_id: string
+          id: string
+          is_active: boolean | null
+          protocol_code: string
+          protocol_name: string
+          reference: string | null
+          total_cycles: number
+        }
+        Insert: {
+          cancer_type: string
+          created_at?: string | null
+          cycle_duration_days: number
+          drugs?: Json
+          hospital_id: string
+          id?: string
+          is_active?: boolean | null
+          protocol_code: string
+          protocol_name: string
+          reference?: string | null
+          total_cycles: number
+        }
+        Update: {
+          cancer_type?: string
+          created_at?: string | null
+          cycle_duration_days?: number
+          drugs?: Json
+          hospital_id?: string
+          id?: string
+          is_active?: boolean | null
+          protocol_code?: string
+          protocol_name?: string
+          reference?: string | null
+          total_cycles?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chemo_protocols_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clinical_alerts: {
         Row: {
           acknowledged_at: string | null
@@ -1807,6 +2115,57 @@ export type Database = {
             columns: ["set_id"]
             isOneToOne: false
             referencedRelation: "instrument_sets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      daycare_chairs: {
+        Row: {
+          chair_name: string
+          chair_type: string | null
+          created_at: string | null
+          current_patient: string | null
+          estimated_end: string | null
+          hospital_id: string
+          id: string
+          occupied_since: string | null
+          status: string | null
+        }
+        Insert: {
+          chair_name: string
+          chair_type?: string | null
+          created_at?: string | null
+          current_patient?: string | null
+          estimated_end?: string | null
+          hospital_id: string
+          id?: string
+          occupied_since?: string | null
+          status?: string | null
+        }
+        Update: {
+          chair_name?: string
+          chair_type?: string | null
+          created_at?: string | null
+          current_patient?: string | null
+          estimated_end?: string | null
+          hospital_id?: string
+          id?: string
+          occupied_since?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daycare_chairs_current_patient_fkey"
+            columns: ["current_patient"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daycare_chairs_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
             referencedColumns: ["id"]
           },
         ]
@@ -4608,6 +4967,92 @@ export type Database = {
           },
         ]
       }
+      oncology_patients: {
+        Row: {
+          bsa_m2: number | null
+          current_cycle: number | null
+          height_cm: number | null
+          hospital_id: string
+          icd_code: string | null
+          id: string
+          is_active: boolean | null
+          patient_id: string
+          performance_status: number | null
+          primary_diagnosis: string
+          protocol_id: string | null
+          registered_at: string | null
+          stage: string | null
+          total_cycles_planned: number | null
+          treating_oncologist: string | null
+          weight_kg: number | null
+        }
+        Insert: {
+          bsa_m2?: number | null
+          current_cycle?: number | null
+          height_cm?: number | null
+          hospital_id: string
+          icd_code?: string | null
+          id?: string
+          is_active?: boolean | null
+          patient_id: string
+          performance_status?: number | null
+          primary_diagnosis: string
+          protocol_id?: string | null
+          registered_at?: string | null
+          stage?: string | null
+          total_cycles_planned?: number | null
+          treating_oncologist?: string | null
+          weight_kg?: number | null
+        }
+        Update: {
+          bsa_m2?: number | null
+          current_cycle?: number | null
+          height_cm?: number | null
+          hospital_id?: string
+          icd_code?: string | null
+          id?: string
+          is_active?: boolean | null
+          patient_id?: string
+          performance_status?: number | null
+          primary_diagnosis?: string
+          protocol_id?: string | null
+          registered_at?: string | null
+          stage?: string | null
+          total_cycles_planned?: number | null
+          treating_oncologist?: string | null
+          weight_kg?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "oncology_patients_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "oncology_patients_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "oncology_patients_protocol_id_fkey"
+            columns: ["protocol_id"]
+            isOneToOne: false
+            referencedRelation: "chemo_protocols"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "oncology_patients_treating_oncologist_fkey"
+            columns: ["treating_oncologist"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       opd_encounters: {
         Row: {
           chief_complaint: string | null
@@ -7190,6 +7635,92 @@ export type Database = {
           },
         ]
       }
+      toxicity_events: {
+        Row: {
+          created_at: string | null
+          ctcae_grade: number
+          cycle_number: number
+          description: string | null
+          dose_modification_type: string | null
+          dose_modified: boolean | null
+          hospital_id: string
+          hospitalised: boolean | null
+          id: string
+          onset_date: string
+          order_id: string
+          patient_id: string
+          reported_by: string | null
+          resolved: boolean | null
+          resolved_date: string | null
+          toxicity_type: string
+        }
+        Insert: {
+          created_at?: string | null
+          ctcae_grade: number
+          cycle_number: number
+          description?: string | null
+          dose_modification_type?: string | null
+          dose_modified?: boolean | null
+          hospital_id: string
+          hospitalised?: boolean | null
+          id?: string
+          onset_date: string
+          order_id: string
+          patient_id: string
+          reported_by?: string | null
+          resolved?: boolean | null
+          resolved_date?: string | null
+          toxicity_type: string
+        }
+        Update: {
+          created_at?: string | null
+          ctcae_grade?: number
+          cycle_number?: number
+          description?: string | null
+          dose_modification_type?: string | null
+          dose_modified?: boolean | null
+          hospital_id?: string
+          hospitalised?: boolean | null
+          id?: string
+          onset_date?: string
+          order_id?: string
+          patient_id?: string
+          reported_by?: string | null
+          resolved?: boolean | null
+          resolved_date?: string | null
+          toxicity_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "toxicity_events_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "toxicity_events_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "chemo_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "toxicity_events_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "toxicity_events_reported_by_fkey"
+            columns: ["reported_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tpa_config: {
         Row: {
           claims_email: string | null
@@ -7374,6 +7905,66 @@ export type Database = {
             columns: ["hospital_id"]
             isOneToOne: false
             referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vial_wastage: {
+        Row: {
+          administered_dose_mg: number
+          batch_number: string | null
+          cost_per_mg: number | null
+          created_at: string | null
+          drug_name: string
+          hospital_id: string
+          id: string
+          order_id: string
+          ordered_dose_mg: number
+          reason: string | null
+          waste_cost: number | null
+          wasted_dose_mg: number
+        }
+        Insert: {
+          administered_dose_mg: number
+          batch_number?: string | null
+          cost_per_mg?: number | null
+          created_at?: string | null
+          drug_name: string
+          hospital_id: string
+          id?: string
+          order_id: string
+          ordered_dose_mg: number
+          reason?: string | null
+          waste_cost?: number | null
+          wasted_dose_mg: number
+        }
+        Update: {
+          administered_dose_mg?: number
+          batch_number?: string | null
+          cost_per_mg?: number | null
+          created_at?: string | null
+          drug_name?: string
+          hospital_id?: string
+          id?: string
+          order_id?: string
+          ordered_dose_mg?: number
+          reason?: string | null
+          waste_cost?: number | null
+          wasted_dose_mg?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vial_wastage_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vial_wastage_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "chemo_orders"
             referencedColumns: ["id"]
           },
         ]
