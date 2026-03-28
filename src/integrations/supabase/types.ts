@@ -314,6 +314,97 @@ export type Database = {
           },
         ]
       }
+      anaesthesia_records: {
+        Row: {
+          airway_mouth_opening: string | null
+          aldrete_scores: Json | null
+          asa_class: number | null
+          blood_loss_ml: number | null
+          complications: string | null
+          created_at: string | null
+          fluid_in_ml: number | null
+          hospital_id: string
+          id: string
+          induction_agents: Json | null
+          intraop_vitals: Json | null
+          maintenance_agents: Json | null
+          mallampati_score: number | null
+          neck_mobility: string | null
+          ot_id: string | null
+          pacu_discharge_at: string | null
+          patient_id: string
+          technique: string
+          thyromental_distance: string | null
+          urine_out_ml: number | null
+        }
+        Insert: {
+          airway_mouth_opening?: string | null
+          aldrete_scores?: Json | null
+          asa_class?: number | null
+          blood_loss_ml?: number | null
+          complications?: string | null
+          created_at?: string | null
+          fluid_in_ml?: number | null
+          hospital_id: string
+          id?: string
+          induction_agents?: Json | null
+          intraop_vitals?: Json | null
+          maintenance_agents?: Json | null
+          mallampati_score?: number | null
+          neck_mobility?: string | null
+          ot_id?: string | null
+          pacu_discharge_at?: string | null
+          patient_id: string
+          technique?: string
+          thyromental_distance?: string | null
+          urine_out_ml?: number | null
+        }
+        Update: {
+          airway_mouth_opening?: string | null
+          aldrete_scores?: Json | null
+          asa_class?: number | null
+          blood_loss_ml?: number | null
+          complications?: string | null
+          created_at?: string | null
+          fluid_in_ml?: number | null
+          hospital_id?: string
+          id?: string
+          induction_agents?: Json | null
+          intraop_vitals?: Json | null
+          maintenance_agents?: Json | null
+          mallampati_score?: number | null
+          neck_mobility?: string | null
+          ot_id?: string | null
+          pacu_discharge_at?: string | null
+          patient_id?: string
+          technique?: string
+          thyromental_distance?: string | null
+          urine_out_ml?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "anaesthesia_records_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "anaesthesia_records_ot_id_fkey"
+            columns: ["ot_id"]
+            isOneToOne: false
+            referencedRelation: "ot_schedules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "anaesthesia_records_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       api_configurations: {
         Row: {
           config: Json
@@ -5544,6 +5635,110 @@ export type Database = {
           },
         ]
       }
+      neonatal_records: {
+        Row: {
+          admission_id: string | null
+          apgar_1min: number | null
+          apgar_5min: number | null
+          bilirubin_readings: Json | null
+          birth_weight_g: number | null
+          created_at: string | null
+          date_of_birth: string
+          g6pd_done: boolean | null
+          g6pd_result: string | null
+          hc_zscore: number | null
+          head_circumference_cm: number | null
+          hearing_screen: string | null
+          hospital_id: string
+          id: string
+          length_cm: number | null
+          length_zscore: number | null
+          mother_patient_id: string | null
+          patient_id: string
+          phototherapy_started: boolean | null
+          tsh_done: boolean | null
+          tsh_result: string | null
+          weight_zscore: number | null
+        }
+        Insert: {
+          admission_id?: string | null
+          apgar_1min?: number | null
+          apgar_5min?: number | null
+          bilirubin_readings?: Json | null
+          birth_weight_g?: number | null
+          created_at?: string | null
+          date_of_birth: string
+          g6pd_done?: boolean | null
+          g6pd_result?: string | null
+          hc_zscore?: number | null
+          head_circumference_cm?: number | null
+          hearing_screen?: string | null
+          hospital_id: string
+          id?: string
+          length_cm?: number | null
+          length_zscore?: number | null
+          mother_patient_id?: string | null
+          patient_id: string
+          phototherapy_started?: boolean | null
+          tsh_done?: boolean | null
+          tsh_result?: string | null
+          weight_zscore?: number | null
+        }
+        Update: {
+          admission_id?: string | null
+          apgar_1min?: number | null
+          apgar_5min?: number | null
+          bilirubin_readings?: Json | null
+          birth_weight_g?: number | null
+          created_at?: string | null
+          date_of_birth?: string
+          g6pd_done?: boolean | null
+          g6pd_result?: string | null
+          hc_zscore?: number | null
+          head_circumference_cm?: number | null
+          hearing_screen?: string | null
+          hospital_id?: string
+          id?: string
+          length_cm?: number | null
+          length_zscore?: number | null
+          mother_patient_id?: string | null
+          patient_id?: string
+          phototherapy_started?: boolean | null
+          tsh_done?: boolean | null
+          tsh_result?: string | null
+          weight_zscore?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "neonatal_records_admission_id_fkey"
+            columns: ["admission_id"]
+            isOneToOne: false
+            referencedRelation: "admissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "neonatal_records_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "neonatal_records_mother_patient_id_fkey"
+            columns: ["mother_patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "neonatal_records_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       nursing_handovers: {
         Row: {
           completed_at: string | null
@@ -5664,6 +5859,105 @@ export type Database = {
             columns: ["medication_id"]
             isOneToOne: false
             referencedRelation: "ipd_medications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      obstetric_records: {
+        Row: {
+          bishop_consistency: number | null
+          bishop_dilation: number | null
+          bishop_effacement: number | null
+          bishop_position: number | null
+          bishop_station: number | null
+          bishop_total: number | null
+          created_at: string | null
+          edd: string | null
+          encounter_id: string | null
+          fetal_engagement: string | null
+          fetal_heart_rate: number | null
+          fetal_presentation: string | null
+          fundal_height_cm: number | null
+          gestational_age_days: number | null
+          gestational_age_weeks: number | null
+          hospital_id: string
+          id: string
+          lmp: string | null
+          patient_id: string
+          record_type: string | null
+          risk_fetal_distress: boolean | null
+          risk_gdm: boolean | null
+          risk_notes: string | null
+          risk_oligohydramnios: boolean | null
+          risk_pre_eclampsia: boolean | null
+        }
+        Insert: {
+          bishop_consistency?: number | null
+          bishop_dilation?: number | null
+          bishop_effacement?: number | null
+          bishop_position?: number | null
+          bishop_station?: number | null
+          bishop_total?: number | null
+          created_at?: string | null
+          edd?: string | null
+          encounter_id?: string | null
+          fetal_engagement?: string | null
+          fetal_heart_rate?: number | null
+          fetal_presentation?: string | null
+          fundal_height_cm?: number | null
+          gestational_age_days?: number | null
+          gestational_age_weeks?: number | null
+          hospital_id: string
+          id?: string
+          lmp?: string | null
+          patient_id: string
+          record_type?: string | null
+          risk_fetal_distress?: boolean | null
+          risk_gdm?: boolean | null
+          risk_notes?: string | null
+          risk_oligohydramnios?: boolean | null
+          risk_pre_eclampsia?: boolean | null
+        }
+        Update: {
+          bishop_consistency?: number | null
+          bishop_dilation?: number | null
+          bishop_effacement?: number | null
+          bishop_position?: number | null
+          bishop_station?: number | null
+          bishop_total?: number | null
+          created_at?: string | null
+          edd?: string | null
+          encounter_id?: string | null
+          fetal_engagement?: string | null
+          fetal_heart_rate?: number | null
+          fetal_presentation?: string | null
+          fundal_height_cm?: number | null
+          gestational_age_days?: number | null
+          gestational_age_weeks?: number | null
+          hospital_id?: string
+          id?: string
+          lmp?: string | null
+          patient_id?: string
+          record_type?: string | null
+          risk_fetal_distress?: boolean | null
+          risk_gdm?: boolean | null
+          risk_notes?: string | null
+          risk_oligohydramnios?: boolean | null
+          risk_pre_eclampsia?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "obstetric_records_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obstetric_records_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
             referencedColumns: ["id"]
           },
         ]
@@ -6003,6 +6297,105 @@ export type Database = {
           },
         ]
       }
+      ophthalmology_records: {
+        Row: {
+          created_at: string | null
+          cup_disc_le: number | null
+          cup_disc_re: number | null
+          dr_grade: string | null
+          encounter_id: string | null
+          hospital_id: string
+          id: string
+          iol_formula: string | null
+          iol_power_le: number | null
+          iol_power_re: number | null
+          iop_le_mmhg: number | null
+          iop_re_mmhg: number | null
+          le_axis: number | null
+          le_cylinder: number | null
+          le_sphere: number | null
+          macula_le: string | null
+          macula_re: string | null
+          patient_id: string
+          re_axis: number | null
+          re_cylinder: number | null
+          re_sphere: number | null
+          va_le_logmar: number | null
+          va_le_snellen: string | null
+          va_re_logmar: number | null
+          va_re_snellen: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          cup_disc_le?: number | null
+          cup_disc_re?: number | null
+          dr_grade?: string | null
+          encounter_id?: string | null
+          hospital_id: string
+          id?: string
+          iol_formula?: string | null
+          iol_power_le?: number | null
+          iol_power_re?: number | null
+          iop_le_mmhg?: number | null
+          iop_re_mmhg?: number | null
+          le_axis?: number | null
+          le_cylinder?: number | null
+          le_sphere?: number | null
+          macula_le?: string | null
+          macula_re?: string | null
+          patient_id: string
+          re_axis?: number | null
+          re_cylinder?: number | null
+          re_sphere?: number | null
+          va_le_logmar?: number | null
+          va_le_snellen?: string | null
+          va_re_logmar?: number | null
+          va_re_snellen?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          cup_disc_le?: number | null
+          cup_disc_re?: number | null
+          dr_grade?: string | null
+          encounter_id?: string | null
+          hospital_id?: string
+          id?: string
+          iol_formula?: string | null
+          iol_power_le?: number | null
+          iol_power_re?: number | null
+          iop_le_mmhg?: number | null
+          iop_re_mmhg?: number | null
+          le_axis?: number | null
+          le_cylinder?: number | null
+          le_sphere?: number | null
+          macula_le?: string | null
+          macula_re?: string | null
+          patient_id?: string
+          re_axis?: number | null
+          re_cylinder?: number | null
+          re_sphere?: number | null
+          va_le_logmar?: number | null
+          va_le_snellen?: string | null
+          va_re_logmar?: number | null
+          va_re_snellen?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ophthalmology_records_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ophthalmology_records_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ot_checklists: {
         Row: {
           compliance_percentage: number
@@ -6320,6 +6713,76 @@ export type Database = {
             columns: ["ot_schedule_id"]
             isOneToOne: false
             referencedRelation: "ot_schedules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partograph_records: {
+        Row: {
+          admission_id: string
+          cervical_dilatations: Json | null
+          contractions: Json | null
+          created_at: string | null
+          fetal_heart_rates: Json | null
+          hospital_id: string
+          id: string
+          labour_start_at: string
+          liquor_colour: string | null
+          outcome: string | null
+          oxytocin_doses: Json | null
+          patient_id: string
+          rupture_of_membranes_at: string | null
+        }
+        Insert: {
+          admission_id: string
+          cervical_dilatations?: Json | null
+          contractions?: Json | null
+          created_at?: string | null
+          fetal_heart_rates?: Json | null
+          hospital_id: string
+          id?: string
+          labour_start_at: string
+          liquor_colour?: string | null
+          outcome?: string | null
+          oxytocin_doses?: Json | null
+          patient_id: string
+          rupture_of_membranes_at?: string | null
+        }
+        Update: {
+          admission_id?: string
+          cervical_dilatations?: Json | null
+          contractions?: Json | null
+          created_at?: string | null
+          fetal_heart_rates?: Json | null
+          hospital_id?: string
+          id?: string
+          labour_start_at?: string
+          liquor_colour?: string | null
+          outcome?: string | null
+          oxytocin_doses?: Json | null
+          patient_id?: string
+          rupture_of_membranes_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partograph_records_admission_id_fkey"
+            columns: ["admission_id"]
+            isOneToOne: false
+            referencedRelation: "admissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partograph_records_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partograph_records_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
             referencedColumns: ["id"]
           },
         ]
