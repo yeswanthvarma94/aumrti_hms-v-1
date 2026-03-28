@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { X, Phone, MapPin, Shield, Heart } from "lucide-react";
+import ChronicDiseaseSection from "@/components/clinical/ChronicDiseaseSection";
 
 interface Patient {
   id: string;
@@ -50,6 +51,15 @@ const initials = (name: string) =>
 
 const PatientDetailDrawer: React.FC<Props> = ({ patient, onClose }) => {
   const [visits, setVisits] = useState<Visit[]>([]);
+  const [hospitalId, setHospitalId] = useState<string>("");
+
+  useEffect(() => {
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) return;
+      const { data } = await supabase.from("users").select("hospital_id").eq("id", user.id).single();
+      if (data) setHospitalId(data.hospital_id);
+    });
+  }, []);
 
   useEffect(() => {
     supabase
@@ -158,6 +168,9 @@ const PatientDetailDrawer: React.FC<Props> = ({ patient, onClose }) => {
               )}
             </Section>
           )}
+
+          {/* Chronic Disease Programs */}
+          <ChronicDiseaseSection patientId={patient.id} hospitalId={hospitalId} />
 
           {/* Visit History */}
           <Section title="Recent OPD Visits">

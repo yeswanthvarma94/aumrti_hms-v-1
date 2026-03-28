@@ -11,6 +11,7 @@ import VitalsTab from "./tabs/VitalsTab";
 import ExaminationTab from "./tabs/ExaminationTab";
 import RxOrdersTab from "./tabs/RxOrdersTab";
 import HistoryTab from "./tabs/HistoryTab";
+import OverdueFollowupBanner from "@/components/clinical/OverdueFollowupBanner";
 
 interface Props {
   token: OpdToken | null;
@@ -429,6 +430,9 @@ const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onT
           {saved && <span className="text-[11px] text-emerald-500 flex items-center gap-1"><CheckCircle className="h-3 w-3" /> Saved</span>}
         </div>
       </div>
+
+      {/* Overdue follow-up banner */}
+      {token && <OverdueFollowupBanner patientId={token.patient_id} />}
 
       {/* Tab content */}
       <div className="flex-1 overflow-hidden">

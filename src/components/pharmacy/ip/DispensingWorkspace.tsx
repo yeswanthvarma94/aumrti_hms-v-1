@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Pill, Save, Check, RotateCcw, AlertTriangle, Loader2 } from "lucide-react";
 import FiveRightsPanel from "./FiveRightsPanel";
+import AllergyBanner from "@/components/clinical/AllergyBanner";
 import { logNABHEvidence } from "@/lib/nabh-evidence";
 import type { PrescriptionItem } from "./PrescriptionQueue";
 
@@ -412,6 +413,13 @@ const DispensingWorkspace: React.FC<Props> = ({ hospitalId, prescription, onDisp
           {prescription.doctor_name && <p>Dr. {prescription.doctor_name}</p>}
         </div>
       </div>
+
+      {/* Allergy Banner */}
+      {patient?.allergies && (
+        <div className="flex-shrink-0 px-5">
+          <AllergyBanner allergies={patient.allergies} />
+        </div>
+      )}
 
       {/* Table */}
       <div className="flex-1 overflow-auto">
