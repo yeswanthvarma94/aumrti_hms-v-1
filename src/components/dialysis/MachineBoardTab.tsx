@@ -124,7 +124,7 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
 
     const ufGoal = selectedPatient.dry_weight_kg ? Math.round((parseFloat(preWeight) - selectedPatient.dry_weight_kg) * 1000) : null;
 
-    const { data: session } = await supabase.from("dialysis_sessions").insert({
+    const { data: session } = await (supabase as any).from("dialysis_sessions").insert({
       hospital_id: user.hospital_id,
       dialysis_patient_id: selectedPatient.id,
       machine_id: startMachine.id,
