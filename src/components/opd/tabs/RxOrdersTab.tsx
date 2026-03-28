@@ -205,6 +205,9 @@ const RxOrdersTab: React.FC<Props> = ({ prescription, onChange, hospitalId, pati
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
+      {/* Allergy Banner — always visible */}
+      <AllergyBanner allergies={patientAllergies?.join(", ") || null} />
+
       {/* Safe flash */}
       {safeFlash && (
         <div className="flex-shrink-0 bg-emerald-50 border-b border-emerald-200 px-4 py-1.5 flex items-center gap-2 animate-in fade-in duration-300">
