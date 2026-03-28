@@ -230,8 +230,8 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated }) => {
         patient_payable: fee,
         paid_amount: isPaid ? fee : 0,
         balance_due: isPaid ? 0 : fee,
-        payment_status: isPaid ? "paid" : "pending",
-        bill_status: "finalized",
+        payment_status: isPaid ? "paid" : "unpaid",
+        bill_status: "final",
         created_by: userId,
       }).select("id").single();
       if (billErr) throw billErr;
