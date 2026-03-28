@@ -463,6 +463,32 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
         </DialogContent>
       </Dialog>
 
+      {/* ADD/EDIT MACHINE DIALOG */}
+      <Dialog open={machineModal.open} onOpenChange={() => setMachineModal({ open: false, editing: null })}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>{machineModal.editing ? "Edit Machine" : "Add Machine"}</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div><Label className="text-xs">Machine Name *</Label><Input value={mName} onChange={e => setMName(e.target.value)} className="h-9" placeholder="e.g. HD-09" /></div>
+            <div><Label className="text-xs">Model</Label><Input value={mModel} onChange={e => setMModel(e.target.value)} className="h-9" placeholder="e.g. Fresenius 5008S" /></div>
+            <div>
+              <Label className="text-xs">Machine Type *</Label>
+              <Select value={mType} onValueChange={setMType}>
+                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="clean">Clean (HBsAg Negative)</SelectItem>
+                  <SelectItem value="hbv">HBV Dedicated</SelectItem>
+                  <SelectItem value="hcv">HCV Dedicated</SelectItem>
+                  <SelectItem value="hiv">HIV Dedicated</SelectItem>
+                  <SelectItem value="universal">Universal</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div><Label className="text-xs">Location</Label><Input value={mLocation} onChange={e => setMLocation(e.target.value)} className="h-9" placeholder="e.g. Room 3" /></div>
+            <Button className="w-full" onClick={saveMachine} disabled={!mName.trim()}>{machineModal.editing ? "Update" : "Add Machine"}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* END SESSION DIALOG */}
       <Dialog open={!!endMachine} onOpenChange={() => { setEndMachine(null); resetEndForm(); }}>
         <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
