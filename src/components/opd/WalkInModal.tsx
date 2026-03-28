@@ -587,6 +587,125 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated }) => {
               </button>
             </div>
           </>
+        ) : (
+          /* ══════════ STEP 3: RECEIPT ══════════ */
+          <>
+            <h2 className="text-lg font-bold text-emerald-700 flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5" />
+              Token Issued Successfully
+            </h2>
+
+            {/* Printable Receipt */}
+            <div ref={receiptRef} className="mt-4 border border-slate-200 rounded-lg p-5 bg-white" id="opd-receipt">
+              <div className="text-center border-b border-dashed border-slate-300 pb-3 mb-3">
+                <p className="text-sm font-bold text-slate-800">OPD CONSULTATION RECEIPT</p>
+                <p className="text-[11px] text-slate-500 mt-0.5">{receiptData?.date}</p>
+              </div>
+
+              <div className="space-y-1.5 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Bill No.</span>
+                  <span className="font-mono font-medium text-slate-800">{receiptData?.billNumber}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Patient</span>
+                  <span className="font-medium text-slate-800">{receiptData?.patientName}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">UHID</span>
+                  <span className="font-mono text-slate-800">{receiptData?.uhid}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Department</span>
+                  <span className="text-slate-800">{receiptData?.department}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Doctor</span>
+                  <span className="text-slate-800">{receiptData?.doctor}</span>
+                </div>
+              </div>
+
+              <div className="border-t border-dashed border-slate-300 mt-3 pt-3 space-y-1.5">
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-500">Token</span>
+                  <span className="text-lg font-bold text-[#1A2F5A]">{receiptData?.token}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-500">Consultation Fee</span>
+                  <span className="font-bold text-slate-800">₹{receiptData?.fee?.toLocaleString("en-IN")}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-500">Payment</span>
+                  <span className={cn("font-medium", receiptData?.paid ? "text-emerald-600" : "text-amber-600")}>
+                    {receiptData?.paid ? `Paid (${receiptData.paymentMode})` : "Pending"}
+                  </span>
+                </div>
+              </div>
+
+              <div className="border-t border-dashed border-slate-300 mt-3 pt-2 text-center">
+                <p className="text-[10px] text-slate-400">Thank you for visiting. Get well soon!</p>
+              </div>
+            </div>
+
+            {/* Print + Done buttons */}
+            <div className="flex gap-3 mt-4">
+              <button
+                onClick={() => {
+                  const content = receiptRef.current;
+                  if (!content) return;
+                  const printWin = window.open("", "_blank", "width=400,height=600");
+                  if (!printWin) return;
+                  printWin.document.write(`
+                    <html><head><title>OPD Receipt</title>
+                    <style>
+                      body { font-family: Arial, sans-serif; padding: 20px; margin: 0; font-size: 13px; }
+                      .flex { display: flex; justify-content: space-between; margin-bottom: 6px; }
+                      .label { color: #64748b; }
+                      .value { font-weight: 600; color: #1e293b; }
+                      .mono { font-family: monospace; }
+                      .center { text-align: center; }
+                      .border-b { border-bottom: 1px dashed #cbd5e1; padding-bottom: 10px; margin-bottom: 10px; }
+                      .border-t { border-top: 1px dashed #cbd5e1; padding-top: 10px; margin-top: 10px; }
+                      .token { font-size: 22px; font-weight: 800; color: #1A2F5A; }
+                      .fee { font-weight: 700; }
+                      .paid { color: #059669; font-weight: 600; }
+                      .pending { color: #d97706; font-weight: 600; }
+                      .footer { font-size: 10px; color: #94a3b8; text-align: center; margin-top: 12px; }
+                      @media print { body { padding: 10px; } }
+                    </style></head><body>
+                    <div class="center border-b">
+                      <strong>OPD CONSULTATION RECEIPT</strong><br/>
+                      <small>${receiptData?.date || ""}</small>
+                    </div>
+                    <div class="flex"><span class="label">Bill No.</span><span class="value mono">${receiptData?.billNumber || ""}</span></div>
+                    <div class="flex"><span class="label">Patient</span><span class="value">${receiptData?.patientName || ""}</span></div>
+                    <div class="flex"><span class="label">UHID</span><span class="value mono">${receiptData?.uhid || ""}</span></div>
+                    <div class="flex"><span class="label">Department</span><span class="value">${receiptData?.department || ""}</span></div>
+                    <div class="flex"><span class="label">Doctor</span><span class="value">${receiptData?.doctor || ""}</span></div>
+                    <div class="border-t">
+                      <div class="flex"><span class="label">Token</span><span class="token">${receiptData?.token || ""}</span></div>
+                      <div class="flex"><span class="label">Consultation Fee</span><span class="fee">₹${receiptData?.fee?.toLocaleString("en-IN") || "0"}</span></div>
+                      <div class="flex"><span class="label">Payment</span><span class="${receiptData?.paid ? "paid" : "pending"}">${receiptData?.paid ? `Paid (${receiptData.paymentMode})` : "Pending"}</span></div>
+                    </div>
+                    <div class="footer border-t">Thank you for visiting. Get well soon!</div>
+                    </body></html>
+                  `);
+                  printWin.document.close();
+                  printWin.focus();
+                  printWin.print();
+                }}
+                className="flex-1 h-11 bg-[#1A2F5A] text-white rounded-lg text-[13px] font-semibold hover:bg-[#152647] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+              >
+                <Printer className="h-4 w-4" /> Print Receipt
+              </button>
+              <button
+                onClick={() => { onCreated(); onClose(); }}
+                className="flex-1 h-11 bg-slate-100 text-slate-700 rounded-lg text-[13px] font-semibold hover:bg-slate-200 active:scale-[0.98] transition-all"
+              >
+                Done
+              </button>
+            </div>
+          </>
         )}
       </div>
     </div>
