@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -12,6 +12,11 @@ import ExaminationTab from "./tabs/ExaminationTab";
 import RxOrdersTab from "./tabs/RxOrdersTab";
 import HistoryTab from "./tabs/HistoryTab";
 import OverdueFollowupBanner from "@/components/clinical/OverdueFollowupBanner";
+import { getSpecialtySheet, specialtyTabMeta } from "@/lib/specialtyDetection";
+import ObstetricSheet from "@/components/specialty/ObstetricSheet";
+import NeonatalSheet from "@/components/specialty/NeonatalSheet";
+import AnaesthesiaSheet from "@/components/specialty/AnaesthesiaSheet";
+import OphthalmologySheet from "@/components/specialty/OphthalmologySheet";
 
 interface Props {
   token: OpdToken | null;
@@ -82,7 +87,7 @@ const emptyPrescription: PrescriptionData = {
   advice_notes: "", review_date: "", is_signed: false,
 };
 
-const TABS = ["Complaint", "Vitals", "Examination", "Rx & Orders", "History"] as const;
+const BASE_TABS = ["Complaint", "Vitals", "Examination", "Rx & Orders", "History"] as const;
 
 const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onTokenUpdate }) => {
   const { toast } = useToast();
@@ -96,6 +101,24 @@ const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onT
   const [saved, setSaved] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout>>();
   const prevTokenId = useRef<string | null>(null);
+  const [deptName, setDeptName] = useState<string | null>(null);
+
+  // Fetch department name for specialty detection
+  useEffect(() => {
+    if (!token?.department_id) { setDeptName(null); return; }
+    supabase.from('departments').select('name').eq('id', token.department_id).maybeSingle()
+      .then(({ data }) => setDeptName(data?.name || null));
+  }, [token?.department_id]);
+
+  const specialty = useMemo(() => getSpecialtySheet(deptName), [deptName]);
+  const TABS = useMemo(() => {
+    const base = [...BASE_TABS] as string[];
+    if (specialty) {
+      const meta = specialtyTabMeta[specialty];
+      base.push(`${meta.icon} ${meta.label}`);
+    }
+    return base;
+  }, [specialty]);
   const encounterRef = useRef(encounter);
   const prescriptionRef = useRef(prescription);
   encounterRef.current = encounter;
@@ -441,6 +464,18 @@ const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onT
         {activeTab === 2 && <ExaminationTab encounter={encounter} onChange={updateEncounter} />}
         {activeTab === 3 && <RxOrdersTab prescription={prescription} onChange={updatePrescription} hospitalId={hospitalId} patientAllergies={token?.patient?.allergies ? token.patient.allergies.split(",").map(a => a.trim()) : []} />}
         {activeTab === 4 && <HistoryTab token={token} encounterId={encounterId} />}
+        {activeTab === 5 && specialty === 'obstetric' && hospitalId && (
+          <ObstetricSheet patientId={token.patient_id} hospitalId={hospitalId} encounterId={encounterId} />
+        )}
+        {activeTab === 5 && specialty === 'neonatal' && hospitalId && (
+          <NeonatalSheet patientId={token.patient_id} hospitalId={hospitalId} encounterId={encounterId} />
+        )}
+        {activeTab === 5 && specialty === 'anaesthesia' && hospitalId && (
+          <AnaesthesiaSheet patientId={token.patient_id} hospitalId={hospitalId} encounterId={encounterId} />
+        )}
+        {activeTab === 5 && specialty === 'ophthalmology' && hospitalId && (
+          <OphthalmologySheet patientId={token.patient_id} hospitalId={hospitalId} encounterId={encounterId} />
+        )}
       </div>
 
       {/* Bottom action bar */}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { BedDouble, FileText, Pill, ClipboardList, StickyNote, FolderOpen, Phone, Activity, ExternalLink } from "lucide-react";
@@ -15,6 +15,11 @@ import IPDNotesTab from "./tabs/IPDNotesTab";
 import IPDDocumentsTab from "./tabs/IPDDocumentsTab";
 import { useWhatsAppNotification } from "@/components/whatsapp/WhatsAppNotificationCard";
 import { sendDischargeSummaryNotif, sendFeedbackRequest } from "@/lib/whatsapp-notifications";
+import { getSpecialtySheet, specialtyTabMeta } from "@/lib/specialtyDetection";
+import ObstetricSheet from "@/components/specialty/ObstetricSheet";
+import NeonatalSheet from "@/components/specialty/NeonatalSheet";
+import AnaesthesiaSheet from "@/components/specialty/AnaesthesiaSheet";
+import OphthalmologySheet from "@/components/specialty/OphthalmologySheet";
 
 interface Props {
   bed: BedData | null;
@@ -40,11 +45,26 @@ const IPDWorkspace: React.FC<Props> = ({ bed, hospitalId, onRefresh }) => {
   const [patient, setPatient] = useState<PatientDetails | null>(null);
   const [activeTab, setActiveTab] = useState("overview");
   const [userId, setUserId] = useState<string | null>(null);
+  const [deptName, setDeptName] = useState<string | null>(null);
   const { show: showWaNotif, card: waCard } = useWhatsAppNotification();
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id || null));
   }, []);
+
+  // Fetch department name for specialty detection
+  useEffect(() => {
+    if (!bed?.admission) { setDeptName(null); return; }
+    const admData = bed.admission as any;
+    if (admData.department_id) {
+      supabase.from('departments').select('name').eq('id', admData.department_id).maybeSingle()
+        .then(({ data }) => setDeptName(data?.name || null));
+    } else {
+      setDeptName(null);
+    }
+  }, [bed]);
+
+  const specialty = useMemo(() => getSpecialtySheet(deptName), [deptName]);
 
   useEffect(() => {
     if (!bed?.admission) { setPatient(null); return; }
@@ -161,6 +181,7 @@ const IPDWorkspace: React.FC<Props> = ({ bed, hospitalId, onRefresh }) => {
             { v: "wardround", l: "Ward Round" },
             { v: "notes", l: "Notes" },
             { v: "documents", l: "Documents" },
+            ...(specialty ? [{ v: "specialty", l: `${specialtyTabMeta[specialty].icon} ${specialtyTabMeta[specialty].label}` }] : []),
           ].map((t) => (
             <TabsTrigger key={t.v} value={t.v}
               className="text-[13px] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A2F5A] data-[state=active]:text-[#1A2F5A] data-[state=active]:shadow-none data-[state=active]:bg-transparent px-4 h-full"
@@ -187,6 +208,14 @@ const IPDWorkspace: React.FC<Props> = ({ bed, hospitalId, onRefresh }) => {
           <TabsContent value="documents" className="h-full m-0">
             <IPDDocumentsTab admissionId={admissionId} hospitalId={hospitalId} patientId={patient?.id || null} />
           </TabsContent>
+          {specialty && hospitalId && patient && (
+            <TabsContent value="specialty" className="h-full m-0">
+              {specialty === 'obstetric' && <ObstetricSheet patientId={patient.id} hospitalId={hospitalId} admissionId={admissionId} />}
+              {specialty === 'neonatal' && <NeonatalSheet patientId={patient.id} hospitalId={hospitalId} admissionId={admissionId} />}
+              {specialty === 'anaesthesia' && <AnaesthesiaSheet patientId={patient.id} hospitalId={hospitalId} admissionId={admissionId} />}
+              {specialty === 'ophthalmology' && <OphthalmologySheet patientId={patient.id} hospitalId={hospitalId} />}
+            </TabsContent>
+          )}
         </div>
       </Tabs>
 
