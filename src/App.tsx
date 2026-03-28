@@ -110,6 +110,7 @@ const App = () => (
             <Route path="/telemedicine" element={<TelemedicinePage />} />
             <Route path="/inbox" element={<InboxPage />} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/settings/bank-accounts" element={<SettingsBankAccountsPage />} />
             <Route path="/settings/staff" element={<SettingsStaffPage />} />
             <Route path="/settings/departments" element={<SettingsDepartmentsPage />} />
             <Route path="/settings/wards" element={<SettingsWardsPage />} />
