@@ -80,7 +80,7 @@ const DialysisPatientsTab: React.FC<Props> = ({ showRegister, onCloseRegister, o
     if (!user) return;
     const machineType = deriveMachineType(hbv, hcv, hiv);
 
-    const { error } = await supabase.from("dialysis_patients").insert({
+    const { error } = await (supabase as any).from("dialysis_patients").insert({
       hospital_id: user.hospital_id,
       patient_id: patientId,
       diagnosis,
