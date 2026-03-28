@@ -359,6 +359,12 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
                     <CheckCircle className="w-3 h-3 mr-1" /> End Session
                   </Button>
                 )}
+                <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => openEditMachine(m)}>
+                  <Pencil className="w-3 h-3" />
+                </Button>
+                <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-destructive" onClick={() => deactivateMachine(m)}>
+                  <Power className="w-3 h-3" />
+                </Button>
               </div>
             </div>
           );
