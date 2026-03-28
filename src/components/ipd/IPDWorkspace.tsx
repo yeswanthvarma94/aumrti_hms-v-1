@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { BedDouble, FileText, Pill, ClipboardList, StickyNote, FolderOpen, Phone, Activity, ExternalLink } from "lucide-react";
@@ -15,6 +15,11 @@ import IPDNotesTab from "./tabs/IPDNotesTab";
 import IPDDocumentsTab from "./tabs/IPDDocumentsTab";
 import { useWhatsAppNotification } from "@/components/whatsapp/WhatsAppNotificationCard";
 import { sendDischargeSummaryNotif, sendFeedbackRequest } from "@/lib/whatsapp-notifications";
+import { getSpecialtySheet, specialtyTabMeta } from "@/lib/specialtyDetection";
+import ObstetricSheet from "@/components/specialty/ObstetricSheet";
+import NeonatalSheet from "@/components/specialty/NeonatalSheet";
+import AnaesthesiaSheet from "@/components/specialty/AnaesthesiaSheet";
+import OphthalmologySheet from "@/components/specialty/OphthalmologySheet";
 
 interface Props {
   bed: BedData | null;
