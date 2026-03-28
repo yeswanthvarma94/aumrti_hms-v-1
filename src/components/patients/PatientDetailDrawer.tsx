@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { X, Phone, MapPin, Shield, Heart } from "lucide-react";
+import ChronicDiseaseSection from "@/components/clinical/ChronicDiseaseSection";
 
 interface Patient {
   id: string;
