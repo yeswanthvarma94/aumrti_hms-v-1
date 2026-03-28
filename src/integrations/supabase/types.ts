@@ -1755,6 +1755,62 @@ export type Database = {
           },
         ]
       }
+      cycle_instruments: {
+        Row: {
+          cycle_id: string
+          hospital_id: string
+          id: string
+          instrument_id: string | null
+          item_type: string | null
+          set_id: string | null
+        }
+        Insert: {
+          cycle_id: string
+          hospital_id: string
+          id?: string
+          instrument_id?: string | null
+          item_type?: string | null
+          set_id?: string | null
+        }
+        Update: {
+          cycle_id?: string
+          hospital_id?: string
+          id?: string
+          instrument_id?: string | null
+          item_type?: string | null
+          set_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cycle_instruments_cycle_id_fkey"
+            columns: ["cycle_id"]
+            isOneToOne: false
+            referencedRelation: "sterilization_cycles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cycle_instruments_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cycle_instruments_instrument_id_fkey"
+            columns: ["instrument_id"]
+            isOneToOne: false
+            referencedRelation: "instruments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cycle_instruments_set_id_fkey"
+            columns: ["set_id"]
+            isOneToOne: false
+            referencedRelation: "instrument_sets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       department_indents: {
         Row: {
           approved_at: string | null
@@ -3012,6 +3068,113 @@ export type Database = {
             columns: ["item_id"]
             isOneToOne: false
             referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      instrument_sets: {
+        Row: {
+          created_at: string | null
+          hospital_id: string
+          id: string
+          instrument_count: number | null
+          set_code: string
+          set_name: string
+          specialty: string | null
+          status: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          hospital_id: string
+          id?: string
+          instrument_count?: number | null
+          set_code: string
+          set_name: string
+          specialty?: string | null
+          status?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          hospital_id?: string
+          id?: string
+          instrument_count?: number | null
+          set_code?: string
+          set_name?: string
+          specialty?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "instrument_sets_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      instruments: {
+        Row: {
+          barcode: string
+          category: string | null
+          created_at: string | null
+          hospital_id: string
+          id: string
+          instrument_code: string | null
+          instrument_name: string
+          is_active: boolean | null
+          last_sterilized_at: string | null
+          material: string | null
+          max_reprocessing: number | null
+          reprocessing_count: number | null
+          set_id: string | null
+          status: string | null
+        }
+        Insert: {
+          barcode: string
+          category?: string | null
+          created_at?: string | null
+          hospital_id: string
+          id?: string
+          instrument_code?: string | null
+          instrument_name: string
+          is_active?: boolean | null
+          last_sterilized_at?: string | null
+          material?: string | null
+          max_reprocessing?: number | null
+          reprocessing_count?: number | null
+          set_id?: string | null
+          status?: string | null
+        }
+        Update: {
+          barcode?: string
+          category?: string | null
+          created_at?: string | null
+          hospital_id?: string
+          id?: string
+          instrument_code?: string | null
+          instrument_name?: string
+          is_active?: boolean | null
+          last_sterilized_at?: string | null
+          material?: string | null
+          max_reprocessing?: number | null
+          reprocessing_count?: number | null
+          set_id?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "instruments_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "instruments_set_id_fkey"
+            columns: ["set_id"]
+            isOneToOne: false
+            referencedRelation: "instrument_sets"
             referencedColumns: ["id"]
           },
         ]
@@ -6434,6 +6597,89 @@ export type Database = {
           },
         ]
       }
+      set_issues: {
+        Row: {
+          damaged_count: number | null
+          hospital_id: string
+          id: string
+          instruments_issued_count: number
+          instruments_returned_count: number | null
+          issued_at: string | null
+          issued_by: string
+          loss_count: number | null
+          loss_reason: string | null
+          ot_schedule_id: string | null
+          patient_uhid: string | null
+          return_status: string | null
+          returned_at: string | null
+          returned_by: string | null
+          set_id: string
+        }
+        Insert: {
+          damaged_count?: number | null
+          hospital_id: string
+          id?: string
+          instruments_issued_count: number
+          instruments_returned_count?: number | null
+          issued_at?: string | null
+          issued_by: string
+          loss_count?: number | null
+          loss_reason?: string | null
+          ot_schedule_id?: string | null
+          patient_uhid?: string | null
+          return_status?: string | null
+          returned_at?: string | null
+          returned_by?: string | null
+          set_id: string
+        }
+        Update: {
+          damaged_count?: number | null
+          hospital_id?: string
+          id?: string
+          instruments_issued_count?: number
+          instruments_returned_count?: number | null
+          issued_at?: string | null
+          issued_by?: string
+          loss_count?: number | null
+          loss_reason?: string | null
+          ot_schedule_id?: string | null
+          patient_uhid?: string | null
+          return_status?: string | null
+          returned_at?: string | null
+          returned_by?: string | null
+          set_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "set_issues_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "set_issues_issued_by_fkey"
+            columns: ["issued_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "set_issues_returned_by_fkey"
+            columns: ["returned_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "set_issues_set_id_fkey"
+            columns: ["set_id"]
+            isOneToOne: false
+            referencedRelation: "instrument_sets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shift_master: {
         Row: {
           color_code: string | null
@@ -6637,6 +6883,110 @@ export type Database = {
             foreignKeyName: "staff_profiles_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sterilization_cycles: {
+        Row: {
+          autoclave_id: string
+          bi_read_by: string | null
+          bi_result: string | null
+          bi_result_at: string | null
+          biological_indicator_used: boolean | null
+          chemical_indicator_result: string | null
+          created_at: string | null
+          cycle_end_at: string | null
+          cycle_number: string
+          cycle_start_at: string
+          duration_minutes: number | null
+          flash_approved_by: string | null
+          flash_justification: string | null
+          hospital_id: string
+          id: string
+          load_type: string
+          notes: string | null
+          operator_id: string | null
+          pressure_psi: number | null
+          status: string | null
+          sterilization_method: string | null
+          temperature_c: number | null
+        }
+        Insert: {
+          autoclave_id: string
+          bi_read_by?: string | null
+          bi_result?: string | null
+          bi_result_at?: string | null
+          biological_indicator_used?: boolean | null
+          chemical_indicator_result?: string | null
+          created_at?: string | null
+          cycle_end_at?: string | null
+          cycle_number: string
+          cycle_start_at: string
+          duration_minutes?: number | null
+          flash_approved_by?: string | null
+          flash_justification?: string | null
+          hospital_id: string
+          id?: string
+          load_type: string
+          notes?: string | null
+          operator_id?: string | null
+          pressure_psi?: number | null
+          status?: string | null
+          sterilization_method?: string | null
+          temperature_c?: number | null
+        }
+        Update: {
+          autoclave_id?: string
+          bi_read_by?: string | null
+          bi_result?: string | null
+          bi_result_at?: string | null
+          biological_indicator_used?: boolean | null
+          chemical_indicator_result?: string | null
+          created_at?: string | null
+          cycle_end_at?: string | null
+          cycle_number?: string
+          cycle_start_at?: string
+          duration_minutes?: number | null
+          flash_approved_by?: string | null
+          flash_justification?: string | null
+          hospital_id?: string
+          id?: string
+          load_type?: string
+          notes?: string | null
+          operator_id?: string | null
+          pressure_psi?: number | null
+          status?: string | null
+          sterilization_method?: string | null
+          temperature_c?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sterilization_cycles_bi_read_by_fkey"
+            columns: ["bi_read_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sterilization_cycles_flash_approved_by_fkey"
+            columns: ["flash_approved_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sterilization_cycles_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sterilization_cycles_operator_id_fkey"
+            columns: ["operator_id"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },

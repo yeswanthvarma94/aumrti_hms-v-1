@@ -68,6 +68,7 @@ import GoLiveChecklistPage from "./pages/admin/GoLiveChecklistPage";
 import AccountsPage from "./pages/accounts/AccountsPage";
 import OpeningBalancesPage from "./pages/accounts/OpeningBalancesPage";
 import BloodBankPage from "./pages/blood-bank/BloodBankPage";
+import CSSDPage from "./pages/cssd/CSSDPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -145,6 +146,7 @@ const App = () => (
             <Route path="/accounts" element={<AccountsPage />} />
             <Route path="/accounts/setup" element={<OpeningBalancesPage />} />
             <Route path="/blood-bank" element={<BloodBankPage />} />
+            <Route path="/cssd" element={<CSSDPage />} />
             <Route path="/admin/go-live" element={<GoLiveChecklistPage />} />
           </Route>
 
