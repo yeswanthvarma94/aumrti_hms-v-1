@@ -299,6 +299,14 @@ const SterilizeTab: React.FC<Props> = ({ showNewCycle, onCloseNewCycle, onRefres
           if (item.set_id) await supabase.from("instrument_sets").update({ status: "sterile" }).eq("id", item.set_id);
         }
       }
+      // NABH evidence: BI passed
+      if (user) {
+        logNABHEvidence(
+          user.hospital_id,
+          "COP.8",
+          `Biological Indicator PASSED for cycle ${cycle.cycle_number}. ${items?.length || 0} sets released as sterile.`
+        );
+      }
       toast({ title: "✓ BI Passed — sets marked sterile" });
     } else {
       if (items) {
