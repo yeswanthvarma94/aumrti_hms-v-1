@@ -110,14 +110,16 @@ const AppHeader: React.FC = () => {
           </Breadcrumb>
         </div>
 
-        {/* Center: search */}
+        {/* Center: search — triggers Cmd+K palette */}
         <div className="flex-1 flex justify-center max-w-md mx-auto">
           <button
-            onClick={() => setSearchOpen(true)}
+            onClick={() => {
+              window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true, bubbles: true }));
+            }}
             className="flex items-center gap-2 w-full max-w-sm h-9 rounded-md border border-input bg-background px-3 text-sm text-muted-foreground hover:bg-muted transition-colors"
           >
             <Search size={16} />
-            <span className="flex-1 text-left">Search patients, bills...</span>
+            <span className="flex-1 text-left">Search modules...</span>
             <kbd className="hidden sm:inline-flex h-5 items-center gap-1 rounded border border-border bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">
               ⌘K
             </kbd>
