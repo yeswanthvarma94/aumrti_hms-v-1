@@ -77,6 +77,7 @@ const navGroups: NavGroup[] = [
       { label: "Operation Theatre", path: "/ot", icon: Scissors, subtitle: "OT scheduling & checklists" },
       { label: "Blood Bank", path: "/blood-bank", icon: Droplets, subtitle: "Inventory, cross-match & donors" },
       { label: "CSSD", path: "/cssd", icon: ShieldCheck, subtitle: "Central sterile supply" },
+      { label: "Dialysis", path: "/dialysis", icon: Activity, subtitle: "Haemodialysis unit" },
       { label: "Nursing", path: "/nursing", icon: HeartPulse, subtitle: "MAR, vitals & handover" },
     ],
   },
