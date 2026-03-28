@@ -528,7 +528,7 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated }) => {
               Proceed to Payment →
             </button>
           </>
-        ) : (
+        ) : step === "payment" ? (
           /* ══════════ STEP 2: PAYMENT ══════════ */
           <>
             <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
