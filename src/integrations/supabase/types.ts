@@ -2279,6 +2279,306 @@ export type Database = {
           },
         ]
       }
+      dialysis_machines: {
+        Row: {
+          created_at: string | null
+          current_patient_id: string | null
+          disinfection_due_at: string | null
+          hospital_id: string
+          id: string
+          is_active: boolean
+          last_disinfected_at: string | null
+          machine_name: string
+          machine_type: string
+          model: string | null
+          serial_number: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string | null
+          current_patient_id?: string | null
+          disinfection_due_at?: string | null
+          hospital_id: string
+          id?: string
+          is_active?: boolean
+          last_disinfected_at?: string | null
+          machine_name: string
+          machine_type?: string
+          model?: string | null
+          serial_number?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string | null
+          current_patient_id?: string | null
+          disinfection_due_at?: string | null
+          hospital_id?: string
+          id?: string
+          is_active?: boolean
+          last_disinfected_at?: string | null
+          machine_name?: string
+          machine_type?: string
+          model?: string | null
+          serial_number?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dialysis_machines_current_patient_id_fkey"
+            columns: ["current_patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dialysis_machines_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dialysis_patients: {
+        Row: {
+          access_site: string | null
+          access_type: string
+          created_at: string | null
+          diagnosis: string
+          dialysis_frequency: string
+          dry_weight_kg: number | null
+          hbv_status: string
+          hcv_status: string
+          hiv_status: string
+          hospital_id: string
+          id: string
+          is_active: boolean
+          machine_type_required: string
+          patient_id: string
+          registered_at: string | null
+          session_duration_hrs: number
+          treating_doctor: string | null
+        }
+        Insert: {
+          access_site?: string | null
+          access_type?: string
+          created_at?: string | null
+          diagnosis?: string
+          dialysis_frequency?: string
+          dry_weight_kg?: number | null
+          hbv_status?: string
+          hcv_status?: string
+          hiv_status?: string
+          hospital_id: string
+          id?: string
+          is_active?: boolean
+          machine_type_required?: string
+          patient_id: string
+          registered_at?: string | null
+          session_duration_hrs?: number
+          treating_doctor?: string | null
+        }
+        Update: {
+          access_site?: string | null
+          access_type?: string
+          created_at?: string | null
+          diagnosis?: string
+          dialysis_frequency?: string
+          dry_weight_kg?: number | null
+          hbv_status?: string
+          hcv_status?: string
+          hiv_status?: string
+          hospital_id?: string
+          id?: string
+          is_active?: boolean
+          machine_type_required?: string
+          patient_id?: string
+          registered_at?: string | null
+          session_duration_hrs?: number
+          treating_doctor?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dialysis_patients_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dialysis_patients_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dialysis_patients_treating_doctor_fkey"
+            columns: ["treating_doctor"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dialysis_sessions: {
+        Row: {
+          access_used: string | null
+          complications: string | null
+          created_at: string | null
+          dialysis_patient_id: string
+          ended_at: string | null
+          heparin_dose: string | null
+          hospital_id: string
+          id: string
+          kt_v: number | null
+          machine_id: string | null
+          notes: string | null
+          performed_by: string | null
+          post_bp_diastolic: number | null
+          post_bp_systolic: number | null
+          post_weight_kg: number | null
+          pre_bp_diastolic: number | null
+          pre_bp_systolic: number | null
+          pre_weight_kg: number | null
+          session_date: string
+          shift: string | null
+          started_at: string | null
+          status: string
+          uf_achieved_ml: number | null
+          uf_goal_ml: number | null
+        }
+        Insert: {
+          access_used?: string | null
+          complications?: string | null
+          created_at?: string | null
+          dialysis_patient_id: string
+          ended_at?: string | null
+          heparin_dose?: string | null
+          hospital_id: string
+          id?: string
+          kt_v?: number | null
+          machine_id?: string | null
+          notes?: string | null
+          performed_by?: string | null
+          post_bp_diastolic?: number | null
+          post_bp_systolic?: number | null
+          post_weight_kg?: number | null
+          pre_bp_diastolic?: number | null
+          pre_bp_systolic?: number | null
+          pre_weight_kg?: number | null
+          session_date?: string
+          shift?: string | null
+          started_at?: string | null
+          status?: string
+          uf_achieved_ml?: number | null
+          uf_goal_ml?: number | null
+        }
+        Update: {
+          access_used?: string | null
+          complications?: string | null
+          created_at?: string | null
+          dialysis_patient_id?: string
+          ended_at?: string | null
+          heparin_dose?: string | null
+          hospital_id?: string
+          id?: string
+          kt_v?: number | null
+          machine_id?: string | null
+          notes?: string | null
+          performed_by?: string | null
+          post_bp_diastolic?: number | null
+          post_bp_systolic?: number | null
+          post_weight_kg?: number | null
+          pre_bp_diastolic?: number | null
+          pre_bp_systolic?: number | null
+          pre_weight_kg?: number | null
+          session_date?: string
+          shift?: string | null
+          started_at?: string | null
+          status?: string
+          uf_achieved_ml?: number | null
+          uf_goal_ml?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dialysis_sessions_dialysis_patient_id_fkey"
+            columns: ["dialysis_patient_id"]
+            isOneToOne: false
+            referencedRelation: "dialysis_patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dialysis_sessions_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dialysis_sessions_machine_id_fkey"
+            columns: ["machine_id"]
+            isOneToOne: false
+            referencedRelation: "dialysis_machines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dialysis_sessions_performed_by_fkey"
+            columns: ["performed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dialyzer_reuse: {
+        Row: {
+          created_at: string | null
+          current_use_count: number
+          dialysis_patient_id: string
+          dialyzer_model: string
+          hospital_id: string
+          id: string
+          is_active: boolean
+          max_reuse_count: number
+        }
+        Insert: {
+          created_at?: string | null
+          current_use_count?: number
+          dialysis_patient_id: string
+          dialyzer_model: string
+          hospital_id: string
+          id?: string
+          is_active?: boolean
+          max_reuse_count?: number
+        }
+        Update: {
+          created_at?: string | null
+          current_use_count?: number
+          dialysis_patient_id?: string
+          dialyzer_model?: string
+          hospital_id?: string
+          id?: string
+          is_active?: boolean
+          max_reuse_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dialyzer_reuse_dialysis_patient_id_fkey"
+            columns: ["dialysis_patient_id"]
+            isOneToOne: false
+            referencedRelation: "dialysis_patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dialyzer_reuse_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       discount_approvals: {
         Row: {
           approved_by: string | null
