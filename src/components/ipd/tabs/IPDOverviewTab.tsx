@@ -9,6 +9,8 @@ interface Props {
   admissionId: string;
   hospitalId: string | null;
   onTabChange: (tab: string) => void;
+  patientName?: string;
+  patientPhone?: string | null;
 }
 
 const IPDOverviewTab: React.FC<Props> = ({ admissionId, hospitalId, onTabChange }) => {
