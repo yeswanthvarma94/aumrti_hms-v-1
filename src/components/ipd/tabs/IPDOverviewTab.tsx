@@ -157,6 +157,19 @@ const IPDOverviewTab: React.FC<Props> = ({ admissionId, hospitalId, onTabChange,
           </div>
         </div>
       </div>
+
+      {/* Discharge Instructions */}
+      {hospitalId && patientName && (
+        <DischargeInstructions
+          hospitalId={hospitalId}
+          patientName={patientName}
+          patientPhone={patientPhone || null}
+          diagnosis={admDiagnosis}
+          medications={medications.map((m) => ({ drug_name: m.drug_name, dose: m.dose, frequency: m.frequency }))}
+          followupDate={null}
+          restrictions={null}
+        />
+      )}
     </div>
   );
 };
