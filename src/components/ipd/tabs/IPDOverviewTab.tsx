@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Activity, Pill, ClipboardList, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import DischargeInstructions from "@/components/ipd/DischargeInstructions";
 
 interface Props {
   admissionId: string;
