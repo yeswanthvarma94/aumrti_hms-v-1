@@ -271,7 +271,7 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
   };
 
   const openEditMachine = (m: any) => {
-    setMName(m.machine_name || ""); setMModel(m.model || ""); setMType(m.machine_type || "clean"); setMLocation(m.location || "");
+    setMName(m.machine_name || ""); setMModel(m.model || ""); setMType(m.machine_type || "clean");
     setMachineModal({ open: true, editing: m });
   };
 
