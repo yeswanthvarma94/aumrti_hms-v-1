@@ -60,7 +60,7 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
   const [mName, setMName] = useState("");
   const [mModel, setMModel] = useState("");
   const [mType, setMType] = useState("clean");
-  const [mLocation, setMLocation] = useState("");
+  
 
   // End session state
   const [endMachine, setEndMachine] = useState<any>(null);
@@ -266,12 +266,12 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
   };
 
   const openAddMachine = () => {
-    setMName(""); setMModel(""); setMType("clean"); setMLocation("");
+    setMName(""); setMModel(""); setMType("clean");
     setMachineModal({ open: true, editing: null });
   };
 
   const openEditMachine = (m: any) => {
-    setMName(m.machine_name || ""); setMModel(m.model || ""); setMType(m.machine_type || "clean"); setMLocation(m.location || "");
+    setMName(m.machine_name || ""); setMModel(m.model || ""); setMType(m.machine_type || "clean");
     setMachineModal({ open: true, editing: m });
   };
 
@@ -281,15 +281,17 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
     if (!user) return;
 
     if (machineModal.editing) {
-      await (supabase as any).from("dialysis_machines").update({
-        machine_name: mName.trim(), model: mModel.trim() || null, machine_type: mType, location: mLocation.trim() || null,
+      const { error } = await (supabase as any).from("dialysis_machines").update({
+        machine_name: mName.trim(), model: mModel.trim() || null, machine_type: mType,
       }).eq("id", machineModal.editing.id);
+      if (error) { toast({ title: "Update failed", description: error.message, variant: "destructive" }); return; }
       toast({ title: `${mName} updated` });
     } else {
-      await (supabase as any).from("dialysis_machines").insert({
+      const { error } = await (supabase as any).from("dialysis_machines").insert({
         hospital_id: user.hospital_id, machine_name: mName.trim(), model: mModel.trim() || null,
-        machine_type: mType, location: mLocation.trim() || null, status: "available", is_active: true,
+        machine_type: mType, status: "available", is_active: true,
       });
+      if (error) { toast({ title: "Add failed", description: error.message, variant: "destructive" }); return; }
       toast({ title: `${mName} added` });
     }
     setMachineModal({ open: false, editing: null });
@@ -483,7 +485,6 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
                 </SelectContent>
               </Select>
             </div>
-            <div><Label className="text-xs">Location</Label><Input value={mLocation} onChange={e => setMLocation(e.target.value)} className="h-9" placeholder="e.g. Room 3" /></div>
             <Button className="w-full" onClick={saveMachine} disabled={!mName.trim()}>{machineModal.editing ? "Update" : "Add Machine"}</Button>
           </div>
         </DialogContent>
