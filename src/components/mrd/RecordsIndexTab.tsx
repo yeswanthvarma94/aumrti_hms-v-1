@@ -23,34 +23,26 @@ const statusColors: Record<string, string> = {
   transferred: "bg-amber-100 text-amber-700",
 };
 
-const RecordsIndexTab: React.FC = () => {
+interface Props {
+  hospitalId: string;
+}
+
+const RecordsIndexTab: React.FC<Props> = ({ hospitalId }) => {
   const [records, setRecords] = useState<any[]>([]);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("active");
   const [loading, setLoading] = useState(true);
-  const [hospitalId, setHospitalId] = useState("");
-
-  // Bundle modal
   const [bundleRecord, setBundleRecord] = useState<any>(null);
 
-  useEffect(() => { init(); }, []);
   useEffect(() => { if (hospitalId) fetchRecords(); }, [typeFilter, statusFilter, hospitalId]);
 
-  const init = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const { data: userData } = await (supabase as any).from("users").select("hospital_id").eq("auth_user_id", user.id).single();
-    if (userData) setHospitalId(userData.hospital_id);
-  };
-
   const fetchRecords = async () => {
+    if (!hospitalId) return;
     setLoading(true);
     let query = (supabase as any).from("medical_records").select("*, patients(full_name, uhid)").eq("hospital_id", hospitalId).order("created_at", { ascending: false }).limit(50);
-
     if (typeFilter !== "all") query = query.eq("record_type", typeFilter);
     if (statusFilter !== "all") query = query.eq("status", statusFilter);
-
     const { data, error } = await query;
     if (error) { toast.error(error.message); setLoading(false); return; }
     setRecords(data || []);
@@ -129,7 +121,6 @@ const RecordsIndexTab: React.FC = () => {
         </Table>
       </div>
 
-      {/* Case Bundle Modal */}
       {bundleRecord && (
         <CaseBundleModal
           open={!!bundleRecord}

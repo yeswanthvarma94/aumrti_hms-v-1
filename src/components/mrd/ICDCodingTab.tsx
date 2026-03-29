@@ -8,7 +8,6 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Check, X, Bot, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { callAI } from "@/lib/aiProvider";
 import { toast } from "sonner";
 
 const statusColors: Record<string, string> = {
@@ -26,7 +25,12 @@ interface AISuggestion {
   reasoning?: string;
 }
 
-const ICDCodingTab: React.FC = () => {
+interface Props {
+  hospitalId: string;
+  onRefresh?: () => void;
+}
+
+const ICDCodingTab: React.FC<Props> = ({ hospitalId, onRefresh }) => {
   const [items, setItems] = useState<any[]>([]);
   const [selected, setSelected] = useState<any>(null);
   const [filter, setFilter] = useState("pending");
@@ -35,24 +39,16 @@ const ICDCodingTab: React.FC = () => {
   const [primaryDesc, setPrimaryDesc] = useState("");
   const [pcsCode, setPcsCode] = useState("");
   const [saving, setSaving] = useState(false);
-  const [hospitalId, setHospitalId] = useState("");
 
   // AI suggestion state
   const [aiLoading, setAiLoading] = useState(false);
   const [aiSuggestion, setAiSuggestion] = useState<AISuggestion | null>(null);
   const [aiDismissed, setAiDismissed] = useState(false);
 
-  useEffect(() => { init(); }, []);
   useEffect(() => { if (hospitalId) fetchItems(); }, [filter, hospitalId]);
 
-  const init = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const { data: userData } = await (supabase as any).from("users").select("id, hospital_id").eq("auth_user_id", user.id).single();
-    if (userData) setHospitalId(userData.hospital_id);
-  };
-
   const fetchItems = async () => {
+    if (!hospitalId) return;
     setLoading(true);
     let query = (supabase as any).from("icd_codings").select("*").eq("hospital_id", hospitalId).order("created_at", { ascending: false }).limit(100);
     if (filter !== "all") query = query.eq("status", filter);
@@ -64,64 +60,36 @@ const ICDCodingTab: React.FC = () => {
 
   const suggestICDCode = useCallback(async (item: any) => {
     if (!item.visit_id || !item.visit_type || !hospitalId) return;
-    if (item.ai_suggestion) return; // already has suggestion
+    if (item.ai_suggestion) return;
 
     setAiLoading(true);
     setAiSuggestion(null);
     setAiDismissed(false);
 
-    let clinicalText = "";
-
     try {
-      if (item.visit_type === "ipd") {
-        const { data: admission } = await (supabase as any).from("admissions")
-          .select("admitting_diagnosis, status").eq("id", item.visit_id).single();
-        clinicalText = [admission?.admitting_diagnosis].filter(Boolean).join("\n");
-      }
-
-      if (item.visit_type === "opd") {
-        const { data: encounter } = await (supabase as any).from("opd_encounters")
-          .select("chief_complaint, soap_notes, diagnosis").eq("id", item.visit_id).single();
-        clinicalText = [encounter?.chief_complaint, encounter?.soap_notes, encounter?.diagnosis].filter(Boolean).join("\n");
-      }
-
-      if (!clinicalText) {
-        setAiLoading(false);
-        return;
-      }
-
-      const response = await callAI({
-        featureKey: "icd_coding",
-        hospitalId,
-        prompt: `You are a medical coding specialist trained in ICD-10-CM.
-
-Based on this clinical documentation, suggest the most appropriate primary ICD-10 code.
-
-Return ONLY a JSON object:
-{
-  "primary_code": "J18.9",
-  "primary_description": "Pneumonia, unspecified organism",
-  "confidence": 0.87,
-  "secondary_suggestions": [
-    {"code": "E11.9", "description": "Type 2 diabetes mellitus without complications"}
-  ],
-  "reasoning": "One sentence explaining why this code fits"
-}
-
-Clinical documentation:
-${clinicalText}`,
-        maxTokens: 400,
+      const { data, error } = await supabase.functions.invoke("ai-icd-suggest", {
+        body: { visit_type: item.visit_type, visit_id: item.visit_id, hospital_id: hospitalId },
       });
 
-      if (response.error) {
-        console.error("AI ICD suggestion error:", response.error);
+      if (error) {
+        console.error("ICD AI error:", error);
+        toast.error("AI suggestion failed — enter code manually");
         setAiLoading(false);
         return;
       }
 
-      const parsed: AISuggestion = JSON.parse(
-        response.text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim()
-      );
+      if (data?.error) {
+        console.error("ICD AI error:", data.error);
+        if (data.error.includes("No clinical notes")) {
+          toast.info("No clinical notes found for AI suggestion");
+        } else {
+          toast.error(data.error);
+        }
+        setAiLoading(false);
+        return;
+      }
+
+      const parsed: AISuggestion = data;
 
       // Save to DB
       await (supabase as any).from("icd_codings").update({
@@ -132,7 +100,7 @@ ${clinicalText}`,
       setAiSuggestion(parsed);
     } catch (e) {
       console.error("ICD suggestion failed:", e);
-      // Graceful degradation — coder enters manually
+      toast.error("AI suggestion failed");
     }
     setAiLoading(false);
   }, [hospitalId]);
@@ -144,7 +112,6 @@ ${clinicalText}`,
     setPcsCode(item.pcs_code || "");
     setAiDismissed(false);
 
-    // If item already has AI suggestion in DB, show it
     if (item.ai_suggestion) {
       setAiSuggestion({
         primary_code: item.ai_suggestion,
@@ -154,7 +121,6 @@ ${clinicalText}`,
       setAiLoading(false);
     } else {
       setAiSuggestion(null);
-      // Auto-trigger AI for pending items without suggestion
       if (item.status === "pending") {
         suggestICDCode(item);
       }
@@ -200,11 +166,12 @@ ${clinicalText}`,
 
     const { error } = await (supabase as any).from("icd_codings").update(updates).eq("id", selected.id);
     if (error) { toast.error(error.message); setSaving(false); return; }
-    toast.success(validate ? "Coding validated" : "Coding saved");
+    toast.success(validate ? "Coding validated ✓" : "Coding saved");
     setSelected(null);
     setAiSuggestion(null);
     setSaving(false);
     fetchItems();
+    onRefresh?.();
   };
 
   const confidenceColor = (c: number) => {
@@ -278,13 +245,9 @@ ${clinicalText}`,
                   <Bot className="h-4 w-4 text-accent-foreground" />
                   <span className="text-sm font-semibold text-accent-foreground">AI Suggestion</span>
                 </div>
-
-                {/* Primary Code */}
                 <div className="text-sm font-bold">
                   {aiSuggestion.primary_code} — {aiSuggestion.primary_description}
                 </div>
-
-                {/* Confidence Bar */}
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-muted-foreground">Confidence:</span>
                   <Progress value={(aiSuggestion.confidence || 0) * 100} className="h-2 flex-1 max-w-[200px]" />
@@ -292,13 +255,9 @@ ${clinicalText}`,
                     {Math.round((aiSuggestion.confidence || 0) * 100)}%
                   </span>
                 </div>
-
-                {/* Reasoning */}
                 {aiSuggestion.reasoning && (
                   <p className="text-xs italic text-muted-foreground">{aiSuggestion.reasoning}</p>
                 )}
-
-                {/* Secondary suggestions */}
                 {aiSuggestion.secondary_suggestions && aiSuggestion.secondary_suggestions.length > 0 && (
                   <div className="flex flex-wrap gap-1 pt-1">
                     {aiSuggestion.secondary_suggestions.map((s, i) => (
@@ -308,8 +267,6 @@ ${clinicalText}`,
                     ))}
                   </div>
                 )}
-
-                {/* Actions */}
                 <div className="flex gap-2 pt-1">
                   <Button size="sm" className="h-7 text-xs" onClick={acceptAll}>
                     <Check className="h-3 w-3 mr-1" /> Accept All
@@ -330,14 +287,10 @@ ${clinicalText}`,
               <Input value={primaryCode} onChange={(e) => setPrimaryCode(e.target.value)} placeholder="e.g. J18.9" />
               <Input value={primaryDesc} onChange={(e) => setPrimaryDesc(e.target.value)} placeholder="Description" />
             </div>
-
-            {/* PCS Code */}
             <div className="space-y-2">
               <Label className="text-xs">Procedure Code (PCS)</Label>
               <Input value={pcsCode} onChange={(e) => setPcsCode(e.target.value)} placeholder="Optional procedure code" />
             </div>
-
-            {/* Actions */}
             <div className="flex gap-2 pt-2">
               <Button size="sm" onClick={() => saveCoding(false)} disabled={saving || !primaryCode}>
                 Save Coding

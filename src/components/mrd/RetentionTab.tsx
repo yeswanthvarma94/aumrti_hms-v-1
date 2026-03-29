@@ -5,27 +5,22 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-const RetentionTab: React.FC = () => {
+interface Props {
+  hospitalId: string;
+  userId: string;
+}
+
+const RetentionTab: React.FC<Props> = ({ hospitalId, userId }) => {
   const [schedules, setSchedules] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [hospitalId, setHospitalId] = useState("");
-  const [userId, setUserId] = useState("");
 
-  useEffect(() => { init(); }, []);
+  useEffect(() => { if (hospitalId) fetchSchedules(); }, [hospitalId]);
 
-  const init = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const { data: userData } = await (supabase as any).from("users").select("id, hospital_id").eq("auth_user_id", user.id).single();
-    if (!userData) return;
-    setHospitalId(userData.hospital_id);
-    setUserId(userData.id);
-    fetchSchedules(userData.hospital_id);
-  };
-
-  const fetchSchedules = async (hid: string) => {
+  const fetchSchedules = async () => {
+    if (!hospitalId) return;
     setLoading(true);
-    const { data } = await (supabase as any).from("retention_schedules").select("*, patients(full_name, uhid)").eq("hospital_id", hid).eq("is_destroyed", false).order("retain_until", { ascending: true }).limit(100);
+    const { data, error } = await (supabase as any).from("retention_schedules").select("*, patients(full_name, uhid)").eq("hospital_id", hospitalId).eq("is_destroyed", false).order("retain_until", { ascending: true }).limit(100);
+    if (error) toast.error(error.message);
     setSchedules(data || []);
     setLoading(false);
   };
@@ -34,7 +29,6 @@ const RetentionTab: React.FC = () => {
     const now = new Date();
     const until = new Date(retainUntil);
     const daysRemaining = Math.ceil((until.getTime() - now.getTime()) / 86400000);
-
     if (daysRemaining < 0) return { label: "OVERDUE", color: "bg-red-600 text-white", days: daysRemaining };
     if (daysRemaining <= 30) return { label: "Due for Review", color: "bg-red-100 text-red-700", days: daysRemaining };
     if (daysRemaining <= 365) return { label: "Review Soon", color: "bg-amber-100 text-amber-700", days: daysRemaining };
@@ -49,7 +43,7 @@ const RetentionTab: React.FC = () => {
     }).eq("id", id);
     if (error) { toast.error(error.message); return; }
     toast.success("Marked as reviewed & authorised");
-    fetchSchedules(hospitalId);
+    fetchSchedules();
   };
 
   return (
