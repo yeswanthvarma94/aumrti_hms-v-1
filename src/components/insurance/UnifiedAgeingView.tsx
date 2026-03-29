@@ -20,11 +20,13 @@ const UnifiedAgeingView: React.FC = () => {
 
   const loadData = async () => {
     setLoading(true);
-    const [privateRes, govtRes] = await Promise.all([
+    const [privateRes, govtRes, schemesRes] = await Promise.all([
       supabase.from("insurance_claims").select("tpa_name, claimed_amount, approved_amount, settled_amount, status"),
-      supabase.from("pmjay_claims").select("scheme_name, claimed_amount, approved_amount, settled_amount, status"),
+      supabase.from("pmjay_claims").select("scheme_id, claimed_amount, approved_amount, settled_amount, status"),
+      supabase.from("govt_schemes").select("id, scheme_name"),
     ]);
 
+    const schemeMap = Object.fromEntries((schemesRes.data || []).map(s => [s.id, s.scheme_name]));
     const tpaMap: Record<string, AgeingRow> = {};
 
     (privateRes.data || []).forEach(c => {
@@ -38,15 +40,15 @@ const UnifiedAgeingView: React.FC = () => {
       if (c.status === "settled") r.settled += settledAmt;
     });
 
-    (govtRes.data || []).forEach(c => {
-      const name = c.scheme_name || "Govt Scheme";
+    (govtRes.data || []).forEach((c: any) => {
+      const name = schemeMap[c.scheme_id] || "Govt Scheme";
       if (!tpaMap[name]) tpaMap[name] = { source: name, submitted: 0, pending: 0, approved: 0, settled: 0, outstanding: 0 };
       const r = tpaMap[name];
       const claimed = Number(c.claimed_amount || 0);
       const settledAmt = Number(c.settled_amount || 0);
       r.submitted++;
-      if (["submitted", "under_review"].includes(c.status)) { r.pending += claimed; r.outstanding += claimed; }
-      if (["approved", "partially_approved"].includes(c.status)) { r.approved += Number(c.approved_amount || claimed); r.outstanding += claimed - settledAmt; }
+      if (["submitted", "under_review"].includes(c.status || "")) { r.pending += claimed; r.outstanding += claimed; }
+      if (["approved", "partially_approved"].includes(c.status || "")) { r.approved += Number(c.approved_amount || claimed); r.outstanding += claimed - settledAmt; }
       if (c.status === "settled") r.settled += settledAmt;
     });
 
