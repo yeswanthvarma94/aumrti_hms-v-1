@@ -121,14 +121,17 @@ const PmjayPreAuthTab: React.FC<Props> = ({ showNewForm, onFormClosed }) => {
       if (pa.admission_id) {
         const { data: admission } = await supabase
           .from("admissions")
-          .select("*, patients(full_name, age, gender), wards(ward_name)")
+          .select("*, patients(full_name, dob, gender), wards(ward_name)")
           .eq("id", pa.admission_id)
           .single();
         if (admission) {
           const p = admission.patients as any;
           const w = admission.wards as any;
+          const patientAge = p?.dob
+            ? Math.floor((Date.now() - new Date(p.dob).getTime()) / (365.25 * 86400000))
+            : "N/A";
           admissionContext = `
-Patient: ${p?.full_name || "Unknown"}, ${p?.age || "N/A"}yrs, ${p?.gender || "N/A"}
+Patient: ${p?.full_name || "Unknown"}, ${patientAge}yrs, ${p?.gender || "N/A"}
 Admission date: ${admission.admitted_at || "N/A"}
 Diagnosis: ${admission.admitting_diagnosis || "As per treating doctor"}
 Ward: ${w?.ward_name || "N/A"}`;
