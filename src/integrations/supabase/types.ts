@@ -320,6 +320,72 @@ export type Database = {
           },
         ]
       }
+      amc_contracts: {
+        Row: {
+          annual_cost: number
+          contact_person: string | null
+          contact_phone: string | null
+          contract_number: string | null
+          coverage_type: string | null
+          created_at: string | null
+          end_date: string
+          equipment_id: string
+          hospital_id: string
+          id: string
+          is_active: boolean | null
+          start_date: string
+          terms: string | null
+          vendor_name: string
+        }
+        Insert: {
+          annual_cost: number
+          contact_person?: string | null
+          contact_phone?: string | null
+          contract_number?: string | null
+          coverage_type?: string | null
+          created_at?: string | null
+          end_date: string
+          equipment_id: string
+          hospital_id: string
+          id?: string
+          is_active?: boolean | null
+          start_date: string
+          terms?: string | null
+          vendor_name: string
+        }
+        Update: {
+          annual_cost?: number
+          contact_person?: string | null
+          contact_phone?: string | null
+          contract_number?: string | null
+          coverage_type?: string | null
+          created_at?: string | null
+          end_date?: string
+          equipment_id?: string
+          hospital_id?: string
+          id?: string
+          is_active?: boolean | null
+          start_date?: string
+          terms?: string | null
+          vendor_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "amc_contracts_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipment_master"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "amc_contracts_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       anaesthesia_records: {
         Row: {
           airway_mouth_opening: string | null
@@ -1448,6 +1514,145 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "branches_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      breakdown_logs: {
+        Row: {
+          created_at: string | null
+          description: string
+          downtime_hrs: number | null
+          equipment_id: string
+          hospital_id: string
+          id: string
+          parts_replaced: string | null
+          repair_cost: number | null
+          repair_started_at: string | null
+          repaired_at: string | null
+          reported_at: string | null
+          reported_by: string
+          root_cause: string | null
+          severity: string | null
+          status: string | null
+          vendor_called_at: string | null
+          vendor_name: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description: string
+          downtime_hrs?: number | null
+          equipment_id: string
+          hospital_id: string
+          id?: string
+          parts_replaced?: string | null
+          repair_cost?: number | null
+          repair_started_at?: string | null
+          repaired_at?: string | null
+          reported_at?: string | null
+          reported_by: string
+          root_cause?: string | null
+          severity?: string | null
+          status?: string | null
+          vendor_called_at?: string | null
+          vendor_name?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string
+          downtime_hrs?: number | null
+          equipment_id?: string
+          hospital_id?: string
+          id?: string
+          parts_replaced?: string | null
+          repair_cost?: number | null
+          repair_started_at?: string | null
+          repaired_at?: string | null
+          reported_at?: string | null
+          reported_by?: string
+          root_cause?: string | null
+          severity?: string | null
+          status?: string | null
+          vendor_called_at?: string | null
+          vendor_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "breakdown_logs_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipment_master"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "breakdown_logs_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "breakdown_logs_reported_by_fkey"
+            columns: ["reported_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      calibration_records: {
+        Row: {
+          calibrated_at: string
+          calibrated_by: string
+          certificate_no: string | null
+          certificate_url: string | null
+          created_at: string | null
+          equipment_id: string
+          hospital_id: string
+          id: string
+          next_due: string
+          observations: string | null
+          result: string
+        }
+        Insert: {
+          calibrated_at: string
+          calibrated_by: string
+          certificate_no?: string | null
+          certificate_url?: string | null
+          created_at?: string | null
+          equipment_id: string
+          hospital_id: string
+          id?: string
+          next_due: string
+          observations?: string | null
+          result: string
+        }
+        Update: {
+          calibrated_at?: string
+          calibrated_by?: string
+          certificate_no?: string | null
+          certificate_url?: string | null
+          created_at?: string | null
+          equipment_id?: string
+          hospital_id?: string
+          id?: string
+          next_due?: string
+          observations?: string | null
+          result?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calibration_records_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipment_master"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calibration_records_hospital_id_fkey"
             columns: ["hospital_id"]
             isOneToOne: false
             referencedRelation: "hospitals"
@@ -3719,6 +3924,114 @@ export type Database = {
             columns: ["patient_id"]
             isOneToOne: false
             referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      equipment_master: {
+        Row: {
+          aerb_expiry: string | null
+          aerb_license_no: string | null
+          amc_cost: number | null
+          amc_expiry: string | null
+          amc_start: string | null
+          amc_type: string | null
+          amc_vendor: string | null
+          asset_value: number | null
+          category: string
+          created_at: string | null
+          department_id: string | null
+          equipment_code: string
+          equipment_name: string
+          hospital_id: string
+          id: string
+          is_active: boolean | null
+          location: string | null
+          make: string
+          model: string
+          nabl_ref: string | null
+          notes: string | null
+          purchase_cost: number | null
+          purchase_date: string | null
+          serial_number: string | null
+          status: string | null
+          supplier_name: string | null
+          warranty_expiry: string | null
+          warranty_vendor: string | null
+        }
+        Insert: {
+          aerb_expiry?: string | null
+          aerb_license_no?: string | null
+          amc_cost?: number | null
+          amc_expiry?: string | null
+          amc_start?: string | null
+          amc_type?: string | null
+          amc_vendor?: string | null
+          asset_value?: number | null
+          category: string
+          created_at?: string | null
+          department_id?: string | null
+          equipment_code: string
+          equipment_name: string
+          hospital_id: string
+          id?: string
+          is_active?: boolean | null
+          location?: string | null
+          make: string
+          model: string
+          nabl_ref?: string | null
+          notes?: string | null
+          purchase_cost?: number | null
+          purchase_date?: string | null
+          serial_number?: string | null
+          status?: string | null
+          supplier_name?: string | null
+          warranty_expiry?: string | null
+          warranty_vendor?: string | null
+        }
+        Update: {
+          aerb_expiry?: string | null
+          aerb_license_no?: string | null
+          amc_cost?: number | null
+          amc_expiry?: string | null
+          amc_start?: string | null
+          amc_type?: string | null
+          amc_vendor?: string | null
+          asset_value?: number | null
+          category?: string
+          created_at?: string | null
+          department_id?: string | null
+          equipment_code?: string
+          equipment_name?: string
+          hospital_id?: string
+          id?: string
+          is_active?: boolean | null
+          location?: string | null
+          make?: string
+          model?: string
+          nabl_ref?: string | null
+          notes?: string | null
+          purchase_cost?: number | null
+          purchase_date?: string | null
+          serial_number?: string | null
+          status?: string | null
+          supplier_name?: string | null
+          warranty_expiry?: string | null
+          warranty_vendor?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equipment_master_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "equipment_master_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
             referencedColumns: ["id"]
           },
         ]
@@ -8321,6 +8634,73 @@ export type Database = {
           },
           {
             foreignKeyName: "pharmacy_stock_alerts_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pm_schedules: {
+        Row: {
+          checklist: Json | null
+          created_at: string | null
+          done_at: string | null
+          done_by: string | null
+          equipment_id: string
+          frequency: string
+          hospital_id: string
+          id: string
+          last_done_at: string | null
+          next_due_at: string
+          observations: string | null
+          status: string | null
+        }
+        Insert: {
+          checklist?: Json | null
+          created_at?: string | null
+          done_at?: string | null
+          done_by?: string | null
+          equipment_id: string
+          frequency: string
+          hospital_id: string
+          id?: string
+          last_done_at?: string | null
+          next_due_at: string
+          observations?: string | null
+          status?: string | null
+        }
+        Update: {
+          checklist?: Json | null
+          created_at?: string | null
+          done_at?: string | null
+          done_by?: string | null
+          equipment_id?: string
+          frequency?: string
+          hospital_id?: string
+          id?: string
+          last_done_at?: string | null
+          next_due_at?: string
+          observations?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_schedules_done_by_fkey"
+            columns: ["done_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pm_schedules_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipment_master"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pm_schedules_hospital_id_fkey"
             columns: ["hospital_id"]
             isOneToOne: false
             referencedRelation: "hospitals"
