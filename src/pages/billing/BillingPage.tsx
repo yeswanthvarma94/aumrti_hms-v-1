@@ -2,10 +2,13 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import BillQueue from "@/components/billing/BillQueue";
 import BillEditor from "@/components/billing/BillEditor";
 import NewBillModal from "@/components/billing/NewBillModal";
 import AdvanceReceiptModal from "@/components/billing/AdvanceReceiptModal";
+import CollectionsTab from "@/components/billing/tabs/CollectionsTab";
 
 export interface BillRecord {
   id: string;
@@ -47,6 +50,7 @@ const BillingPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("today");
   const [dischargeBillCreated, setDischargeBillCreated] = useState(false);
+  const [activeTab, setActiveTab] = useState("bills");
 
   useEffect(() => {
     const loadHospital = async () => {
@@ -328,27 +332,50 @@ const BillingPage: React.FC = () => {
   const pendingAmount = bills.reduce((s, b) => s + b.balance_due, 0);
 
   return (
-    <div className="flex h-[calc(100vh-56px)] overflow-hidden">
-      <BillQueue
-        bills={bills}
-        loading={loading}
-        selectedBillId={selectedBillId}
-        onSelectBill={setSelectedBillId}
-        statusFilter={statusFilter}
-        onStatusFilter={setStatusFilter}
-        dateFilter={dateFilter}
-        onDateFilter={setDateFilter}
-        onNewBill={() => setShowNewBill(true)}
-        onAdvanceReceipt={() => setShowAdvance(true)}
-        todayCollection={todayCollection}
-        pendingAmount={pendingAmount}
-        billCount={bills.length}
-      />
-      <BillEditor
-        bill={selectedBill}
-        hospitalId={hospitalId}
-        onRefresh={fetchBills}
-      />
+    <div className="flex flex-col h-[calc(100vh-56px)] overflow-hidden">
+      {/* Tab bar */}
+      <div className="h-10 flex-shrink-0 border-b border-border bg-background px-4 flex items-center gap-1">
+        <button
+          className={cn("px-3 py-1.5 text-xs font-bold rounded-md transition-colors",
+            activeTab === "bills" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+          )}
+          onClick={() => setActiveTab("bills")}
+        >Bills</button>
+        <button
+          className={cn("px-3 py-1.5 text-xs font-bold rounded-md transition-colors",
+            activeTab === "collections" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+          )}
+          onClick={() => setActiveTab("collections")}
+        >💳 Collections</button>
+      </div>
+
+      {activeTab === "bills" ? (
+        <div className="flex flex-1 overflow-hidden">
+          <BillQueue
+            bills={bills}
+            loading={loading}
+            selectedBillId={selectedBillId}
+            onSelectBill={setSelectedBillId}
+            statusFilter={statusFilter}
+            onStatusFilter={setStatusFilter}
+            dateFilter={dateFilter}
+            onDateFilter={setDateFilter}
+            onNewBill={() => setShowNewBill(true)}
+            onAdvanceReceipt={() => setShowAdvance(true)}
+            todayCollection={todayCollection}
+            pendingAmount={pendingAmount}
+            billCount={bills.length}
+          />
+          <BillEditor
+            bill={selectedBill}
+            hospitalId={hospitalId}
+            onRefresh={fetchBills}
+          />
+        </div>
+      ) : (
+        hospitalId && <CollectionsTab hospitalId={hospitalId} />
+      )}
+
       {showNewBill && hospitalId && (
         <NewBillModal
           hospitalId={hospitalId}
