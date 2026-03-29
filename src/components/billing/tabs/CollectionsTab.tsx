@@ -478,13 +478,13 @@ const CollectionsTab: React.FC<CollectionsTabProps> = ({ hospitalId }) => {
                     </td>
                     <td className="px-3 py-2 text-right">
                       <div className="flex gap-1 justify-end">
-                        <Button size="sm" variant="ghost" className="h-7 px-1.5" title="Pay Link" onClick={() => generatePayLink(b)}>
+                        <Button size="sm" variant="ghost" className="h-7 px-1.5" title="Pay Link" onClick={() => openPayLinkModal(b)}>
                           <Link2 size={13} />
                         </Button>
                         <Button size="sm" variant="ghost" className="h-7 px-1.5" title="EMI Plan" onClick={() => { setEmiModal(b); setEmiInstallments(3); }}>
                           <CalendarDays size={13} />
                         </Button>
-                        <Button size="sm" variant="ghost" className="h-7 px-1.5" title="WhatsApp Remind">
+                        <Button size="sm" variant="ghost" className="h-7 px-1.5" title="WhatsApp Remind" onClick={() => sendReminder(b)}>
                           <MessageSquare size={13} />
                         </Button>
                         <Button size="sm" variant="ghost" className="h-7 px-1.5" title="Mark Collected" onClick={() => { setCollectModal(b); setCollectAmount(String(b.balance_due)); }}>
