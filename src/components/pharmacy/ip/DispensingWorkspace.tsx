@@ -359,6 +359,26 @@ const DispensingWorkspace: React.FC<Props> = ({ hospitalId, prescription, onDisp
         `5-rights verified for ${patient.full_name}: ${drugRows.map(r => r.drug_name).join(", ")}. Dispensed ₹${totalAmount.toFixed(0)}.`
       );
 
+      // Auto-create pharmacy bill in bills table for IPD billing sync
+      if (prescription.admission_id && totalAmount > 0) {
+        const billNum = `PHARM-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${Math.floor(Math.random() * 9000) + 1000}`;
+        await supabase.from("bills").insert({
+          hospital_id: hospitalId,
+          patient_id: prescription.patient_id,
+          admission_id: prescription.admission_id,
+          bill_number: billNum,
+          bill_type: "pharmacy",
+          bill_status: "final",
+          bill_date: new Date().toISOString().split("T")[0],
+          total_amount: totalAmount,
+          subtotal: totalAmount,
+          paid_amount: 0,
+          balance_due: totalAmount,
+          payment_status: "unpaid",
+          created_by: userData.id,
+        });
+      }
+
       // Auto-sync: mark pharmacy cleared if all IP meds for this admission are dispensed
       if (prescription.admission_id) {
         const { data: pendingDisp } = await supabase
