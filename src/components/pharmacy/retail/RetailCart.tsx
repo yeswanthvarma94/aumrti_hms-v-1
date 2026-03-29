@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Minus, Plus, X, ShoppingCart, ChevronDown } from "lucide-react";
+import { Minus, Plus, X, ShoppingCart, ChevronDown, Loader2, CheckCircle2, UserPlus } from "lucide-react";
 
 export interface CartItem {
   drug_id: string;
@@ -32,6 +32,7 @@ interface Props {
   discountPercent: number;
   discountMode: "percent" | "fixed";
   discountFixed: number;
+  searching: boolean;
   onUpdateQty: (idx: number, qty: number) => void;
   onRemoveItem: (idx: number) => void;
   onClearAll: () => void;
@@ -40,6 +41,7 @@ interface Props {
   onSetDiscountPercent: (val: number) => void;
   onSetDiscountMode: (mode: "percent" | "fixed") => void;
   onSetDiscountFixed: (val: number) => void;
+  onCreateCustomer: () => void;
   subtotal: number;
   discountAmount: number;
   gstAmount: number;
@@ -48,8 +50,8 @@ interface Props {
 
 const RetailCart: React.FC<Props> = ({
   items, customerId, customerPhone, customerName, customerStatusLabel, discountPercent, discountMode, discountFixed,
-  onUpdateQty, onRemoveItem, onClearAll, onSetCustomerPhone, onSetCustomerName,
-  onSetDiscountPercent, onSetDiscountMode, onSetDiscountFixed,
+  searching, onUpdateQty, onRemoveItem, onClearAll, onSetCustomerPhone, onSetCustomerName,
+  onSetDiscountPercent, onSetDiscountMode, onSetDiscountFixed, onCreateCustomer,
   subtotal, discountAmount, gstAmount, netTotal,
 }) => {
   const [showGst, setShowGst] = useState(false);

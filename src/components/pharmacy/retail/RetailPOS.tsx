@@ -179,6 +179,7 @@ const RetailPOS: React.FC<Props> = ({ hospitalId }) => {
         discountPercent={discountPercent}
         discountMode={discountMode}
         discountFixed={discountFixed}
+        searching={searching}
         onUpdateQty={handleUpdateQty}
         onRemoveItem={handleRemoveItem}
         onClearAll={handleClearAll}
@@ -187,6 +188,7 @@ const RetailPOS: React.FC<Props> = ({ hospitalId }) => {
         onSetDiscountPercent={setDiscountPercent}
         onSetDiscountMode={setDiscountMode}
         onSetDiscountFixed={setDiscountFixed}
+        onCreateCustomer={handleCreateCustomer}
         subtotal={subtotal}
         discountAmount={discountAmount}
         gstAmount={gstAmount}
