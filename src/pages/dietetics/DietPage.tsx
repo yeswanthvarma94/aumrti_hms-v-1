@@ -270,7 +270,7 @@ const DietPage: React.FC = () => {
 
     try {
       // Find active diet order for patient
-      const { data: orders } = await supabase
+      const { data: orderData } = await supabase
         .from("diet_orders")
         .select("*")
         .eq("hospital_id", hospitalId)
@@ -279,7 +279,7 @@ const DietPage: React.FC = () => {
         .limit(1)
         .maybeSingle();
 
-      const dietOrder = orders || {};
+      const dietOrder: any = orderData || {};
 
       const response = await callAI({
         featureKey: "voice_scribe",
@@ -314,7 +314,7 @@ Note any special preparations for the diet type.`,
         maxTokens: 800,
       });
 
-      const planText = response?.text || response?.content || "Plan generation failed. Please try again.";
+      const planText = (response as any)?.text || "Plan generation failed. Please try again.";
 
       await supabase.from("diet_plans").insert({
         hospital_id: hospitalId,
