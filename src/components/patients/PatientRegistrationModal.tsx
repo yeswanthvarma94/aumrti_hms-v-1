@@ -20,6 +20,7 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess }) => {
   const [showReferralModal, setShowReferralModal] = useState(false);
   const [dpdpConsent, setDpdpConsent] = useState(false);
   const [hospitalName, setHospitalName] = useState("Hospital");
+  const [hospitalIdState, setHospitalIdState] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [form, setForm] = useState({
     full_name: "",
