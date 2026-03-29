@@ -4,6 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { X, UserPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getDPDPConsentText } from "@/lib/compliance-checks";
+import AddReferralDoctorModal from "@/components/shared/AddReferralDoctorModal";
 
 interface Props {
   onClose: () => void;
@@ -315,6 +316,12 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess }) => {
           </button>
         </div>
       </div>
+      <AddReferralDoctorModal
+        open={showReferralModal}
+        onClose={() => setShowReferralModal(false)}
+        onSaved={(name) => { set("referral_source", name); setShowReferralModal(false); }}
+        hospitalId={hospitalId || ""}
+      />
     </div>
   );
 };
