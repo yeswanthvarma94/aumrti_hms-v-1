@@ -71,6 +71,7 @@ export const ALL_MODULES: ModuleDefinition[] = [
   { name: "Oncology", desc: "Chemotherapy & daycare", icon: "🎗️", route: "/oncology", category: "Specialized", roles: ["oncologist", "chemo_nurse", "super_admin"], isNew: true },
   { name: "Medical Records", desc: "MRD, ICD coding & retention", icon: "🗂️", route: "/mrd", category: "Operations", roles: ["mrd_officer", "super_admin", "billing_executive"], isNew: true },
   { name: "Biomedical Engineering", desc: "Equipment, PM, calibration & breakdowns", icon: "🔧", route: "/biomedical", category: "Operations", roles: ["biomedical_technician", "super_admin", "hospital_admin"], isNew: true },
+  { name: "Housekeeping", desc: "Cleaning tasks, BMW & linen", icon: "🧹", route: "/housekeeping", category: "Operations", roles: ["housekeeping_supervisor", "super_admin", "hospital_admin"], isNew: true },
 
   // ── PATIENT-FACING ──
   { name: "Patient Portal", desc: "Patient self-service", icon: "🌐", route: "/portal", category: "Patient", roles: ["receptionist", "super_admin"] },
