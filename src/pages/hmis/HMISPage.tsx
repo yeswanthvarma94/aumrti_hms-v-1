@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -624,6 +625,30 @@ const ReportViewerModal: React.FC<{ data: any; onClose: () => void; onMarkSubmit
         </div>
 
         <DialogFooter className="flex gap-2">
+          <Button size="sm" className="text-xs" variant="outline" onClick={() => {
+          try {
+              const wb = XLSX.utils.book_new();
+              const rows: any[] = [];
+              const addSection = (title: string, obj: Record<string, any>) => {
+                rows.push([title]); 
+                Object.entries(obj).forEach(([k, v]) => {
+                  if (typeof v === "object" && v !== null && !Array.isArray(v)) {
+                    Object.entries(v).forEach(([sk, sv]) => rows.push([`${k} - ${sk}`, sv]));
+                  } else { rows.push([k, v]); }
+                });
+                rows.push([]);
+              };
+              if (isHMIS) { addSection("OPD", data.opd); addSection("IPD", data.ipd); addSection("Surgery", data.surgery); addSection("Maternal", data.maternal); addSection("Lab", data.lab); }
+              if (isIDSP) { rows.push(["Syndrome","OPD Cases","IPD Cases","Deaths"]); Object.entries(data.syndromes).forEach(([s, c]: [string, any]) => rows.push([s, c.opd, c.ipd, c.deaths])); }
+              if (isRMNCHA) { addSection("ANC", data.anc); addSection("Delivery", data.delivery); addSection("Neonatal", data.neonatal); addSection("Postnatal", data.postnatal); }
+              const ws = XLSX.utils.aoa_to_sheet(rows);
+              XLSX.utils.book_append_sheet(wb, ws, "Report");
+              XLSX.writeFile(wb, `HMIS_Report_${data.period?.month_name || data.period?.week || ""}_${data.period?.year || ""}.xlsx`);
+              toast.success("Excel downloaded");
+            } catch { toast.error("Download failed"); }
+          }}>
+            <Download className="h-3 w-3 mr-1" /> Download Excel
+          </Button>
           {onMarkSubmitted && data._status !== "submitted" && data._status !== "accepted" && (
             <Button size="sm" className="text-xs" variant="outline" onClick={onMarkSubmitted}>
               <CheckCircle2 className="h-3 w-3 mr-1" /> Mark as Submitted

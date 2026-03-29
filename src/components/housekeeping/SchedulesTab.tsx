@@ -115,10 +115,10 @@ const SchedulesTab: React.FC<Props> = ({ hospitalId }) => {
               <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>{FREQUENCIES.map(f => <SelectItem key={f} value={f} className="text-xs">{f.replace(/_/g, " ")}</SelectItem>)}</SelectContent>
             </Select>
-            <Select value={wardId} onValueChange={setWardId}>
+            <Select value={wardId || "none"} onValueChange={(v) => setWardId(v === "none" ? "" : v)}>
               <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Ward (optional)" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="" className="text-xs">None</SelectItem>
+                <SelectItem value="none" className="text-xs">None</SelectItem>
                 {wards.map(w => <SelectItem key={w.id} value={w.id} className="text-xs">{w.name}</SelectItem>)}
               </SelectContent>
             </Select>
