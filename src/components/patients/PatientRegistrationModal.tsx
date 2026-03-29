@@ -159,7 +159,7 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess }) => {
         </div>
 
         {/* Form body */}
-        <div className="px-7 pb-2 flex-1 overflow-hidden flex flex-col gap-2.5">
+        <div className="px-7 pb-2 flex-1 overflow-y-auto flex flex-col gap-2.5">
 
           {/* ROW 1: Name + Phone + DOB */}
           <div className="flex gap-3">
