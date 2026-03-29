@@ -49,6 +49,7 @@ const BillingPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("today");
   const [dischargeBillCreated, setDischargeBillCreated] = useState(false);
+  const [activeTab, setActiveTab] = useState("bills");
 
   useEffect(() => {
     const loadHospital = async () => {
