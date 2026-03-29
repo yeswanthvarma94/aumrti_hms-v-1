@@ -3413,6 +3413,166 @@ export type Database = {
           },
         ]
       }
+      diet_orders: {
+        Row: {
+          admission_id: string
+          ai_generated: boolean | null
+          calories_target: number | null
+          created_at: string | null
+          diet_type: string
+          fluid_restriction_ml: number | null
+          food_allergies: string[] | null
+          hospital_id: string
+          id: string
+          order_date: string
+          ordered_by: string
+          patient_id: string
+          protein_target: number | null
+          specific_instructions: string | null
+          status: string | null
+          texture: string | null
+          valid_from: string
+          valid_until: string | null
+        }
+        Insert: {
+          admission_id: string
+          ai_generated?: boolean | null
+          calories_target?: number | null
+          created_at?: string | null
+          diet_type: string
+          fluid_restriction_ml?: number | null
+          food_allergies?: string[] | null
+          hospital_id: string
+          id?: string
+          order_date?: string
+          ordered_by: string
+          patient_id: string
+          protein_target?: number | null
+          specific_instructions?: string | null
+          status?: string | null
+          texture?: string | null
+          valid_from?: string
+          valid_until?: string | null
+        }
+        Update: {
+          admission_id?: string
+          ai_generated?: boolean | null
+          calories_target?: number | null
+          created_at?: string | null
+          diet_type?: string
+          fluid_restriction_ml?: number | null
+          food_allergies?: string[] | null
+          hospital_id?: string
+          id?: string
+          order_date?: string
+          ordered_by?: string
+          patient_id?: string
+          protein_target?: number | null
+          specific_instructions?: string | null
+          status?: string | null
+          texture?: string | null
+          valid_from?: string
+          valid_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "diet_orders_admission_id_fkey"
+            columns: ["admission_id"]
+            isOneToOne: false
+            referencedRelation: "admissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "diet_orders_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "diet_orders_ordered_by_fkey"
+            columns: ["ordered_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "diet_orders_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      diet_plans: {
+        Row: {
+          admission_id: string
+          ai_generated: boolean | null
+          created_at: string | null
+          created_by: string
+          diagnosis: string | null
+          hospital_id: string
+          id: string
+          patient_id: string
+          plan_content: string
+          plan_for_days: number | null
+        }
+        Insert: {
+          admission_id: string
+          ai_generated?: boolean | null
+          created_at?: string | null
+          created_by: string
+          diagnosis?: string | null
+          hospital_id: string
+          id?: string
+          patient_id: string
+          plan_content: string
+          plan_for_days?: number | null
+        }
+        Update: {
+          admission_id?: string
+          ai_generated?: boolean | null
+          created_at?: string | null
+          created_by?: string
+          diagnosis?: string | null
+          hospital_id?: string
+          id?: string
+          patient_id?: string
+          plan_content?: string
+          plan_for_days?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "diet_plans_admission_id_fkey"
+            columns: ["admission_id"]
+            isOneToOne: false
+            referencedRelation: "admissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "diet_plans_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "diet_plans_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "diet_plans_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       discount_approvals: {
         Row: {
           approved_by: string | null
@@ -6617,6 +6777,87 @@ export type Database = {
           },
         ]
       }
+      meal_deliveries: {
+        Row: {
+          admission_id: string
+          consumed_percent: number | null
+          created_at: string | null
+          delivered_at: string | null
+          delivered_by: string | null
+          diet_order_id: string
+          hospital_id: string
+          id: string
+          meal_date: string
+          meal_type: string
+          patient_id: string
+          waste_reason: string | null
+        }
+        Insert: {
+          admission_id: string
+          consumed_percent?: number | null
+          created_at?: string | null
+          delivered_at?: string | null
+          delivered_by?: string | null
+          diet_order_id: string
+          hospital_id: string
+          id?: string
+          meal_date?: string
+          meal_type: string
+          patient_id: string
+          waste_reason?: string | null
+        }
+        Update: {
+          admission_id?: string
+          consumed_percent?: number | null
+          created_at?: string | null
+          delivered_at?: string | null
+          delivered_by?: string | null
+          diet_order_id?: string
+          hospital_id?: string
+          id?: string
+          meal_date?: string
+          meal_type?: string
+          patient_id?: string
+          waste_reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meal_deliveries_admission_id_fkey"
+            columns: ["admission_id"]
+            isOneToOne: false
+            referencedRelation: "admissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meal_deliveries_delivered_by_fkey"
+            columns: ["delivered_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meal_deliveries_diet_order_id_fkey"
+            columns: ["diet_order_id"]
+            isOneToOne: false
+            referencedRelation: "diet_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meal_deliveries_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meal_deliveries_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       medical_records: {
         Row: {
           archived_at: string | null
@@ -7206,6 +7447,98 @@ export type Database = {
             columns: ["medication_id"]
             isOneToOne: false
             referencedRelation: "ipd_medications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nutritional_screenings: {
+        Row: {
+          admission_id: string
+          bmi: number | null
+          dietitian_referral: boolean | null
+          height_cm: number | null
+          hospital_id: string
+          id: string
+          notes: string | null
+          nrs_age_adjustment: number | null
+          nrs_disease_severity: number | null
+          nrs_nutritional_status: number | null
+          nrs_total_score: number | null
+          patient_id: string
+          referral_at: string | null
+          risk_level: string
+          screened_at: string | null
+          screened_by: string
+          screening_tool: string
+          weight_kg: number | null
+        }
+        Insert: {
+          admission_id: string
+          bmi?: number | null
+          dietitian_referral?: boolean | null
+          height_cm?: number | null
+          hospital_id: string
+          id?: string
+          notes?: string | null
+          nrs_age_adjustment?: number | null
+          nrs_disease_severity?: number | null
+          nrs_nutritional_status?: number | null
+          nrs_total_score?: number | null
+          patient_id: string
+          referral_at?: string | null
+          risk_level: string
+          screened_at?: string | null
+          screened_by: string
+          screening_tool: string
+          weight_kg?: number | null
+        }
+        Update: {
+          admission_id?: string
+          bmi?: number | null
+          dietitian_referral?: boolean | null
+          height_cm?: number | null
+          hospital_id?: string
+          id?: string
+          notes?: string | null
+          nrs_age_adjustment?: number | null
+          nrs_disease_severity?: number | null
+          nrs_nutritional_status?: number | null
+          nrs_total_score?: number | null
+          patient_id?: string
+          referral_at?: string | null
+          risk_level?: string
+          screened_at?: string | null
+          screened_by?: string
+          screening_tool?: string
+          weight_kg?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nutritional_screenings_admission_id_fkey"
+            columns: ["admission_id"]
+            isOneToOne: false
+            referencedRelation: "admissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nutritional_screenings_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nutritional_screenings_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nutritional_screenings_screened_by_fkey"
+            columns: ["screened_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
