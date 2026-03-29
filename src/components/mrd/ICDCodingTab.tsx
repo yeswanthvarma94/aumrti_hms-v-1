@@ -72,37 +72,50 @@ const ICDCodingTab: React.FC<Props> = ({ hospitalId, onRefresh }) => {
       });
 
       if (error) {
-        console.error("ICD AI error:", error);
-        toast.error("AI suggestion failed — enter code manually");
-        setAiLoading(false);
+        console.warn("ICD AI unavailable:", error);
         return;
       }
 
       if (data?.error) {
-        console.error("ICD AI error:", data.error);
+        console.warn("ICD AI:", data.error);
         if (data.error.includes("No clinical notes")) {
-          toast.info("No clinical notes found for AI suggestion");
-        } else {
-          toast.error(data.error);
+          toast.info("No clinical notes found — enter code manually");
         }
-        setAiLoading(false);
         return;
       }
 
-      const parsed: AISuggestion = data;
+      // Safely parse the suggestion
+      let parsed: AISuggestion | null = null;
+      try {
+        if (typeof data === "string") {
+          const clean = data.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+          parsed = JSON.parse(clean);
+        } else {
+          parsed = data as AISuggestion;
+        }
+      } catch (parseError) {
+        console.error("Could not parse ICD suggestion:", parseError);
+        return;
+      }
 
-      // Save to DB
-      await (supabase as any).from("icd_codings").update({
+      if (!parsed?.primary_code) {
+        console.warn("AI returned no primary code");
+        return;
+      }
+
+      // Save to DB (non-blocking)
+      (supabase as any).from("icd_codings").update({
         ai_suggestion: parsed.primary_code,
         ai_confidence: parsed.confidence,
-      }).eq("id", item.id);
+      }).eq("id", item.id).then(() => {});
 
       setAiSuggestion(parsed);
     } catch (e) {
       console.error("ICD suggestion failed:", e);
-      toast.error("AI suggestion failed");
+      // Silent fail — user can enter code manually
+    } finally {
+      setAiLoading(false);
     }
-    setAiLoading(false);
   }, [hospitalId]);
 
   const selectItem = (item: any) => {
