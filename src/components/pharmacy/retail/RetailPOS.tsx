@@ -4,7 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import RetailDrugSearch, { type DrugSearchResult } from "./RetailDrugSearch";
 import RetailCart, { type CartItem } from "./RetailCart";
 import RetailPayment from "./RetailPayment";
-import { findPatientByPhone } from "@/lib/patient-records";
+import { findPatientByPhone, createPatientRecord } from "@/lib/patient-records";
 
 interface Props {
   hospitalId: string;
@@ -19,14 +19,17 @@ const RetailPOS: React.FC<Props> = ({ hospitalId }) => {
   const [discountPercent, setDiscountPercent] = useState(0);
   const [discountMode, setDiscountMode] = useState<"percent" | "fixed">("percent");
   const [discountFixed, setDiscountFixed] = useState(0);
+  const [searching, setSearching] = useState(false);
 
   // Look up customer by phone
   useEffect(() => {
     if (customerPhone.length < 10) {
       setCustomerId(null);
+      setSearching(false);
       return;
     }
 
+    setSearching(true);
     const timer = setTimeout(async () => {
       try {
         const patient = await findPatientByPhone(hospitalId, customerPhone);
@@ -38,6 +41,8 @@ const RetailPOS: React.FC<Props> = ({ hospitalId }) => {
         }
       } catch {
         setCustomerId(null);
+      } finally {
+        setSearching(false);
       }
     }, 500);
     return () => clearTimeout(timer);
@@ -47,6 +52,21 @@ const RetailPOS: React.FC<Props> = ({ hospitalId }) => {
     setCustomerName(name);
     setCustomerId(null);
   }, []);
+
+  const handleCreateCustomer = useCallback(async () => {
+    try {
+      const patient = await createPatientRecord({
+        hospitalId,
+        fullName: customerName || "Walk-in Customer",
+        phone: customerPhone,
+      });
+      setCustomerId(patient.id);
+      setCustomerName(patient.full_name);
+      toast({ title: `✓ Patient registered: ${patient.full_name} (${patient.uhid})` });
+    } catch (err: any) {
+      toast({ title: "Registration failed", description: err.message, variant: "destructive" });
+    }
+  }, [hospitalId, customerName, customerPhone, toast]);
 
   const handleAddToCart = useCallback((drug: DrugSearchResult) => {
     if (!drug.best_batch) {
@@ -159,6 +179,7 @@ const RetailPOS: React.FC<Props> = ({ hospitalId }) => {
         discountPercent={discountPercent}
         discountMode={discountMode}
         discountFixed={discountFixed}
+        searching={searching}
         onUpdateQty={handleUpdateQty}
         onRemoveItem={handleRemoveItem}
         onClearAll={handleClearAll}
@@ -167,6 +188,7 @@ const RetailPOS: React.FC<Props> = ({ hospitalId }) => {
         onSetDiscountPercent={setDiscountPercent}
         onSetDiscountMode={setDiscountMode}
         onSetDiscountFixed={setDiscountFixed}
+        onCreateCustomer={handleCreateCustomer}
         subtotal={subtotal}
         discountAmount={discountAmount}
         gstAmount={gstAmount}
