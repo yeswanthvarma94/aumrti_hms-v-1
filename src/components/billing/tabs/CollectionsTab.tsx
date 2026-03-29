@@ -203,24 +203,97 @@ const CollectionsTab: React.FC<CollectionsTabProps> = ({ hospitalId }) => {
 
   const fmt = (n: number) => "₹" + n.toLocaleString("en-IN", { maximumFractionDigits: 0 });
 
-  // Generate pay link
-  const generatePayLink = async (bill: OutstandingBill) => {
+  // Generate pay link with full modal flow
+  const generatePayLink = async () => {
+    if (!payLinkModal) return;
+    setPayLinkGenerating(true);
     const { data: userData } = await supabase.from("users").select("id").limit(1).single();
+    const token = crypto.randomUUID();
+    const expiresAt = new Date(Date.now() + payLinkExpiry * 86400000).toISOString();
+
     const { error } = await supabase.from("payment_links" as any).insert({
       hospital_id: hospitalId,
-      bill_id: bill.id,
-      patient_id: bill.patient_id,
-      amount: bill.balance_due,
+      bill_id: payLinkModal.id,
+      patient_id: payLinkModal.patient_id,
+      link_token: token,
+      amount: payLinkAmount,
+      expires_at: expiresAt,
       created_by: userData?.id,
-      sent_via: ["whatsapp"],
+      sent_via: [],
     });
+
     if (error) {
       toast({ title: "Failed to create pay link", variant: "destructive" });
     } else {
-      toast({ title: "Payment link created" });
+      const url = `${window.location.origin}/pay/${token}`;
+      setGeneratedPayUrl(url);
+      setGeneratedPayToken(token);
+      toast({ title: "Payment link generated ✓" });
       loadData();
     }
+    setPayLinkGenerating(false);
   };
+
+  const openPayLinkModal = (bill: OutstandingBill) => {
+    setPayLinkModal(bill);
+    setPayLinkAmount(bill.balance_due);
+    setPayLinkExpiry(7);
+    setGeneratedPayUrl("");
+    setGeneratedPayToken("");
+  };
+
+  const sendPayLinkWhatsApp = async (bill: OutstandingBill, url: string) => {
+    // Get patient phone
+    const { data: patient } = await supabase.from("patients").select("phone").eq("id", bill.patient_id).single();
+    if (!patient?.phone) {
+      toast({ title: "Patient phone not found", variant: "destructive" });
+      return;
+    }
+    const msg = `Dear ${bill.patient_name}, your bill of ₹${bill.balance_due.toLocaleString("en-IN")} is pending. Pay securely here: ${url}`;
+    const cleanPhone = patient.phone.replace(/\D/g, "");
+    const fullPhone = cleanPhone.startsWith("91") ? cleanPhone : `91${cleanPhone}`;
+    window.open(`https://wa.me/${fullPhone}?text=${encodeURIComponent(msg)}`, "_blank");
+
+    // Update sent_via
+    if (generatedPayToken) {
+      await supabase.from("payment_links" as any).update({ sent_via: ["whatsapp"] }).eq("link_token", generatedPayToken);
+    }
+    toast({ title: "Sent via WhatsApp" });
+  };
+
+  // WhatsApp reminder for outstanding bill
+  const sendReminder = async (bill: OutstandingBill) => {
+    const { data: patient } = await supabase.from("patients").select("phone").eq("id", bill.patient_id).single();
+    if (!patient?.phone) {
+      toast({ title: "Patient phone not found", variant: "destructive" });
+      return;
+    }
+    const msg = `Dear ${bill.patient_name}, your bill ${bill.bill_number} of ₹${bill.balance_due.toLocaleString("en-IN")} is overdue by ${bill.days_overdue} days. Please visit us or contact the hospital to settle.`;
+    const cleanPhone = patient.phone.replace(/\D/g, "");
+    const fullPhone = cleanPhone.startsWith("91") ? cleanPhone : `91${cleanPhone}`;
+    window.open(`https://wa.me/${fullPhone}?text=${encodeURIComponent(msg)}`, "_blank");
+    toast({ title: "Reminder sent via WhatsApp" });
+  };
+
+  // Check EMI reminders on load
+  useEffect(() => {
+    const checkEMIReminders = async () => {
+      const threeDaysFromNow = new Date(Date.now() + 3 * 86400000).toISOString().split("T")[0];
+      const { data: upcoming } = await supabase
+        .from("emi_installments" as any)
+        .select("id, installment_number, amount, due_date, reminder_sent_count")
+        .eq("hospital_id", hospitalId)
+        .eq("status", "pending")
+        .lte("due_date", threeDaysFromNow)
+        .is("last_reminder_at", null)
+        .limit(20);
+
+      if (upcoming && (upcoming as any[]).length > 0) {
+        toast({ title: `${(upcoming as any[]).length} EMI installments due within 3 days — check Collections tab` });
+      }
+    };
+    checkEMIReminders();
+  }, [hospitalId]);
 
   // Create EMI plan
   const createEMI = async () => {
