@@ -683,7 +683,7 @@ Guidelines:
       </Tabs>
 
       {/* MODALS */}
-      <AddReferralModal open={showAddDoctor} onClose={() => setShowAddDoctor(false)} onSaved={loadAll} editDoc={editDoctor} />
+      <AddReferralDoctorModal open={showAddDoctor} onClose={() => setShowAddDoctor(false)} onSaved={() => loadAll()} hospitalId={HOSPITAL_ID} editDoc={editDoctor} />
       <NewCampaignModal open={showNewCampaign} onClose={() => setShowNewCampaign(false)} onSaved={loadAll} segments={segments} />
       <AddReviewModal open={showAddReview} onClose={() => setShowAddReview(false)} onSaved={loadAll} />
     </div>
