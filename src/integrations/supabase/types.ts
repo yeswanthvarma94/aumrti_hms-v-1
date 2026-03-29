@@ -10131,6 +10131,7 @@ export type Database = {
           insurance_id: string | null
           is_active: boolean | null
           phone: string | null
+          referral_source: string | null
           uhid: string
           updated_at: string | null
         }
@@ -10152,6 +10153,7 @@ export type Database = {
           insurance_id?: string | null
           is_active?: boolean | null
           phone?: string | null
+          referral_source?: string | null
           uhid: string
           updated_at?: string | null
         }
@@ -10173,6 +10175,7 @@ export type Database = {
           insurance_id?: string | null
           is_active?: boolean | null
           phone?: string | null
+          referral_source?: string | null
           uhid?: string
           updated_at?: string | null
         }

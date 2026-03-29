@@ -112,7 +112,8 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess }) => {
       abha_id: form.abha_id || null,
       emergency_contact_name: form.emergency_contact_name || null,
       emergency_contact_phone: form.emergency_contact_phone || null,
-    });
+      referral_source: form.referral_source || null,
+    } as any);
 
     setSaving(false);
     if (error) {
