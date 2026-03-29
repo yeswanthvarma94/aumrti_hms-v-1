@@ -7053,6 +7053,84 @@ export type Database = {
           },
         ]
       }
+      marketing_campaigns: {
+        Row: {
+          budget_inr: number | null
+          campaign_name: string
+          campaign_type: string
+          conversion_count: number | null
+          cost_per_patient: number | null
+          created_at: string | null
+          created_by: string | null
+          end_date: string | null
+          hospital_id: string
+          id: string
+          message_template: string | null
+          reach_count: number | null
+          revenue_generated: number | null
+          roi_percent: number | null
+          segment_criteria: Json | null
+          start_date: string | null
+          status: string | null
+          target_segment: string | null
+        }
+        Insert: {
+          budget_inr?: number | null
+          campaign_name: string
+          campaign_type: string
+          conversion_count?: number | null
+          cost_per_patient?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          end_date?: string | null
+          hospital_id: string
+          id?: string
+          message_template?: string | null
+          reach_count?: number | null
+          revenue_generated?: number | null
+          roi_percent?: number | null
+          segment_criteria?: Json | null
+          start_date?: string | null
+          status?: string | null
+          target_segment?: string | null
+        }
+        Update: {
+          budget_inr?: number | null
+          campaign_name?: string
+          campaign_type?: string
+          conversion_count?: number | null
+          cost_per_patient?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          end_date?: string | null
+          hospital_id?: string
+          id?: string
+          message_template?: string | null
+          reach_count?: number | null
+          revenue_generated?: number | null
+          roi_percent?: number | null
+          segment_criteria?: Json | null
+          start_date?: string | null
+          status?: string | null
+          target_segment?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketing_campaigns_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketing_campaigns_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       meal_deliveries: {
         Row: {
           admission_id: string
@@ -8004,6 +8082,72 @@ export type Database = {
           },
         ]
       }
+      online_reviews: {
+        Row: {
+          ai_sentiment_score: number | null
+          created_at: string | null
+          hospital_id: string
+          id: string
+          platform: string
+          rating: number
+          responded: boolean | null
+          responded_at: string | null
+          responded_by: string | null
+          response_text: string | null
+          review_date: string | null
+          review_text: string | null
+          reviewer_name: string | null
+          sentiment: string | null
+        }
+        Insert: {
+          ai_sentiment_score?: number | null
+          created_at?: string | null
+          hospital_id: string
+          id?: string
+          platform: string
+          rating: number
+          responded?: boolean | null
+          responded_at?: string | null
+          responded_by?: string | null
+          response_text?: string | null
+          review_date?: string | null
+          review_text?: string | null
+          reviewer_name?: string | null
+          sentiment?: string | null
+        }
+        Update: {
+          ai_sentiment_score?: number | null
+          created_at?: string | null
+          hospital_id?: string
+          id?: string
+          platform?: string
+          rating?: number
+          responded?: boolean | null
+          responded_at?: string | null
+          responded_by?: string | null
+          response_text?: string | null
+          review_date?: string | null
+          review_text?: string | null
+          reviewer_name?: string | null
+          sentiment?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "online_reviews_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "online_reviews_responded_by_fkey"
+            columns: ["responded_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       opd_encounters: {
         Row: {
           chief_complaint: string | null
@@ -8743,6 +8887,74 @@ export type Database = {
           },
         ]
       }
+      patient_acquisition: {
+        Row: {
+          campaign_id: string | null
+          created_at: string | null
+          first_visit_date: string | null
+          first_visit_revenue: number | null
+          hospital_id: string
+          id: string
+          is_new_patient: boolean | null
+          patient_id: string
+          referral_doctor_id: string | null
+          source: string
+        }
+        Insert: {
+          campaign_id?: string | null
+          created_at?: string | null
+          first_visit_date?: string | null
+          first_visit_revenue?: number | null
+          hospital_id: string
+          id?: string
+          is_new_patient?: boolean | null
+          patient_id: string
+          referral_doctor_id?: string | null
+          source: string
+        }
+        Update: {
+          campaign_id?: string | null
+          created_at?: string | null
+          first_visit_date?: string | null
+          first_visit_revenue?: number | null
+          hospital_id?: string
+          id?: string
+          is_new_patient?: boolean | null
+          patient_id?: string
+          referral_doctor_id?: string | null
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_acquisition_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_acquisition_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_acquisition_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_acquisition_referral_doctor_id_fkey"
+            columns: ["referral_doctor_id"]
+            isOneToOne: false
+            referencedRelation: "referral_doctors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       patient_consents: {
         Row: {
           consent_given: boolean
@@ -8982,6 +9194,47 @@ export type Database = {
             columns: ["patient_id"]
             isOneToOne: false
             referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      patient_segments: {
+        Row: {
+          created_at: string | null
+          criteria: Json
+          hospital_id: string
+          id: string
+          last_computed_at: string | null
+          patient_count: number | null
+          segment_name: string
+          segment_type: string
+        }
+        Insert: {
+          created_at?: string | null
+          criteria: Json
+          hospital_id: string
+          id?: string
+          last_computed_at?: string | null
+          patient_count?: number | null
+          segment_name: string
+          segment_type: string
+        }
+        Update: {
+          created_at?: string | null
+          criteria?: Json
+          hospital_id?: string
+          id?: string
+          last_computed_at?: string | null
+          patient_count?: number | null
+          segment_name?: string
+          segment_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_segments_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
             referencedColumns: ["id"]
           },
         ]
@@ -10675,6 +10928,77 @@ export type Database = {
             columns: ["record_id"]
             isOneToOne: false
             referencedRelation: "medical_records"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      referral_doctors: {
+        Row: {
+          address: string | null
+          city: string | null
+          clinic_hospital: string | null
+          created_at: string | null
+          doctor_name: string
+          email: string | null
+          hospital_id: string
+          id: string
+          is_active: boolean | null
+          last_engagement_at: string | null
+          last_referral_at: string | null
+          notes: string | null
+          phone: string | null
+          qualification: string | null
+          relationship_tier: string | null
+          specialty: string | null
+          total_referrals: number | null
+          total_revenue: number | null
+        }
+        Insert: {
+          address?: string | null
+          city?: string | null
+          clinic_hospital?: string | null
+          created_at?: string | null
+          doctor_name: string
+          email?: string | null
+          hospital_id: string
+          id?: string
+          is_active?: boolean | null
+          last_engagement_at?: string | null
+          last_referral_at?: string | null
+          notes?: string | null
+          phone?: string | null
+          qualification?: string | null
+          relationship_tier?: string | null
+          specialty?: string | null
+          total_referrals?: number | null
+          total_revenue?: number | null
+        }
+        Update: {
+          address?: string | null
+          city?: string | null
+          clinic_hospital?: string | null
+          created_at?: string | null
+          doctor_name?: string
+          email?: string | null
+          hospital_id?: string
+          id?: string
+          is_active?: boolean | null
+          last_engagement_at?: string | null
+          last_referral_at?: string | null
+          notes?: string | null
+          phone?: string | null
+          qualification?: string | null
+          relationship_tier?: string | null
+          specialty?: string | null
+          total_referrals?: number | null
+          total_revenue?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referral_doctors_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
             referencedColumns: ["id"]
           },
         ]
