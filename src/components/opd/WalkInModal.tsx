@@ -2,8 +2,9 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { X, Search, CheckCircle2, ArrowLeft, CreditCard, Printer } from "lucide-react";
+import { X, Search, CheckCircle2, ArrowLeft, CreditCard, Printer, UserPlus } from "lucide-react";
 import { autoPostJournalEntry } from "@/lib/accounting";
+import AddReferralDoctorModal from "@/components/shared/AddReferralDoctorModal";
 
 interface Props {
   hospitalId: string;
@@ -65,6 +66,8 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated }) => {
   const [priority, setPriority] = useState("normal");
   const [nextToken, setNextToken] = useState("A-1");
   const [submitting, setSubmitting] = useState(false);
+  const [referralSource, setReferralSource] = useState("");
+  const [showReferralModal, setShowReferralModal] = useState(false);
 
   // Payment fields
   const [consultationFee, setConsultationFee] = useState(DEFAULT_CONSULTATION_FEE);
