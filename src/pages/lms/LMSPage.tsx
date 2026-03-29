@@ -85,7 +85,7 @@ export default function LMSPage() {
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [certificates, setCertificates] = useState<Certificate[]>([]);
   const [staffUsers, setStaffUsers] = useState<StaffUser[]>([]);
-  const [departments, setDepartments] = useState<{ id: string; dept_name: string }[]>([]);
+  const [departments, setDepartments] = useState<{ id: string; name: string }[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUserName, setCurrentUserName] = useState('Staff');
   const [filter, setFilter] = useState('all');
@@ -150,7 +150,7 @@ export default function LMSPage() {
     const [coursesRes, usersRes, deptsRes] = await Promise.all([
       supabase.from('lms_courses').select('*').eq('is_active', true),
       supabase.from('users').select('id, full_name, role, department_id').eq('hospital_id', HOSPITAL_ID),
-      supabase.from('departments').select('id, dept_name').eq('hospital_id', HOSPITAL_ID),
+      supabase.from('departments').select('id, name').eq('hospital_id', HOSPITAL_ID),
     ]);
 
     setCourses((coursesRes.data || []) as Course[]);
@@ -232,7 +232,7 @@ export default function LMSPage() {
 
     setQuizCourse(course);
     setQuizEnrollment(enrollment);
-    setQuizQuestions(questions as QuizQuestion[]);
+    setQuizQuestions(questions as unknown as QuizQuestion[]);
     setQuizStep('intro');
     setCurrentQ(0);
     setAnswers({});
