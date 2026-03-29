@@ -1,66 +1,61 @@
 
 
-## Plan: IPD Discharge Workflow, Patient Record Deep Link, and Action Buttons
+## Plan: Sync Billing & Pharmacy Status to IPD Discharge Workflow
 
-### Three Issues to Fix
+### Problem
+The discharge stepper's "Billing" and "Pharmacy" steps don't sync with actual data:
+- **Billing**: When payment is collected on the Billing page, it never sets `admissions.billing_cleared = true`
+- **Pharmacy**: When all IP dispensing is completed, it never sets `admissions.pharmacy_cleared = true`
 
-**1. Full Discharge Workflow from IPD Overview**
+Both are manual toggles with no connection to real billing/pharmacy records.
 
-Currently the Discharge Progress card only has a "Clear Billing" link. Need a complete step-by-step discharge process manageable from this screen.
+### Solution
 
-**Changes to `src/components/ipd/tabs/IPDOverviewTab.tsx`:**
-- Track 4 discharge steps with state: Medical Clearance, Billing, Pharmacy, Summary
-- **Medical**: "Mark Medical Clearance" button → updates `admissions.medical_cleared = true`
-- **Billing**: "Clear Billing →" navigates to billing (existing) — checks `billing_cleared` from admissions
-- **Pharmacy**: "Clear Pharmacy →" checks if all dispensing is done (query `pharmacy_dispensing` for pending items) or marks cleared
-- **Summary**: "Generate Discharge Summary" → triggers AI discharge summary generation + print
-- Each step unlocks sequentially (step N+1 disabled until step N done)
-- Add `medical_cleared` and `pharmacy_cleared` columns to admissions read (if not present, use local state with Supabase update)
+**1. Auto-sync billing_cleared when bill is paid**
 
-**Changes to `src/components/ipd/IPDWorkspace.tsx` (Initiate Discharge button):**
-- Instead of just sending WhatsApp, switch to Overview tab and highlight the discharge stepper
-- The actual discharge status update (`admissions.status = 'discharged'`) happens at Step 4 completion
+**File: `src/components/billing/tabs/PaymentsTab.tsx`** (~line 90-94)
+- After updating `bills.payment_status` to `paid`, check if this bill has an `admission_id`
+- If yes, set `admissions.billing_cleared = true` on that admission
+- This makes the discharge stepper automatically advance past step 2 when the IPD bill is fully paid
 
-**2. View Patient Record — Open Specific Patient**
+**2. Auto-sync pharmacy_cleared when all IP meds dispensed**
 
-Currently navigates to `/patients?id={patientId}` but `PatientsPage` ignores the `?id=` query param.
+**File: `src/components/pharmacy/ip/DispensingWorkspace.tsx`**
+- After a successful dispense, check if the prescription's admission has any remaining undispensed items
+- If all items for that admission are dispensed, set `admissions.pharmacy_cleared = true`
 
-**Changes to `src/pages/patients/PatientsPage.tsx`:**
-- Read `id` from `useSearchParams()`
-- On mount, if `id` param exists, fetch that specific patient and auto-open `PatientDetailDrawer`
-- Clear the param after opening so subsequent navigation works normally
+**3. IPD Overview reads real-time status**
 
-**3. Initiate Discharge, Transfer, Escalate Buttons Not Working**
-
-Currently these just show toasts. Make them functional:
-
-**Initiate Discharge** (`IPDWorkspace.tsx`):
-- Switch to Overview tab and scroll to Discharge Progress card
-- Set a flag to highlight the discharge stepper
-
-**Transfer** (`IPDWorkspace.tsx`):
-- Open a Transfer modal with: destination ward select, destination bed select, reason textarea
-- On submit: update `admissions` with new ward/bed, update old bed status to `available`, new bed to `occupied`
-
-**Escalate** (`IPDWorkspace.tsx`):
-- Insert a `clinical_alert` record with severity `critical`, type `escalation`
-- Show confirmation toast with details
+**File: `src/components/ipd/tabs/IPDOverviewTab.tsx`**
+- For billing step: also query `bills` table for any bill with this `admission_id` and `payment_status = 'paid'` — if found, treat billing as cleared (even if `billing_cleared` flag wasn't set yet)
+- For pharmacy step: also query `pharmacy_dispensing` for any pending IP dispenses for this admission — if none pending, treat pharmacy as cleared
+- This makes the stepper reflect real data, not just flags
 
 ### Technical Details
 
-**New component:** `src/components/ipd/BedTransferModal.tsx`
-- Ward dropdown (from `wards` table)
-- Available bed dropdown (from `beds` where status = 'available' in selected ward)
-- Reason textarea
-- On confirm: update `admissions.ward_id`, `admissions.bed_id`, update both bed statuses
+**PaymentsTab.tsx** — add after line 94 (after `bills.update`):
+```typescript
+// If bill is for IPD admission and fully paid, mark billing cleared
+if (newStatus === "paid" && bill.admission_id) {
+  await supabase.from("admissions")
+    .update({ billing_cleared: true })
+    .eq("id", bill.admission_id);
+}
+```
 
-**Database reads/writes:**
-- READ: `admissions`, `pharmacy_dispensing`, `wards`, `beds`, `patients`
-- WRITE: `admissions` (medical_cleared, pharmacy_cleared, status, ward_id, bed_id), `beds` (status), `clinical_alerts`
+**DispensingWorkspace.tsx** — after successful dispense callback:
+```typescript
+// Check if all prescriptions for this admission are dispensed
+// If so, update admissions.pharmacy_cleared = true
+```
 
-**Files modified:**
-1. `src/components/ipd/tabs/IPDOverviewTab.tsx` — full discharge stepper with 4 actionable steps
-2. `src/components/ipd/IPDWorkspace.tsx` — wire up Initiate Discharge (tab switch), Transfer (modal), Escalate (alert insert)
-3. `src/pages/patients/PatientsPage.tsx` — read `?id=` param and auto-open patient drawer
-4. `src/components/ipd/BedTransferModal.tsx` — new transfer modal
+**IPDOverviewTab.tsx** — enhance the useEffect that loads admission data:
+- Add a query to `bills` where `admission_id = admissionId` and check if `payment_status = 'paid'`
+- Add a query to `pharmacy_dispensing` where `admission_id = admissionId` and `status = 'pending'`
+- Use these real queries to set `billingCleared` and `pharmacyCleared` states
+
+### Files Modified
+1. `src/components/billing/tabs/PaymentsTab.tsx` — set `billing_cleared` on admission when bill paid
+2. `src/components/pharmacy/ip/DispensingWorkspace.tsx` — set `pharmacy_cleared` when all IP meds done
+3. `src/components/ipd/tabs/IPDOverviewTab.tsx` — read real billing/pharmacy status, not just flags
 
