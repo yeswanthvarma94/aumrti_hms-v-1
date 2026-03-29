@@ -10,6 +10,7 @@ import {
   Download, Users, UserCog, IndianRupee, Pill, Factory, TestTube,
   ArrowRight, Undo2, Eye, FileSpreadsheet, AlertTriangle
 } from "lucide-react";
+import ImportWizard from "@/components/migration/ImportWizard";
 
 interface MigrationJob {
   id: string;
@@ -129,6 +130,7 @@ const DataMigrationPage: React.FC = () => {
   const [viewLogs, setViewLogs] = useState<MigrationLog[]>([]);
   const [rollbackJob, setRollbackJob] = useState<MigrationJob | null>(null);
   const [rollbackLoading, setRollbackLoading] = useState(false);
+  const [wizardEntity, setWizardEntity] = useState<string | null>(null);
 
   useEffect(() => { loadData(); }, []);
 
@@ -252,7 +254,7 @@ const DataMigrationPage: React.FC = () => {
                     <span className="text-[11px] text-muted-foreground font-mono">
                       {(counts[e.key] || 0).toLocaleString("en-IN")} records
                     </span>
-                    <Button size="sm" variant="outline" className="h-8 text-xs gap-1" disabled>
+                    <Button size="sm" variant="outline" className="h-8 text-xs gap-1" onClick={() => setWizardEntity(e.key)}>
                       Import {e.label} <ArrowRight size={12} />
                     </Button>
                   </div>
@@ -260,7 +262,7 @@ const DataMigrationPage: React.FC = () => {
               );
             })}
           </div>
-          <p className="text-[10px] text-muted-foreground mt-2 italic">Import wizard coming in next update</p>
+          
         </div>
 
         {/* Template Downloads */}
@@ -396,6 +398,15 @@ const DataMigrationPage: React.FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Import Wizard */}
+      {wizardEntity && (
+        <ImportWizard
+          entityType={wizardEntity as any}
+          onClose={() => setWizardEntity(null)}
+          onComplete={() => { setWizardEntity(null); loadData(); }}
+        />
+      )}
     </div>
   );
 };
