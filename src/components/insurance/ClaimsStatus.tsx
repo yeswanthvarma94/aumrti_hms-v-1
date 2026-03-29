@@ -6,9 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { differenceInDays, format } from "date-fns";
 import EmptyState from "@/components/EmptyState";
 import AppealLetterModal from "./AppealLetterModal";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 
 interface Claim {
   id: string;
@@ -25,14 +28,22 @@ interface Claim {
 
 const statusOptions = ["all", "submitted", "under_review", "approved", "partially_approved", "rejected", "settled", "written_off"];
 
+const DENIAL_CATEGORIES = ["documentation_missing", "clinical_not_justified", "policy_exclusion", "duplicate_claim", "technical_error", "other"];
+const DENIAL_COLORS = ["hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))", "hsl(var(--chart-5))", "hsl(var(--destructive))"];
+
 const ClaimsStatus: React.FC = () => {
   const [claims, setClaims] = useState<Claim[]>([]);
   const [filter, setFilter] = useState("all");
   const [loading, setLoading] = useState(true);
   const [appealClaim, setAppealClaim] = useState<Claim | null>(null);
+  const [denialModal, setDenialModal] = useState<Claim | null>(null);
+  const [denialReason, setDenialReason] = useState("");
+  const [denialCategory, setDenialCategory] = useState("");
+  const [denialStats, setDenialStats] = useState<{ category: string; count: number }[]>([]);
+  const [topDenialsByTPA, setTopDenialsByTPA] = useState<{ tpa: string; reasons: string[] }[]>([]);
   const { toast } = useToast();
 
-  useEffect(() => { loadData(); }, [filter]);
+  useEffect(() => { loadData(); loadDenialStats(); }, [filter]);
 
   const loadData = async () => {
     setLoading(true);
@@ -59,6 +70,49 @@ const ClaimsStatus: React.FC = () => {
       denial_reason: c.denial_reason,
     })));
     setLoading(false);
+  };
+
+  const loadDenialStats = async () => {
+    const { data: logs } = await supabase.from("denial_logs").select("category, denial_reason, claim_id");
+    if (!logs?.length) return;
+    
+    // Category breakdown
+    const catMap: Record<string, number> = {};
+    logs.forEach(l => { const c = l.category || "other"; catMap[c] = (catMap[c] || 0) + 1; });
+    setDenialStats(Object.entries(catMap).map(([category, count]) => ({ category, count })).sort((a, b) => b.count - a.count));
+
+    // Top denials by TPA - need to join with insurance_claims
+    const claimIds = [...new Set(logs.map(l => l.claim_id).filter(Boolean))];
+    if (claimIds.length > 0) {
+      const { data: claimData } = await supabase.from("insurance_claims").select("id, tpa_name").in("id", claimIds);
+      const claimTpaMap = Object.fromEntries((claimData || []).map(c => [c.id, c.tpa_name]));
+      const tpaReasons: Record<string, string[]> = {};
+      logs.forEach(l => {
+        const tpa = claimTpaMap[l.claim_id] || "Unknown";
+        if (!tpaReasons[tpa]) tpaReasons[tpa] = [];
+        if (l.denial_reason && !tpaReasons[tpa].includes(l.denial_reason)) tpaReasons[tpa].push(l.denial_reason);
+      });
+      setTopDenialsByTPA(Object.entries(tpaReasons).map(([tpa, reasons]) => ({ tpa, reasons: reasons.slice(0, 3) })));
+    }
+  };
+
+  const logDenial = async (claim: Claim) => {
+    if (!denialReason || !denialCategory) {
+      toast({ title: "Please fill reason and category", variant: "destructive" });
+      return;
+    }
+    const { data: userData } = await supabase.from("users").select("hospital_id").eq("auth_user_id", (await supabase.auth.getUser()).data.user?.id || "").single();
+    await supabase.from("denial_logs").insert({
+      hospital_id: userData?.hospital_id || "",
+      claim_id: claim.id,
+      denial_reason: denialReason,
+      category: denialCategory,
+    });
+    toast({ title: "Denial logged ✓" });
+    setDenialModal(null);
+    setDenialReason("");
+    setDenialCategory("");
+    loadDenialStats();
   };
 
   const recordSettlement = async (claim: Claim) => {
@@ -164,6 +218,7 @@ const ClaimsStatus: React.FC = () => {
                     {c.status === "rejected" && (
                       <>
                         <Button size="sm" variant="outline" className="text-[10px] h-6" onClick={() => setAppealClaim(c)}>📝 Appeal</Button>
+                        <Button size="sm" variant="outline" className="text-[10px] h-6" onClick={() => setDenialModal(c)}>📋 Log Denial</Button>
                         <Button size="sm" variant="outline" className="text-[10px] h-6">Resubmit</Button>
                         <Button size="sm" variant="ghost" className="text-[10px] h-6 text-destructive" onClick={() => writeOff(c)}>Write Off</Button>
                       </>
@@ -181,6 +236,73 @@ const ClaimsStatus: React.FC = () => {
         onOpenChange={(open) => !open && setAppealClaim(null)}
         claim={appealClaim}
       />
+
+      {/* Denial Log Modal */}
+      <Dialog open={!!denialModal} onOpenChange={(open) => !open && setDenialModal(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base">Log Denial Details</DialogTitle>
+          </DialogHeader>
+          {denialModal && (
+            <div className="space-y-4">
+              <div className="text-xs text-muted-foreground">
+                Claim: {denialModal.claim_number || "—"} · {denialModal.tpa_name} · ₹{denialModal.claimed_amount.toLocaleString("en-IN")}
+              </div>
+              <div>
+                <Label className="text-[11px] uppercase text-muted-foreground font-semibold">Denial Category</Label>
+                <Select value={denialCategory} onValueChange={setDenialCategory}>
+                  <SelectTrigger className="mt-1"><SelectValue placeholder="Select category" /></SelectTrigger>
+                  <SelectContent>
+                    {DENIAL_CATEGORIES.map(c => (
+                      <SelectItem key={c} value={c}>{c.replace(/_/g, " ")}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-[11px] uppercase text-muted-foreground font-semibold">Denial Reason</Label>
+                <Input className="mt-1" value={denialReason} onChange={e => setDenialReason(e.target.value)} placeholder="Specific reason from TPA" />
+              </div>
+              <Button onClick={() => logDenial(denialModal)} className="w-full">Log Denial</Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Denial Analysis Section */}
+      {denialStats.length > 0 && (
+        <div className="grid grid-cols-2 gap-4">
+          <div className="bg-background rounded-lg border border-border p-4">
+            <p className="text-[11px] font-semibold uppercase text-muted-foreground mb-3">Denial Categories</p>
+            <ResponsiveContainer width="100%" height={160}>
+              <PieChart>
+                <Pie data={denialStats} dataKey="count" nameKey="category" cx="50%" cy="50%" outerRadius={60} innerRadius={30} label={({ category, count }) => `${(category as string).replace(/_/g, " ")} (${count})`} labelLine={false}>
+                  {denialStats.map((_, i) => (
+                    <Cell key={i} fill={DENIAL_COLORS[i % DENIAL_COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(v: number, name: string) => [v, name.replace(/_/g, " ")]} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="bg-background rounded-lg border border-border p-4">
+            <p className="text-[11px] font-semibold uppercase text-muted-foreground mb-3">Top Denial Reasons by TPA</p>
+            <div className="space-y-3">
+              {topDenialsByTPA.map(t => (
+                <div key={t.tpa}>
+                  <p className="text-[13px] font-medium text-foreground">{t.tpa}</p>
+                  <ul className="ml-3 mt-1 space-y-0.5">
+                    {t.reasons.map((r, i) => (
+                      <li key={i} className="text-[11px] text-muted-foreground">• {r}</li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+              {topDenialsByTPA.length === 0 && <p className="text-xs text-muted-foreground">No denial data yet</p>}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

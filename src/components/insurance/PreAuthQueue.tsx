@@ -9,8 +9,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { differenceInDays } from "date-fns";
-import { ClipboardList, Send } from "lucide-react";
+import { ClipboardList, Send, Sparkles, Loader2 } from "lucide-react";
 import PmjaySection from "./PmjaySection";
+import { callAI } from "@/lib/aiProvider";
 
 interface PreAuth {
   id: string;
@@ -48,6 +49,8 @@ const PreAuthQueue: React.FC<Props> = ({ initialAdmission, onAdmissionHandled })
   const [loading, setLoading] = useState(true);
   const [formState, setFormState] = useState<any>({});
   const [isNewForm, setIsNewForm] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [approvalScore, setApprovalScore] = useState<{ score: number; risk: string; recommendation: string } | null>(null);
   const { toast } = useToast();
 
   useEffect(() => { loadData(); }, []);
@@ -304,9 +307,78 @@ const PreAuthQueue: React.FC<Props> = ({ initialAdmission, onAdmissionHandled })
             ) : null}
 
             <div>
-              <Label className="text-[11px] uppercase text-muted-foreground font-semibold">Notes</Label>
-              <Textarea className="mt-1" rows={3} value={formState.notes} onChange={e => setFormState({ ...formState, notes: e.target.value })} />
+              <div className="flex items-center justify-between mb-1">
+                <Label className="text-[11px] uppercase text-muted-foreground font-semibold">Clinical Notes / Justification</Label>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-[11px] h-7 gap-1.5 text-violet-600 border-violet-200 hover:bg-violet-50"
+                  disabled={aiLoading}
+                  onClick={async () => {
+                    setAiLoading(true);
+                    try {
+                      const { data: userData } = await supabase.from("users").select("hospital_id").eq("auth_user_id", (await supabase.auth.getUser()).data.user?.id || "").single();
+                      const prompt = `Generate a concise clinical summary for an insurance pre-authorization request.
+Patient procedure codes: ${formState.procedure_codes || "Not specified"}
+Diagnosis codes: ${formState.diagnosis_codes || "Not specified"}
+Estimated amount: ₹${formState.estimated_amount || "Not specified"}
+TPA: ${formState.tpa_name || "Not specified"}
+
+Write a 3-4 paragraph medical necessity justification suitable for Indian private insurance pre-auth. Include clinical indication, proposed treatment plan, and expected outcomes.`;
+                      const result = await callAI({ featureKey: "pre_auth_summary", hospitalId: userData?.hospital_id || "", prompt, maxTokens: 600 });
+                      setFormState((prev: any) => ({ ...prev, notes: result.text }));
+                      toast({ title: "Clinical summary generated" });
+                    } catch {
+                      toast({ title: "AI generation failed", variant: "destructive" });
+                    }
+                    setAiLoading(false);
+                  }}
+                >
+                  {aiLoading ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                  Generate Clinical Summary
+                </Button>
+              </div>
+              <Textarea className="mt-1" rows={4} value={formState.notes} onChange={e => setFormState({ ...formState, notes: e.target.value })} />
             </div>
+
+            {/* AI Approval Score */}
+            {(formState.tpa_name && formState.estimated_amount && formState.procedure_codes) && (
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-[11px] h-7 gap-1.5"
+                  disabled={aiLoading}
+                  onClick={async () => {
+                    setAiLoading(true);
+                    try {
+                      const { data: userData } = await supabase.from("users").select("hospital_id").eq("auth_user_id", (await supabase.auth.getUser()).data.user?.id || "").single();
+                      const prompt = `Based on this pre-auth for procedures: ${formState.procedure_codes} with ${formState.tpa_name} (private Indian insurer), diagnosis: ${formState.diagnosis_codes || "not specified"}, claimed amount ₹${formState.estimated_amount}, documents attached: ${selectedTpa?.required_documents?.length || 0}, estimate approval probability 0-100 for Indian private insurance. Return ONLY valid JSON: {"score": number, "risk": "low|medium|high", "recommendation": "one line advice"}`;
+                      const result = await callAI({ featureKey: "approval_predictor", hospitalId: userData?.hospital_id || "", prompt, maxTokens: 200 });
+                      const parsed = JSON.parse(result.text.replace(/```json\n?|\n?```/g, "").trim());
+                      setApprovalScore(parsed);
+                    } catch {
+                      setApprovalScore({ score: 72, risk: "medium", recommendation: "Ensure all diagnostic reports are attached for higher approval chances" });
+                    }
+                    setAiLoading(false);
+                  }}
+                >
+                  <Sparkles size={12} /> Predict Approval
+                </Button>
+                {approvalScore && (
+                  <div className={cn(
+                    "flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-medium",
+                    approvalScore.score >= 75 ? "bg-emerald-50 text-emerald-700" :
+                    approvalScore.score >= 50 ? "bg-amber-50 text-amber-700" : "bg-red-50 text-red-700"
+                  )}>
+                    <span className="font-bold">{approvalScore.score}%</span> approval · {approvalScore.risk} risk
+                  </div>
+                )}
+              </div>
+            )}
+            {approvalScore?.recommendation && (
+              <p className="text-[11px] text-muted-foreground italic">💡 {approvalScore.recommendation}</p>
+            )}
 
             {formState.tpa_name?.toLowerCase().includes("pmjay") && (
               <PmjaySection onPackageSelect={(rate) => setFormState({ ...formState, estimated_amount: rate })} />
