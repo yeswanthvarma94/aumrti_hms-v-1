@@ -122,10 +122,11 @@ const settingsGroups: SettingsGroup[] = [
     ],
   },
   {
-    label: "Go-Live",
+    label: "Go-Live & Migration",
     emoji: "🚀",
     cards: [
       { icon: ListChecks, title: "Go-Live Checklist", desc: "Pre-launch readiness verification for pilot hospitals", route: "/admin/go-live" },
+      { icon: HardDrive, emoji: "📥", title: "Data Migration", desc: "Import patients, staff, drugs, and services from your old system", route: "/admin/data-migration" },
     ],
   },
 ];
