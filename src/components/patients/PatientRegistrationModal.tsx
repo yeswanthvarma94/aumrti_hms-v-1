@@ -261,7 +261,14 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess }) => {
             </div>
           </div>
 
-          {/* ROW 6: Emergency Contact */}
+          {/* ROW 6: Referral Source */}
+          <div>
+            <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Referral Source <span className="text-muted-foreground/60">(Optional)</span></label>
+            <input value={form.referral_source} onChange={(e) => set("referral_source", e.target.value)}
+              placeholder="Dr. name, Google, Walk-in, Practo, etc." className={inputClass} />
+          </div>
+
+          {/* ROW 7: Emergency Contact */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Emergency Contact Name</label>
