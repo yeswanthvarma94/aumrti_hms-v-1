@@ -347,6 +347,26 @@ const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onT
       status: "completed",
       consultation_end_at: new Date().toISOString(),
     }).eq("id", token.id);
+
+    // Upsert MRD records for this encounter
+    if (encounterId && hospitalId) {
+      (supabase as any).from("medical_records").upsert({
+        hospital_id: hospitalId,
+        patient_id: token.patient_id,
+        record_type: "opd",
+        visit_id: encounterId,
+        status: "active",
+      }, { onConflict: "hospital_id,patient_id,record_type,visit_id" }).then(() => {});
+
+      (supabase as any).from("icd_codings").upsert({
+        hospital_id: hospitalId,
+        visit_type: "opd",
+        visit_id: encounterId,
+        status: encounter.icd10_code ? "coded" : "pending",
+        primary_icd_code: encounter.icd10_code || null,
+      }, { onConflict: "hospital_id,visit_type,visit_id" }).then(() => {});
+    }
+
     onTokenUpdate();
     toast({ title: "Encounter saved. Billing module coming in Phase 6." });
   };
