@@ -15,6 +15,7 @@ interface Claim {
   patient_id: string;
   admission_id: string;
   scheme_id: string;
+  bill_id: string | null;
   claim_number: string | null;
   package_code: string;
   package_name: string;
@@ -63,7 +64,7 @@ const PmjayClaimsTab: React.FC = () => {
 
     if (rows.length > 0) {
       const pIds = [...new Set(rows.map(r => r.patient_id))];
-      const { data: pData } = await supabase.from("patients").select("id, full_name").in("id", pIds);
+      const { data: pData } = await supabase.from("patients").select("id, full_name, dob, gender").in("id", pIds);
       setPatients(Object.fromEntries((pData || []).map(p => [p.id, p.full_name])));
     }
     setLoading(false);
@@ -71,29 +72,65 @@ const PmjayClaimsTab: React.FC = () => {
 
   const filtered = filter === "all" ? claims : claims.filter(c => c.status === filter);
 
+  // FEATURE 3: AI Appeal Letter Generator
   const generateAppeal = async () => {
     if (!selected) return;
     setAiLoading(true);
     try {
+      // Fetch patient details for richer context
+      const { data: patientData } = await supabase
+        .from("patients")
+        .select("full_name, dob, gender")
+        .eq("id", selected.patient_id)
+        .single();
+
+      const patientAge = patientData?.dob
+        ? Math.floor((Date.now() - new Date(patientData.dob).getTime()) / (365.25 * 86400000))
+        : "N/A";
+
+      // Fetch hospital name
+      const { data: hospitalData } = await supabase
+        .from("hospitals")
+        .select("name")
+        .limit(1)
+        .single();
+
       const response = await callAI({
         featureKey: "appeal_letter",
         hospitalId: "",
-        prompt: `Generate a formal medical necessity appeal letter for a denied insurance claim.
-Patient: ${patients[selected.patient_id]}
-Package: ${selected.package_name} (${selected.package_code})
-Claimed Amount: ₹${selected.claimed_amount}
-Denial Reason: ${selected.denial_reason || "Not specified"}
-Denial Code: ${selected.denial_code || "N/A"}
+        prompt: `Write a formal medical necessity appeal letter for a denied PMJAY/government health scheme claim.
 
-Write a professional letter requesting reconsideration, including medical justification and referencing applicable guidelines. Format as a formal hospital letter.`,
-        maxTokens: 800,
+Hospital: ${hospitalData?.name || "Hospital"}
+Patient: ${patientData?.full_name || "Patient"}, ${patientAge}yrs, ${patientData?.gender || "N/A"}
+Package: ${selected.package_name} (Code: ${selected.package_code})
+Claimed amount: ₹${selected.claimed_amount.toLocaleString("en-IN")}
+Denial reason: ${selected.denial_reason || "Not specified"}
+Denial code: ${selected.denial_code || "Not specified"}
+
+Write a professional appeal letter that:
+1. References the denial with specific code
+2. Provides clinical justification for medical necessity
+3. Cites relevant PMJAY/NHA guidelines supporting this package
+4. Requests reconsideration with supporting documents listed
+5. Ends with formal closing
+
+Format as a proper letter. Use formal Indian medical correspondence style.
+Hospital letterhead will be added. Just write the body content.`,
+        maxTokens: 600,
       });
+
       if (response && !response.error) {
-        const text = response.text || (typeof response === "string" ? response : "");
+        const text = response.text || "";
         setAppealText(text);
         setAppealModal(true);
+        // Auto-save to claim
+        await supabase.from("pmjay_claims").update({ appeal_letter: text }).eq("id", selected.id);
+      } else {
+        console.warn("AI unavailable:", response?.error);
+        toast({ title: "AI unavailable — write appeal manually", variant: "destructive" });
       }
-    } catch {
+    } catch (error) {
+      console.error("Appeal generation failed:", error);
       toast({ title: "Failed to generate appeal", variant: "destructive" });
     }
     setAiLoading(false);
@@ -102,7 +139,7 @@ Write a professional letter requesting reconsideration, including medical justif
   const saveAppeal = async () => {
     if (!selected) return;
     await supabase.from("pmjay_claims").update({ appeal_letter: appealText }).eq("id", selected.id);
-    toast({ title: "Appeal saved to claim" });
+    toast({ title: "Appeal saved to claim ✓" });
     setAppealModal(false);
     loadData();
   };
@@ -114,7 +151,67 @@ Write a professional letter requesting reconsideration, including medical justif
       status: "submitted",
       submitted_at: new Date().toISOString(),
     }).eq("id", selected.id);
-    toast({ title: "Claim resubmitted" });
+    toast({ title: "Claim resubmitted ✓" });
+    loadData();
+    setSelected(null);
+  };
+
+  // FEATURE 4: Billing integration — on claim settlement
+  const markSettled = async () => {
+    if (!selected) return;
+    const settledAmt = selected.approved_amount || selected.claimed_amount;
+
+    // Update claim status
+    await supabase.from("pmjay_claims").update({
+      status: "settled",
+      settled_amount: settledAmt,
+      settled_at: new Date().toISOString(),
+    }).eq("id", selected.id);
+
+    // Create bill payment if bill exists
+    if (selected.bill_id) {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: userData } = await supabase
+        .from("users")
+        .select("id, hospital_id")
+        .eq("auth_user_id", user?.id || "")
+        .maybeSingle();
+
+      await supabase.from("bill_payments").insert({
+        hospital_id: userData?.hospital_id || "",
+        bill_id: selected.bill_id,
+        payment_mode: "pmjay",
+        amount: settledAmt,
+        transaction_id: selected.claim_number || null,
+        received_by: userData?.id || null,
+      });
+
+      // Update bill payment status
+      const { data: billData } = await supabase
+        .from("bills")
+        .select("paid_amount, patient_payable")
+        .eq("id", selected.bill_id)
+        .single();
+
+      if (billData) {
+        const newPaid = (billData.paid_amount || 0) + settledAmt;
+        const newBalance = Math.max(0, (billData.patient_payable || 0) - newPaid);
+        await supabase.from("bills").update({
+          paid_amount: newPaid,
+          balance_due: newBalance,
+          payment_status: newBalance <= 0 ? "paid" : "partial",
+        }).eq("id", selected.bill_id);
+      }
+    }
+
+    // Clear billing on admission
+    if (selected.admission_id) {
+      await supabase.from("admissions")
+        .update({ billing_cleared: true })
+        .eq("id", selected.admission_id);
+    }
+
+    toast({ title: `₹${settledAmt.toLocaleString("en-IN")} settled & billing updated ✓` });
     loadData();
     setSelected(null);
   };
@@ -205,6 +302,27 @@ Write a professional letter requesting reconsideration, including medical justif
                     <Send size={13} /> Mark Resubmitted
                   </Button>
                 </div>
+              </div>
+            )}
+
+            {/* Settlement action for approved claims */}
+            {selected.status === "approved" && (
+              <div className="bg-emerald-50 border border-emerald-100 rounded-lg p-3 space-y-2">
+                <div className="text-sm font-semibold text-emerald-700">✓ Claim Approved</div>
+                <div className="text-[12px]">
+                  Approved: ₹{(selected.approved_amount || selected.claimed_amount).toLocaleString("en-IN")}
+                </div>
+                <Button size="sm" onClick={markSettled} className="gap-1">
+                  <Coins size={13} /> Mark Settled & Record Payment
+                </Button>
+              </div>
+            )}
+
+            {/* Existing appeal letter */}
+            {selected.appeal_letter && (
+              <div className="border border-border rounded-lg p-3">
+                <div className="text-[11px] uppercase text-muted-foreground font-semibold mb-1">Saved Appeal Letter</div>
+                <p className="text-sm whitespace-pre-wrap max-h-40 overflow-y-auto">{selected.appeal_letter}</p>
               </div>
             )}
           </div>
