@@ -3759,6 +3759,38 @@ export type Database = {
           },
         ]
       }
+      hospital_icd_settings: {
+        Row: {
+          active_set: string | null
+          created_at: string | null
+          hospital_id: string
+          id: string
+          show_common_first: boolean | null
+        }
+        Insert: {
+          active_set?: string | null
+          created_at?: string | null
+          hospital_id: string
+          id?: string
+          show_common_first?: boolean | null
+        }
+        Update: {
+          active_set?: string | null
+          created_at?: string | null
+          hospital_id?: string
+          id?: string
+          show_common_first?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hospital_icd_settings_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: true
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hospitals: {
         Row: {
           accent_color: string | null
@@ -3942,6 +3974,135 @@ export type Database = {
             columns: ["validated_by"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      icd10_code_sets: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          hospital_id: string
+          id: string
+          is_active: boolean | null
+          set_name: string
+          set_type: string
+          total_codes: number | null
+          uploaded_at: string | null
+          uploaded_by: string | null
+          version: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          hospital_id: string
+          id?: string
+          is_active?: boolean | null
+          set_name: string
+          set_type?: string
+          total_codes?: number | null
+          uploaded_at?: string | null
+          uploaded_by?: string | null
+          version?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          hospital_id?: string
+          id?: string
+          is_active?: boolean | null
+          set_name?: string
+          set_type?: string
+          total_codes?: number | null
+          uploaded_at?: string | null
+          uploaded_by?: string | null
+          version?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "icd10_code_sets_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "icd10_code_sets_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      icd10_codes: {
+        Row: {
+          block: string | null
+          block_desc: string | null
+          category: string | null
+          chapter: string | null
+          chapter_desc: string | null
+          code: string
+          code_set_id: string | null
+          common_india: boolean | null
+          created_at: string | null
+          description: string
+          gender_specific: string | null
+          hospital_id: string | null
+          id: string
+          is_billable: boolean | null
+          is_header: boolean | null
+          use_count: number | null
+        }
+        Insert: {
+          block?: string | null
+          block_desc?: string | null
+          category?: string | null
+          chapter?: string | null
+          chapter_desc?: string | null
+          code: string
+          code_set_id?: string | null
+          common_india?: boolean | null
+          created_at?: string | null
+          description: string
+          gender_specific?: string | null
+          hospital_id?: string | null
+          id?: string
+          is_billable?: boolean | null
+          is_header?: boolean | null
+          use_count?: number | null
+        }
+        Update: {
+          block?: string | null
+          block_desc?: string | null
+          category?: string | null
+          chapter?: string | null
+          chapter_desc?: string | null
+          code?: string
+          code_set_id?: string | null
+          common_india?: boolean | null
+          created_at?: string | null
+          description?: string
+          gender_specific?: string | null
+          hospital_id?: string | null
+          id?: string
+          is_billable?: boolean | null
+          is_header?: boolean | null
+          use_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "icd10_codes_code_set_id_fkey"
+            columns: ["code_set_id"]
+            isOneToOne: false
+            referencedRelation: "icd10_code_sets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "icd10_codes_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
             referencedColumns: ["id"]
           },
         ]
