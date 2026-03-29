@@ -11,8 +11,10 @@ import { cn } from "@/lib/utils";
 import { format, differenceInDays } from "date-fns";
 import {
   Link2, CalendarDays, MessageSquare, HandCoins, RefreshCw,
-  Copy, ExternalLink, AlertTriangle, CheckCircle2
+  Copy, ExternalLink, AlertTriangle, CheckCircle2, Megaphone, QrCode
 } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
+import CollectionCampaignModal from "@/components/billing/CollectionCampaignModal";
 
 interface OutstandingBill {
   id: string;
@@ -78,6 +80,17 @@ const CollectionsTab: React.FC<CollectionsTabProps> = ({ hospitalId }) => {
   const [collectAmount, setCollectAmount] = useState("");
   const [collectMode, setCollectMode] = useState("cash");
   const [collecting, setCollecting] = useState(false);
+
+  // Pay Link modal
+  const [payLinkModal, setPayLinkModal] = useState<OutstandingBill | null>(null);
+  const [payLinkAmount, setPayLinkAmount] = useState(0);
+  const [payLinkExpiry, setPayLinkExpiry] = useState(7);
+  const [payLinkGenerating, setPayLinkGenerating] = useState(false);
+  const [generatedPayUrl, setGeneratedPayUrl] = useState("");
+  const [generatedPayToken, setGeneratedPayToken] = useState("");
+
+  // Campaign modal
+  const [showCampaign, setShowCampaign] = useState(false);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -190,24 +203,97 @@ const CollectionsTab: React.FC<CollectionsTabProps> = ({ hospitalId }) => {
 
   const fmt = (n: number) => "₹" + n.toLocaleString("en-IN", { maximumFractionDigits: 0 });
 
-  // Generate pay link
-  const generatePayLink = async (bill: OutstandingBill) => {
+  // Generate pay link with full modal flow
+  const generatePayLink = async () => {
+    if (!payLinkModal) return;
+    setPayLinkGenerating(true);
     const { data: userData } = await supabase.from("users").select("id").limit(1).single();
+    const token = crypto.randomUUID();
+    const expiresAt = new Date(Date.now() + payLinkExpiry * 86400000).toISOString();
+
     const { error } = await supabase.from("payment_links" as any).insert({
       hospital_id: hospitalId,
-      bill_id: bill.id,
-      patient_id: bill.patient_id,
-      amount: bill.balance_due,
+      bill_id: payLinkModal.id,
+      patient_id: payLinkModal.patient_id,
+      link_token: token,
+      amount: payLinkAmount,
+      expires_at: expiresAt,
       created_by: userData?.id,
-      sent_via: ["whatsapp"],
+      sent_via: [],
     });
+
     if (error) {
       toast({ title: "Failed to create pay link", variant: "destructive" });
     } else {
-      toast({ title: "Payment link created" });
+      const url = `${window.location.origin}/pay/${token}`;
+      setGeneratedPayUrl(url);
+      setGeneratedPayToken(token);
+      toast({ title: "Payment link generated ✓" });
       loadData();
     }
+    setPayLinkGenerating(false);
   };
+
+  const openPayLinkModal = (bill: OutstandingBill) => {
+    setPayLinkModal(bill);
+    setPayLinkAmount(bill.balance_due);
+    setPayLinkExpiry(7);
+    setGeneratedPayUrl("");
+    setGeneratedPayToken("");
+  };
+
+  const sendPayLinkWhatsApp = async (bill: OutstandingBill, url: string) => {
+    // Get patient phone
+    const { data: patient } = await supabase.from("patients").select("phone").eq("id", bill.patient_id).single();
+    if (!patient?.phone) {
+      toast({ title: "Patient phone not found", variant: "destructive" });
+      return;
+    }
+    const msg = `Dear ${bill.patient_name}, your bill of ₹${bill.balance_due.toLocaleString("en-IN")} is pending. Pay securely here: ${url}`;
+    const cleanPhone = patient.phone.replace(/\D/g, "");
+    const fullPhone = cleanPhone.startsWith("91") ? cleanPhone : `91${cleanPhone}`;
+    window.open(`https://wa.me/${fullPhone}?text=${encodeURIComponent(msg)}`, "_blank");
+
+    // Update sent_via
+    if (generatedPayToken) {
+      await supabase.from("payment_links" as any).update({ sent_via: ["whatsapp"] }).eq("link_token", generatedPayToken);
+    }
+    toast({ title: "Sent via WhatsApp" });
+  };
+
+  // WhatsApp reminder for outstanding bill
+  const sendReminder = async (bill: OutstandingBill) => {
+    const { data: patient } = await supabase.from("patients").select("phone").eq("id", bill.patient_id).single();
+    if (!patient?.phone) {
+      toast({ title: "Patient phone not found", variant: "destructive" });
+      return;
+    }
+    const msg = `Dear ${bill.patient_name}, your bill ${bill.bill_number} of ₹${bill.balance_due.toLocaleString("en-IN")} is overdue by ${bill.days_overdue} days. Please visit us or contact the hospital to settle.`;
+    const cleanPhone = patient.phone.replace(/\D/g, "");
+    const fullPhone = cleanPhone.startsWith("91") ? cleanPhone : `91${cleanPhone}`;
+    window.open(`https://wa.me/${fullPhone}?text=${encodeURIComponent(msg)}`, "_blank");
+    toast({ title: "Reminder sent via WhatsApp" });
+  };
+
+  // Check EMI reminders on load
+  useEffect(() => {
+    const checkEMIReminders = async () => {
+      const threeDaysFromNow = new Date(Date.now() + 3 * 86400000).toISOString().split("T")[0];
+      const { data: upcoming } = await supabase
+        .from("emi_installments" as any)
+        .select("id, installment_number, amount, due_date, reminder_sent_count")
+        .eq("hospital_id", hospitalId)
+        .eq("status", "pending")
+        .lte("due_date", threeDaysFromNow)
+        .is("last_reminder_at", null)
+        .limit(20);
+
+      if (upcoming && (upcoming as any[]).length > 0) {
+        toast({ title: `${(upcoming as any[]).length} EMI installments due within 3 days — check Collections tab` });
+      }
+    };
+    checkEMIReminders();
+  }, [hospitalId]);
 
   // Create EMI plan
   const createEMI = async () => {
@@ -353,6 +439,9 @@ const CollectionsTab: React.FC<CollectionsTabProps> = ({ hospitalId }) => {
         <Button size="sm" variant="ghost" className="h-8 text-xs gap-1" onClick={loadData}>
           <RefreshCw size={12} /> Refresh
         </Button>
+        <Button size="sm" variant="outline" className="h-8 text-xs gap-1 ml-auto" onClick={() => setShowCampaign(true)}>
+          <Megaphone size={12} /> Run Campaign
+        </Button>
       </div>
 
       <div className="flex-1 overflow-y-auto">
@@ -392,13 +481,13 @@ const CollectionsTab: React.FC<CollectionsTabProps> = ({ hospitalId }) => {
                     </td>
                     <td className="px-3 py-2 text-right">
                       <div className="flex gap-1 justify-end">
-                        <Button size="sm" variant="ghost" className="h-7 px-1.5" title="Pay Link" onClick={() => generatePayLink(b)}>
+                        <Button size="sm" variant="ghost" className="h-7 px-1.5" title="Pay Link" onClick={() => openPayLinkModal(b)}>
                           <Link2 size={13} />
                         </Button>
                         <Button size="sm" variant="ghost" className="h-7 px-1.5" title="EMI Plan" onClick={() => { setEmiModal(b); setEmiInstallments(3); }}>
                           <CalendarDays size={13} />
                         </Button>
-                        <Button size="sm" variant="ghost" className="h-7 px-1.5" title="WhatsApp Remind">
+                        <Button size="sm" variant="ghost" className="h-7 px-1.5" title="WhatsApp Remind" onClick={() => sendReminder(b)}>
                           <MessageSquare size={13} />
                         </Button>
                         <Button size="sm" variant="ghost" className="h-7 px-1.5" title="Mark Collected" onClick={() => { setCollectModal(b); setCollectAmount(String(b.balance_due)); }}>
@@ -590,6 +679,79 @@ const CollectionsTab: React.FC<CollectionsTabProps> = ({ hospitalId }) => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Pay Link Modal */}
+      <Dialog open={!!payLinkModal} onOpenChange={() => setPayLinkModal(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Link2 size={16} /> Generate Payment Link</DialogTitle>
+          </DialogHeader>
+          {payLinkModal && (
+            <div className="space-y-4">
+              <div className="bg-muted/50 rounded-lg p-3 text-sm">
+                <p><strong>{payLinkModal.patient_name}</strong> • {payLinkModal.bill_number}</p>
+                <p className="font-mono mt-1">Balance: {fmt(payLinkModal.balance_due)}</p>
+              </div>
+
+              <div>
+                <Label className="text-xs">Amount (₹)</Label>
+                <Input type="number" value={payLinkAmount} onChange={(e) => setPayLinkAmount(Number(e.target.value))} className="h-9 mt-1 font-mono" />
+              </div>
+
+              <div>
+                <Label className="text-xs mb-2 block">Expiry</Label>
+                <div className="flex gap-2">
+                  {[1, 3, 7, 30].map(d => (
+                    <Button key={d} size="sm" variant={payLinkExpiry === d ? "default" : "outline"}
+                      className="h-7 text-xs" onClick={() => setPayLinkExpiry(d)}>
+                      {d} day{d > 1 ? "s" : ""}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {!generatedPayUrl ? (
+                <Button onClick={generatePayLink} disabled={payLinkGenerating || payLinkAmount <= 0} className="w-full">
+                  {payLinkGenerating ? "Generating..." : "Generate Pay Link"}
+                </Button>
+              ) : (
+                <div className="space-y-3">
+                  <div className="bg-muted/30 rounded-lg p-3 border border-border">
+                    <p className="text-[10px] font-bold uppercase text-muted-foreground mb-1">Pay Link</p>
+                    <p className="text-xs font-mono break-all text-foreground">{generatedPayUrl}</p>
+                  </div>
+
+                  <div className="flex justify-center">
+                    <QRCodeSVG value={generatedPayUrl} size={120} />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={() => {
+                      navigator.clipboard.writeText(generatedPayUrl);
+                      toast({ title: "Link copied ✓" });
+                    }}>
+                      <Copy size={13} /> Copy Link
+                    </Button>
+                    <Button size="sm" className="gap-1 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                      onClick={() => sendPayLinkWhatsApp(payLinkModal, generatedPayUrl)}>
+                      <MessageSquare size={13} /> WhatsApp
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Campaign Modal */}
+      {showCampaign && (
+        <CollectionCampaignModal
+          hospitalId={hospitalId}
+          onClose={() => setShowCampaign(false)}
+          onComplete={() => { setShowCampaign(false); loadData(); }}
+        />
+      )}
     </div>
   );
 };
