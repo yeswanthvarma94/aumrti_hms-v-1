@@ -2,8 +2,9 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { X, Search, CheckCircle2, ArrowLeft, CreditCard, Printer } from "lucide-react";
+import { X, Search, CheckCircle2, ArrowLeft, CreditCard, Printer, UserPlus } from "lucide-react";
 import { autoPostJournalEntry } from "@/lib/accounting";
+import AddReferralDoctorModal from "@/components/shared/AddReferralDoctorModal";
 
 interface Props {
   hospitalId: string;
@@ -65,6 +66,8 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated }) => {
   const [priority, setPriority] = useState("normal");
   const [nextToken, setNextToken] = useState("A-1");
   const [submitting, setSubmitting] = useState(false);
+  const [referralSource, setReferralSource] = useState("");
+  const [showReferralModal, setShowReferralModal] = useState(false);
 
   // Payment fields
   const [consultationFee, setConsultationFee] = useState(DEFAULT_CONSULTATION_FEE);
@@ -193,6 +196,7 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated }) => {
     if (dob) patientData.dob = dob;
     if (bloodGroup) patientData.blood_group = bloodGroup;
     if (address) patientData.address = address;
+    if (referralSource) (patientData as any).referral_source = referralSource;
 
     const { data: newPatient, error } = await supabase.from("patients").insert([patientData]).select("id").single();
     if (error) throw error;
@@ -497,7 +501,25 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated }) => {
               </div>
             </div>
 
-            {/* Priority */}
+            {/* Referral */}
+            <div className="mt-3">
+              <div className="flex items-center gap-2">
+                <label className="text-xs font-medium text-slate-600">Referral</label>
+                <button
+                  onClick={() => setShowReferralModal(true)}
+                  className="text-xs text-[#0E7B7B] font-medium hover:underline flex items-center gap-1"
+                >
+                  <UserPlus className="h-3 w-3" />
+                  + Referral
+                </button>
+              </div>
+              {referralSource && (
+                <div className="mt-1 px-3 py-1.5 bg-teal-50 border border-teal-200 rounded-lg text-xs text-teal-800 flex items-center justify-between">
+                  <span>Referred by: <strong>{referralSource}</strong></span>
+                  <button onClick={() => setReferralSource("")} className="text-teal-500 hover:text-teal-700 ml-2">✕</button>
+                </div>
+              )}
+            </div>
             <div className="mt-4">
               <label className="text-xs font-medium text-slate-600">Priority</label>
               <div className="flex gap-1.5 mt-1">
@@ -707,6 +729,12 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated }) => {
           </>
         )}
       </div>
+      <AddReferralDoctorModal
+        open={showReferralModal}
+        onClose={() => setShowReferralModal(false)}
+        onSaved={(name) => setReferralSource(name)}
+        hospitalId={hospitalId}
+      />
     </div>
   );
 };
