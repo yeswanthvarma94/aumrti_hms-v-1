@@ -626,8 +626,7 @@ const ReportViewerModal: React.FC<{ data: any; onClose: () => void; onMarkSubmit
 
         <DialogFooter className="flex gap-2">
           <Button size="sm" className="text-xs" variant="outline" onClick={() => {
-            try {
-              const XLSX = require("xlsx");
+          try {
               const wb = XLSX.utils.book_new();
               const rows: any[] = [];
               const addSection = (title: string, obj: Record<string, any>) => {
