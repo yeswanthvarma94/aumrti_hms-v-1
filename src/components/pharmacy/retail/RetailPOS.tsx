@@ -183,16 +183,13 @@ const RetailPOS: React.FC<Props> = ({ hospitalId }) => {
     setCustomerId(null);
     setCustomerPhone("");
     setCustomerName("");
+    setCustomerUhid("");
     setDiscountPercent(0);
     setDiscountFixed(0);
     setDiscountMode("percent");
+    setSearchResults([]);
+    setShowNewPatientForm(false);
   }, []);
-
-  const customerStatusLabel = customerId
-    ? `${customerName || "Patient found"}`
-    : customerPhone.length >= 10
-      ? "New walk-in customer"
-      : "Enter phone to fetch from database or type a new customer name";
 
   // Calculations
   const subtotal = items.reduce((s, i) => s + i.unit_price * i.qty, 0);
@@ -216,19 +213,26 @@ const RetailPOS: React.FC<Props> = ({ hospitalId }) => {
         customerId={customerId}
         customerPhone={customerPhone}
         customerName={customerName}
-        customerStatusLabel={customerStatusLabel}
+        customerUhid={customerUhid}
         discountPercent={discountPercent}
         discountMode={discountMode}
         discountFixed={discountFixed}
         searching={searching}
+        searchResults={searchResults}
+        showNewPatientForm={showNewPatientForm}
+        newPatientData={newPatientData}
         onUpdateQty={handleUpdateQty}
         onRemoveItem={handleRemoveItem}
         onClearAll={handleClearAll}
         onSetCustomerPhone={setCustomerPhone}
-        onSetCustomerName={handleCustomerNameChange}
+        onSetCustomerName={setCustomerName}
         onSetDiscountPercent={setDiscountPercent}
         onSetDiscountMode={setDiscountMode}
         onSetDiscountFixed={setDiscountFixed}
+        onSelectPatient={handleSelectPatient}
+        onClearPatient={handleClearPatient}
+        onToggleNewPatientForm={() => setShowNewPatientForm(v => !v)}
+        onSetNewPatientData={setNewPatientData}
         onCreateCustomer={handleCreateCustomer}
         subtotal={subtotal}
         discountAmount={discountAmount}
