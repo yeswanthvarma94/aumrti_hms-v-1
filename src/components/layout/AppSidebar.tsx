@@ -40,6 +40,7 @@ const quickAccessItems: SidebarItem[] = [
   { label: "OPD Queue", path: "/opd", icon: Stethoscope },
   { label: "IPD / Wards", path: "/ipd", icon: BedDouble },
   { label: "Billing", path: "/billing", icon: Receipt },
+  { label: "Govt Schemes", path: "/pmjay", icon: HeartPulse },
   { label: "Lab", path: "/lab", icon: FlaskConical },
   { label: "Analytics", path: "/analytics", icon: BarChart3 },
 ];

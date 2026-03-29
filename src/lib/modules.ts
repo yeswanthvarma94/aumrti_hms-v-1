@@ -59,6 +59,7 @@ export const ALL_MODULES: ModuleDefinition[] = [
   { name: "Insurance / TPA", desc: "Pre-auth & claims", icon: "🛡️", route: "/insurance", category: "Finance", roles: ["billing_executive", "super_admin"] },
   { name: "Payments", desc: "Collections & receipts", icon: "💳", route: "/payments", category: "Finance", roles: ["billing_executive", "super_admin"] },
   { name: "Accounts / ERP", desc: "P&L, balance sheet, journals", icon: "📚", route: "/accounts", category: "Finance", roles: ["accountant", "cfo", "super_admin"] },
+  { name: "Govt Schemes / PMJAY", desc: "PMJAY, CGHS, state scheme claims", icon: "🏥", route: "/pmjay", category: "Finance", roles: ["billing_executive", "super_admin"], isNew: true },
 
   // ── OPERATIONS ──
   { name: "HR & Payroll", desc: "Staff, roster & payroll", icon: "👥", route: "/hr", category: "Operations", roles: ["hr_manager", "super_admin"] },
