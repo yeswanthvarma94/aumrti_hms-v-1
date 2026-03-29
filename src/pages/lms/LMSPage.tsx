@@ -57,6 +57,7 @@ interface Certificate {
   issued_at: string;
   expires_at: string | null;
   course_id: string;
+  enrollment_id: string;
 }
 
 interface StaffUser {
