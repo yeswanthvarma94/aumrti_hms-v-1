@@ -4,10 +4,12 @@ import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
-import { ClipboardList, Send, Bot, FileText, CheckCircle2, RefreshCw } from "lucide-react";
+import { ClipboardList, Send, Bot, FileText, CheckCircle2, RefreshCw, Plus, X } from "lucide-react";
 import { callAI } from "@/lib/aiProvider";
 
 interface PreAuth {
@@ -69,19 +71,37 @@ const PmjayPreAuthTab: React.FC<Props> = ({ showNewForm, onFormClosed }) => {
   const [scoreData, setScoreData] = useState<{ score: number | null; risk: string | null; recommendation: string | null }>({ score: null, risk: null, recommendation: null });
   const { toast } = useToast();
 
-  useEffect(() => { loadData(); }, []);
+  // New form state
+  const [showForm, setShowForm] = useState(false);
+  const [formSchemes, setFormSchemes] = useState<{ id: string; scheme_name: string }[]>([]);
+  const [formPackages, setFormPackages] = useState<{ id: string; package_code: string; package_name: string; package_rate: number }[]>([]);
+  const [formBeneficiaries, setFormBeneficiaries] = useState<{ id: string; patient_id: string; beneficiary_id: string; patient_name: string }[]>([]);
+  const [patientSearch, setPatientSearch] = useState("");
+  const [patientResults, setPatientResults] = useState<{ id: string; full_name: string; phone: string }[]>([]);
+  const [newForm, setNewForm] = useState({
+    patient_id: "",
+    patient_name: "",
+    scheme_id: "",
+    beneficiary_ref_id: "", // scheme_beneficiaries.id
+    package_id: "",
+    admission_id: "",
+    justification: "",
+  });
+  const [admissions, setAdmissions] = useState<{ id: string; admission_number: string | null; admitting_diagnosis: string | null }[]>([]);
+  const [selectedPkg, setSelectedPkg] = useState<{ package_code: string; package_name: string; package_rate: number } | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (selected) {
-      setEditSummary(selected.clinical_summary || "");
-      setScoreData({
-        score: selected.ai_approval_score,
-        risk: null,
-        recommendation: null,
-      });
-      setCheckedDocs(REQUIRED_DOCS.map(() => false));
-    }
-  }, [selected?.id]);
+  useEffect(() => { loadData(); loadFormData(); }, []);
+  useEffect(() => { if (showNewForm) { setShowForm(true); setSelected(null); } }, [showNewForm]);
+
+  const loadFormData = async () => {
+    const [sRes, pRes] = await Promise.all([
+      supabase.from("govt_schemes").select("id, scheme_name").eq("is_active", true),
+      supabase.from("pmjay_packages").select("id, package_code, package_name, package_rate").eq("is_active", true).order("package_name"),
+    ]);
+    setFormSchemes((sRes.data || []) as any[]);
+    setFormPackages((pRes.data || []) as any[]);
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -102,6 +122,77 @@ const PmjayPreAuthTab: React.FC<Props> = ({ showNewForm, onFormClosed }) => {
     setLoading(false);
   };
 
+  // Patient search for new form
+  const searchPatients = async (q: string) => {
+    setPatientSearch(q);
+    if (q.length < 2) { setPatientResults([]); return; }
+    const { data } = await supabase.from("patients").select("id, full_name, phone").or(`full_name.ilike.%${q}%,phone.ilike.%${q}%`).limit(6);
+    setPatientResults((data || []) as any[]);
+  };
+
+  const selectPatient = async (p: { id: string; full_name: string }) => {
+    setNewForm(f => ({ ...f, patient_id: p.id, patient_name: p.full_name, beneficiary_ref_id: "", admission_id: "" }));
+    setPatientSearch(p.full_name);
+    setPatientResults([]);
+
+    // Load beneficiaries for this patient
+    const { data: bens } = await supabase.from("scheme_beneficiaries").select("id, patient_id, beneficiary_id").eq("patient_id", p.id).eq("verification_status", "verified");
+    setFormBeneficiaries((bens || []).map((b: any) => ({ ...b, patient_name: p.full_name })));
+
+    // Load active admissions
+    const { data: adms } = await supabase.from("admissions").select("id, admission_number, admitting_diagnosis").eq("patient_id", p.id).eq("status", "admitted");
+    setAdmissions((adms || []) as any[]);
+  };
+
+  const selectPackage = (pkgId: string) => {
+    const pkg = formPackages.find(p => p.id === pkgId);
+    setSelectedPkg(pkg || null);
+    setNewForm(f => ({ ...f, package_id: pkgId }));
+  };
+
+  const handleCreatePreAuth = async () => {
+    if (!newForm.patient_id || !newForm.scheme_id || !newForm.package_id || !newForm.beneficiary_ref_id) {
+      toast({ title: "Fill all required fields", variant: "destructive" });
+      return;
+    }
+    if (!selectedPkg) return;
+
+    setSubmitting(true);
+    const { data: userData } = await supabase.from("users").select("hospital_id").eq("auth_user_id", (await supabase.auth.getUser()).data.user?.id || "").single();
+    if (!userData?.hospital_id) { toast({ title: "Hospital not found", variant: "destructive" }); setSubmitting(false); return; }
+
+    const { error } = await supabase.from("pre_auth_requests").insert({
+      hospital_id: userData.hospital_id,
+      patient_id: newForm.patient_id,
+      scheme_id: newForm.scheme_id,
+      beneficiary_id: newForm.beneficiary_ref_id,
+      package_id: newForm.package_id,
+      package_code: selectedPkg.package_code,
+      package_name: selectedPkg.package_name,
+      requested_amount: selectedPkg.package_rate,
+      admission_id: newForm.admission_id || null,
+      justification: newForm.justification || null,
+      status: "draft",
+      submission_method: "manual",
+    });
+
+    setSubmitting(false);
+    if (error) { toast({ title: "Failed to create pre-auth", description: error.message, variant: "destructive" }); return; }
+    toast({ title: "Pre-auth request created" });
+    setShowForm(false);
+    onFormClosed();
+    resetForm();
+    loadData();
+  };
+
+  const resetForm = () => {
+    setNewForm({ patient_id: "", patient_name: "", scheme_id: "", beneficiary_ref_id: "", package_id: "", admission_id: "", justification: "" });
+    setPatientSearch("");
+    setSelectedPkg(null);
+    setAdmissions([]);
+    setFormBeneficiaries([]);
+  };
+
   const filtered = filter === "all" ? preAuths : preAuths.filter(p => p.status === filter);
 
   const updateStatus = async (id: string, status: string, extra: Record<string, any> = {}) => {
@@ -116,7 +207,6 @@ const PmjayPreAuthTab: React.FC<Props> = ({ showNewForm, onFormClosed }) => {
   const generateClinicalSummary = async (pa: PreAuth) => {
     setAiLoading(true);
     try {
-      // Try to fetch admission details if available
       let admissionContext = "";
       if (pa.admission_id) {
         const { data: admission } = await supabase
@@ -169,7 +259,6 @@ This will be submitted to government authorities.`,
         toast({ title: "Clinical summary generated ✓" });
         loadData();
       } else {
-        console.warn("AI unavailable:", response?.error);
         toast({ title: "AI unavailable — write summary manually", variant: "destructive" });
       }
     } catch (error) {
@@ -222,7 +311,6 @@ Return ONLY JSON:
             risk: parsed.risk ?? null,
             recommendation: parsed.recommendation ?? null,
           });
-          // Save score to DB
           await supabase.from("pre_auth_requests")
             .update({ ai_approval_score: parsed.score ?? null })
             .eq("id", pa.id);
@@ -269,11 +357,19 @@ Return ONLY JSON:
     return "bg-red-50 border-red-100";
   };
 
+  useEffect(() => {
+    if (selected) {
+      setEditSummary(selected.clinical_summary || "");
+      setScoreData({ score: selected.ai_approval_score, risk: null, recommendation: null });
+      setCheckedDocs(REQUIRED_DOCS.map(() => false));
+    }
+  }, [selected?.id]);
+
   if (loading) return <div className="flex items-center justify-center h-full text-muted-foreground text-sm">Loading...</div>;
 
   return (
     <div className="flex h-full overflow-hidden">
-      {/* Left panel */}
+      {/* Left panel — Queue */}
       <div className="w-[320px] border-r border-border bg-background flex flex-col overflow-hidden">
         <div className="p-3 border-b border-border">
           <h3 className="text-sm font-bold">Pre-Auth Queue</h3>
@@ -297,7 +393,7 @@ Return ONLY JSON:
           ) : filtered.map(item => (
             <button
               key={item.id}
-              onClick={() => setSelected(item)}
+              onClick={() => { setSelected(item); setShowForm(false); }}
               className={cn(
                 "w-full text-left p-3 rounded-lg border transition-colors",
                 selected?.id === item.id ? "bg-primary/5 border-primary" : "border-border hover:bg-muted/50"
@@ -313,7 +409,7 @@ Return ONLY JSON:
                 <span className="text-[11px] font-mono">₹{item.requested_amount.toLocaleString("en-IN")}</span>
                 {item.ai_approval_score && (
                   <span className={cn("text-[10px] font-bold", scoreColor(item.ai_approval_score))}>
-                    {item.ai_approval_score}% {scoreLabel(item.ai_approval_score)}
+                    {item.ai_approval_score}%
                   </span>
                 )}
               </div>
@@ -325,21 +421,123 @@ Return ONLY JSON:
         </div>
       </div>
 
-      {/* Right panel */}
+      {/* Right panel — Detail or New Form */}
       <div className="flex-1 overflow-y-auto p-5">
-        {!selected ? (
+        {showForm ? (
+          /* ==================== NEW PRE-AUTH FORM ==================== */
+          <div className="max-w-lg space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-bold">New Pre-Auth Request</h3>
+              <Button size="sm" variant="ghost" onClick={() => { setShowForm(false); onFormClosed(); resetForm(); }}>
+                <X size={16} />
+              </Button>
+            </div>
+
+            {/* Patient */}
+            <div>
+              <Label className="text-[11px]">Patient *</Label>
+              <Input className="mt-1" placeholder="Search patient by name or phone..." value={patientSearch} onChange={e => searchPatients(e.target.value)} />
+              {patientResults.length > 0 && (
+                <div className="border border-border rounded mt-1 bg-background max-h-32 overflow-y-auto">
+                  {patientResults.map(p => (
+                    <button key={p.id} onClick={() => selectPatient(p)} className="w-full text-left px-3 py-1.5 text-sm hover:bg-muted">
+                      {p.full_name} <span className="text-muted-foreground">({p.phone})</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {newForm.patient_name && <p className="text-xs text-emerald-600 mt-1">✓ {newForm.patient_name}</p>}
+            </div>
+
+            {/* Scheme */}
+            <div>
+              <Label className="text-[11px]">Scheme *</Label>
+              <Select value={newForm.scheme_id} onValueChange={v => setNewForm(f => ({ ...f, scheme_id: v }))}>
+                <SelectTrigger className="mt-1"><SelectValue placeholder="Select scheme" /></SelectTrigger>
+                <SelectContent>
+                  {formSchemes.map(s => <SelectItem key={s.id} value={s.id}>{s.scheme_name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Beneficiary (from scheme_beneficiaries for this patient) */}
+            <div>
+              <Label className="text-[11px]">Beneficiary ID *</Label>
+              {!newForm.patient_id ? (
+                <p className="text-xs text-muted-foreground mt-1">Select a patient first</p>
+              ) : formBeneficiaries.length === 0 ? (
+                <p className="text-xs text-amber-600 mt-1">No verified beneficiaries found. Register one in the Beneficiaries tab first.</p>
+              ) : (
+                <Select value={newForm.beneficiary_ref_id} onValueChange={v => setNewForm(f => ({ ...f, beneficiary_ref_id: v }))}>
+                  <SelectTrigger className="mt-1"><SelectValue placeholder="Select beneficiary" /></SelectTrigger>
+                  <SelectContent>
+                    {formBeneficiaries.map(b => <SelectItem key={b.id} value={b.id}>{b.beneficiary_id}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+
+            {/* Package */}
+            <div>
+              <Label className="text-[11px]">Package *</Label>
+              <Select value={newForm.package_id} onValueChange={selectPackage}>
+                <SelectTrigger className="mt-1"><SelectValue placeholder="Select package" /></SelectTrigger>
+                <SelectContent className="max-h-60">
+                  {formPackages.map(p => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.package_code} — {p.package_name} (₹{p.package_rate.toLocaleString("en-IN")})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {selectedPkg && (
+                <p className="text-xs font-mono mt-1 text-primary">₹{selectedPkg.package_rate.toLocaleString("en-IN")}</p>
+              )}
+            </div>
+
+            {/* Admission (optional) */}
+            {admissions.length > 0 && (
+              <div>
+                <Label className="text-[11px]">Link Admission (optional)</Label>
+                <Select value={newForm.admission_id} onValueChange={v => setNewForm(f => ({ ...f, admission_id: v }))}>
+                  <SelectTrigger className="mt-1"><SelectValue placeholder="Select admission" /></SelectTrigger>
+                  <SelectContent>
+                    {admissions.map(a => (
+                      <SelectItem key={a.id} value={a.id}>
+                        {a.admission_number || a.id.slice(0, 8)} — {a.admitting_diagnosis || "N/A"}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Justification */}
+            <div>
+              <Label className="text-[11px]">Clinical Justification</Label>
+              <Textarea className="mt-1 min-h-[60px]" value={newForm.justification} onChange={e => setNewForm(f => ({ ...f, justification: e.target.value }))} placeholder="Brief clinical justification..." />
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <Button onClick={handleCreatePreAuth} disabled={submitting} className="gap-1.5">
+                <Plus size={14} /> {submitting ? "Creating..." : "Create Pre-Auth"}
+              </Button>
+              <Button variant="outline" onClick={() => { setShowForm(false); onFormClosed(); resetForm(); }}>Cancel</Button>
+            </div>
+          </div>
+        ) : !selected ? (
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
             <ClipboardList size={40} className="opacity-30 mb-2" />
             <p className="text-sm">Select a pre-auth request</p>
           </div>
         ) : (
+          /* ==================== EXISTING DETAIL VIEW ==================== */
           <div className="max-w-2xl space-y-5">
             <div className="flex justify-between items-start">
               <h3 className="text-base font-bold">Pre-Auth: {selected.package_name}</h3>
               <Badge className={cn("capitalize", statusColors[selected.status])}>{selected.status.replace("_", " ")}</Badge>
             </div>
 
-            {/* Patient Info */}
             <div className="bg-muted/50 rounded-lg p-3 grid grid-cols-2 gap-3 text-sm">
               <div><span className="text-muted-foreground text-[11px]">Patient</span><br/>{patients[selected.patient_id]}</div>
               <div><span className="text-muted-foreground text-[11px]">Scheme</span><br/>{schemes[selected.scheme_id]}</div>
@@ -347,7 +545,7 @@ Return ONLY JSON:
               <div><span className="text-muted-foreground text-[11px]">Requested</span><br/>₹{selected.requested_amount.toLocaleString("en-IN")}</div>
             </div>
 
-            {/* Clinical Summary — AI Editable */}
+            {/* Clinical Summary */}
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <Bot size={14} className="text-primary" />
@@ -357,12 +555,10 @@ Return ONLY JSON:
                 className="min-h-[100px] text-sm"
                 value={editSummary}
                 onChange={(e) => setEditSummary(e.target.value)}
-                placeholder="AI-generated clinical summary will appear here. Click 'Generate Summary' to auto-fill..."
+                placeholder="Click 'Generate Summary' to auto-fill..."
               />
               {editSummary && (
-                <p className="text-[10px] text-muted-foreground mt-0.5 italic">
-                  (AI generated — please review and edit before submission)
-                </p>
+                <p className="text-[10px] text-muted-foreground mt-0.5 italic">(AI generated — please review and edit before submission)</p>
               )}
               <div className="flex gap-2 mt-1.5">
                 <Button size="sm" variant="outline" className="gap-1" onClick={() => generateClinicalSummary(selected)} disabled={aiLoading}>
@@ -403,12 +599,8 @@ Return ONLY JSON:
                   <div className={cn("text-2xl font-bold font-mono", scoreColor(scoreData.score))}>
                     {scoreData.score}% <span className="text-sm">{scoreLabel(scoreData.score)}</span>
                   </div>
-                  {scoreData.risk && (
-                    <div className="text-[11px] mt-1.5"><strong>Risk:</strong> {scoreData.risk}</div>
-                  )}
-                  {scoreData.recommendation && (
-                    <div className="text-[11px] mt-1 text-primary"><strong>Recommendation:</strong> {scoreData.recommendation}</div>
-                  )}
+                  {scoreData.risk && <div className="text-[11px] mt-1.5"><strong>Risk:</strong> {scoreData.risk}</div>}
+                  {scoreData.recommendation && <div className="text-[11px] mt-1 text-primary"><strong>Recommendation:</strong> {scoreData.recommendation}</div>}
                   <div className="text-[10px] text-muted-foreground mt-1.5">Based on: package type, diagnosis match, documentation completeness</div>
                 </>
               ) : (
