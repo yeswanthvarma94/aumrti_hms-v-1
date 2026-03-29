@@ -5,6 +5,7 @@ import { autoPostJournalEntry } from "@/lib/accounting";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, X } from "lucide-react";
 import type { BillRecord } from "@/pages/billing/BillingPage";
 import type { PaymentRecord } from "@/components/billing/BillEditor";
@@ -159,16 +160,22 @@ const PaymentsTab: React.FC<Props> = ({ bill, hospitalId, payments, onRefresh })
             <Plus size={12} /> Add split payment
           </button>
 
-          <div className="flex justify-between items-center mt-4">
-            <span className="text-sm text-muted-foreground">
-              Collecting: ₹{totalCollecting.toLocaleString("en-IN")}
-              {totalCollecting > bill.balance_due && (
-                <span className="text-success ml-2">Change: ₹{(totalCollecting - bill.balance_due).toLocaleString("en-IN")}</span>
-              )}
-            </span>
-            <Button onClick={handleCollect} disabled={submitting || totalCollecting <= 0} className="h-10">
-              {submitting ? "Processing..." : "Collect & Record Payment"}
-            </Button>
+          <div className="flex flex-col gap-2 mt-4">
+            <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
+              <Checkbox checked={autoReceipt} onCheckedChange={(v) => setAutoReceipt(!!v)} />
+              Auto-send WhatsApp receipt
+            </label>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-muted-foreground">
+                Collecting: ₹{totalCollecting.toLocaleString("en-IN")}
+                {totalCollecting > bill.balance_due && (
+                  <span className="text-success ml-2">Change: ₹{(totalCollecting - bill.balance_due).toLocaleString("en-IN")}</span>
+                )}
+              </span>
+              <Button onClick={handleCollect} disabled={submitting || totalCollecting <= 0} className="h-10">
+                {submitting ? "Processing..." : "Collect & Record Payment"}
+              </Button>
+            </div>
           </div>
         </div>
       )}
