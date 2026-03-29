@@ -4438,6 +4438,79 @@ export type Database = {
           },
         ]
       }
+      feedback_records: {
+        Row: {
+          auto_escalated: boolean | null
+          channel: string | null
+          comment: string | null
+          created_at: string | null
+          department_ratings: Json | null
+          escalated_to: string | null
+          hospital_id: string
+          id: string
+          nps_score: number | null
+          overall_csat: number | null
+          patient_id: string | null
+          responded: boolean | null
+          sentiment: string | null
+          visit_id: string | null
+        }
+        Insert: {
+          auto_escalated?: boolean | null
+          channel?: string | null
+          comment?: string | null
+          created_at?: string | null
+          department_ratings?: Json | null
+          escalated_to?: string | null
+          hospital_id: string
+          id?: string
+          nps_score?: number | null
+          overall_csat?: number | null
+          patient_id?: string | null
+          responded?: boolean | null
+          sentiment?: string | null
+          visit_id?: string | null
+        }
+        Update: {
+          auto_escalated?: boolean | null
+          channel?: string | null
+          comment?: string | null
+          created_at?: string | null
+          department_ratings?: Json | null
+          escalated_to?: string | null
+          hospital_id?: string
+          id?: string
+          nps_score?: number | null
+          overall_csat?: number | null
+          patient_id?: string | null
+          responded?: boolean | null
+          sentiment?: string | null
+          visit_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feedback_records_escalated_to_fkey"
+            columns: ["escalated_to"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feedback_records_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feedback_records_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       govt_schemes: {
         Row: {
           config: Json | null
@@ -4484,6 +4557,107 @@ export type Database = {
             columns: ["hospital_id"]
             isOneToOne: false
             referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      grievances: {
+        Row: {
+          acknowledged_at: string | null
+          assigned_to: string | null
+          capa_raised: boolean | null
+          category: string
+          channel: string | null
+          created_at: string | null
+          department_id: string | null
+          description: string
+          hospital_id: string
+          id: string
+          patient_id: string | null
+          patient_name: string
+          patient_phone: string | null
+          patient_satisfied: boolean | null
+          resolution: string | null
+          resolved_at: string | null
+          root_cause: string | null
+          severity: string | null
+          sla_breached: boolean | null
+          status: string | null
+          tat_hours: number | null
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          assigned_to?: string | null
+          capa_raised?: boolean | null
+          category: string
+          channel?: string | null
+          created_at?: string | null
+          department_id?: string | null
+          description: string
+          hospital_id: string
+          id?: string
+          patient_id?: string | null
+          patient_name: string
+          patient_phone?: string | null
+          patient_satisfied?: boolean | null
+          resolution?: string | null
+          resolved_at?: string | null
+          root_cause?: string | null
+          severity?: string | null
+          sla_breached?: boolean | null
+          status?: string | null
+          tat_hours?: number | null
+        }
+        Update: {
+          acknowledged_at?: string | null
+          assigned_to?: string | null
+          capa_raised?: boolean | null
+          category?: string
+          channel?: string | null
+          created_at?: string | null
+          department_id?: string | null
+          description?: string
+          hospital_id?: string
+          id?: string
+          patient_id?: string | null
+          patient_name?: string
+          patient_phone?: string | null
+          patient_satisfied?: boolean | null
+          resolution?: string | null
+          resolved_at?: string | null
+          root_cause?: string | null
+          severity?: string | null
+          sla_breached?: boolean | null
+          status?: string | null
+          tat_hours?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grievances_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grievances_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grievances_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grievances_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
             referencedColumns: ["id"]
           },
         ]
@@ -9198,6 +9372,70 @@ export type Database = {
           },
         ]
       }
+      patient_rights_acknowledgements: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by_name: string | null
+          admission_id: string | null
+          created_at: string | null
+          digital_signature: string | null
+          hospital_id: string
+          id: string
+          language: string | null
+          patient_id: string
+          rights_version: string | null
+          witness_name: string | null
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by_name?: string | null
+          admission_id?: string | null
+          created_at?: string | null
+          digital_signature?: string | null
+          hospital_id: string
+          id?: string
+          language?: string | null
+          patient_id: string
+          rights_version?: string | null
+          witness_name?: string | null
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by_name?: string | null
+          admission_id?: string | null
+          created_at?: string | null
+          digital_signature?: string | null
+          hospital_id?: string
+          id?: string
+          language?: string | null
+          patient_id?: string
+          rights_version?: string | null
+          witness_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_rights_acknowledgements_admission_id_fkey"
+            columns: ["admission_id"]
+            isOneToOne: false
+            referencedRelation: "admissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_rights_acknowledgements_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_rights_acknowledgements_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       patient_segments: {
         Row: {
           created_at: string | null
@@ -12148,6 +12386,82 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "chemo_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      visitor_passes: {
+        Row: {
+          created_at: string | null
+          hospital_id: string
+          id: string
+          issued_at: string | null
+          issued_by: string | null
+          pass_number: string
+          patient_id: string
+          purpose: string | null
+          relation: string
+          scanned_entry_at: string | null
+          scanned_exit_at: string | null
+          status: string | null
+          valid_until: string
+          visitor_name: string
+          visitor_phone: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          hospital_id: string
+          id?: string
+          issued_at?: string | null
+          issued_by?: string | null
+          pass_number: string
+          patient_id: string
+          purpose?: string | null
+          relation: string
+          scanned_entry_at?: string | null
+          scanned_exit_at?: string | null
+          status?: string | null
+          valid_until: string
+          visitor_name: string
+          visitor_phone?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          hospital_id?: string
+          id?: string
+          issued_at?: string | null
+          issued_by?: string | null
+          pass_number?: string
+          patient_id?: string
+          purpose?: string | null
+          relation?: string
+          scanned_entry_at?: string | null
+          scanned_exit_at?: string | null
+          status?: string | null
+          valid_until?: string
+          visitor_name?: string
+          visitor_phone?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "visitor_passes_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "visitor_passes_issued_by_fkey"
+            columns: ["issued_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "visitor_passes_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
             referencedColumns: ["id"]
           },
         ]
