@@ -50,7 +50,7 @@ const ICDCodingTab: React.FC<Props> = ({ hospitalId, onRefresh }) => {
   const fetchItems = async () => {
     if (!hospitalId) return;
     setLoading(true);
-    let query = (supabase as any).from("icd_codings").select("*").eq("hospital_id", hospitalId).order("created_at", { ascending: false }).limit(100);
+    let query = (supabase as any).from("icd_codings").select("*").eq("hospital_id", hospitalId).neq("visit_type", "opd").order("created_at", { ascending: false }).limit(100);
     if (filter !== "all") query = query.eq("status", filter);
     const { data, error } = await query;
     if (error) { toast.error(error.message); setLoading(false); return; }
