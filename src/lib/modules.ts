@@ -73,6 +73,7 @@ export const ALL_MODULES: ModuleDefinition[] = [
   { name: "Biomedical Engineering", desc: "Equipment, PM, calibration & breakdowns", icon: "🔧", route: "/biomedical", category: "Operations", roles: ["biomedical_technician", "super_admin", "hospital_admin"], isNew: true },
   { name: "Housekeeping", desc: "Cleaning tasks, BMW & linen", icon: "🧹", route: "/housekeeping", category: "Operations", roles: ["housekeeping_supervisor", "super_admin", "hospital_admin"], isNew: true },
   { name: "Govt HMIS Reporting", desc: "MoHFW, IDSP & RMNCH+A reports", icon: "📊", route: "/hmis", category: "Operations", roles: ["hmis_officer", "super_admin", "hospital_admin"], isNew: true },
+  { name: "Dietetics & Nutrition", desc: "Nutritional screening, diet orders & AI meal plans", icon: "🥗", route: "/dietetics", category: "Clinical", roles: ["dietitian", "doctor", "super_admin"], isNew: true },
 
   // ── PATIENT-FACING ──
   { name: "Patient Portal", desc: "Patient self-service", icon: "🌐", route: "/portal", category: "Patient", roles: ["receptionist", "super_admin"] },
