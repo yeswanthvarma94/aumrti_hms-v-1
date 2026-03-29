@@ -70,6 +70,7 @@ export const ALL_MODULES: ModuleDefinition[] = [
   { name: "Dialysis Unit", desc: "Haemodialysis unit", icon: "🫀", route: "/dialysis", category: "Specialized", roles: ["nephrologist", "dialysis_technician", "super_admin"], isNew: true },
   { name: "Oncology", desc: "Chemotherapy & daycare", icon: "🎗️", route: "/oncology", category: "Specialized", roles: ["oncologist", "chemo_nurse", "super_admin"], isNew: true },
   { name: "Medical Records", desc: "MRD, ICD coding & retention", icon: "🗂️", route: "/mrd", category: "Operations", roles: ["mrd_officer", "super_admin", "billing_executive"], isNew: true },
+  { name: "Biomedical Engineering", desc: "Equipment, PM, calibration & breakdowns", icon: "🔧", route: "/biomedical", category: "Operations", roles: ["biomedical_technician", "super_admin", "hospital_admin"], isNew: true },
 
   // ── PATIENT-FACING ──
   { name: "Patient Portal", desc: "Patient self-service", icon: "🌐", route: "/portal", category: "Patient", roles: ["receptionist", "super_admin"] },
