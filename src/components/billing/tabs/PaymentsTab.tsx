@@ -37,6 +37,7 @@ const PaymentsTab: React.FC<Props> = ({ bill, hospitalId, payments, onRefresh })
   const { toast } = useToast();
   const [rows, setRows] = useState<PayRow[]>([{ mode: "cash", amount: String(bill.balance_due), reference: "" }]);
   const [submitting, setSubmitting] = useState(false);
+  const [autoReceipt, setAutoReceipt] = useState(true);
 
   const addRow = () => setRows([...rows, { mode: "cash", amount: "", reference: "" }]);
   const removeRow = (i: number) => setRows(rows.filter((_, idx) => idx !== i));
@@ -99,6 +100,17 @@ const PaymentsTab: React.FC<Props> = ({ bill, hospitalId, payments, onRefresh })
       await supabase.from("admissions")
         .update({ billing_cleared: true })
         .eq("id", bill.admission_id);
+    }
+
+    // Auto-receipt via WhatsApp
+    if (autoReceipt) {
+      const { data: patient } = await supabase.from("patients").select("phone, full_name").eq("id", bill.patient_id).single();
+      if (patient?.phone) {
+        const receiptMsg = `✅ Payment Received\n\nPatient: ${patient.full_name}\nBill #: ${bill.bill_number}\nAmount Paid: ₹${totalCollecting.toLocaleString("en-IN")}\nMode: ${rows.map(r => r.mode).join(", ").toUpperCase()}\nDate: ${new Date().toLocaleDateString("en-IN")}\nBalance: ₹${newBalance.toLocaleString("en-IN")}\n\nThank you!`;
+        const cleanPhone = patient.phone.replace(/\D/g, "");
+        const fullPhone = cleanPhone.startsWith("91") ? cleanPhone : `91${cleanPhone}`;
+        window.open(`https://wa.me/${fullPhone}?text=${encodeURIComponent(receiptMsg)}`, "_blank");
+      }
     }
 
     toast({ title: `Payment of ₹${totalCollecting.toLocaleString("en-IN")} collected ✓` });
