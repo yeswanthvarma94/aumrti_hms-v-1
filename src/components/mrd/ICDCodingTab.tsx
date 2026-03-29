@@ -6,8 +6,9 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Check, X, Bot, Loader2 } from "lucide-react";
+import { Check, X, Bot, Loader2, Library } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { callAI } from "@/lib/aiProvider";
 import { toast } from "sonner";
 
 const statusColors: Record<string, string> = {
@@ -58,6 +59,14 @@ const ICDCodingTab: React.FC<Props> = ({ hospitalId, onRefresh }) => {
     setLoading(false);
   };
 
+  const incrementUseCount = async (code: string) => {
+    try {
+      await (supabase as any).rpc("increment_icd_use_count", { p_code: code });
+    } catch (e) {
+      console.warn("Failed to increment use_count:", e);
+    }
+  };
+
   const suggestICDCode = useCallback(async (item: any) => {
     if (!item.visit_id || !item.visit_type || !hospitalId) return;
     if (item.ai_suggestion) return;
@@ -67,49 +76,166 @@ const ICDCodingTab: React.FC<Props> = ({ hospitalId, onRefresh }) => {
     setAiDismissed(false);
 
     try {
-      const { data, error } = await supabase.functions.invoke("ai-icd-suggest", {
+      // ── STEP 1: Gather clinical text from the edge function ──
+      const { data: efData, error: efError } = await supabase.functions.invoke("ai-icd-suggest", {
         body: { visit_type: item.visit_type, visit_id: item.visit_id, hospital_id: hospitalId },
       });
 
-      if (error) {
-        console.warn("ICD AI unavailable:", error);
-        return;
-      }
-
-      if (data?.error) {
-        console.warn("ICD AI:", data.error);
-        if (data.error.includes("No clinical notes")) {
+      // Extract clinical text — the edge function may return it or a suggestion
+      let clinicalText = "";
+      if (efError || efData?.error) {
+        const errMsg = efData?.error || "";
+        if (errMsg.includes("No clinical notes")) {
           toast.info("No clinical notes found — enter code manually");
+        } else {
+          console.warn("ICD edge function:", errMsg || efError);
         }
         return;
       }
 
-      // Safely parse the suggestion
+      // If edge function returned a direct suggestion, use it as clinical text
+      if (typeof efData === "string") {
+        clinicalText = efData;
+      } else if (efData?.clinical_text) {
+        clinicalText = efData.clinical_text;
+      } else if (efData?.primary_code) {
+        // Old-style direct suggestion — still works as fallback
+        setAiSuggestion(efData as AISuggestion);
+        (supabase as any).from("icd_codings").update({
+          ai_suggestion: efData.primary_code,
+          ai_confidence: efData.confidence,
+        }).eq("id", item.id).then(() => {});
+        await incrementUseCount(efData.primary_code);
+        return;
+      }
+
+      if (!clinicalText || clinicalText.trim().length < 10) {
+        toast.info("Not enough clinical text for AI suggestion");
+        return;
+      }
+
+      // ── STEP 2: Get hospital's active code preference ──
+      const { data: settings } = await (supabase as any)
+        .from("hospital_icd_settings")
+        .select("active_set, show_common_first")
+        .eq("hospital_id", hospitalId)
+        .maybeSingle();
+
+      const activeSet = settings?.active_set || "all";
+      const showCommonFirst = settings?.show_common_first ?? true;
+
+      // ── STEP 3: Search ICD-10 table for candidates ──
+      const searchTerms = clinicalText
+        .toLowerCase()
+        .replace(/[^\w\s]/g, " ")
+        .split(/\s+/)
+        .filter((w: string) => w.length > 3)
+        .slice(0, 5)
+        .join(" | ");
+
+      let query = (supabase as any)
+        .from("icd10_codes")
+        .select("code, description, category, chapter_desc")
+        .eq("is_billable", true)
+        .textSearch("description", searchTerms, { type: "websearch", config: "english" });
+
+      if (activeSet === "system_only") {
+        query = query.is("hospital_id", null);
+      } else if (activeSet === "hospital_only") {
+        query = query.eq("hospital_id", hospitalId);
+      }
+      // 'all': no additional filter
+
+      if (showCommonFirst) {
+        query = query.order("common_india", { ascending: false }).order("use_count", { ascending: false });
+      }
+
+      query = query.limit(20);
+      const { data: candidates } = await query;
+
+      let finalCandidates = candidates;
+
+      if (!finalCandidates || finalCandidates.length === 0) {
+        // Broader fallback search
+        const firstTerm = searchTerms.split(" | ")[0];
+        const { data: broadCandidates } = await (supabase as any)
+          .from("icd10_codes")
+          .select("code, description, category")
+          .eq("is_billable", true)
+          .ilike("description", `%${firstTerm}%`)
+          .order("use_count", { ascending: false })
+          .limit(10);
+
+        if (!broadCandidates || broadCandidates.length === 0) {
+          return; // No match — user enters manually
+        }
+        finalCandidates = broadCandidates;
+      }
+
+      const codeList = finalCandidates
+        .map((c: any) => `${c.code}: ${c.description} (${c.category || ""})`)
+        .join("\n");
+
+      // ── STEP 4: Claude picks from candidates ──
+      const response = await callAI({
+        featureKey: "icd_coding",
+        hospitalId,
+        prompt: `You are a medical coding specialist for an Indian hospital.
+
+Clinical documentation:
+"${clinicalText.slice(0, 800)}"
+
+Select the most accurate primary ICD-10 code from this list ONLY.
+Do not suggest codes outside this list.
+
+Available codes:
+${codeList}
+
+Return ONLY valid JSON (no markdown, no explanation):
+{
+  "primary_code": "exact code from list above",
+  "primary_description": "exact description from list",
+  "confidence": 0.85,
+  "secondary_suggestions": [
+    {"code": "code", "description": "description"}
+  ],
+  "reasoning": "one sentence why this code fits"
+}`,
+        maxTokens: 300,
+      });
+
+      if (response.error) {
+        console.warn("AI unavailable:", response.error);
+        return;
+      }
+
+      // ── STEP 5: Parse response ──
       let parsed: AISuggestion | null = null;
       try {
-        if (typeof data === "string") {
-          const clean = data.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-          parsed = JSON.parse(clean);
-        } else {
-          parsed = data as AISuggestion;
-        }
-      } catch (parseError) {
-        console.error("Could not parse ICD suggestion:", parseError);
-        return;
+        const clean = response.text
+          .replace(/```json\n?/g, "")
+          .replace(/```\n?/g, "")
+          .trim();
+        parsed = JSON.parse(clean);
+      } catch {
+        return; // Parse failed — silent exit
       }
 
-      if (!parsed?.primary_code) {
-        console.warn("AI returned no primary code");
-        return;
-      }
+      if (!parsed?.primary_code) return;
 
-      // Save to DB (non-blocking)
+      // ── STEP 6: Save to DB ──
       (supabase as any).from("icd_codings").update({
         ai_suggestion: parsed.primary_code,
         ai_confidence: parsed.confidence,
+        primary_icd_code: parsed.primary_code,
+        primary_icd_desc: parsed.primary_description,
       }).eq("id", item.id).then(() => {});
 
       setAiSuggestion(parsed);
+
+      // ── STEP 7: Increment use_count ──
+      await incrementUseCount(parsed.primary_code);
+
     } catch (e) {
       console.error("ICD suggestion failed:", e);
       // Silent fail — user can enter code manually
@@ -144,6 +270,8 @@ const ICDCodingTab: React.FC<Props> = ({ hospitalId, onRefresh }) => {
     if (!aiSuggestion) return;
     setPrimaryCode(aiSuggestion.primary_code);
     setPrimaryDesc(aiSuggestion.primary_description);
+    // Increment use_count for accepted secondary codes too
+    aiSuggestion.secondary_suggestions?.forEach((s) => incrementUseCount(s.code));
     toast.success("AI suggestion accepted");
   };
 
@@ -179,6 +307,10 @@ const ICDCodingTab: React.FC<Props> = ({ hospitalId, onRefresh }) => {
 
     const { error } = await (supabase as any).from("icd_codings").update(updates).eq("id", selected.id);
     if (error) { toast.error(error.message); setSaving(false); return; }
+
+    // Increment use_count for the code that was saved
+    if (primaryCode) await incrementUseCount(primaryCode);
+
     toast.success(validate ? "Coding validated ✓" : "Coding saved");
     setSelected(null);
     setAiSuggestion(null);
@@ -247,16 +379,21 @@ const ICDCodingTab: React.FC<Props> = ({ hospitalId, onRefresh }) => {
             {aiLoading && (
               <div className="bg-accent/10 border border-accent/30 rounded-lg p-3 flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin text-accent-foreground" />
-                <span className="text-sm text-accent-foreground">🤖 Analysing clinical notes...</span>
+                <span className="text-sm text-accent-foreground">🤖 Searching your ICD-10 library & analysing notes...</span>
               </div>
             )}
 
             {/* AI Suggestion Box */}
             {aiSuggestion && !aiDismissed && !aiLoading && (
               <div className="bg-accent/5 border border-accent/20 rounded-lg p-3 space-y-2">
-                <div className="flex items-center gap-2">
-                  <Bot className="h-4 w-4 text-accent-foreground" />
-                  <span className="text-sm font-semibold text-accent-foreground">AI Suggestion</span>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Bot className="h-4 w-4 text-accent-foreground" />
+                    <span className="text-sm font-semibold text-accent-foreground">AI Suggestion</span>
+                  </div>
+                  <Badge variant="outline" className="text-[10px] bg-accent/10 text-accent border-accent/20 gap-1">
+                    <Library className="h-2.5 w-2.5" /> From your ICD-10 library
+                  </Badge>
                 </div>
                 <div className="text-sm font-bold">
                   {aiSuggestion.primary_code} — {aiSuggestion.primary_description}
