@@ -5,6 +5,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Printer, FileText, Mail, Sparkles } from "lucide-react";
+import { callAI } from "@/lib/aiProvider";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AppealLetterModalProps {
   open: boolean;
@@ -28,10 +30,25 @@ const AppealLetterModal: React.FC<AppealLetterModalProps> = ({ open, onOpenChang
   const generateLetter = async () => {
     setGenerating(true);
     
-    // Simulate AI generation with a realistic appeal letter
-    await new Promise(r => setTimeout(r, 2500));
-    
     const today = new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" });
+
+    try {
+      const { data: userData } = await supabase.from("users").select("hospital_id").eq("auth_user_id", (await supabase.auth.getUser()).data.user?.id || "").single();
+      const prompt = `Write a formal medical necessity appeal letter for a denied claim with ${claim.tpa_name} (private Indian insurer).
+Claim Number: ${claim.claim_number || "N/A"}
+Patient: ${claim.patient_name}
+Claimed Amount: ₹${claim.claimed_amount.toLocaleString("en-IN")}
+Denial Reason: ${claim.denial_reason || "Not specified"}
+Date: ${today}
+
+Reference IRDAI grievance guidelines where applicable. Format as a formal letter with proper structure, legal references, and medical justification. Include sections for denial reason cited, grounds for appeal, and specific request.`;
+      const result = await callAI({ featureKey: "appeal_letter", hospitalId: userData?.hospital_id || "", prompt, maxTokens: 1200 });
+      setLetter(result);
+      setGenerating(false);
+      return;
+    } catch {
+      // Fallback to template
+    }
     
     const generatedLetter = `Date: ${today}
 
@@ -81,7 +98,7 @@ Medical Director
 
     setLetter(generatedLetter);
     setGenerating(false);
-  };
+  };  // end fallback
 
   const handlePrint = () => {
     const printWindow = window.open("", "_blank");
