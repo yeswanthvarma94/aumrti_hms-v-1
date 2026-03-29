@@ -29,16 +29,50 @@ const IPDOverviewTab: React.FC<Props> = ({ admissionId, hospitalId, onTabChange,
 
   useEffect(() => {
     if (!admissionId) return;
-    supabase.from("admissions")
-      .select("billing_cleared, admitting_diagnosis, medical_cleared, pharmacy_cleared, discharge_summary_done")
-      .eq("id", admissionId).maybeSingle()
-      .then(({ data }) => {
-        setBillingCleared(data?.billing_cleared || false);
-        setMedicalCleared((data as any)?.medical_cleared || false);
-        setPharmacyCleared((data as any)?.pharmacy_cleared || false);
-        setDischargeSummaryDone(data?.discharge_summary_done || false);
-        setAdmDiagnosis(data?.admitting_diagnosis || "");
-      });
+    const loadStatus = async () => {
+      const { data } = await supabase.from("admissions")
+        .select("billing_cleared, admitting_diagnosis, medical_cleared, pharmacy_cleared, discharge_summary_done")
+        .eq("id", admissionId).maybeSingle();
+
+      setMedicalCleared(data?.medical_cleared || false);
+      setDischargeSummaryDone(data?.discharge_summary_done || false);
+      setAdmDiagnosis(data?.admitting_diagnosis || "");
+
+      // Real-time billing sync: check flag OR if a paid bill exists
+      let billingOk = data?.billing_cleared || false;
+      if (!billingOk) {
+        const { data: paidBills } = await supabase.from("bills")
+          .select("id")
+          .eq("admission_id", admissionId)
+          .eq("payment_status", "paid")
+          .limit(1);
+        billingOk = (paidBills && paidBills.length > 0);
+        if (billingOk) {
+          await supabase.from("admissions").update({ billing_cleared: true }).eq("id", admissionId);
+        }
+      }
+      setBillingCleared(billingOk);
+
+      // Real-time pharmacy sync: check flag OR if no pending dispensing exists
+      let pharmacyOk = data?.pharmacy_cleared || false;
+      if (!pharmacyOk) {
+        const { data: pendingDisp } = await supabase.from("pharmacy_dispensing")
+          .select("id")
+          .eq("admission_id", admissionId)
+          .in("status", ["pending", "processing"])
+          .limit(1);
+        const { data: anyDisp } = await supabase.from("pharmacy_dispensing")
+          .select("id")
+          .eq("admission_id", admissionId)
+          .limit(1);
+        pharmacyOk = (anyDisp && anyDisp.length > 0 && (!pendingDisp || pendingDisp.length === 0));
+        if (pharmacyOk) {
+          await supabase.from("admissions").update({ pharmacy_cleared: true }).eq("id", admissionId);
+        }
+      }
+      setPharmacyCleared(pharmacyOk);
+    };
+    loadStatus();
   }, [admissionId]);
 
   useEffect(() => {

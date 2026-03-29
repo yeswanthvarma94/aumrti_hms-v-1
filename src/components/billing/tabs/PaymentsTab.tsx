@@ -93,6 +93,13 @@ const PaymentsTab: React.FC<Props> = ({ bill, hospitalId, payments, onRefresh })
       payment_status: newStatus,
     }).eq("id", bill.id);
 
+    // Auto-sync: mark billing cleared on admission when fully paid
+    if (newStatus === "paid" && bill.admission_id) {
+      await supabase.from("admissions")
+        .update({ billing_cleared: true })
+        .eq("id", bill.admission_id);
+    }
+
     toast({ title: `Payment of ₹${totalCollecting.toLocaleString("en-IN")} collected ✓` });
     setSubmitting(false);
     onRefresh();

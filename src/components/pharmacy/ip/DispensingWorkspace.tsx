@@ -359,6 +359,22 @@ const DispensingWorkspace: React.FC<Props> = ({ hospitalId, prescription, onDisp
         `5-rights verified for ${patient.full_name}: ${drugRows.map(r => r.drug_name).join(", ")}. Dispensed ₹${totalAmount.toFixed(0)}.`
       );
 
+      // Auto-sync: mark pharmacy cleared if all IP meds for this admission are dispensed
+      if (prescription.admission_id) {
+        const { data: pendingDisp } = await supabase
+          .from("pharmacy_dispensing")
+          .select("id")
+          .eq("admission_id", prescription.admission_id)
+          .eq("hospital_id", hospitalId)
+          .in("status", ["pending", "processing"])
+          .limit(1);
+        if (!pendingDisp || pendingDisp.length === 0) {
+          await supabase.from("admissions")
+            .update({ pharmacy_cleared: true })
+            .eq("id", prescription.admission_id);
+        }
+      }
+
       toast({ title: `✓ Dispensed to ${patient.full_name} — ₹${totalAmount.toFixed(0)}` });
       onDispensed();
     } catch (err: any) {
