@@ -1,61 +1,48 @@
 
 
-## Plan: Sync Billing & Pharmacy Status to IPD Discharge Workflow
+## Plan: Fix Pharmacy IP Billing Sync and Retail Patient Fetch
 
-### Problem
-The discharge stepper's "Billing" and "Pharmacy" steps don't sync with actual data:
-- **Billing**: When payment is collected on the Billing page, it never sets `admissions.billing_cleared = true`
-- **Pharmacy**: When all IP dispensing is completed, it never sets `admissions.pharmacy_cleared = true`
+### Two Issues
 
-Both are manual toggles with no connection to real billing/pharmacy records.
+**1. IP Dispensing Not Syncing to IPD Billing**
 
-### Solution
+The IP dispensing workflow creates a `pharmacy_dispensing` record but never creates a corresponding `bill` in the `bills` table. The IPD discharge workflow checks for a paid bill with matching `admission_id` to mark billing as cleared. Without a bill record, this can never happen.
 
-**1. Auto-sync billing_cleared when bill is paid**
+**Fix in `src/components/pharmacy/ip/DispensingWorkspace.tsx`:**
+- After successful dispensing, auto-create a bill record in `bills` table:
+  - `hospital_id`, `patient_id`, `admission_id` from the prescription
+  - `bill_type: 'pharmacy'`, `bill_status: 'final'`
+  - `total_amount`, `net_amount` from dispensed totals
+  - `payment_status: 'unpaid'` (billing team collects payment separately)
+  - `bill_number` auto-generated (e.g., `PHARM-YYYYMMDD-XXXX`)
+  - `bill_date: today`
+- This bill then appears in the billing module for payment collection
+- When billing marks it paid → `billing_cleared` auto-sets on the admission (already wired)
 
-**File: `src/components/billing/tabs/PaymentsTab.tsx`** (~line 90-94)
-- After updating `bills.payment_status` to `paid`, check if this bill has an `admission_id`
-- If yes, set `admissions.billing_cleared = true` on that admission
-- This makes the discharge stepper automatically advance past step 2 when the IPD bill is fully paid
+**2. Retail Counter Cannot Fetch Patient Data + No Create Option**
 
-**2. Auto-sync pharmacy_cleared when all IP meds dispensed**
+The `findPatientByPhone` function works but requires the user to be authenticated (RLS policy uses `get_user_hospital_id()`). If auth context is missing or the hospital_id doesn't match, no results return silently.
 
-**File: `src/components/pharmacy/ip/DispensingWorkspace.tsx`**
-- After a successful dispense, check if the prescription's admission has any remaining undispensed items
-- If all items for that admission are dispensed, set `admissions.pharmacy_cleared = true`
+**Fix in `src/components/pharmacy/retail/RetailCart.tsx` and `RetailPOS.tsx`:**
+- Add a visible status indicator when searching (loading spinner while debounced search runs)
+- When phone >= 10 digits and no patient found, show a **"+ Register New Patient"** button
+- Clicking it opens an inline form (name, gender, age fields) or directly calls `createPatientRecord` with the entered phone + name
+- After creation, auto-link the new patient to the cart (`customerId` set)
+- Add a green checkmark when patient is found and linked
 
-**3. IPD Overview reads real-time status**
+**Changes to `RetailPOS.tsx`:**
+- Add `searching` state to show loading indicator during phone lookup
+- Add `handleCreateCustomer` function that calls `createPatientRecord` and sets `customerId`
+- Pass `searching` and `onCreateCustomer` to `RetailCart`
 
-**File: `src/components/ipd/tabs/IPDOverviewTab.tsx`**
-- For billing step: also query `bills` table for any bill with this `admission_id` and `payment_status = 'paid'` — if found, treat billing as cleared (even if `billing_cleared` flag wasn't set yet)
-- For pharmacy step: also query `pharmacy_dispensing` for any pending IP dispenses for this admission — if none pending, treat pharmacy as cleared
-- This makes the stepper reflect real data, not just flags
-
-### Technical Details
-
-**PaymentsTab.tsx** — add after line 94 (after `bills.update`):
-```typescript
-// If bill is for IPD admission and fully paid, mark billing cleared
-if (newStatus === "paid" && bill.admission_id) {
-  await supabase.from("admissions")
-    .update({ billing_cleared: true })
-    .eq("id", bill.admission_id);
-}
-```
-
-**DispensingWorkspace.tsx** — after successful dispense callback:
-```typescript
-// Check if all prescriptions for this admission are dispensed
-// If so, update admissions.pharmacy_cleared = true
-```
-
-**IPDOverviewTab.tsx** — enhance the useEffect that loads admission data:
-- Add a query to `bills` where `admission_id = admissionId` and check if `payment_status = 'paid'`
-- Add a query to `pharmacy_dispensing` where `admission_id = admissionId` and `status = 'pending'`
-- Use these real queries to set `billingCleared` and `pharmacyCleared` states
+**Changes to `RetailCart.tsx`:**
+- Accept `searching` and `onCreateCustomer` props
+- Show spinner while searching
+- Show "Register New Patient" button when phone >= 10 and no match
+- Show green linked badge when patient found
 
 ### Files Modified
-1. `src/components/billing/tabs/PaymentsTab.tsx` — set `billing_cleared` on admission when bill paid
-2. `src/components/pharmacy/ip/DispensingWorkspace.tsx` — set `pharmacy_cleared` when all IP meds done
-3. `src/components/ipd/tabs/IPDOverviewTab.tsx` — read real billing/pharmacy status, not just flags
+1. `src/components/pharmacy/ip/DispensingWorkspace.tsx` — create bill record after IP dispense
+2. `src/components/pharmacy/retail/RetailPOS.tsx` — add search state, create patient handler
+3. `src/components/pharmacy/retail/RetailCart.tsx` — show search status, register button
 
