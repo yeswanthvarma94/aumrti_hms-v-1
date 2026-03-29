@@ -57,6 +57,7 @@ import SettingsABDMPage from "./pages/settings/SettingsABDMPage";
 import SettingsBackupPage from "./pages/settings/SettingsBackupPage";
 import SettingsAPIKeysPage from "./pages/settings/SettingsAPIKeysPage";
 import APIConfigHubPage from "./pages/settings/APIConfigHubPage";
+import SettingsICDCodesPage from "./pages/settings/SettingsICDCodesPage";
 import AnalyticsPage from "./pages/analytics/AnalyticsPage";
 import InboxPage from "./pages/inbox/InboxPage";
 import TelemedicinePage from "./pages/telemedicine/TelemedicinePage";
@@ -148,6 +149,7 @@ const App = () => (
             <Route path="/settings/backup" element={<SettingsBackupPage />} />
             <Route path="/settings/api-keys" element={<SettingsAPIKeysPage />} />
             <Route path="/settings/api-hub" element={<APIConfigHubPage />} />
+            <Route path="/settings/icd-codes" element={<SettingsICDCodesPage />} />
             <Route path="/accounts" element={<AccountsPage />} />
             <Route path="/accounts/setup" element={<OpeningBalancesPage />} />
             <Route path="/blood-bank" element={<BloodBankPage />} />

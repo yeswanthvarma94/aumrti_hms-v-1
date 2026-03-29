@@ -93,6 +93,7 @@ const settingsGroups: SettingsGroup[] = [
       { icon: ClipboardCheck, title: "OT Checklist", desc: "WHO surgical safety checklist config", route: "/settings/ot-checklist" },
       { icon: BookOpen, title: "Clinical Protocols", desc: "Standard treatment protocols", route: "/settings/protocols" },
       { icon: BellIcon, title: "Alert Thresholds", desc: "Vitals and lab critical value alerts", route: "/settings/clinical-thresholds" },
+      { icon: FileText, title: "ICD-10 Code Master", desc: "Manage diagnosis code sets for ICD coding", route: "/settings/icd-codes" },
     ],
   },
   {
