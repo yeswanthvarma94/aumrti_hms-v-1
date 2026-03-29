@@ -43,7 +43,7 @@ Date: ${today}
 
 Reference IRDAI grievance guidelines where applicable. Format as a formal letter with proper structure, legal references, and medical justification. Include sections for denial reason cited, grounds for appeal, and specific request.`;
       const result = await callAI({ featureKey: "appeal_letter", hospitalId: userData?.hospital_id || "", prompt, maxTokens: 1200 });
-      setLetter(result);
+      setLetter(result.text);
       setGenerating(false);
       return;
     } catch {
