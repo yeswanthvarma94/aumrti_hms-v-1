@@ -439,6 +439,9 @@ const CollectionsTab: React.FC<CollectionsTabProps> = ({ hospitalId }) => {
         <Button size="sm" variant="ghost" className="h-8 text-xs gap-1" onClick={loadData}>
           <RefreshCw size={12} /> Refresh
         </Button>
+        <Button size="sm" variant="outline" className="h-8 text-xs gap-1 ml-auto" onClick={() => setShowCampaign(true)}>
+          <Megaphone size={12} /> Run Campaign
+        </Button>
       </div>
 
       <div className="flex-1 overflow-y-auto">
