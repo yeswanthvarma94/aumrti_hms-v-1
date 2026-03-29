@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from "react"
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { Stethoscope, Mic, Save, CheckCircle, FlaskConical, Building2, Smartphone } from "lucide-react";
+import { Stethoscope, Mic, Save, CheckCircle, FlaskConical, Building2, Smartphone, ArrowUpRight } from "lucide-react";
 import type { OpdToken } from "@/pages/opd/OPDPage";
 import VoiceDictationButton from "@/components/voice/VoiceDictationButton";
 import { useVoiceScribe } from "@/contexts/VoiceScribeContext";
@@ -507,6 +507,22 @@ const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onT
         </button>
         <button onClick={() => toast({ title: "IPD admission available after Phase 3 IPD build" })} className="text-xs text-slate-600 border border-slate-200 px-3 py-1.5 rounded-md hover:bg-slate-50 flex items-center gap-1.5 active:scale-[0.97] transition-all">
           <Building2 className="h-3.5 w-3.5" /> Admit
+        </button>
+        <button onClick={async () => {
+          if (!token || !hospitalId || !userId) return;
+          const { error } = await supabase.from("physio_referrals").insert({
+            hospital_id: hospitalId,
+            patient_id: token.patient_id,
+            opd_encounter_id: encounterId || undefined,
+            referred_by: userId,
+            diagnosis: encounter.diagnosis || encounter.chief_complaint || "Physiotherapy referral",
+            goals: [],
+            urgency: "routine",
+          } as any);
+          if (error) { toast({ title: "Referral failed", description: error.message, variant: "destructive" }); return; }
+          toast({ title: "↗ Referred to Physiotherapy" });
+        }} className="text-xs text-teal-700 border border-teal-300 px-3 py-1.5 rounded-md hover:bg-teal-50 flex items-center gap-1.5 active:scale-[0.97] transition-all">
+          <ArrowUpRight className="h-3.5 w-3.5" /> Refer Physio
         </button>
         <button onClick={handleSendWhatsApp} className="text-xs text-slate-600 border border-slate-200 px-3 py-1.5 rounded-md hover:bg-slate-50 flex items-center gap-1.5 active:scale-[0.97] transition-all">
           <Smartphone className="h-3.5 w-3.5" /> Send Rx
