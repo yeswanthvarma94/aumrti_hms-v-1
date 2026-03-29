@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
-import { BedDouble, ExternalLink } from "lucide-react";
+import { BedDouble, ExternalLink, ArrowUpRight } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -229,6 +229,23 @@ const IPDWorkspace: React.FC<Props> = ({ bed, hospitalId, onRefresh }) => {
           <Button size="sm" variant="outline" onClick={() => setActiveTab("medications")} className="text-xs h-8">
             💊 Add Medication
           </Button>
+          {patient && hospitalId && (
+            <Button size="sm" variant="outline" className="text-xs h-8 border-teal-300 text-teal-700 hover:bg-teal-50" onClick={async () => {
+              const { error } = await supabase.from("physio_referrals").insert({
+                hospital_id: hospitalId,
+                patient_id: patient.id,
+                admission_id: admissionId,
+                referred_by: userId || undefined,
+                diagnosis: (adm as any).admitting_diagnosis || "Physiotherapy referral",
+                goals: [],
+                urgency: "routine",
+              } as any);
+              if (error) { toast({ title: "Referral failed", description: error.message, variant: "destructive" }); return; }
+              toast({ title: "↗ Referred to Physiotherapy" });
+            }}>
+              <ArrowUpRight size={14} className="mr-1" /> Refer Physio
+            </Button>
+          )}
           {patient && (
             <button onClick={() => navigate(`/patients?id=${patient.id}`)}
               className="flex items-center gap-1 text-[12px] text-primary font-medium hover:underline h-8 px-2">

@@ -69,6 +69,7 @@ export const ALL_MODULES: ModuleDefinition[] = [
   // ── SPECIALIZED CLINICAL ──
   { name: "Dialysis Unit", desc: "Haemodialysis unit", icon: "🫀", route: "/dialysis", category: "Specialized", roles: ["nephrologist", "dialysis_technician", "super_admin"], isNew: true },
   { name: "Oncology", desc: "Chemotherapy & daycare", icon: "🎗️", route: "/oncology", category: "Specialized", roles: ["oncologist", "chemo_nurse", "super_admin"], isNew: true },
+  { name: "Physiotherapy", desc: "Rehab, outcomes & HEP plans", icon: "🦿", route: "/physio", category: "Specialized", roles: ["physiotherapist", "doctor", "super_admin"], isNew: true },
   { name: "Medical Records", desc: "MRD, ICD coding & retention", icon: "🗂️", route: "/mrd", category: "Operations", roles: ["mrd_officer", "super_admin", "billing_executive"], isNew: true },
   { name: "Biomedical Engineering", desc: "Equipment, PM, calibration & breakdowns", icon: "🔧", route: "/biomedical", category: "Operations", roles: ["biomedical_technician", "super_admin", "hospital_admin"], isNew: true },
   { name: "Housekeeping", desc: "Cleaning tasks, BMW & linen", icon: "🧹", route: "/housekeeping", category: "Operations", roles: ["housekeeping_supervisor", "super_admin", "hospital_admin"], isNew: true },
