@@ -46,9 +46,22 @@ serve(async (req) => {
       const { data: adm } = await sb.from("admissions")
         .select("admitting_diagnosis, discharge_type, status")
         .eq("id", visit_id).single();
-      if (adm) {
-        clinicalText = [adm.admitting_diagnosis].filter(Boolean).join("\n");
-      }
+
+      // Also fetch ward round notes for richer clinical context
+      const { data: rounds } = await sb.from("ward_round_notes")
+        .select("subjective, objective, assessment, plan")
+        .eq("admission_id", visit_id)
+        .order("created_at", { ascending: false })
+        .limit(3);
+
+      const roundText = (rounds || []).map((r: any) =>
+        [r.subjective, r.objective, r.assessment, r.plan].filter(Boolean).join("\n")
+      ).join("\n---\n");
+
+      clinicalText = [
+        adm?.admitting_diagnosis,
+        roundText,
+      ].filter(Boolean).join("\n");
     }
 
     if (!clinicalText) {
