@@ -96,9 +96,34 @@ const RetailCart: React.FC<Props> = ({
             className="h-8 text-xs bg-muted/30"
           />
         </div>
-        <p className="text-[11px] text-muted-foreground">
-          {customerId ? `Linked patient: ${customerStatusLabel}` : customerStatusLabel}
-        </p>
+        <div className="flex items-center gap-2">
+          {searching ? (
+            <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+              <Loader2 size={12} className="animate-spin" />
+              Searching…
+            </div>
+          ) : customerId ? (
+            <div className="flex items-center gap-1.5 text-[11px] text-emerald-600 font-medium">
+              <CheckCircle2 size={12} />
+              Linked: {customerStatusLabel}
+            </div>
+          ) : customerPhone.length >= 10 ? (
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-muted-foreground">No patient found</span>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-6 text-[10px] px-2 gap-1"
+                onClick={onCreateCustomer}
+              >
+                <UserPlus size={10} />
+                Register New Patient
+              </Button>
+            </div>
+          ) : (
+            <p className="text-[11px] text-muted-foreground">{customerStatusLabel}</p>
+          )}
+        </div>
       </div>
 
       {/* Items */}
