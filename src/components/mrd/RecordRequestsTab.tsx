@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,18 +22,19 @@ const statusColors: Record<string, string> = {
 const requesterTypes = ["patient", "legal_guardian", "lawyer", "insurance", "police", "court", "government", "treating_doctor"];
 
 interface Props {
+  hospitalId: string;
+  userId: string;
   showNewRequest: boolean;
   onCloseNewRequest: () => void;
+  onRefresh?: () => void;
 }
 
-const RecordRequestsTab: React.FC<Props> = ({ showNewRequest, onCloseNewRequest }) => {
+const RecordRequestsTab: React.FC<Props> = ({ hospitalId, userId, showNewRequest, onCloseNewRequest, onRefresh }) => {
   const [requests, setRequests] = useState<any[]>([]);
   const [selected, setSelected] = useState<any>(null);
   const [filter, setFilter] = useState("pending");
   const [loading, setLoading] = useState(true);
   const [rejReason, setRejReason] = useState("");
-  const [hospitalId, setHospitalId] = useState("");
-  const [userId, setUserId] = useState("");
 
   // New request form
   const [nrPatientSearch, setNrPatientSearch] = useState("");
@@ -46,30 +46,22 @@ const RecordRequestsTab: React.FC<Props> = ({ showNewRequest, onCloseNewRequest 
   const [nrPurpose, setNrPurpose] = useState("");
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => { init(); }, []);
   useEffect(() => { if (hospitalId) fetchRequests(); }, [filter, hospitalId]);
 
-  const init = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const { data: userData } = await (supabase as any).from("users").select("id, hospital_id").eq("auth_user_id", user.id).single();
-    if (!userData) return;
-    setHospitalId(userData.hospital_id);
-    setUserId(userData.id);
-  };
-
   const fetchRequests = async () => {
+    if (!hospitalId) return;
     setLoading(true);
     let query = (supabase as any).from("record_requests").select("*, patients(full_name, uhid)").eq("hospital_id", hospitalId).order("created_at", { ascending: false }).limit(100);
     if (filter !== "all") query = query.eq("status", filter);
-    const { data } = await query;
+    const { data, error } = await query;
+    if (error) toast.error(error.message);
     setRequests(data || []);
     setLoading(false);
   };
 
   const searchPatients = async (q: string) => {
     setNrPatientSearch(q);
-    if (q.length < 2) { setNrPatients([]); return; }
+    if (q.length < 2 || !hospitalId) { setNrPatients([]); return; }
     const { data } = await (supabase as any).from("patients").select("id, full_name, uhid").eq("hospital_id", hospitalId).or(`full_name.ilike.%${q}%,uhid.ilike.%${q}%`).limit(10);
     setNrPatients(data || []);
   };
@@ -90,8 +82,9 @@ const RecordRequestsTab: React.FC<Props> = ({ showNewRequest, onCloseNewRequest 
     toast.success("Request created");
     setSaving(false);
     onCloseNewRequest();
-    setNrPatientId(""); setNrRequesterName(""); setNrPurpose(""); setNrRequesterContact("");
+    setNrPatientId(""); setNrRequesterName(""); setNrPurpose(""); setNrRequesterContact(""); setNrPatientSearch("");
     fetchRequests();
+    onRefresh?.();
   };
 
   const approveRequest = async () => {
@@ -103,6 +96,7 @@ const RecordRequestsTab: React.FC<Props> = ({ showNewRequest, onCloseNewRequest 
     toast.success("Request approved");
     setSelected(null);
     fetchRequests();
+    onRefresh?.();
   };
 
   const rejectRequest = async () => {
@@ -114,6 +108,7 @@ const RecordRequestsTab: React.FC<Props> = ({ showNewRequest, onCloseNewRequest 
     toast.success("Request rejected");
     setSelected(null); setRejReason("");
     fetchRequests();
+    onRefresh?.();
   };
 
   const fulfillRequest = async () => {
@@ -125,12 +120,12 @@ const RecordRequestsTab: React.FC<Props> = ({ showNewRequest, onCloseNewRequest 
     toast.success("Request fulfilled");
     setSelected(null);
     fetchRequests();
+    onRefresh?.();
   };
 
   return (
     <>
       <div className="flex gap-3 h-full">
-        {/* Left - list */}
         <div className="w-[320px] flex flex-col border rounded-lg bg-card">
           <Tabs value={filter} onValueChange={setFilter} className="p-2">
             <TabsList className="w-full">
@@ -162,7 +157,6 @@ const RecordRequestsTab: React.FC<Props> = ({ showNewRequest, onCloseNewRequest 
           </ScrollArea>
         </div>
 
-        {/* Right - detail */}
         <div className="flex-1 border rounded-lg bg-card p-4 overflow-auto">
           {!selected ? (
             <div className="flex items-center justify-center h-full text-muted-foreground">Select a request</div>
@@ -199,7 +193,6 @@ const RecordRequestsTab: React.FC<Props> = ({ showNewRequest, onCloseNewRequest 
         </div>
       </div>
 
-      {/* New Request Modal */}
       <Dialog open={showNewRequest} onOpenChange={onCloseNewRequest}>
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>New Record Request</DialogTitle></DialogHeader>

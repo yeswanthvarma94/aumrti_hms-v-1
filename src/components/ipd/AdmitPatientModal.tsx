@@ -153,6 +153,31 @@ const AdmitPatientModal: React.FC<Props> = ({ open, onClose, hospitalId, presele
     // Update bed status
     await supabase.from("beds").update({ status: "occupied" as any }).eq("id", bedId);
 
+    // Upsert MRD records for this admission
+    // We need the admission ID — fetch it
+    const { data: newAdm } = await supabase.from("admissions")
+      .select("id")
+      .eq("hospital_id", hospitalId)
+      .eq("admission_number", admNum)
+      .single();
+
+    if (newAdm) {
+      (supabase as any).from("medical_records").upsert({
+        hospital_id: hospitalId,
+        patient_id: selectedPatient.id,
+        record_type: "ipd",
+        visit_id: newAdm.id,
+        status: "active",
+      }, { onConflict: "hospital_id,patient_id,record_type,visit_id" }).then(() => {});
+
+      (supabase as any).from("icd_codings").upsert({
+        hospital_id: hospitalId,
+        visit_type: "ipd",
+        visit_id: newAdm.id,
+        status: "pending",
+      }, { onConflict: "hospital_id,visit_type,visit_id" }).then(() => {});
+    }
+
     setSubmitting(false);
     toast({ title: `${selectedPatient.full_name} admitted`, description: `Bed ${bedLabel} · ${admNum}` });
     onClose();

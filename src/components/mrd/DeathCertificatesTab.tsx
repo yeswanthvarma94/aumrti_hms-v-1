@@ -8,20 +8,22 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Printer } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 interface Props {
+  hospitalId: string;
   showCreate: boolean;
   onCloseCreate: () => void;
+  onRefresh?: () => void;
 }
 
 const mannerOptions = ["natural", "accident", "suicide", "homicide", "undetermined"];
 
-const DeathCertificatesTab: React.FC<Props> = ({ showCreate, onCloseCreate }) => {
+const DeathCertificatesTab: React.FC<Props> = ({ hospitalId, showCreate, onCloseCreate, onRefresh }) => {
   const [certs, setCerts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [hospitalId, setHospitalId] = useState("");
   const [doctors, setDoctors] = useState<any[]>([]);
 
   // Form
@@ -39,38 +41,95 @@ const DeathCertificatesTab: React.FC<Props> = ({ showCreate, onCloseCreate }) =>
   const [certifiedBy, setCertifiedBy] = useState("");
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => { init(); }, []);
+  useEffect(() => { if (hospitalId) init(); }, [hospitalId]);
 
   const init = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const { data: userData } = await (supabase as any).from("users").select("id, hospital_id").eq("auth_user_id", user.id).single();
-    if (!userData) return;
-    setHospitalId(userData.hospital_id);
-    fetchCerts(userData.hospital_id);
-    const { data: docs } = await (supabase as any).from("users").select("id, full_name").eq("hospital_id", userData.hospital_id).eq("role", "doctor").eq("is_active", true);
+    fetchCerts();
+    const { data: docs } = await (supabase as any).from("users").select("id, full_name").eq("hospital_id", hospitalId).eq("role", "doctor").eq("is_active", true);
     setDoctors(docs || []);
   };
 
-  const fetchCerts = async (hid: string) => {
+  const fetchCerts = async () => {
+    if (!hospitalId) return;
     setLoading(true);
-    const { data } = await (supabase as any).from("death_certificates").select("*, patients(full_name, uhid)").eq("hospital_id", hid).order("created_at", { ascending: false });
+    const { data, error } = await (supabase as any).from("death_certificates").select("*, patients(full_name, uhid)").eq("hospital_id", hospitalId).order("created_at", { ascending: false });
+    if (error) toast.error(error.message);
     setCerts(data || []);
     setLoading(false);
   };
 
   const searchPatients = async (q: string) => {
     setPatientSearch(q);
-    if (q.length < 2) { setPatients([]); return; }
+    if (q.length < 2 || !hospitalId) { setPatients([]); return; }
     const { data } = await (supabase as any).from("patients").select("id, full_name, uhid").eq("hospital_id", hospitalId).or(`full_name.ilike.%${q}%,uhid.ilike.%${q}%`).limit(10);
     setPatients(data || []);
+  };
+
+  const printMCCD = (cert: any) => {
+    const doctorName = doctors.find(d => d.id === cert.certified_by)?.full_name || "—";
+    const html = `<html><head><title>MCCD — ${cert.patients?.full_name || "Patient"}</title>
+    <style>
+      body { font-family: 'Times New Roman', serif; padding: 40px; color: #000; max-width: 800px; margin: 0 auto; }
+      h1 { text-align: center; font-size: 18px; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 4px; }
+      h2 { text-align: center; font-size: 13px; font-weight: normal; margin-top: 0; color: #444; }
+      .meta { display: flex; justify-content: space-between; margin: 16px 0; font-size: 13px; }
+      .section { margin: 12px 0; }
+      .section-title { font-weight: bold; font-size: 12px; text-transform: uppercase; border-bottom: 1px solid #ccc; padding-bottom: 4px; margin-bottom: 8px; }
+      .field { margin: 6px 0; font-size: 13px; }
+      .field-label { font-weight: bold; display: inline-block; min-width: 180px; }
+      .cause-table { width: 100%; border-collapse: collapse; margin: 8px 0; }
+      .cause-table td { border: 1px solid #999; padding: 8px; font-size: 13px; }
+      .cause-table td:first-child { width: 80px; font-weight: bold; background: #f5f5f5; }
+      .footer { margin-top: 40px; display: flex; justify-content: space-between; font-size: 12px; }
+      .signature-line { border-top: 1px solid #000; width: 200px; text-align: center; padding-top: 4px; margin-top: 40px; }
+      @media print { body { padding: 20px; } }
+    </style></head><body>
+      <h1>MEDICAL CERTIFICATE OF CAUSE OF DEATH</h1>
+      <h2>(MCCD — Form 4/4A under Registration of Births and Deaths Act)</h2>
+      <div class="meta">
+        <span><b>MCCD No:</b> ${cert.mccd_form_number || "—"}</span>
+        <span><b>Date of Issue:</b> ${cert.issued_at ? new Date(cert.issued_at).toLocaleDateString("en-IN") : "—"}</span>
+      </div>
+      <div class="section">
+        <div class="section-title">Deceased Information</div>
+        <div class="field"><span class="field-label">Name:</span> ${cert.patients?.full_name || "—"}</div>
+        <div class="field"><span class="field-label">UHID:</span> ${cert.patients?.uhid || "—"}</div>
+        <div class="field"><span class="field-label">Date & Time of Death:</span> ${cert.time_of_death ? new Date(cert.time_of_death).toLocaleString("en-IN") : "—"}</div>
+      </div>
+      <div class="section">
+        <div class="section-title">Cause of Death</div>
+        <table class="cause-table">
+          <tr><td>I (a)</td><td><b>Immediate cause:</b> ${cert.cause_1a || "—"}</td></tr>
+          <tr><td>I (b)</td><td><b>Antecedent cause:</b> ${cert.cause_1b || "—"}</td></tr>
+          <tr><td>I (c)</td><td><b>Underlying cause:</b> ${cert.cause_1c || "—"}</td></tr>
+          <tr><td>II</td><td><b>Contributing conditions:</b> ${cert.cause_2 || "—"}</td></tr>
+        </table>
+      </div>
+      <div class="section">
+        <div class="section-title">Additional Information</div>
+        <div class="field"><span class="field-label">ICD Code (underlying):</span> ${cert.icd_code || "—"}</div>
+        <div class="field"><span class="field-label">Manner of Death:</span> ${(cert.manner_of_death || "").toUpperCase()}</div>
+        <div class="field"><span class="field-label">Medico-Legal Case:</span> ${cert.is_mlc ? "YES" : "NO"}</div>
+      </div>
+      <div class="footer">
+        <div>
+          <div class="signature-line">Certifying Medical Practitioner</div>
+          <div style="text-align:center; font-size:12px; margin-top:4px;">${doctorName}</div>
+        </div>
+        <div>
+          <div class="signature-line">Seal / Stamp</div>
+        </div>
+      </div>
+    </body></html>`;
+    const w = window.open("", "_blank");
+    if (w) { w.document.write(html); w.document.close(); w.focus(); setTimeout(() => w.print(), 400); }
   };
 
   const createCert = async () => {
     if (!patientId || !timeOfDeath || !cause1a || !certifiedBy) { toast.error("Fill all required fields"); return; }
     setSaving(true);
     const mccdNum = `MCCD-${Date.now()}`;
-    const { error } = await (supabase as any).from("death_certificates").insert({
+    const { data: newCert, error } = await (supabase as any).from("death_certificates").insert({
       hospital_id: hospitalId,
       patient_id: patientId,
       time_of_death: timeOfDeath,
@@ -84,14 +143,19 @@ const DeathCertificatesTab: React.FC<Props> = ({ showCreate, onCloseCreate }) =>
       certified_by: certifiedBy,
       mccd_form_number: mccdNum,
       issued_at: new Date().toISOString(),
-    });
+    }).select("*, patients(full_name, uhid)").single();
+
     if (error) { toast.error(error.message); setSaving(false); return; }
     toast.success("Death certificate created");
     setSaving(false);
     onCloseCreate();
     setPatientId(""); setCause1a(""); setCause1b(""); setCause1c(""); setCause2(""); setIcdCode("");
     setPatientSearch(""); setTimeOfDeath(""); setManner("natural"); setIsMlc(false); setCertifiedBy("");
-    fetchCerts(hospitalId);
+    fetchCerts();
+    onRefresh?.();
+
+    // Auto-print
+    if (newCert) printMCCD(newCert);
   };
 
   return (
@@ -107,13 +171,14 @@ const DeathCertificatesTab: React.FC<Props> = ({ showCreate, onCloseCreate }) =>
                 <TableHead>Manner</TableHead>
                 <TableHead>MLC</TableHead>
                 <TableHead>MCCD #</TableHead>
+                <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
               ) : certs.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No death certificates</TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No death certificates</TableCell></TableRow>
               ) : certs.map((c) => (
                 <TableRow key={c.id}>
                   <TableCell>
@@ -125,6 +190,11 @@ const DeathCertificatesTab: React.FC<Props> = ({ showCreate, onCloseCreate }) =>
                   <TableCell><Badge variant="secondary" className="capitalize">{c.manner_of_death}</Badge></TableCell>
                   <TableCell>{c.is_mlc ? <Badge variant="destructive">MLC</Badge> : "—"}</TableCell>
                   <TableCell className="text-[10px] font-mono">{c.mccd_form_number || "—"}</TableCell>
+                  <TableCell>
+                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => printMCCD(c)}>
+                      <Printer className="h-3 w-3 mr-1" /> Print
+                    </Button>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -132,7 +202,6 @@ const DeathCertificatesTab: React.FC<Props> = ({ showCreate, onCloseCreate }) =>
         </div>
       </div>
 
-      {/* Create Death Certificate Modal */}
       <Dialog open={showCreate} onOpenChange={onCloseCreate}>
         <DialogContent className="max-w-lg max-h-[80vh] overflow-auto">
           <DialogHeader><DialogTitle>📜 Generate Death Certificate</DialogTitle></DialogHeader>
