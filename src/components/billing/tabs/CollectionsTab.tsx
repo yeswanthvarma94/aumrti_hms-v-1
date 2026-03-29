@@ -11,8 +11,10 @@ import { cn } from "@/lib/utils";
 import { format, differenceInDays } from "date-fns";
 import {
   Link2, CalendarDays, MessageSquare, HandCoins, RefreshCw,
-  Copy, ExternalLink, AlertTriangle, CheckCircle2
+  Copy, ExternalLink, AlertTriangle, CheckCircle2, Megaphone, QrCode
 } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
+import CollectionCampaignModal from "@/components/billing/CollectionCampaignModal";
 
 interface OutstandingBill {
   id: string;
@@ -78,6 +80,17 @@ const CollectionsTab: React.FC<CollectionsTabProps> = ({ hospitalId }) => {
   const [collectAmount, setCollectAmount] = useState("");
   const [collectMode, setCollectMode] = useState("cash");
   const [collecting, setCollecting] = useState(false);
+
+  // Pay Link modal
+  const [payLinkModal, setPayLinkModal] = useState<OutstandingBill | null>(null);
+  const [payLinkAmount, setPayLinkAmount] = useState(0);
+  const [payLinkExpiry, setPayLinkExpiry] = useState(7);
+  const [payLinkGenerating, setPayLinkGenerating] = useState(false);
+  const [generatedPayUrl, setGeneratedPayUrl] = useState("");
+  const [generatedPayToken, setGeneratedPayToken] = useState("");
+
+  // Campaign modal
+  const [showCampaign, setShowCampaign] = useState(false);
 
   const loadData = useCallback(async () => {
     setLoading(true);
