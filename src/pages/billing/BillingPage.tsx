@@ -2,10 +2,12 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import BillQueue from "@/components/billing/BillQueue";
 import BillEditor from "@/components/billing/BillEditor";
 import NewBillModal from "@/components/billing/NewBillModal";
 import AdvanceReceiptModal from "@/components/billing/AdvanceReceiptModal";
+import CollectionsTab from "@/components/billing/tabs/CollectionsTab";
 
 export interface BillRecord {
   id: string;
