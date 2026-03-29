@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Building2, ClipboardList, Send, BarChart3, CalendarClock, Settings2 } from "lucide-react";
+import { Building2, ClipboardList, Send, BarChart3, CalendarClock, Settings2, Layers } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ActiveAdmissions from "@/components/insurance/ActiveAdmissions";
 import PreAuthQueue from "@/components/insurance/PreAuthQueue";
@@ -9,6 +9,7 @@ import ClaimsToSubmit from "@/components/insurance/ClaimsToSubmit";
 import ClaimsStatus from "@/components/insurance/ClaimsStatus";
 import TPAAgeing from "@/components/insurance/TPAAgeing";
 import TPAConfiguration from "@/components/insurance/TPAConfiguration";
+import UnifiedAgeingView from "@/components/insurance/UnifiedAgeingView";
 
 const navItems = [
   { key: "admissions", label: "Active Admissions", icon: Building2 },
@@ -16,6 +17,7 @@ const navItems = [
   { key: "submit", label: "Claims to Submit", icon: Send },
   { key: "status", label: "Claims Status", icon: BarChart3 },
   { key: "ageing", label: "TPA Ageing", icon: CalendarClock },
+  { key: "unified", label: "Unified View", icon: Layers },
   { key: "config", label: "TPA Configuration", icon: Settings2 },
 ];
 
@@ -73,6 +75,7 @@ const InsurancePage: React.FC = () => {
       case "submit": return <ClaimsToSubmit />;
       case "status": return <ClaimsStatus />;
       case "ageing": return <TPAAgeing />;
+      case "unified": return <UnifiedAgeingView />;
       case "config": return <TPAConfiguration />;
       default: return null;
     }
