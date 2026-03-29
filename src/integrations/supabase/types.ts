@@ -4867,6 +4867,83 @@ export type Database = {
           },
         ]
       }
+      hep_plans: {
+        Row: {
+          created_at: string | null
+          created_by: string
+          duration_weeks: number | null
+          exercises: Json
+          frequency_per_day: number | null
+          hospital_id: string
+          id: string
+          is_active: boolean | null
+          last_viewed_at: string | null
+          patient_id: string
+          referral_id: string
+          sent_via: string[] | null
+          view_count: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by: string
+          duration_weeks?: number | null
+          exercises?: Json
+          frequency_per_day?: number | null
+          hospital_id: string
+          id?: string
+          is_active?: boolean | null
+          last_viewed_at?: string | null
+          patient_id: string
+          referral_id: string
+          sent_via?: string[] | null
+          view_count?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string
+          duration_weeks?: number | null
+          exercises?: Json
+          frequency_per_day?: number | null
+          hospital_id?: string
+          id?: string
+          is_active?: boolean | null
+          last_viewed_at?: string | null
+          patient_id?: string
+          referral_id?: string
+          sent_via?: string[] | null
+          view_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hep_plans_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hep_plans_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hep_plans_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hep_plans_referral_id_fkey"
+            columns: ["referral_id"]
+            isOneToOne: false
+            referencedRelation: "physio_referrals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hmis_reports: {
         Row: {
           created_at: string | null
@@ -8991,6 +9068,83 @@ export type Database = {
           },
         ]
       }
+      outcome_scores: {
+        Row: {
+          assessment_type: string | null
+          created_at: string | null
+          hospital_id: string
+          id: string
+          max_score: number | null
+          notes: string | null
+          patient_id: string
+          referral_id: string
+          score: number
+          score_percent: number | null
+          scored_at: string
+          scored_by: string
+          tool: string
+        }
+        Insert: {
+          assessment_type?: string | null
+          created_at?: string | null
+          hospital_id: string
+          id?: string
+          max_score?: number | null
+          notes?: string | null
+          patient_id: string
+          referral_id: string
+          score: number
+          score_percent?: number | null
+          scored_at?: string
+          scored_by: string
+          tool: string
+        }
+        Update: {
+          assessment_type?: string | null
+          created_at?: string | null
+          hospital_id?: string
+          id?: string
+          max_score?: number | null
+          notes?: string | null
+          patient_id?: string
+          referral_id?: string
+          score?: number
+          score_percent?: number | null
+          scored_at?: string
+          scored_by?: string
+          tool?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "outcome_scores_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "outcome_scores_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "outcome_scores_referral_id_fkey"
+            columns: ["referral_id"]
+            isOneToOne: false
+            referencedRelation: "physio_referrals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "outcome_scores_scored_by_fkey"
+            columns: ["scored_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       partograph_records: {
         Row: {
           admission_id: string
@@ -10161,6 +10315,272 @@ export type Database = {
             columns: ["hospital_id"]
             isOneToOne: false
             referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      physio_equipment_bookings: {
+        Row: {
+          booked_for: string
+          created_at: string | null
+          end_time: string
+          equipment_type: string
+          hospital_id: string
+          id: string
+          patient_id: string | null
+          session_id: string | null
+          start_time: string
+          status: string | null
+        }
+        Insert: {
+          booked_for: string
+          created_at?: string | null
+          end_time: string
+          equipment_type: string
+          hospital_id: string
+          id?: string
+          patient_id?: string | null
+          session_id?: string | null
+          start_time: string
+          status?: string | null
+        }
+        Update: {
+          booked_for?: string
+          created_at?: string | null
+          end_time?: string
+          equipment_type?: string
+          hospital_id?: string
+          id?: string
+          patient_id?: string | null
+          session_id?: string | null
+          start_time?: string
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "physio_equipment_bookings_booked_for_fkey"
+            columns: ["booked_for"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "physio_equipment_bookings_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "physio_equipment_bookings_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "physio_equipment_bookings_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "physio_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      physio_referrals: {
+        Row: {
+          accepted_at: string | null
+          accepted_by: string | null
+          admission_id: string | null
+          created_at: string | null
+          diagnosis: string
+          goals: string[] | null
+          hospital_id: string
+          icd_code: string | null
+          id: string
+          opd_encounter_id: string | null
+          patient_id: string
+          precautions: string | null
+          referral_date: string
+          referred_by: string
+          status: string | null
+          total_sessions_done: number | null
+          total_sessions_planned: number | null
+          urgency: string | null
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          admission_id?: string | null
+          created_at?: string | null
+          diagnosis: string
+          goals?: string[] | null
+          hospital_id: string
+          icd_code?: string | null
+          id?: string
+          opd_encounter_id?: string | null
+          patient_id: string
+          precautions?: string | null
+          referral_date?: string
+          referred_by: string
+          status?: string | null
+          total_sessions_done?: number | null
+          total_sessions_planned?: number | null
+          urgency?: string | null
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          admission_id?: string | null
+          created_at?: string | null
+          diagnosis?: string
+          goals?: string[] | null
+          hospital_id?: string
+          icd_code?: string | null
+          id?: string
+          opd_encounter_id?: string | null
+          patient_id?: string
+          precautions?: string | null
+          referral_date?: string
+          referred_by?: string
+          status?: string | null
+          total_sessions_done?: number | null
+          total_sessions_planned?: number | null
+          urgency?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "physio_referrals_accepted_by_fkey"
+            columns: ["accepted_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "physio_referrals_admission_id_fkey"
+            columns: ["admission_id"]
+            isOneToOne: false
+            referencedRelation: "admissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "physio_referrals_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "physio_referrals_opd_encounter_id_fkey"
+            columns: ["opd_encounter_id"]
+            isOneToOne: false
+            referencedRelation: "opd_encounters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "physio_referrals_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "physio_referrals_referred_by_fkey"
+            columns: ["referred_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      physio_sessions: {
+        Row: {
+          attended: boolean | null
+          billed: boolean | null
+          cancellation_reason: string | null
+          created_at: string | null
+          duration_minutes: number
+          home_exercises_given: boolean | null
+          hospital_id: string
+          id: string
+          modalities_used: string[] | null
+          pain_score_after: number | null
+          pain_score_before: number | null
+          patient_id: string
+          referral_id: string
+          session_date: string
+          session_time: string
+          session_type: string | null
+          therapist_id: string
+          treatment_notes: string | null
+        }
+        Insert: {
+          attended?: boolean | null
+          billed?: boolean | null
+          cancellation_reason?: string | null
+          created_at?: string | null
+          duration_minutes: number
+          home_exercises_given?: boolean | null
+          hospital_id: string
+          id?: string
+          modalities_used?: string[] | null
+          pain_score_after?: number | null
+          pain_score_before?: number | null
+          patient_id: string
+          referral_id: string
+          session_date: string
+          session_time: string
+          session_type?: string | null
+          therapist_id: string
+          treatment_notes?: string | null
+        }
+        Update: {
+          attended?: boolean | null
+          billed?: boolean | null
+          cancellation_reason?: string | null
+          created_at?: string | null
+          duration_minutes?: number
+          home_exercises_given?: boolean | null
+          hospital_id?: string
+          id?: string
+          modalities_used?: string[] | null
+          pain_score_after?: number | null
+          pain_score_before?: number | null
+          patient_id?: string
+          referral_id?: string
+          session_date?: string
+          session_time?: string
+          session_type?: string | null
+          therapist_id?: string
+          treatment_notes?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "physio_sessions_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "physio_sessions_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "physio_sessions_referral_id_fkey"
+            columns: ["referral_id"]
+            isOneToOne: false
+            referencedRelation: "physio_referrals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "physio_sessions_therapist_id_fkey"
+            columns: ["therapist_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
