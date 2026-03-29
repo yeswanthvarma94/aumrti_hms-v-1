@@ -72,6 +72,49 @@ const ClaimsStatus: React.FC = () => {
     setLoading(false);
   };
 
+  const loadDenialStats = async () => {
+    const { data: logs } = await supabase.from("denial_logs").select("category, denial_reason, claim_id");
+    if (!logs?.length) return;
+    
+    // Category breakdown
+    const catMap: Record<string, number> = {};
+    logs.forEach(l => { const c = l.category || "other"; catMap[c] = (catMap[c] || 0) + 1; });
+    setDenialStats(Object.entries(catMap).map(([category, count]) => ({ category, count })).sort((a, b) => b.count - a.count));
+
+    // Top denials by TPA - need to join with insurance_claims
+    const claimIds = [...new Set(logs.map(l => l.claim_id).filter(Boolean))];
+    if (claimIds.length > 0) {
+      const { data: claimData } = await supabase.from("insurance_claims").select("id, tpa_name").in("id", claimIds);
+      const claimTpaMap = Object.fromEntries((claimData || []).map(c => [c.id, c.tpa_name]));
+      const tpaReasons: Record<string, string[]> = {};
+      logs.forEach(l => {
+        const tpa = claimTpaMap[l.claim_id] || "Unknown";
+        if (!tpaReasons[tpa]) tpaReasons[tpa] = [];
+        if (l.denial_reason && !tpaReasons[tpa].includes(l.denial_reason)) tpaReasons[tpa].push(l.denial_reason);
+      });
+      setTopDenialsByTPA(Object.entries(tpaReasons).map(([tpa, reasons]) => ({ tpa, reasons: reasons.slice(0, 3) })));
+    }
+  };
+
+  const logDenial = async (claim: Claim) => {
+    if (!denialReason || !denialCategory) {
+      toast({ title: "Please fill reason and category", variant: "destructive" });
+      return;
+    }
+    const { data: userData } = await supabase.from("users").select("hospital_id").eq("auth_user_id", (await supabase.auth.getUser()).data.user?.id || "").single();
+    await supabase.from("denial_logs").insert({
+      hospital_id: userData?.hospital_id || "",
+      claim_id: claim.id,
+      denial_reason: denialReason,
+      category: denialCategory,
+    });
+    toast({ title: "Denial logged ✓" });
+    setDenialModal(null);
+    setDenialReason("");
+    setDenialCategory("");
+    loadDenialStats();
+  };
+
   const recordSettlement = async (claim: Claim) => {
     const amount = prompt("Enter settled amount (₹):");
     if (!amount) return;
