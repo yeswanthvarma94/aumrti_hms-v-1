@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { X } from "lucide-react";
+import { X, UserPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getDPDPConsentText } from "@/lib/compliance-checks";
 
@@ -16,6 +16,7 @@ const genders = ["male", "female", "other"] as const;
 const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess }) => {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
+  const [showReferralModal, setShowReferralModal] = useState(false);
   const [dpdpConsent, setDpdpConsent] = useState(false);
   const [hospitalName, setHospitalName] = useState("Hospital");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -263,7 +264,12 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess }) => {
 
           {/* ROW 6: Referral Source */}
           <div>
-            <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Referral Source <span className="text-muted-foreground/60">(Optional)</span></label>
+            <div className="flex items-center gap-2 mb-1">
+              <label className="text-[11px] font-medium text-muted-foreground">Referral Source <span className="text-muted-foreground/60">(Optional)</span></label>
+              <button type="button" onClick={() => setShowReferralModal(true)} className="text-[11px] text-accent font-medium hover:underline flex items-center gap-0.5">
+                <UserPlus size={12} /> + Referral Doctor
+              </button>
+            </div>
             <input value={form.referral_source} onChange={(e) => set("referral_source", e.target.value)}
               placeholder="Dr. name, Google, Walk-in, Practo, etc." className={inputClass} />
           </div>
