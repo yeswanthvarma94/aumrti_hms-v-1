@@ -33,6 +33,7 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess }) => {
     abha_id: "",
     emergency_contact_name: "",
     emergency_contact_phone: "",
+    referral_source: "",
   });
 
   useEffect(() => {
