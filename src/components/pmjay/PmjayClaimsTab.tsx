@@ -64,7 +64,7 @@ const PmjayClaimsTab: React.FC = () => {
 
     if (rows.length > 0) {
       const pIds = [...new Set(rows.map(r => r.patient_id))];
-      const { data: pData } = await supabase.from("patients").select("id, full_name, age, gender").in("id", pIds);
+      const { data: pData } = await supabase.from("patients").select("id, full_name, dob, gender").in("id", pIds);
       setPatients(Object.fromEntries((pData || []).map(p => [p.id, p.full_name])));
     }
     setLoading(false);
@@ -80,9 +80,13 @@ const PmjayClaimsTab: React.FC = () => {
       // Fetch patient details for richer context
       const { data: patientData } = await supabase
         .from("patients")
-        .select("full_name, age, gender")
+        .select("full_name, dob, gender")
         .eq("id", selected.patient_id)
         .single();
+
+      const patientAge = patientData?.dob
+        ? Math.floor((Date.now() - new Date(patientData.dob).getTime()) / (365.25 * 86400000))
+        : "N/A";
 
       // Fetch hospital name
       const { data: hospitalData } = await supabase
@@ -97,7 +101,7 @@ const PmjayClaimsTab: React.FC = () => {
         prompt: `Write a formal medical necessity appeal letter for a denied PMJAY/government health scheme claim.
 
 Hospital: ${hospitalData?.name || "Hospital"}
-Patient: ${patientData?.full_name || "Patient"}, ${patientData?.age || "N/A"}yrs, ${patientData?.gender || "N/A"}
+Patient: ${patientData?.full_name || "Patient"}, ${patientAge}yrs, ${patientData?.gender || "N/A"}
 Package: ${selected.package_name} (Code: ${selected.package_code})
 Claimed amount: ₹${selected.claimed_amount.toLocaleString("en-IN")}
 Denial reason: ${selected.denial_reason || "Not specified"}
