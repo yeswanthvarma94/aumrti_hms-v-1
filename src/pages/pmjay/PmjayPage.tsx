@@ -1,8 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { ClipboardList, Coins, Users, Package, BarChart3, Plus } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import PmjayPreAuthTab from "@/components/pmjay/PmjayPreAuthTab";
 import PmjayClaimsTab from "@/components/pmjay/PmjayClaimsTab";
 import PmjayBeneficiariesTab from "@/components/pmjay/PmjayBeneficiariesTab";
@@ -15,6 +20,15 @@ const tabs = [
   { key: "beneficiaries", label: "Beneficiaries", icon: Users },
   { key: "packages", label: "Packages", icon: Package },
   { key: "analytics", label: "Analytics", icon: BarChart3 },
+];
+
+const SCHEME_TYPES = [
+  { value: "central_govt", label: "Central Govt" },
+  { value: "state_scheme", label: "State Scheme" },
+  { value: "cghs", label: "CGHS" },
+  { value: "echs", label: "ECHS" },
+  { value: "esi", label: "ESI" },
+  { value: "other", label: "Other" },
 ];
 
 interface KPIs {
@@ -30,6 +44,10 @@ const PmjayPage: React.FC = () => {
   const [kpis, setKpis] = useState<KPIs>({ activePreAuths: 0, pendingApprovals: 0, claimsThisMonth: 0, claimedAmount: 0, recoveryRate: 0 });
   const [showBeneficiaryForm, setShowBeneficiaryForm] = useState(false);
   const [showPreAuthForm, setShowPreAuthForm] = useState(false);
+  const [showAddScheme, setShowAddScheme] = useState(false);
+  const [schemeForm, setSchemeForm] = useState({ scheme_name: "", scheme_code: "", scheme_type: "state_scheme", coverage_limit: "" });
+  const [schemeSaving, setSchemeSaving] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => { loadKPIs(); }, []);
 
@@ -58,6 +76,30 @@ const PmjayPage: React.FC = () => {
     } catch { /* ignore */ }
   };
 
+  const handleAddScheme = async () => {
+    if (!schemeForm.scheme_name || !schemeForm.scheme_code) {
+      toast({ title: "Name and code are required", variant: "destructive" });
+      return;
+    }
+    setSchemeSaving(true);
+    const { data: userData } = await supabase.from("users").select("hospital_id").eq("auth_user_id", (await supabase.auth.getUser()).data.user?.id || "").single();
+    if (!userData?.hospital_id) { toast({ title: "Hospital not found", variant: "destructive" }); setSchemeSaving(false); return; }
+
+    const { error } = await supabase.from("govt_schemes").insert({
+      hospital_id: userData.hospital_id,
+      scheme_name: schemeForm.scheme_name,
+      scheme_code: schemeForm.scheme_code.toUpperCase(),
+      scheme_type: schemeForm.scheme_type,
+      coverage_limit: schemeForm.coverage_limit ? Number(schemeForm.coverage_limit) : null,
+      is_active: true,
+    });
+    setSchemeSaving(false);
+    if (error) { toast({ title: "Failed to add scheme", description: error.message, variant: "destructive" }); return; }
+    toast({ title: "Scheme added successfully" });
+    setShowAddScheme(false);
+    setSchemeForm({ scheme_name: "", scheme_code: "", scheme_type: "state_scheme", coverage_limit: "" });
+  };
+
   const kpiCards = [
     { label: "Active Pre-Auths", value: kpis.activePreAuths, color: "text-blue-700 bg-blue-50" },
     { label: "Pending Approvals", value: kpis.pendingApprovals, color: "text-amber-700 bg-amber-50" },
@@ -83,6 +125,9 @@ const PmjayPage: React.FC = () => {
       <div className="h-[52px] flex-shrink-0 bg-background border-b border-border px-5 flex items-center justify-between">
         <h1 className="text-base font-bold text-foreground">🏥 PMJAY & Government Schemes</h1>
         <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" onClick={() => setShowAddScheme(true)}>
+            <Plus size={14} className="mr-1" /> Add Scheme
+          </Button>
           <Button size="sm" variant="outline" onClick={() => { setActiveTab("beneficiaries"); setShowBeneficiaryForm(true); }}>
             <Plus size={14} className="mr-1" /> Register Beneficiary
           </Button>
@@ -126,6 +171,44 @@ const PmjayPage: React.FC = () => {
       <div className="flex-1 overflow-hidden bg-muted/30">
         {renderTab()}
       </div>
+
+      {/* Add Scheme Modal */}
+      <Dialog open={showAddScheme} onOpenChange={setShowAddScheme}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Government Scheme</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 pt-2">
+            <div>
+              <Label className="text-[11px]">Scheme Name *</Label>
+              <Input className="mt-1" placeholder="e.g. Mukhyamantri Amrutum" value={schemeForm.scheme_name} onChange={e => setSchemeForm(f => ({ ...f, scheme_name: e.target.value }))} />
+            </div>
+            <div>
+              <Label className="text-[11px]">Scheme Code *</Label>
+              <Input className="mt-1" placeholder="e.g. MA_YOJANA" value={schemeForm.scheme_code} onChange={e => setSchemeForm(f => ({ ...f, scheme_code: e.target.value }))} />
+            </div>
+            <div>
+              <Label className="text-[11px]">Scheme Type *</Label>
+              <Select value={schemeForm.scheme_type} onValueChange={v => setSchemeForm(f => ({ ...f, scheme_type: v }))}>
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {SCHEME_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-[11px]">Coverage Limit (₹)</Label>
+              <Input className="mt-1" type="number" placeholder="e.g. 500000" value={schemeForm.coverage_limit} onChange={e => setSchemeForm(f => ({ ...f, coverage_limit: e.target.value }))} />
+            </div>
+            <div className="flex gap-2 pt-2">
+              <Button onClick={handleAddScheme} disabled={schemeSaving} className="flex-1">
+                {schemeSaving ? "Saving..." : "Add Scheme"}
+              </Button>
+              <Button variant="outline" onClick={() => setShowAddScheme(false)}>Cancel</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
