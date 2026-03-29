@@ -3,7 +3,9 @@ import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Minus, Plus, X, ShoppingCart, ChevronDown, Loader2, CheckCircle2, UserPlus } from "lucide-react";
+import { Minus, Plus, X, ShoppingCart, ChevronDown, Loader2, CheckCircle2, UserPlus, XCircle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import type { PatientGender } from "@/lib/patient-records";
 
 export interface CartItem {
   drug_id: string;
@@ -20,7 +22,14 @@ export interface CartItem {
   is_ndps: boolean;
   drug_schedule: string | null;
   is_expiring: boolean;
-  item_discount: number; // percent
+  item_discount: number;
+}
+
+interface PatientSearchResult {
+  id: string;
+  full_name: string;
+  uhid: string;
+  phone: string | null;
 }
 
 interface Props {
@@ -28,11 +37,14 @@ interface Props {
   customerId: string | null;
   customerPhone: string;
   customerName: string;
-  customerStatusLabel: string;
+  customerUhid: string;
   discountPercent: number;
   discountMode: "percent" | "fixed";
   discountFixed: number;
   searching: boolean;
+  searchResults: PatientSearchResult[];
+  showNewPatientForm: boolean;
+  newPatientData: { full_name: string; phone: string; age: string; gender: PatientGender };
   onUpdateQty: (idx: number, qty: number) => void;
   onRemoveItem: (idx: number) => void;
   onClearAll: () => void;
@@ -41,6 +53,10 @@ interface Props {
   onSetDiscountPercent: (val: number) => void;
   onSetDiscountMode: (mode: "percent" | "fixed") => void;
   onSetDiscountFixed: (val: number) => void;
+  onSelectPatient: (patient: PatientSearchResult) => void;
+  onClearPatient: () => void;
+  onToggleNewPatientForm: () => void;
+  onSetNewPatientData: (data: { full_name: string; phone: string; age: string; gender: PatientGender }) => void;
   onCreateCustomer: () => void;
   subtotal: number;
   discountAmount: number;
@@ -48,16 +64,19 @@ interface Props {
   netTotal: number;
 }
 
+const genders: PatientGender[] = ["male", "female", "other"];
+
 const RetailCart: React.FC<Props> = ({
-  items, customerId, customerPhone, customerName, customerStatusLabel, discountPercent, discountMode, discountFixed,
-  searching, onUpdateQty, onRemoveItem, onClearAll, onSetCustomerPhone, onSetCustomerName,
-  onSetDiscountPercent, onSetDiscountMode, onSetDiscountFixed, onCreateCustomer,
+  items, customerId, customerPhone, customerName, customerUhid, discountPercent, discountMode, discountFixed,
+  searching, searchResults, showNewPatientForm, newPatientData,
+  onUpdateQty, onRemoveItem, onClearAll, onSetCustomerPhone, onSetCustomerName,
+  onSetDiscountPercent, onSetDiscountMode, onSetDiscountFixed,
+  onSelectPatient, onClearPatient, onToggleNewPatientForm, onSetNewPatientData, onCreateCustomer,
   subtotal, discountAmount, gstAmount, netTotal,
 }) => {
   const [showGst, setShowGst] = useState(false);
   const totalQty = items.reduce((s, i) => s + i.qty, 0);
 
-  // GST breakdown
   const gstBreakdown: Record<number, number> = {};
   items.forEach(item => {
     const itemTotal = item.unit_price * item.qty;
@@ -80,50 +99,144 @@ const RetailCart: React.FC<Props> = ({
         )}
       </div>
 
-      {/* Customer */}
+      {/* Customer Section */}
       <div className="flex-shrink-0 bg-card border-b border-border/50 px-3.5 py-2 space-y-2">
-        <div className="grid grid-cols-2 gap-2">
-          <Input
-            value={customerPhone}
-            onChange={e => onSetCustomerPhone(e.target.value)}
-            placeholder="Customer phone"
-            className="h-8 text-xs bg-muted/30"
-          />
-          <Input
-            value={customerName}
-            onChange={e => onSetCustomerName(e.target.value)}
-            placeholder="Customer name"
-            className="h-8 text-xs bg-muted/30"
-          />
-        </div>
-        <div className="flex items-center gap-2">
-          {searching ? (
-            <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-              <Loader2 size={12} className="animate-spin" />
-              Searching…
-            </div>
-          ) : customerId ? (
-            <div className="flex items-center gap-1.5 text-[11px] text-emerald-600 font-medium">
-              <CheckCircle2 size={12} />
-              Linked: {customerStatusLabel}
-            </div>
-          ) : customerPhone.length >= 10 ? (
+        {customerId ? (
+          /* Linked patient display */
+          <div className="flex items-center justify-between gap-2 p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800">
             <div className="flex items-center gap-2">
-              <span className="text-[11px] text-muted-foreground">No patient found</span>
+              <CheckCircle2 size={14} className="text-emerald-600 flex-shrink-0" />
+              <div>
+                <p className="text-[13px] font-bold text-foreground">{customerName}</p>
+                <p className="text-[10px] text-muted-foreground">
+                  <span className="font-mono">{customerUhid}</span>
+                  {customerPhone && ` · ${customerPhone}`}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={onClearPatient}
+              className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+            >
+              <XCircle size={14} />
+            </button>
+          </div>
+        ) : (
+          /* Search inputs */
+          <>
+            <div className="grid grid-cols-2 gap-2">
+              <Input
+                value={customerPhone}
+                onChange={e => onSetCustomerPhone(e.target.value)}
+                placeholder="Search by phone / UHID"
+                className="h-8 text-xs bg-muted/30"
+              />
+              <Input
+                value={customerName}
+                onChange={e => onSetCustomerName(e.target.value)}
+                placeholder="Search by name"
+                className="h-8 text-xs bg-muted/30"
+              />
+            </div>
+
+            {/* Search status */}
+            <div className="flex items-center justify-between">
+              {searching ? (
+                <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                  <Loader2 size={12} className="animate-spin" />
+                  Searching…
+                </div>
+              ) : searchResults.length > 0 ? (
+                <span className="text-[11px] text-muted-foreground">{searchResults.length} patient(s) found</span>
+              ) : (customerPhone.trim().length >= 2 || customerName.trim().length >= 2) ? (
+                <span className="text-[11px] text-muted-foreground">No patients found</span>
+              ) : (
+                <span className="text-[11px] text-muted-foreground">Search by name, phone or UHID</span>
+              )}
+
               <Button
                 size="sm"
                 variant="outline"
                 className="h-6 text-[10px] px-2 gap-1"
-                onClick={onCreateCustomer}
+                onClick={onToggleNewPatientForm}
               >
                 <UserPlus size={10} />
-                Register New Patient
+                {showNewPatientForm ? "Cancel" : "Register New"}
               </Button>
             </div>
-          ) : (
-            <p className="text-[11px] text-muted-foreground">{customerStatusLabel}</p>
-          )}
-        </div>
+
+            {/* Search results dropdown */}
+            {searchResults.length > 0 && !showNewPatientForm && (
+              <div className="rounded-lg border border-border bg-background max-h-[140px] overflow-auto">
+                {searchResults.map(patient => (
+                  <button
+                    key={patient.id}
+                    onClick={() => onSelectPatient(patient)}
+                    className="w-full text-left px-3 py-2 hover:bg-muted/50 transition-colors border-b border-border/30 last:border-b-0"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-[12px] font-semibold text-foreground">{patient.full_name}</span>
+                      <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4 font-mono">{patient.uhid}</Badge>
+                    </div>
+                    {patient.phone && <p className="text-[10px] text-muted-foreground">{patient.phone}</p>}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* New patient form */}
+            {showNewPatientForm && (
+              <div className="rounded-lg border border-dashed border-primary/40 bg-primary/5 p-2.5 space-y-2">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-primary">New Patient</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <Input
+                    value={newPatientData.full_name}
+                    onChange={e => onSetNewPatientData({ ...newPatientData, full_name: e.target.value })}
+                    placeholder="Full name *"
+                    className="h-7 text-xs"
+                  />
+                  <Input
+                    value={newPatientData.phone}
+                    onChange={e => onSetNewPatientData({ ...newPatientData, phone: e.target.value })}
+                    placeholder="Phone"
+                    className="h-7 text-xs"
+                  />
+                  <Input
+                    value={newPatientData.age}
+                    onChange={e => onSetNewPatientData({ ...newPatientData, age: e.target.value })}
+                    placeholder="Age"
+                    type="number"
+                    min={0}
+                    className="h-7 text-xs"
+                  />
+                  <div className="flex items-center gap-0.5 rounded border border-input bg-background p-0.5">
+                    {genders.map(g => (
+                      <button
+                        key={g}
+                        onClick={() => onSetNewPatientData({ ...newPatientData, gender: g })}
+                        className={cn(
+                          "flex-1 rounded px-1 py-1 text-[10px] font-medium capitalize transition-colors",
+                          newPatientData.gender === g
+                            ? "bg-primary text-primary-foreground"
+                            : "text-muted-foreground hover:bg-muted"
+                        )}
+                      >{g}</button>
+                    ))}
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  className="w-full h-7 text-[11px] font-bold"
+                  disabled={!newPatientData.full_name.trim()}
+                  onClick={onCreateCustomer}
+                >
+                  <UserPlus size={12} className="mr-1" />
+                  Register & Link to Cart
+                </Button>
+              </div>
+            )}
+          </>
+        )}
       </div>
 
       {/* Items */}
@@ -156,7 +269,6 @@ const RetailCart: React.FC<Props> = ({
               </div>
 
               <div className="flex items-center justify-between mt-2">
-                {/* Qty adjuster */}
                 <div className="flex items-center gap-0">
                   <button
                     onClick={() => onUpdateQty(idx, Math.max(1, item.qty - 1))}

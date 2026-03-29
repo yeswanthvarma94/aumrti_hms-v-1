@@ -4,10 +4,17 @@ import { useToast } from "@/hooks/use-toast";
 import RetailDrugSearch, { type DrugSearchResult } from "./RetailDrugSearch";
 import RetailCart, { type CartItem } from "./RetailCart";
 import RetailPayment from "./RetailPayment";
-import { findPatientByPhone, createPatientRecord } from "@/lib/patient-records";
+import { createPatientRecord, type PatientGender } from "@/lib/patient-records";
 
 interface Props {
   hospitalId: string;
+}
+
+interface PatientSearchResult {
+  id: string;
+  full_name: string;
+  uhid: string;
+  phone: string | null;
 }
 
 const RetailPOS: React.FC<Props> = ({ hospitalId }) => {
@@ -16,57 +23,91 @@ const RetailPOS: React.FC<Props> = ({ hospitalId }) => {
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerName, setCustomerName] = useState("");
+  const [customerUhid, setCustomerUhid] = useState("");
   const [discountPercent, setDiscountPercent] = useState(0);
   const [discountMode, setDiscountMode] = useState<"percent" | "fixed">("percent");
   const [discountFixed, setDiscountFixed] = useState(0);
   const [searching, setSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<PatientSearchResult[]>([]);
+  const [showNewPatientForm, setShowNewPatientForm] = useState(false);
+  const [newPatientData, setNewPatientData] = useState({ full_name: "", phone: "", age: "", gender: "male" as PatientGender });
 
-  // Look up customer by phone
+  // Search patients by name, phone, or UHID
   useEffect(() => {
-    if (customerPhone.length < 10) {
-      setCustomerId(null);
-      setSearching(false);
+    const query = customerPhone.trim() || customerName.trim();
+    if (query.length < 2) {
+      setSearchResults([]);
+      if (!customerId) setSearching(false);
       return;
     }
 
     setSearching(true);
     const timer = setTimeout(async () => {
       try {
-        const patient = await findPatientByPhone(hospitalId, customerPhone);
-        if (patient) {
-          setCustomerId(patient.id);
-          setCustomerName(patient.full_name);
-        } else {
-          setCustomerId(null);
+        const { data, error } = await supabase
+          .from("patients")
+          .select("id, full_name, uhid, phone")
+          .eq("hospital_id", hospitalId)
+          .or(`full_name.ilike.%${query}%,phone.ilike.%${query}%,uhid.ilike.%${query}%`)
+          .order("created_at", { ascending: false })
+          .limit(6);
+
+        if (!error && data) {
+          setSearchResults(data as PatientSearchResult[]);
+          // Auto-link if exact phone match with single result
+          if (data.length === 1 && customerPhone.length >= 10 && data[0].phone === customerPhone.trim()) {
+            setCustomerId(data[0].id);
+            setCustomerName(data[0].full_name);
+            setCustomerUhid(data[0].uhid);
+          }
         }
       } catch {
-        setCustomerId(null);
+        setSearchResults([]);
       } finally {
         setSearching(false);
       }
-    }, 500);
+    }, 400);
     return () => clearTimeout(timer);
-  }, [customerPhone, hospitalId]);
+  }, [customerPhone, customerName, hospitalId, customerId]);
 
-  const handleCustomerNameChange = useCallback((name: string) => {
-    setCustomerName(name);
+  const handleSelectPatient = useCallback((patient: PatientSearchResult) => {
+    setCustomerId(patient.id);
+    setCustomerName(patient.full_name);
+    setCustomerPhone(patient.phone || "");
+    setCustomerUhid(patient.uhid);
+    setSearchResults([]);
+    setShowNewPatientForm(false);
+  }, []);
+
+  const handleClearPatient = useCallback(() => {
     setCustomerId(null);
+    setCustomerName("");
+    setCustomerPhone("");
+    setCustomerUhid("");
+    setSearchResults([]);
   }, []);
 
   const handleCreateCustomer = useCallback(async () => {
     try {
+      const { calculateDobFromAge } = await import("@/lib/patient-records");
       const patient = await createPatientRecord({
         hospitalId,
-        fullName: customerName || "Walk-in Customer",
-        phone: customerPhone,
+        fullName: newPatientData.full_name || "Walk-in Customer",
+        phone: newPatientData.phone,
+        dob: calculateDobFromAge(parseInt(newPatientData.age, 10) || undefined),
+        gender: newPatientData.gender,
       });
       setCustomerId(patient.id);
       setCustomerName(patient.full_name);
+      setCustomerPhone(patient.phone || "");
+      setCustomerUhid(patient.uhid);
+      setShowNewPatientForm(false);
+      setNewPatientData({ full_name: "", phone: "", age: "", gender: "male" });
       toast({ title: `✓ Patient registered: ${patient.full_name} (${patient.uhid})` });
     } catch (err: any) {
       toast({ title: "Registration failed", description: err.message, variant: "destructive" });
     }
-  }, [hospitalId, customerName, customerPhone, toast]);
+  }, [hospitalId, newPatientData, toast]);
 
   const handleAddToCart = useCallback((drug: DrugSearchResult) => {
     if (!drug.best_batch) {
@@ -142,16 +183,13 @@ const RetailPOS: React.FC<Props> = ({ hospitalId }) => {
     setCustomerId(null);
     setCustomerPhone("");
     setCustomerName("");
+    setCustomerUhid("");
     setDiscountPercent(0);
     setDiscountFixed(0);
     setDiscountMode("percent");
+    setSearchResults([]);
+    setShowNewPatientForm(false);
   }, []);
-
-  const customerStatusLabel = customerId
-    ? `${customerName || "Patient found"}`
-    : customerPhone.length >= 10
-      ? "New walk-in customer"
-      : "Enter phone to fetch from database or type a new customer name";
 
   // Calculations
   const subtotal = items.reduce((s, i) => s + i.unit_price * i.qty, 0);
@@ -175,19 +213,26 @@ const RetailPOS: React.FC<Props> = ({ hospitalId }) => {
         customerId={customerId}
         customerPhone={customerPhone}
         customerName={customerName}
-        customerStatusLabel={customerStatusLabel}
+        customerUhid={customerUhid}
         discountPercent={discountPercent}
         discountMode={discountMode}
         discountFixed={discountFixed}
         searching={searching}
+        searchResults={searchResults}
+        showNewPatientForm={showNewPatientForm}
+        newPatientData={newPatientData}
         onUpdateQty={handleUpdateQty}
         onRemoveItem={handleRemoveItem}
         onClearAll={handleClearAll}
         onSetCustomerPhone={setCustomerPhone}
-        onSetCustomerName={handleCustomerNameChange}
+        onSetCustomerName={setCustomerName}
         onSetDiscountPercent={setDiscountPercent}
         onSetDiscountMode={setDiscountMode}
         onSetDiscountFixed={setDiscountFixed}
+        onSelectPatient={handleSelectPatient}
+        onClearPatient={handleClearPatient}
+        onToggleNewPatientForm={() => setShowNewPatientForm(v => !v)}
+        onSetNewPatientData={setNewPatientData}
         onCreateCustomer={handleCreateCustomer}
         subtotal={subtotal}
         discountAmount={discountAmount}
