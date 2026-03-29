@@ -81,6 +81,7 @@ import HousekeepingPage from "./pages/housekeeping/HousekeepingPage";
 import HMISPage from "./pages/hmis/HMISPage";
 import DietPage from "./pages/dietetics/DietPage";
 import PaymentLandingPage from "./pages/pay/PaymentLandingPage";
+import LMSPage from "./pages/lms/LMSPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -170,6 +171,7 @@ const App = () => (
             <Route path="/housekeeping" element={<HousekeepingPage />} />
             <Route path="/hmis" element={<HMISPage />} />
             <Route path="/dietetics" element={<DietPage />} />
+            <Route path="/lms" element={<LMSPage />} />
             <Route path="/admin/go-live" element={<GoLiveChecklistPage />} />
             <Route path="/admin/data-migration" element={<DataMigrationPage />} />
           </Route>
