@@ -218,6 +218,7 @@ const ClaimsStatus: React.FC = () => {
                     {c.status === "rejected" && (
                       <>
                         <Button size="sm" variant="outline" className="text-[10px] h-6" onClick={() => setAppealClaim(c)}>📝 Appeal</Button>
+                        <Button size="sm" variant="outline" className="text-[10px] h-6" onClick={() => setDenialModal(c)}>📋 Log Denial</Button>
                         <Button size="sm" variant="outline" className="text-[10px] h-6">Resubmit</Button>
                         <Button size="sm" variant="ghost" className="text-[10px] h-6 text-destructive" onClick={() => writeOff(c)}>Write Off</Button>
                       </>
@@ -235,6 +236,73 @@ const ClaimsStatus: React.FC = () => {
         onOpenChange={(open) => !open && setAppealClaim(null)}
         claim={appealClaim}
       />
+
+      {/* Denial Log Modal */}
+      <Dialog open={!!denialModal} onOpenChange={(open) => !open && setDenialModal(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base">Log Denial Details</DialogTitle>
+          </DialogHeader>
+          {denialModal && (
+            <div className="space-y-4">
+              <div className="text-xs text-muted-foreground">
+                Claim: {denialModal.claim_number || "—"} · {denialModal.tpa_name} · ₹{denialModal.claimed_amount.toLocaleString("en-IN")}
+              </div>
+              <div>
+                <Label className="text-[11px] uppercase text-muted-foreground font-semibold">Denial Category</Label>
+                <Select value={denialCategory} onValueChange={setDenialCategory}>
+                  <SelectTrigger className="mt-1"><SelectValue placeholder="Select category" /></SelectTrigger>
+                  <SelectContent>
+                    {DENIAL_CATEGORIES.map(c => (
+                      <SelectItem key={c} value={c}>{c.replace(/_/g, " ")}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-[11px] uppercase text-muted-foreground font-semibold">Denial Reason</Label>
+                <Input className="mt-1" value={denialReason} onChange={e => setDenialReason(e.target.value)} placeholder="Specific reason from TPA" />
+              </div>
+              <Button onClick={() => logDenial(denialModal)} className="w-full">Log Denial</Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Denial Analysis Section */}
+      {denialStats.length > 0 && (
+        <div className="grid grid-cols-2 gap-4">
+          <div className="bg-background rounded-lg border border-border p-4">
+            <p className="text-[11px] font-semibold uppercase text-muted-foreground mb-3">Denial Categories</p>
+            <ResponsiveContainer width="100%" height={160}>
+              <PieChart>
+                <Pie data={denialStats} dataKey="count" nameKey="category" cx="50%" cy="50%" outerRadius={60} innerRadius={30} label={({ category, count }) => `${(category as string).replace(/_/g, " ")} (${count})`} labelLine={false}>
+                  {denialStats.map((_, i) => (
+                    <Cell key={i} fill={DENIAL_COLORS[i % DENIAL_COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(v: number, name: string) => [v, name.replace(/_/g, " ")]} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="bg-background rounded-lg border border-border p-4">
+            <p className="text-[11px] font-semibold uppercase text-muted-foreground mb-3">Top Denial Reasons by TPA</p>
+            <div className="space-y-3">
+              {topDenialsByTPA.map(t => (
+                <div key={t.tpa}>
+                  <p className="text-[13px] font-medium text-foreground">{t.tpa}</p>
+                  <ul className="ml-3 mt-1 space-y-0.5">
+                    {t.reasons.map((r, i) => (
+                      <li key={i} className="text-[11px] text-muted-foreground">• {r}</li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+              {topDenialsByTPA.length === 0 && <p className="text-xs text-muted-foreground">No denial data yet</p>}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
