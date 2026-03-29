@@ -78,6 +78,7 @@ import MRDPage from "./pages/mrd/MRDPage";
 import PmjayPage from "./pages/pmjay/PmjayPage";
 import BiomedicalPage from "./pages/biomedical/BiomedicalPage";
 import HousekeepingPage from "./pages/housekeeping/HousekeepingPage";
+import HMISPage from "./pages/hmis/HMISPage";
 import PaymentLandingPage from "./pages/pay/PaymentLandingPage";
 import NotFound from "./pages/NotFound";
 
