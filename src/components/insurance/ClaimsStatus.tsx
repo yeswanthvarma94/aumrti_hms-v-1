@@ -6,9 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { differenceInDays, format } from "date-fns";
 import EmptyState from "@/components/EmptyState";
 import AppealLetterModal from "./AppealLetterModal";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 
 interface Claim {
   id: string;
@@ -25,14 +28,22 @@ interface Claim {
 
 const statusOptions = ["all", "submitted", "under_review", "approved", "partially_approved", "rejected", "settled", "written_off"];
 
+const DENIAL_CATEGORIES = ["documentation_missing", "clinical_not_justified", "policy_exclusion", "duplicate_claim", "technical_error", "other"];
+const DENIAL_COLORS = ["hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))", "hsl(var(--chart-5))", "hsl(var(--destructive))"];
+
 const ClaimsStatus: React.FC = () => {
   const [claims, setClaims] = useState<Claim[]>([]);
   const [filter, setFilter] = useState("all");
   const [loading, setLoading] = useState(true);
   const [appealClaim, setAppealClaim] = useState<Claim | null>(null);
+  const [denialModal, setDenialModal] = useState<Claim | null>(null);
+  const [denialReason, setDenialReason] = useState("");
+  const [denialCategory, setDenialCategory] = useState("");
+  const [denialStats, setDenialStats] = useState<{ category: string; count: number }[]>([]);
+  const [topDenialsByTPA, setTopDenialsByTPA] = useState<{ tpa: string; reasons: string[] }[]>([]);
   const { toast } = useToast();
 
-  useEffect(() => { loadData(); }, [filter]);
+  useEffect(() => { loadData(); loadDenialStats(); }, [filter]);
 
   const loadData = async () => {
     setLoading(true);
