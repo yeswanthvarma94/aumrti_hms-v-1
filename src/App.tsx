@@ -79,6 +79,7 @@ import PmjayPage from "./pages/pmjay/PmjayPage";
 import BiomedicalPage from "./pages/biomedical/BiomedicalPage";
 import HousekeepingPage from "./pages/housekeeping/HousekeepingPage";
 import HMISPage from "./pages/hmis/HMISPage";
+import DietPage from "./pages/dietetics/DietPage";
 import PaymentLandingPage from "./pages/pay/PaymentLandingPage";
 import NotFound from "./pages/NotFound";
 
@@ -168,6 +169,7 @@ const App = () => (
             <Route path="/biomedical" element={<BiomedicalPage />} />
             <Route path="/housekeeping" element={<HousekeepingPage />} />
             <Route path="/hmis" element={<HMISPage />} />
+            <Route path="/dietetics" element={<DietPage />} />
             <Route path="/admin/go-live" element={<GoLiveChecklistPage />} />
             <Route path="/admin/data-migration" element={<DataMigrationPage />} />
           </Route>
