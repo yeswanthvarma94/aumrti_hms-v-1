@@ -313,7 +313,8 @@ Guidelines:
 - Use warm, professional Indian English`,
         maxTokens: 200,
       });
-      setAiResponse(result?.text || result || "Could not generate response");
+      const text = typeof result === "string" ? result : result?.text || "Could not generate response";
+      setAiResponse(text);
     } catch {
       toast({ title: "AI generation failed", variant: "destructive" });
     }
