@@ -638,7 +638,7 @@ export default function LMSPage() {
                   <tbody>
                     {heatmapData.departments.map(d => (
                       <tr key={d.id} className="border-b">
-                        <td className="p-2 font-medium sticky left-0 bg-card">{d.dept_name}</td>
+                        <td className="p-2 font-medium sticky left-0 bg-card">{d.name}</td>
                         {heatmapData.courses.map(c => {
                           const cell = heatmapData.getCell(d.id, c.id);
                           const bg = cell.total === 0 ? 'bg-muted/20' :
@@ -656,7 +656,7 @@ export default function LMSPage() {
                                   const enrol = enrollments.find(e => e.user_id === s.id && e.course_id === c.id);
                                   return { name: s.full_name, status: enrol?.status || 'not_enrolled', completed_at: enrol?.completed_at, score: enrol?.score_percent };
                                 });
-                                setCellDetail({ deptName: d.dept_name, courseName: c.course_name, staff: detail });
+                                setCellDetail({ deptName: d.name, courseName: c.course_name, staff: detail });
                                 setCellDetailOpen(true);
                               }}
                             >
@@ -898,7 +898,7 @@ export default function LMSPage() {
               <Select value={bulkDept} onValueChange={setBulkDept}>
                 <SelectTrigger><SelectValue placeholder="Select department" /></SelectTrigger>
                 <SelectContent>
-                  {departments.map(d => <SelectItem key={d.id} value={d.id}>{d.dept_name}</SelectItem>)}
+                  {departments.map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             )}
