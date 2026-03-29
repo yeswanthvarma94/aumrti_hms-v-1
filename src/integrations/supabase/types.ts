@@ -9758,6 +9758,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      increment_icd_use_count: { Args: { p_code: string }; Returns: undefined }
     }
     Enums: {
       app_role:
