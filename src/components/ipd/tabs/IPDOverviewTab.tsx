@@ -121,12 +121,41 @@ const IPDOverviewTab: React.FC<Props> = ({ admissionId, hospitalId, onTabChange,
       setDischargeSummaryDone(true);
       // Mark admission as discharged
       await supabase.from("admissions").update({ status: "discharged", discharged_at: new Date().toISOString() } as any).eq("id", admissionId);
-      // Free the bed
-      const { data: adm } = await supabase.from("admissions").select("bed_id").eq("id", admissionId).maybeSingle();
+      // Get admission details for bed + ward
+      const { data: adm } = await supabase.from("admissions").select("bed_id, ward_id").eq("id", admissionId).maybeSingle();
       if (adm?.bed_id) {
-        await supabase.from("beds").update({ status: "available" as any }).eq("id", adm.bed_id);
+        // Set bed to 'cleaning' (not 'available') — housekeeping must clear it
+        await supabase.from("beds").update({ status: "cleaning" as any }).eq("id", adm.bed_id);
+
+        // Get bed number for task
+        const { data: bedData } = await supabase.from("beds").select("bed_number").eq("id", adm.bed_id).maybeSingle();
+
+        // Auto-create housekeeping bed turnover task
+        await supabase.from("housekeeping_tasks").insert({
+          hospital_id: hospitalId,
+          task_type: "bed_turnover",
+          ward_id: adm.ward_id,
+          bed_id: adm.bed_id,
+          room_number: bedData?.bed_number || null,
+          triggered_by: "discharge",
+          trigger_ref_id: admissionId,
+          priority: "high",
+          status: "pending",
+          checklist: [
+            { item: "Remove soiled linen", done: false },
+            { item: "Clean mattress with disinfectant", done: false },
+            { item: "Fit fresh linen", done: false },
+            { item: "Clean bedside table", done: false },
+            { item: "Mop floor", done: false },
+            { item: "Empty and clean dustbin", done: false },
+            { item: "Supervisor inspection", done: false },
+          ],
+        } as any);
+
+        toast({ title: "Patient discharged", description: `Housekeeping task created for bed ${bedData?.bed_number || ''}` });
+      } else {
+        toast({ title: "Patient discharged", description: "Admission closed" });
       }
-      toast({ title: "Patient discharged", description: "Bed freed and admission closed" });
     }
   };
 
