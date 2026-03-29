@@ -2178,6 +2178,66 @@ export type Database = {
           },
         ]
       }
+      collection_campaigns: {
+        Row: {
+          amount_recovered: number | null
+          campaign_name: string
+          created_at: string | null
+          created_by: string | null
+          filter_criteria: Json
+          hospital_id: string
+          id: string
+          message_template: string
+          paid_count: number | null
+          sent_count: number | null
+          status: string | null
+          total_bills: number | null
+        }
+        Insert: {
+          amount_recovered?: number | null
+          campaign_name: string
+          created_at?: string | null
+          created_by?: string | null
+          filter_criteria?: Json
+          hospital_id: string
+          id?: string
+          message_template?: string
+          paid_count?: number | null
+          sent_count?: number | null
+          status?: string | null
+          total_bills?: number | null
+        }
+        Update: {
+          amount_recovered?: number | null
+          campaign_name?: string
+          created_at?: string | null
+          created_by?: string | null
+          filter_criteria?: Json
+          hospital_id?: string
+          id?: string
+          message_template?: string
+          paid_count?: number | null
+          sent_count?: number | null
+          status?: string | null
+          total_bills?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "collection_campaigns_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collection_campaigns_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       consent_templates: {
         Row: {
           content: string | null
@@ -3515,6 +3575,147 @@ export type Database = {
           },
           {
             foreignKeyName: "ed_visits_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      emi_installments: {
+        Row: {
+          amount: number
+          due_date: string
+          hospital_id: string
+          id: string
+          installment_number: number
+          last_reminder_at: string | null
+          paid_at: string | null
+          payment_id: string | null
+          plan_id: string
+          reminder_sent_count: number | null
+          status: string | null
+        }
+        Insert: {
+          amount: number
+          due_date: string
+          hospital_id: string
+          id?: string
+          installment_number: number
+          last_reminder_at?: string | null
+          paid_at?: string | null
+          payment_id?: string | null
+          plan_id: string
+          reminder_sent_count?: number | null
+          status?: string | null
+        }
+        Update: {
+          amount?: number
+          due_date?: string
+          hospital_id?: string
+          id?: string
+          installment_number?: number
+          last_reminder_at?: string | null
+          paid_at?: string | null
+          payment_id?: string | null
+          plan_id?: string
+          reminder_sent_count?: number | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "emi_installments_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "emi_installments_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "bill_payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "emi_installments_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "emi_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      emi_plans: {
+        Row: {
+          amount_collected: number | null
+          bill_id: string
+          created_at: string | null
+          created_by: string | null
+          first_payment_date: string
+          frequency: string
+          hospital_id: string
+          id: string
+          installment_amount: number
+          installments: number
+          patient_id: string
+          status: string | null
+          total_amount: number
+        }
+        Insert: {
+          amount_collected?: number | null
+          bill_id: string
+          created_at?: string | null
+          created_by?: string | null
+          first_payment_date: string
+          frequency: string
+          hospital_id: string
+          id?: string
+          installment_amount: number
+          installments: number
+          patient_id: string
+          status?: string | null
+          total_amount: number
+        }
+        Update: {
+          amount_collected?: number | null
+          bill_id?: string
+          created_at?: string | null
+          created_by?: string | null
+          first_payment_date?: string
+          frequency?: string
+          hospital_id?: string
+          id?: string
+          installment_amount?: number
+          installments?: number
+          patient_id?: string
+          status?: string | null
+          total_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "emi_plans_bill_id_fkey"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "bills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "emi_plans_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "emi_plans_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "emi_plans_patient_id_fkey"
             columns: ["patient_id"]
             isOneToOne: false
             referencedRelation: "patients"
@@ -7509,6 +7710,89 @@ export type Database = {
             columns: ["hospital_id"]
             isOneToOne: false
             referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_links: {
+        Row: {
+          amount: number
+          bill_id: string
+          created_at: string | null
+          created_by: string | null
+          expires_at: string | null
+          hospital_id: string
+          id: string
+          link_token: string
+          paid_at: string | null
+          patient_id: string
+          razorpay_link_id: string | null
+          razorpay_link_url: string | null
+          sent_via: string[] | null
+          short_url: string | null
+          status: string | null
+        }
+        Insert: {
+          amount: number
+          bill_id: string
+          created_at?: string | null
+          created_by?: string | null
+          expires_at?: string | null
+          hospital_id: string
+          id?: string
+          link_token?: string
+          paid_at?: string | null
+          patient_id: string
+          razorpay_link_id?: string | null
+          razorpay_link_url?: string | null
+          sent_via?: string[] | null
+          short_url?: string | null
+          status?: string | null
+        }
+        Update: {
+          amount?: number
+          bill_id?: string
+          created_at?: string | null
+          created_by?: string | null
+          expires_at?: string | null
+          hospital_id?: string
+          id?: string
+          link_token?: string
+          paid_at?: string | null
+          patient_id?: string
+          razorpay_link_id?: string | null
+          razorpay_link_url?: string | null
+          sent_via?: string[] | null
+          short_url?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_links_bill_id_fkey"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "bills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_links_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_links_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_links_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
             referencedColumns: ["id"]
           },
         ]
