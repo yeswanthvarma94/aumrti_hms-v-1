@@ -42,6 +42,7 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess }) => {
   useEffect(() => {
     supabase.from("users").select("hospital_id").limit(1).single().then(({ data }) => {
       if (data?.hospital_id) {
+        setHospitalIdState(data.hospital_id);
         supabase.from("hospitals").select("name").eq("id", data.hospital_id).maybeSingle().then(({ data: h }) => {
           if (h?.name) setHospitalName(h.name);
         });
@@ -321,7 +322,7 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess }) => {
         open={showReferralModal}
         onClose={() => setShowReferralModal(false)}
         onSaved={(name) => { set("referral_source", name); setShowReferralModal(false); }}
-        hospitalId={hospitalId || ""}
+        hospitalId={hospitalIdState}
       />
     </div>
   );
