@@ -3,12 +3,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { differenceInDays, formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import { ClipboardList, Send, Bot, FileText, CheckCircle2 } from "lucide-react";
 import { callAI } from "@/lib/aiProvider";
 
@@ -99,7 +97,8 @@ const PmjayPreAuthTab: React.FC<Props> = ({ showNewForm, onFormClosed }) => {
         maxTokens: 300,
       });
       if (response && !response.error) {
-        await supabase.from("pre_auth_requests").update({ clinical_summary: response.text || response }).eq("id", pa.id);
+        const summaryText = response.text || "";
+        await supabase.from("pre_auth_requests").update({ clinical_summary: summaryText }).eq("id", pa.id);
         toast({ title: "Clinical summary generated" });
         loadData();
       }
@@ -146,31 +145,31 @@ const PmjayPreAuthTab: React.FC<Props> = ({ showNewForm, onFormClosed }) => {
               <ClipboardList size={32} className="mx-auto mb-2 opacity-40" />
               No pre-auth requests
             </div>
-          ) : filtered.map(pa => (
+          ) : filtered.map(item => (
             <button
-              key={pa.id}
-              onClick={() => setSelected(pa)}
+              key={item.id}
+              onClick={() => setSelected(item)}
               className={cn(
                 "w-full text-left p-3 rounded-lg border transition-colors",
-                selected?.id === pa.id ? "bg-primary/5 border-primary" : "border-border hover:bg-muted/50"
+                selected?.id === item.id ? "bg-primary/5 border-primary" : "border-border hover:bg-muted/50"
               )}
             >
               <div className="flex justify-between items-start">
-                <span className="text-[13px] font-medium">{patients[pa.patient_id] || "Unknown"}</span>
-                <Badge variant="outline" className={cn("text-[9px] capitalize", statusColors[pa.status])}>{pa.status.replace("_", " ")}</Badge>
+                <span className="text-[13px] font-medium">{patients[item.patient_id] || "Unknown"}</span>
+                <Badge variant="outline" className={cn("text-[9px] capitalize", statusColors[item.status])}>{item.status.replace("_", " ")}</Badge>
               </div>
-              <div className="text-[11px] text-muted-foreground mt-0.5">{schemes[pa.scheme_id] || "Scheme"}</div>
-              <div className="text-[11px] font-medium mt-0.5">{pa.package_name}</div>
+              <div className="text-[11px] text-muted-foreground mt-0.5">{schemes[item.scheme_id] || "Scheme"}</div>
+              <div className="text-[11px] font-medium mt-0.5">{item.package_name}</div>
               <div className="flex justify-between items-center mt-1">
-                <span className="text-[11px] font-mono">₹{pa.requested_amount.toLocaleString("en-IN")}</span>
-                {pa.ai_approval_score && (
-                  <span className={cn("text-[10px] font-bold", scoreColor(pa.ai_approval_score))}>
-                    {pa.ai_approval_score}% {scoreLabel(pa.ai_approval_score)}
+                <span className="text-[11px] font-mono">₹{item.requested_amount.toLocaleString("en-IN")}</span>
+                {item.ai_approval_score && (
+                  <span className={cn("text-[10px] font-bold", scoreColor(item.ai_approval_score))}>
+                    {item.ai_approval_score}% {scoreLabel(item.ai_approval_score)}
                   </span>
                 )}
               </div>
               <div className="text-[10px] text-muted-foreground mt-0.5">
-                {formatDistanceToNow(new Date(pa.created_at), { addSuffix: true })}
+                {formatDistanceToNow(new Date(item.created_at), { addSuffix: true })}
               </div>
             </button>
           ))}
@@ -187,7 +186,7 @@ const PmjayPreAuthTab: React.FC<Props> = ({ showNewForm, onFormClosed }) => {
         ) : (
           <div className="max-w-2xl space-y-5">
             <div className="flex justify-between items-start">
-              <h3 className="text-base font-bold">Pre-Auth: {pa.package_name}</h3>
+              <h3 className="text-base font-bold">Pre-Auth: {selected.package_name}</h3>
               <Badge className={cn("capitalize", statusColors[selected.status])}>{selected.status.replace("_", " ")}</Badge>
             </div>
 
@@ -245,11 +244,9 @@ const PmjayPreAuthTab: React.FC<Props> = ({ showNewForm, onFormClosed }) => {
             {/* Actions */}
             <div className="flex gap-2 pt-2 flex-wrap">
               {selected.status === "draft" && (
-                <>
-                  <Button onClick={() => updateStatus(selected.id, "submitted", { submitted_at: new Date().toISOString() })} className="gap-1.5">
-                    <Send size={14} /> Submit Pre-Auth
-                  </Button>
-                </>
+                <Button onClick={() => updateStatus(selected.id, "submitted", { submitted_at: new Date().toISOString() })} className="gap-1.5">
+                  <Send size={14} /> Submit Pre-Auth
+                </Button>
               )}
               {(selected.status === "submitted" || selected.status === "under_review") && (
                 <>
@@ -268,8 +265,5 @@ const PmjayPreAuthTab: React.FC<Props> = ({ showNewForm, onFormClosed }) => {
     </div>
   );
 };
-
-// Fix: use selected variable name in JSX
-const pa = null; // placeholder removed below
 
 export default PmjayPreAuthTab;

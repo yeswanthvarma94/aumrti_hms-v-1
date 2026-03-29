@@ -74,6 +74,7 @@ import DialysisPage from "./pages/dialysis/DialysisPage";
 import OncologyPage from "./pages/oncology/OncologyPage";
 import ModulesPage from "./pages/modules/ModulesPage";
 import MRDPage from "./pages/mrd/MRDPage";
+import PmjayPage from "./pages/pmjay/PmjayPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -157,6 +158,7 @@ const App = () => (
             <Route path="/dialysis" element={<DialysisPage />} />
             <Route path="/oncology" element={<OncologyPage />} />
             <Route path="/mrd" element={<MRDPage />} />
+            <Route path="/pmjay" element={<PmjayPage />} />
             <Route path="/admin/go-live" element={<GoLiveChecklistPage />} />
           </Route>
 
