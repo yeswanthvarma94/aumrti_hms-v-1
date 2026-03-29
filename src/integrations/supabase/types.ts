@@ -1483,6 +1483,95 @@ export type Database = {
           },
         ]
       }
+      bmw_records: {
+        Row: {
+          black_bag_kg: number | null
+          blue_bag_kg: number | null
+          collected_by: string | null
+          cpcb_manifest_no: string | null
+          created_at: string | null
+          cytotoxic_kg: number | null
+          disposal_agency: string | null
+          hospital_id: string
+          id: string
+          record_date: string
+          red_bag_kg: number | null
+          total_kg: number | null
+          verified_by: string | null
+          ward_id: string | null
+          ward_name: string | null
+          white_bag_kg: number | null
+          yellow_bag_kg: number | null
+        }
+        Insert: {
+          black_bag_kg?: number | null
+          blue_bag_kg?: number | null
+          collected_by?: string | null
+          cpcb_manifest_no?: string | null
+          created_at?: string | null
+          cytotoxic_kg?: number | null
+          disposal_agency?: string | null
+          hospital_id: string
+          id?: string
+          record_date?: string
+          red_bag_kg?: number | null
+          total_kg?: number | null
+          verified_by?: string | null
+          ward_id?: string | null
+          ward_name?: string | null
+          white_bag_kg?: number | null
+          yellow_bag_kg?: number | null
+        }
+        Update: {
+          black_bag_kg?: number | null
+          blue_bag_kg?: number | null
+          collected_by?: string | null
+          cpcb_manifest_no?: string | null
+          created_at?: string | null
+          cytotoxic_kg?: number | null
+          disposal_agency?: string | null
+          hospital_id?: string
+          id?: string
+          record_date?: string
+          red_bag_kg?: number | null
+          total_kg?: number | null
+          verified_by?: string | null
+          ward_id?: string | null
+          ward_name?: string | null
+          white_bag_kg?: number | null
+          yellow_bag_kg?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bmw_records_collected_by_fkey"
+            columns: ["collected_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bmw_records_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bmw_records_verified_by_fkey"
+            columns: ["verified_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bmw_records_ward_id_fkey"
+            columns: ["ward_id"]
+            isOneToOne: false
+            referencedRelation: "wards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       branches: {
         Row: {
           address: string | null
@@ -2203,6 +2292,73 @@ export type Database = {
             columns: ["treating_doctor"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cleaning_schedules: {
+        Row: {
+          area_name: string
+          area_type: string
+          assigned_supervisor: string | null
+          checklist: Json | null
+          created_at: string | null
+          frequency: string
+          hospital_id: string
+          id: string
+          is_active: boolean | null
+          last_done_at: string | null
+          next_due_at: string | null
+          ward_id: string | null
+        }
+        Insert: {
+          area_name: string
+          area_type: string
+          assigned_supervisor?: string | null
+          checklist?: Json | null
+          created_at?: string | null
+          frequency: string
+          hospital_id: string
+          id?: string
+          is_active?: boolean | null
+          last_done_at?: string | null
+          next_due_at?: string | null
+          ward_id?: string | null
+        }
+        Update: {
+          area_name?: string
+          area_type?: string
+          assigned_supervisor?: string | null
+          checklist?: Json | null
+          created_at?: string | null
+          frequency?: string
+          hospital_id?: string
+          id?: string
+          is_active?: boolean | null
+          last_done_at?: string | null
+          next_due_at?: string | null
+          ward_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cleaning_schedules_assigned_supervisor_fkey"
+            columns: ["assigned_supervisor"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cleaning_schedules_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cleaning_schedules_ward_id_fkey"
+            columns: ["ward_id"]
+            isOneToOne: false
+            referencedRelation: "wards"
             referencedColumns: ["id"]
           },
         ]
@@ -4517,6 +4673,98 @@ export type Database = {
         }
         Relationships: []
       }
+      housekeeping_tasks: {
+        Row: {
+          assigned_to: string | null
+          bed_id: string | null
+          checklist: Json | null
+          completed_at: string | null
+          created_at: string | null
+          hospital_id: string
+          id: string
+          notes: string | null
+          priority: string | null
+          quality_score: number | null
+          room_number: string | null
+          started_at: string | null
+          status: string | null
+          task_type: string
+          tat_minutes: number | null
+          trigger_ref_id: string | null
+          triggered_by: string | null
+          ward_id: string | null
+        }
+        Insert: {
+          assigned_to?: string | null
+          bed_id?: string | null
+          checklist?: Json | null
+          completed_at?: string | null
+          created_at?: string | null
+          hospital_id: string
+          id?: string
+          notes?: string | null
+          priority?: string | null
+          quality_score?: number | null
+          room_number?: string | null
+          started_at?: string | null
+          status?: string | null
+          task_type: string
+          tat_minutes?: number | null
+          trigger_ref_id?: string | null
+          triggered_by?: string | null
+          ward_id?: string | null
+        }
+        Update: {
+          assigned_to?: string | null
+          bed_id?: string | null
+          checklist?: Json | null
+          completed_at?: string | null
+          created_at?: string | null
+          hospital_id?: string
+          id?: string
+          notes?: string | null
+          priority?: string | null
+          quality_score?: number | null
+          room_number?: string | null
+          started_at?: string | null
+          status?: string | null
+          task_type?: string
+          tat_minutes?: number | null
+          trigger_ref_id?: string | null
+          triggered_by?: string | null
+          ward_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "housekeeping_tasks_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "housekeeping_tasks_bed_id_fkey"
+            columns: ["bed_id"]
+            isOneToOne: false
+            referencedRelation: "beds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "housekeeping_tasks_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "housekeeping_tasks_ward_id_fkey"
+            columns: ["ward_id"]
+            isOneToOne: false
+            referencedRelation: "wards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       icd_codings: {
         Row: {
           ai_confidence: number | null
@@ -6189,6 +6437,63 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      linen_records: {
+        Row: {
+          created_at: string | null
+          hospital_id: string
+          id: string
+          linen_type: string
+          qty_clean: number | null
+          qty_condemned: number | null
+          qty_received_back: number | null
+          qty_sent_laundry: number | null
+          qty_soiled: number | null
+          record_date: string
+          ward_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          hospital_id: string
+          id?: string
+          linen_type: string
+          qty_clean?: number | null
+          qty_condemned?: number | null
+          qty_received_back?: number | null
+          qty_sent_laundry?: number | null
+          qty_soiled?: number | null
+          record_date?: string
+          ward_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          hospital_id?: string
+          id?: string
+          linen_type?: string
+          qty_clean?: number | null
+          qty_condemned?: number | null
+          qty_received_back?: number | null
+          qty_sent_laundry?: number | null
+          qty_soiled?: number | null
+          record_date?: string
+          ward_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "linen_records_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "linen_records_ward_id_fkey"
+            columns: ["ward_id"]
+            isOneToOne: false
+            referencedRelation: "wards"
             referencedColumns: ["id"]
           },
         ]
