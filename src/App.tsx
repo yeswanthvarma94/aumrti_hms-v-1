@@ -167,6 +167,7 @@ const App = () => (
             <Route path="/pmjay" element={<PmjayPage />} />
             <Route path="/biomedical" element={<BiomedicalPage />} />
             <Route path="/housekeeping" element={<HousekeepingPage />} />
+            <Route path="/hmis" element={<HMISPage />} />
             <Route path="/admin/go-live" element={<GoLiveChecklistPage />} />
             <Route path="/admin/data-migration" element={<DataMigrationPage />} />
           </Route>
