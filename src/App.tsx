@@ -66,6 +66,7 @@ import TVDisplayPage from "./pages/tv/TVDisplayPage";
 import DesignSystem from "./pages/DesignSystem";
 import PatientPortal from "./pages/portal/PatientPortal";
 import GoLiveChecklistPage from "./pages/admin/GoLiveChecklistPage";
+import DataMigrationPage from "./pages/admin/DataMigrationPage";
 import AccountsPage from "./pages/accounts/AccountsPage";
 import OpeningBalancesPage from "./pages/accounts/OpeningBalancesPage";
 import BloodBankPage from "./pages/blood-bank/BloodBankPage";
@@ -160,6 +161,7 @@ const App = () => (
             <Route path="/mrd" element={<MRDPage />} />
             <Route path="/pmjay" element={<PmjayPage />} />
             <Route path="/admin/go-live" element={<GoLiveChecklistPage />} />
+            <Route path="/admin/data-migration" element={<DataMigrationPage />} />
           </Route>
 
           <Route path="*" element={<NotFound />} />

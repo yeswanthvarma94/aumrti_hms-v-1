@@ -5739,6 +5739,144 @@ export type Database = {
           },
         ]
       }
+      migration_jobs: {
+        Row: {
+          can_rollback: boolean | null
+          column_mapping: Json | null
+          completed_at: string | null
+          created_at: string | null
+          entity_type: string
+          error_report: Json | null
+          error_rows: number | null
+          file_name: string
+          file_url: string | null
+          hospital_id: string
+          id: string
+          imported_rows: number | null
+          job_name: string
+          rollback_until: string | null
+          rolled_back_at: string | null
+          skipped_rows: number | null
+          started_at: string | null
+          started_by: string | null
+          status: string | null
+          total_rows: number | null
+          valid_rows: number | null
+        }
+        Insert: {
+          can_rollback?: boolean | null
+          column_mapping?: Json | null
+          completed_at?: string | null
+          created_at?: string | null
+          entity_type: string
+          error_report?: Json | null
+          error_rows?: number | null
+          file_name: string
+          file_url?: string | null
+          hospital_id: string
+          id?: string
+          imported_rows?: number | null
+          job_name: string
+          rollback_until?: string | null
+          rolled_back_at?: string | null
+          skipped_rows?: number | null
+          started_at?: string | null
+          started_by?: string | null
+          status?: string | null
+          total_rows?: number | null
+          valid_rows?: number | null
+        }
+        Update: {
+          can_rollback?: boolean | null
+          column_mapping?: Json | null
+          completed_at?: string | null
+          created_at?: string | null
+          entity_type?: string
+          error_report?: Json | null
+          error_rows?: number | null
+          file_name?: string
+          file_url?: string | null
+          hospital_id?: string
+          id?: string
+          imported_rows?: number | null
+          job_name?: string
+          rollback_until?: string | null
+          rolled_back_at?: string | null
+          skipped_rows?: number | null
+          started_at?: string | null
+          started_by?: string | null
+          status?: string | null
+          total_rows?: number | null
+          valid_rows?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "migration_jobs_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "migration_jobs_started_by_fkey"
+            columns: ["started_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      migration_logs: {
+        Row: {
+          created_at: string | null
+          entity_id: string | null
+          error_message: string | null
+          hospital_id: string
+          id: string
+          job_id: string
+          row_number: number
+          source_data: Json | null
+          status: string
+        }
+        Insert: {
+          created_at?: string | null
+          entity_id?: string | null
+          error_message?: string | null
+          hospital_id: string
+          id?: string
+          job_id: string
+          row_number: number
+          source_data?: Json | null
+          status: string
+        }
+        Update: {
+          created_at?: string | null
+          entity_id?: string | null
+          error_message?: string | null
+          hospital_id?: string
+          id?: string
+          job_id?: string
+          row_number?: number
+          source_data?: Json | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "migration_logs_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "migration_logs_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "migration_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       nabh_criteria: {
         Row: {
           auto_collected: boolean | null
