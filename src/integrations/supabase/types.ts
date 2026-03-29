@@ -4533,6 +4533,69 @@ export type Database = {
           },
         ]
       }
+      hmis_reports: {
+        Row: {
+          created_at: string | null
+          file_url: string | null
+          generated_at: string | null
+          hospital_id: string
+          id: string
+          period_month: number | null
+          period_week: number | null
+          period_year: number
+          report_data: Json | null
+          report_type: string
+          status: string | null
+          submitted_at: string | null
+          submitted_by: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          file_url?: string | null
+          generated_at?: string | null
+          hospital_id: string
+          id?: string
+          period_month?: number | null
+          period_week?: number | null
+          period_year: number
+          report_data?: Json | null
+          report_type: string
+          status?: string | null
+          submitted_at?: string | null
+          submitted_by?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          file_url?: string | null
+          generated_at?: string | null
+          hospital_id?: string
+          id?: string
+          period_month?: number | null
+          period_week?: number | null
+          period_year?: number
+          report_data?: Json | null
+          report_type?: string
+          status?: string | null
+          submitted_at?: string | null
+          submitted_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hmis_reports_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hmis_reports_submitted_by_fkey"
+            columns: ["submitted_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hospital_icd_settings: {
         Row: {
           active_set: string | null
@@ -4966,6 +5029,62 @@ export type Database = {
           },
           {
             foreignKeyName: "icd10_codes_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      idsp_alerts: {
+        Row: {
+          alert_date: string
+          cases_ipd: number | null
+          cases_opd: number | null
+          created_at: string | null
+          deaths: number | null
+          disease: string
+          hospital_id: string
+          id: string
+          is_outbreak: boolean | null
+          notes: string | null
+          syndrome: string | null
+          week_number: number
+          year: number
+        }
+        Insert: {
+          alert_date: string
+          cases_ipd?: number | null
+          cases_opd?: number | null
+          created_at?: string | null
+          deaths?: number | null
+          disease: string
+          hospital_id: string
+          id?: string
+          is_outbreak?: boolean | null
+          notes?: string | null
+          syndrome?: string | null
+          week_number: number
+          year: number
+        }
+        Update: {
+          alert_date?: string
+          cases_ipd?: number | null
+          cases_opd?: number | null
+          created_at?: string | null
+          deaths?: number | null
+          disease?: string
+          hospital_id?: string
+          id?: string
+          is_outbreak?: boolean | null
+          notes?: string | null
+          syndrome?: string | null
+          week_number?: number
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "idsp_alerts_hospital_id_fkey"
             columns: ["hospital_id"]
             isOneToOne: false
             referencedRelation: "hospitals"
