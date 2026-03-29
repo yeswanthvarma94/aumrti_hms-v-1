@@ -79,6 +79,7 @@ export const ALL_MODULES: ModuleDefinition[] = [
 
   // ── PATIENT-FACING ──
   { name: "Patient Portal", desc: "Patient self-service", icon: "🌐", route: "/portal", category: "Patient", roles: ["receptionist", "super_admin"] },
+  { name: "Patient Relations", desc: "Grievances, feedback, visitor passes & NABH PCC", icon: "🤝", route: "/pro", category: "Patient", roles: ["pro_officer", "receptionist", "super_admin"], isNew: true },
   { name: "Communication Inbox", desc: "WhatsApp & messages", icon: "📬", route: "/inbox", category: "Patient", roles: ["receptionist", "super_admin"] },
 
   // ── ANALYTICS ──
