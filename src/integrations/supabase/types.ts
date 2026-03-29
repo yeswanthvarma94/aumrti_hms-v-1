@@ -1572,6 +1572,79 @@ export type Database = {
           },
         ]
       }
+      body_releases: {
+        Row: {
+          documents_given: string[] | null
+          hospital_id: string
+          id: string
+          id_proof_number: string | null
+          id_proof_type: string
+          mccd_issued: boolean | null
+          mortuary_id: string
+          police_clearance: boolean | null
+          relation: string
+          released_at: string | null
+          released_by: string
+          released_to: string
+          remarks: string | null
+          witness_name: string | null
+        }
+        Insert: {
+          documents_given?: string[] | null
+          hospital_id: string
+          id?: string
+          id_proof_number?: string | null
+          id_proof_type: string
+          mccd_issued?: boolean | null
+          mortuary_id: string
+          police_clearance?: boolean | null
+          relation: string
+          released_at?: string | null
+          released_by: string
+          released_to: string
+          remarks?: string | null
+          witness_name?: string | null
+        }
+        Update: {
+          documents_given?: string[] | null
+          hospital_id?: string
+          id?: string
+          id_proof_number?: string | null
+          id_proof_type?: string
+          mccd_issued?: boolean | null
+          mortuary_id?: string
+          police_clearance?: boolean | null
+          relation?: string
+          released_at?: string | null
+          released_by?: string
+          released_to?: string
+          remarks?: string | null
+          witness_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "body_releases_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "body_releases_mortuary_id_fkey"
+            columns: ["mortuary_id"]
+            isOneToOne: false
+            referencedRelation: "mortuary_admissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "body_releases_released_by_fkey"
+            columns: ["released_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       branches: {
         Row: {
           address: string | null
@@ -2535,6 +2608,54 @@ export type Database = {
             columns: ["hospital_id"]
             isOneToOne: false
             referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cold_storage_log: {
+        Row: {
+          alert_triggered: boolean | null
+          hospital_id: string
+          id: string
+          maintenance_note: string | null
+          recorded_at: string | null
+          recorded_by: string | null
+          temperature_c: number
+          unit_name: string
+        }
+        Insert: {
+          alert_triggered?: boolean | null
+          hospital_id: string
+          id?: string
+          maintenance_note?: string | null
+          recorded_at?: string | null
+          recorded_by?: string | null
+          temperature_c: number
+          unit_name: string
+        }
+        Update: {
+          alert_triggered?: boolean | null
+          hospital_id?: string
+          id?: string
+          maintenance_note?: string | null
+          recorded_at?: string | null
+          recorded_by?: string | null
+          temperature_c?: number
+          unit_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cold_storage_log_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cold_storage_log_recorded_by_fkey"
+            columns: ["recorded_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -7382,6 +7503,110 @@ export type Database = {
           },
         ]
       }
+      mccd_certificates: {
+        Row: {
+          ai_draft: boolean | null
+          approximate_interval_1a: string | null
+          approximate_interval_1b: string | null
+          approximate_interval_1c: string | null
+          cause_1a: string
+          cause_1b: string | null
+          cause_1c: string | null
+          cause_part2: string | null
+          certifying_doctor: string
+          civil_reg_date: string | null
+          civil_reg_submitted: boolean | null
+          created_at: string | null
+          digital_signed: boolean | null
+          hospital_id: string
+          icd_code_underlying: string | null
+          id: string
+          issued_at: string | null
+          manner_of_death: string
+          mccd_number: string | null
+          mortuary_id: string
+          patient_id: string
+          was_post_mortem: boolean | null
+        }
+        Insert: {
+          ai_draft?: boolean | null
+          approximate_interval_1a?: string | null
+          approximate_interval_1b?: string | null
+          approximate_interval_1c?: string | null
+          cause_1a: string
+          cause_1b?: string | null
+          cause_1c?: string | null
+          cause_part2?: string | null
+          certifying_doctor: string
+          civil_reg_date?: string | null
+          civil_reg_submitted?: boolean | null
+          created_at?: string | null
+          digital_signed?: boolean | null
+          hospital_id: string
+          icd_code_underlying?: string | null
+          id?: string
+          issued_at?: string | null
+          manner_of_death: string
+          mccd_number?: string | null
+          mortuary_id: string
+          patient_id: string
+          was_post_mortem?: boolean | null
+        }
+        Update: {
+          ai_draft?: boolean | null
+          approximate_interval_1a?: string | null
+          approximate_interval_1b?: string | null
+          approximate_interval_1c?: string | null
+          cause_1a?: string
+          cause_1b?: string | null
+          cause_1c?: string | null
+          cause_part2?: string | null
+          certifying_doctor?: string
+          civil_reg_date?: string | null
+          civil_reg_submitted?: boolean | null
+          created_at?: string | null
+          digital_signed?: boolean | null
+          hospital_id?: string
+          icd_code_underlying?: string | null
+          id?: string
+          issued_at?: string | null
+          manner_of_death?: string
+          mccd_number?: string | null
+          mortuary_id?: string
+          patient_id?: string
+          was_post_mortem?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mccd_certificates_certifying_doctor_fkey"
+            columns: ["certifying_doctor"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mccd_certificates_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mccd_certificates_mortuary_id_fkey"
+            columns: ["mortuary_id"]
+            isOneToOne: false
+            referencedRelation: "mortuary_admissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mccd_certificates_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       meal_deliveries: {
         Row: {
           admission_id: string
@@ -7657,6 +7882,186 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "migration_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mlc_records: {
+        Row: {
+          created_at: string | null
+          fir_number: string | null
+          forensic_sample_collected: boolean | null
+          forensic_samples: string[] | null
+          hospital_id: string
+          id: string
+          incident_date: string | null
+          incident_location: string | null
+          incident_type: string
+          injury_description: string | null
+          intimated_at: string | null
+          mlc_number: string
+          mortuary_id: string | null
+          officer_badge: string | null
+          officer_name: string | null
+          patient_id: string
+          pm_done_at: string | null
+          pm_surgeon: string | null
+          police_station: string | null
+          post_mortem_requested: boolean | null
+          status: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          fir_number?: string | null
+          forensic_sample_collected?: boolean | null
+          forensic_samples?: string[] | null
+          hospital_id: string
+          id?: string
+          incident_date?: string | null
+          incident_location?: string | null
+          incident_type: string
+          injury_description?: string | null
+          intimated_at?: string | null
+          mlc_number: string
+          mortuary_id?: string | null
+          officer_badge?: string | null
+          officer_name?: string | null
+          patient_id: string
+          pm_done_at?: string | null
+          pm_surgeon?: string | null
+          police_station?: string | null
+          post_mortem_requested?: boolean | null
+          status?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          fir_number?: string | null
+          forensic_sample_collected?: boolean | null
+          forensic_samples?: string[] | null
+          hospital_id?: string
+          id?: string
+          incident_date?: string | null
+          incident_location?: string | null
+          incident_type?: string
+          injury_description?: string | null
+          intimated_at?: string | null
+          mlc_number?: string
+          mortuary_id?: string | null
+          officer_badge?: string | null
+          officer_name?: string | null
+          patient_id?: string
+          pm_done_at?: string | null
+          pm_surgeon?: string | null
+          police_station?: string | null
+          post_mortem_requested?: boolean | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mlc_records_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mlc_records_mortuary_id_fkey"
+            columns: ["mortuary_id"]
+            isOneToOne: false
+            referencedRelation: "mortuary_admissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mlc_records_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mortuary_admissions: {
+        Row: {
+          admission_id: string | null
+          admitted_at: string | null
+          body_number: string
+          cause_of_death: string
+          created_at: string | null
+          hospital_id: string
+          id: string
+          is_mlc: boolean | null
+          manner_of_death: string | null
+          notes: string | null
+          patient_id: string
+          pronounced_by: string
+          released_at: string | null
+          status: string | null
+          storage_slot: string | null
+          time_of_death: string
+        }
+        Insert: {
+          admission_id?: string | null
+          admitted_at?: string | null
+          body_number: string
+          cause_of_death: string
+          created_at?: string | null
+          hospital_id: string
+          id?: string
+          is_mlc?: boolean | null
+          manner_of_death?: string | null
+          notes?: string | null
+          patient_id: string
+          pronounced_by: string
+          released_at?: string | null
+          status?: string | null
+          storage_slot?: string | null
+          time_of_death: string
+        }
+        Update: {
+          admission_id?: string | null
+          admitted_at?: string | null
+          body_number?: string
+          cause_of_death?: string
+          created_at?: string | null
+          hospital_id?: string
+          id?: string
+          is_mlc?: boolean | null
+          manner_of_death?: string | null
+          notes?: string | null
+          patient_id?: string
+          pronounced_by?: string
+          released_at?: string | null
+          status?: string | null
+          storage_slot?: string | null
+          time_of_death?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mortuary_admissions_admission_id_fkey"
+            columns: ["admission_id"]
+            isOneToOne: false
+            referencedRelation: "admissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mortuary_admissions_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mortuary_admissions_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mortuary_admissions_pronounced_by_fkey"
+            columns: ["pronounced_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -8740,6 +9145,82 @@ export type Database = {
           },
           {
             foreignKeyName: "ophthalmology_records_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organ_donations: {
+        Row: {
+          brain_death_certified: boolean | null
+          brain_death_date: string | null
+          brain_death_doctors: string[] | null
+          consent_date: string | null
+          created_at: string | null
+          family_consent: boolean | null
+          family_counselled: boolean | null
+          hospital_id: string
+          id: string
+          mortuary_id: string
+          notto_ref: string | null
+          organs_pledged: string[] | null
+          outcome: string | null
+          patient_id: string
+          transplant_team_notified_at: string | null
+        }
+        Insert: {
+          brain_death_certified?: boolean | null
+          brain_death_date?: string | null
+          brain_death_doctors?: string[] | null
+          consent_date?: string | null
+          created_at?: string | null
+          family_consent?: boolean | null
+          family_counselled?: boolean | null
+          hospital_id: string
+          id?: string
+          mortuary_id: string
+          notto_ref?: string | null
+          organs_pledged?: string[] | null
+          outcome?: string | null
+          patient_id: string
+          transplant_team_notified_at?: string | null
+        }
+        Update: {
+          brain_death_certified?: boolean | null
+          brain_death_date?: string | null
+          brain_death_doctors?: string[] | null
+          consent_date?: string | null
+          created_at?: string | null
+          family_consent?: boolean | null
+          family_counselled?: boolean | null
+          hospital_id?: string
+          id?: string
+          mortuary_id?: string
+          notto_ref?: string | null
+          organs_pledged?: string[] | null
+          outcome?: string | null
+          patient_id?: string
+          transplant_team_notified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organ_donations_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organ_donations_mortuary_id_fkey"
+            columns: ["mortuary_id"]
+            isOneToOne: false
+            referencedRelation: "mortuary_admissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organ_donations_patient_id_fkey"
             columns: ["patient_id"]
             isOneToOne: false
             referencedRelation: "patients"
