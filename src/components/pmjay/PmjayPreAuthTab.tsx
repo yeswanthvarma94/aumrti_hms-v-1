@@ -7,12 +7,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
-import { ClipboardList, Send, Bot, FileText, CheckCircle2 } from "lucide-react";
+import { ClipboardList, Send, Bot, FileText, CheckCircle2, RefreshCw } from "lucide-react";
 import { callAI } from "@/lib/aiProvider";
 
 interface PreAuth {
   id: string;
   patient_id: string;
+  admission_id: string | null;
   scheme_id: string;
   beneficiary_id: string;
   package_code: string;
@@ -46,6 +47,14 @@ const statusColors: Record<string, string> = {
   cancelled: "bg-muted text-muted-foreground",
 };
 
+const REQUIRED_DOCS = [
+  "Discharge summary / IP case sheet",
+  "Beneficiary card copy",
+  "Aadhaar copy",
+  "Investigation reports",
+  "Pre-operative photos (if surgery)",
+];
+
 const PmjayPreAuthTab: React.FC<Props> = ({ showNewForm, onFormClosed }) => {
   const [preAuths, setPreAuths] = useState<PreAuth[]>([]);
   const [patients, setPatients] = useState<Record<string, string>>({});
@@ -54,9 +63,25 @@ const PmjayPreAuthTab: React.FC<Props> = ({ showNewForm, onFormClosed }) => {
   const [filter, setFilter] = useState("all");
   const [loading, setLoading] = useState(true);
   const [aiLoading, setAiLoading] = useState(false);
+  const [scoreLoading, setScoreLoading] = useState(false);
+  const [editSummary, setEditSummary] = useState("");
+  const [checkedDocs, setCheckedDocs] = useState<boolean[]>(REQUIRED_DOCS.map(() => false));
+  const [scoreData, setScoreData] = useState<{ score: number | null; risk: string | null; recommendation: string | null }>({ score: null, risk: null, recommendation: null });
   const { toast } = useToast();
 
   useEffect(() => { loadData(); }, []);
+
+  useEffect(() => {
+    if (selected) {
+      setEditSummary(selected.clinical_summary || "");
+      setScoreData({
+        score: selected.ai_approval_score,
+        risk: null,
+        recommendation: null,
+      });
+      setCheckedDocs(REQUIRED_DOCS.map(() => false));
+    }
+  }, [selected?.id]);
 
   const loadData = async () => {
     setLoading(true);
@@ -87,23 +112,137 @@ const PmjayPreAuthTab: React.FC<Props> = ({ showNewForm, onFormClosed }) => {
     setSelected(null);
   };
 
+  // FEATURE 1: AI Clinical Summary
   const generateClinicalSummary = async (pa: PreAuth) => {
     setAiLoading(true);
     try {
+      // Try to fetch admission details if available
+      let admissionContext = "";
+      if (pa.admission_id) {
+        const { data: admission } = await supabase
+          .from("admissions")
+          .select("*, patients(full_name, age, gender), wards(ward_name)")
+          .eq("id", pa.admission_id)
+          .single();
+        if (admission) {
+          const p = admission.patients as any;
+          const w = admission.wards as any;
+          admissionContext = `
+Patient: ${p?.full_name || "Unknown"}, ${p?.age || "N/A"}yrs, ${p?.gender || "N/A"}
+Admission date: ${admission.admitted_at || "N/A"}
+Diagnosis: ${admission.admitting_diagnosis || "As per treating doctor"}
+Ward: ${w?.ward_name || "N/A"}`;
+        }
+      }
+
+      if (!admissionContext) {
+        admissionContext = `
+Patient: ${patients[pa.patient_id] || "Unknown"}
+Package: ${pa.package_name} (${pa.package_code})`;
+      }
+
       const response = await callAI({
-        featureKey: "icd_coding",
+        featureKey: "appeal_letter",
         hospitalId: "",
-        prompt: `Generate a brief clinical summary for a pre-authorization request. Package: ${pa.package_name} (${pa.package_code}). Amount: ₹${pa.requested_amount}. Write 3-4 sentences covering likely clinical indication, expected procedure, and medical necessity.`,
-        maxTokens: 300,
+        prompt: `Write a formal clinical summary for insurance pre-authorization for an Indian government health scheme.
+${admissionContext}
+Package: ${pa.package_name} (${pa.package_code})
+Amount: ₹${pa.requested_amount}
+
+Write a 3-paragraph clinical summary:
+Para 1: Patient presentation and diagnosis
+Para 2: Clinical findings and investigations
+Para 3: Proposed treatment/procedure and medical necessity
+
+Keep language formal and medical. Max 300 words.
+This will be submitted to government authorities.`,
+        maxTokens: 400,
       });
+
       if (response && !response.error) {
         const summaryText = response.text || "";
+        setEditSummary(summaryText);
         await supabase.from("pre_auth_requests").update({ clinical_summary: summaryText }).eq("id", pa.id);
-        toast({ title: "Clinical summary generated" });
+        toast({ title: "Clinical summary generated ✓" });
         loadData();
+      } else {
+        console.warn("AI unavailable:", response?.error);
+        toast({ title: "AI unavailable — write summary manually", variant: "destructive" });
       }
-    } catch { /* silent */ }
+    } catch (error) {
+      console.error("Clinical summary generation failed:", error);
+      toast({ title: "Failed to generate summary", variant: "destructive" });
+    }
     setAiLoading(false);
+  };
+
+  // FEATURE 2: AI Approval Score
+  const calculateApprovalScore = async (pa: PreAuth) => {
+    setScoreLoading(true);
+    try {
+      const docsChecked = checkedDocs.filter(Boolean).length;
+      const summaryWords = (editSummary || "").split(/\s+/).filter(Boolean).length;
+
+      const response = await callAI({
+        featureKey: "appeal_letter",
+        hospitalId: "",
+        prompt: `You are an expert in PMJAY/Ayushman Bharat claim approval patterns in Indian government hospitals.
+
+Pre-auth details:
+Package: ${pa.package_name} (₹${pa.requested_amount})
+Diagnosis: ${pa.justification || pa.clinical_summary?.substring(0, 100) || "Not specified"}
+Patient: ${patients[pa.patient_id] || "Unknown"}
+Documents uploaded: ${docsChecked} of ${REQUIRED_DOCS.length}
+Clinical summary length: ${summaryWords} words
+
+Based on typical PMJAY approval patterns, estimate:
+1. Approval probability (0-100)
+2. Main approval risk factor (one sentence)
+3. One specific recommendation to improve chances
+
+Return ONLY JSON:
+{
+  "score": 75,
+  "risk": "Incomplete documentation — missing investigation reports",
+  "recommendation": "Upload CBC and LFT reports to strengthen medical necessity"
+}`,
+        maxTokens: 200,
+      });
+
+      if (response && !response.error) {
+        try {
+          const clean = (response.text || "")
+            .replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+          const parsed = JSON.parse(clean);
+          setScoreData({
+            score: parsed.score ?? null,
+            risk: parsed.risk ?? null,
+            recommendation: parsed.recommendation ?? null,
+          });
+          // Save score to DB
+          await supabase.from("pre_auth_requests")
+            .update({ ai_approval_score: parsed.score ?? null })
+            .eq("id", pa.id);
+        } catch (parseError) {
+          console.error("Could not parse AI score:", parseError);
+          setScoreData({ score: null, risk: null, recommendation: null });
+        }
+      }
+    } catch (error) {
+      console.error("Approval score calculation failed:", error);
+    }
+    setScoreLoading(false);
+  };
+
+  const saveSummary = async () => {
+    if (!selected) return;
+    await supabase.from("pre_auth_requests").update({ clinical_summary: editSummary }).eq("id", selected.id);
+    toast({ title: "Summary saved" });
+    loadData();
+  };
+
+  const toggleDoc = (idx: number) => {
+    setCheckedDocs(prev => prev.map((v, i) => i === idx ? !v : v));
   };
 
   const scoreColor = (score: number | null) => {
@@ -117,7 +256,14 @@ const PmjayPreAuthTab: React.FC<Props> = ({ showNewForm, onFormClosed }) => {
     if (!score) return "";
     if (score >= 70) return "HIGH";
     if (score >= 40) return "MODERATE";
-    return "LOW";
+    return "LOW — Review documentation";
+  };
+
+  const scoreBg = (score: number | null) => {
+    if (!score) return "bg-muted/50";
+    if (score >= 70) return "bg-emerald-50 border-emerald-100";
+    if (score >= 40) return "bg-amber-50 border-amber-100";
+    return "bg-red-50 border-red-100";
   };
 
   if (loading) return <div className="flex items-center justify-center h-full text-muted-foreground text-sm">Loading...</div>;
@@ -198,48 +344,74 @@ const PmjayPreAuthTab: React.FC<Props> = ({ showNewForm, onFormClosed }) => {
               <div><span className="text-muted-foreground text-[11px]">Requested</span><br/>₹{selected.requested_amount.toLocaleString("en-IN")}</div>
             </div>
 
-            {/* Clinical Summary */}
+            {/* Clinical Summary — AI Editable */}
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <Bot size={14} className="text-primary" />
                 <Label className="text-[11px] uppercase text-muted-foreground font-semibold">AI Clinical Summary</Label>
               </div>
               <Textarea
-                className="min-h-[80px]"
-                value={selected.clinical_summary || ""}
-                placeholder="AI-generated clinical summary will appear here..."
-                readOnly
+                className="min-h-[100px] text-sm"
+                value={editSummary}
+                onChange={(e) => setEditSummary(e.target.value)}
+                placeholder="AI-generated clinical summary will appear here. Click 'Generate Summary' to auto-fill..."
               />
-              <Button size="sm" variant="outline" className="mt-1.5 gap-1" onClick={() => generateClinicalSummary(selected)} disabled={aiLoading}>
-                <Bot size={13} /> {aiLoading ? "Generating..." : "Generate Summary"}
-              </Button>
+              {editSummary && (
+                <p className="text-[10px] text-muted-foreground mt-0.5 italic">
+                  (AI generated — please review and edit before submission)
+                </p>
+              )}
+              <div className="flex gap-2 mt-1.5">
+                <Button size="sm" variant="outline" className="gap-1" onClick={() => generateClinicalSummary(selected)} disabled={aiLoading}>
+                  <Bot size={13} /> {aiLoading ? "Generating..." : "Generate Summary"}
+                </Button>
+                {editSummary !== (selected.clinical_summary || "") && (
+                  <Button size="sm" variant="ghost" onClick={saveSummary}>Save Changes</Button>
+                )}
+              </div>
             </div>
 
             {/* Documents Checklist */}
             <div>
               <Label className="text-[11px] uppercase text-muted-foreground font-semibold mb-2 block">
-                <FileText size={13} className="inline mr-1" /> Required Documents
+                <FileText size={13} className="inline mr-1" /> Required Documents ({checkedDocs.filter(Boolean).length}/{REQUIRED_DOCS.length})
               </Label>
               <div className="space-y-2">
-                {["Discharge summary / IP case sheet", "Beneficiary card copy", "Aadhaar copy", "Investigation reports", "Pre-operative photos (if surgery)"].map((doc, i) => (
-                  <label key={i} className="flex items-center gap-2 text-sm">
-                    <input type="checkbox" className="rounded" />
+                {REQUIRED_DOCS.map((doc, i) => (
+                  <label key={i} className="flex items-center gap-2 text-sm cursor-pointer">
+                    <input type="checkbox" className="rounded" checked={checkedDocs[i]} onChange={() => toggleDoc(i)} />
                     {doc}
                   </label>
                 ))}
               </div>
             </div>
 
-            {/* AI Score */}
-            {selected.ai_approval_score != null && (
-              <div className="bg-blue-50 border border-blue-100 rounded-lg p-3">
-                <div className="text-[11px] text-muted-foreground font-semibold mb-1">Predicted Approval Probability</div>
-                <div className={cn("text-2xl font-bold font-mono", scoreColor(selected.ai_approval_score))}>
-                  {selected.ai_approval_score}% <span className="text-sm">{scoreLabel(selected.ai_approval_score)}</span>
-                </div>
-                <div className="text-[10px] text-muted-foreground mt-1">Based on: package type, diagnosis match, documentation completeness</div>
+            {/* AI Approval Score */}
+            <div className={cn("border rounded-lg p-3", scoreBg(scoreData.score))}>
+              <div className="flex justify-between items-center mb-1">
+                <span className="text-[11px] text-muted-foreground font-semibold">Predicted Approval Probability</span>
+                <Button size="sm" variant="ghost" className="h-7 gap-1 text-[11px]" onClick={() => calculateApprovalScore(selected)} disabled={scoreLoading}>
+                  <RefreshCw size={12} className={scoreLoading ? "animate-spin" : ""} />
+                  {scoreLoading ? "Calculating..." : "Calculate Score"}
+                </Button>
               </div>
-            )}
+              {scoreData.score != null ? (
+                <>
+                  <div className={cn("text-2xl font-bold font-mono", scoreColor(scoreData.score))}>
+                    {scoreData.score}% <span className="text-sm">{scoreLabel(scoreData.score)}</span>
+                  </div>
+                  {scoreData.risk && (
+                    <div className="text-[11px] mt-1.5"><strong>Risk:</strong> {scoreData.risk}</div>
+                  )}
+                  {scoreData.recommendation && (
+                    <div className="text-[11px] mt-1 text-primary"><strong>Recommendation:</strong> {scoreData.recommendation}</div>
+                  )}
+                  <div className="text-[10px] text-muted-foreground mt-1.5">Based on: package type, diagnosis match, documentation completeness</div>
+                </>
+              ) : (
+                <div className="text-sm text-muted-foreground py-2">Click "Calculate Score" to get AI-predicted approval probability</div>
+              )}
+            </div>
 
             {/* Actions */}
             <div className="flex gap-2 pt-2 flex-wrap">

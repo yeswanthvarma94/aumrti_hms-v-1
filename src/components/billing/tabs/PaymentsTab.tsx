@@ -16,6 +16,7 @@ const PAYMENT_MODES = [
   { value: "net_banking", label: "🌐 Net Banking" },
   { value: "cheque", label: "💳 Cheque" },
   { value: "insurance", label: "🏥 Insurance" },
+  { value: "pmjay", label: "🏥 PMJAY / Govt Scheme" },
   { value: "advance_adjust", label: "🔄 Advance Adjust" },
 ];
 
