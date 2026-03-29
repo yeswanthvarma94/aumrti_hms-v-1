@@ -6777,6 +6777,282 @@ export type Database = {
           },
         ]
       }
+      lms_certificates: {
+        Row: {
+          certificate_number: string
+          course_id: string
+          created_at: string | null
+          enrollment_id: string
+          expires_at: string | null
+          hospital_id: string
+          id: string
+          issued_at: string
+          user_id: string
+        }
+        Insert: {
+          certificate_number: string
+          course_id: string
+          created_at?: string | null
+          enrollment_id: string
+          expires_at?: string | null
+          hospital_id: string
+          id?: string
+          issued_at?: string
+          user_id: string
+        }
+        Update: {
+          certificate_number?: string
+          course_id?: string
+          created_at?: string | null
+          enrollment_id?: string
+          expires_at?: string | null
+          hospital_id?: string
+          id?: string
+          issued_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lms_certificates_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "lms_courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lms_certificates_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "lms_enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lms_certificates_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lms_certificates_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lms_courses: {
+        Row: {
+          category: string
+          content_type: string | null
+          content_url: string | null
+          course_code: string
+          course_name: string
+          created_at: string | null
+          description: string | null
+          duration_minutes: number | null
+          hospital_id: string | null
+          id: string
+          is_active: boolean | null
+          is_system_course: boolean | null
+          passing_score: number | null
+          target_roles: string[] | null
+          validity_months: number | null
+        }
+        Insert: {
+          category: string
+          content_type?: string | null
+          content_url?: string | null
+          course_code: string
+          course_name: string
+          created_at?: string | null
+          description?: string | null
+          duration_minutes?: number | null
+          hospital_id?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_system_course?: boolean | null
+          passing_score?: number | null
+          target_roles?: string[] | null
+          validity_months?: number | null
+        }
+        Update: {
+          category?: string
+          content_type?: string | null
+          content_url?: string | null
+          course_code?: string
+          course_name?: string
+          created_at?: string | null
+          description?: string | null
+          duration_minutes?: number | null
+          hospital_id?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_system_course?: boolean | null
+          passing_score?: number | null
+          target_roles?: string[] | null
+          validity_months?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lms_courses_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lms_enrollments: {
+        Row: {
+          attempts: number | null
+          certificate_url: string | null
+          completed_at: string | null
+          course_id: string
+          due_date: string | null
+          enrolled_at: string | null
+          hospital_id: string
+          id: string
+          last_attempt_at: string | null
+          score_percent: number | null
+          status: string | null
+          user_id: string
+        }
+        Insert: {
+          attempts?: number | null
+          certificate_url?: string | null
+          completed_at?: string | null
+          course_id: string
+          due_date?: string | null
+          enrolled_at?: string | null
+          hospital_id: string
+          id?: string
+          last_attempt_at?: string | null
+          score_percent?: number | null
+          status?: string | null
+          user_id: string
+        }
+        Update: {
+          attempts?: number | null
+          certificate_url?: string | null
+          completed_at?: string | null
+          course_id?: string
+          due_date?: string | null
+          enrolled_at?: string | null
+          hospital_id?: string
+          id?: string
+          last_attempt_at?: string | null
+          score_percent?: number | null
+          status?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lms_enrollments_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "lms_courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lms_enrollments_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lms_enrollments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lms_quiz_attempts: {
+        Row: {
+          answers: Json | null
+          attempt_number: number
+          completed_at: string | null
+          enrollment_id: string
+          id: string
+          passed: boolean | null
+          score_percent: number | null
+          started_at: string | null
+        }
+        Insert: {
+          answers?: Json | null
+          attempt_number: number
+          completed_at?: string | null
+          enrollment_id: string
+          id?: string
+          passed?: boolean | null
+          score_percent?: number | null
+          started_at?: string | null
+        }
+        Update: {
+          answers?: Json | null
+          attempt_number?: number
+          completed_at?: string | null
+          enrollment_id?: string
+          id?: string
+          passed?: boolean | null
+          score_percent?: number | null
+          started_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lms_quiz_attempts_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "lms_enrollments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lms_quiz_questions: {
+        Row: {
+          course_id: string
+          created_at: string | null
+          explanation: string | null
+          id: string
+          marks: number | null
+          options: Json
+          question_text: string
+          question_type: string | null
+        }
+        Insert: {
+          course_id: string
+          created_at?: string | null
+          explanation?: string | null
+          id?: string
+          marks?: number | null
+          options: Json
+          question_text: string
+          question_type?: string | null
+        }
+        Update: {
+          course_id?: string
+          created_at?: string | null
+          explanation?: string | null
+          id?: string
+          marks?: number | null
+          options?: Json
+          question_text?: string
+          question_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lms_quiz_questions_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "lms_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       meal_deliveries: {
         Row: {
           admission_id: string
