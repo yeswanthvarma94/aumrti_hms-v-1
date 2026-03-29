@@ -331,27 +331,50 @@ const BillingPage: React.FC = () => {
   const pendingAmount = bills.reduce((s, b) => s + b.balance_due, 0);
 
   return (
-    <div className="flex h-[calc(100vh-56px)] overflow-hidden">
-      <BillQueue
-        bills={bills}
-        loading={loading}
-        selectedBillId={selectedBillId}
-        onSelectBill={setSelectedBillId}
-        statusFilter={statusFilter}
-        onStatusFilter={setStatusFilter}
-        dateFilter={dateFilter}
-        onDateFilter={setDateFilter}
-        onNewBill={() => setShowNewBill(true)}
-        onAdvanceReceipt={() => setShowAdvance(true)}
-        todayCollection={todayCollection}
-        pendingAmount={pendingAmount}
-        billCount={bills.length}
-      />
-      <BillEditor
-        bill={selectedBill}
-        hospitalId={hospitalId}
-        onRefresh={fetchBills}
-      />
+    <div className="flex flex-col h-[calc(100vh-56px)] overflow-hidden">
+      {/* Tab bar */}
+      <div className="h-10 flex-shrink-0 border-b border-border bg-background px-4 flex items-center gap-1">
+        <button
+          className={cn("px-3 py-1.5 text-xs font-bold rounded-md transition-colors",
+            activeTab === "bills" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+          )}
+          onClick={() => setActiveTab("bills")}
+        >Bills</button>
+        <button
+          className={cn("px-3 py-1.5 text-xs font-bold rounded-md transition-colors",
+            activeTab === "collections" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+          )}
+          onClick={() => setActiveTab("collections")}
+        >💳 Collections</button>
+      </div>
+
+      {activeTab === "bills" ? (
+        <div className="flex flex-1 overflow-hidden">
+          <BillQueue
+            bills={bills}
+            loading={loading}
+            selectedBillId={selectedBillId}
+            onSelectBill={setSelectedBillId}
+            statusFilter={statusFilter}
+            onStatusFilter={setStatusFilter}
+            dateFilter={dateFilter}
+            onDateFilter={setDateFilter}
+            onNewBill={() => setShowNewBill(true)}
+            onAdvanceReceipt={() => setShowAdvance(true)}
+            todayCollection={todayCollection}
+            pendingAmount={pendingAmount}
+            billCount={bills.length}
+          />
+          <BillEditor
+            bill={selectedBill}
+            hospitalId={hospitalId}
+            onRefresh={fetchBills}
+          />
+        </div>
+      ) : (
+        hospitalId && <CollectionsTab hospitalId={hospitalId} />
+      )}
+
       {showNewBill && hospitalId && (
         <NewBillModal
           hospitalId={hospitalId}
