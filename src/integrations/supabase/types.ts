@@ -2496,6 +2496,60 @@ export type Database = {
           },
         ]
       }
+      denial_logs: {
+        Row: {
+          category: string | null
+          claim_id: string
+          created_at: string | null
+          denial_code: string | null
+          denial_reason: string
+          hospital_id: string
+          id: string
+          recovered_amount: number | null
+          recovery_action: string | null
+          resolved: boolean | null
+        }
+        Insert: {
+          category?: string | null
+          claim_id: string
+          created_at?: string | null
+          denial_code?: string | null
+          denial_reason: string
+          hospital_id: string
+          id?: string
+          recovered_amount?: number | null
+          recovery_action?: string | null
+          resolved?: boolean | null
+        }
+        Update: {
+          category?: string | null
+          claim_id?: string
+          created_at?: string | null
+          denial_code?: string | null
+          denial_reason?: string
+          hospital_id?: string
+          id?: string
+          recovered_amount?: number | null
+          recovery_action?: string | null
+          resolved?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "denial_logs_claim_id_fkey"
+            columns: ["claim_id"]
+            isOneToOne: false
+            referencedRelation: "pmjay_claims"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "denial_logs_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       department_indents: {
         Row: {
           approved_at: string | null
@@ -3550,6 +3604,56 @@ export type Database = {
             columns: ["journal_id"]
             isOneToOne: false
             referencedRelation: "journal_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      govt_schemes: {
+        Row: {
+          config: Json | null
+          created_at: string | null
+          facility_code: string | null
+          facility_id: string | null
+          hospital_id: string
+          id: string
+          is_active: boolean | null
+          scheme_code: string
+          scheme_name: string
+          scheme_type: string
+          state: string | null
+        }
+        Insert: {
+          config?: Json | null
+          created_at?: string | null
+          facility_code?: string | null
+          facility_id?: string | null
+          hospital_id: string
+          id?: string
+          is_active?: boolean | null
+          scheme_code: string
+          scheme_name: string
+          scheme_type: string
+          state?: string | null
+        }
+        Update: {
+          config?: Json | null
+          created_at?: string | null
+          facility_code?: string | null
+          facility_id?: string | null
+          hospital_id?: string
+          id?: string
+          is_active?: boolean | null
+          scheme_code?: string
+          scheme_name?: string
+          scheme_type?: string
+          state?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "govt_schemes_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
             referencedColumns: ["id"]
           },
         ]
@@ -7802,6 +7906,187 @@ export type Database = {
           },
         ]
       }
+      pmjay_claims: {
+        Row: {
+          admission_id: string
+          appeal_letter: string | null
+          appeal_submitted_at: string | null
+          approved_amount: number | null
+          bill_id: string | null
+          claim_number: string | null
+          claimed_amount: number
+          created_at: string | null
+          denial_code: string | null
+          denial_reason: string | null
+          hospital_id: string
+          id: string
+          is_resubmitted: boolean | null
+          package_code: string
+          package_name: string
+          patient_id: string
+          pre_auth_id: string | null
+          scheme_id: string
+          settled_amount: number | null
+          settled_at: string | null
+          status: string | null
+          submitted_at: string | null
+        }
+        Insert: {
+          admission_id: string
+          appeal_letter?: string | null
+          appeal_submitted_at?: string | null
+          approved_amount?: number | null
+          bill_id?: string | null
+          claim_number?: string | null
+          claimed_amount: number
+          created_at?: string | null
+          denial_code?: string | null
+          denial_reason?: string | null
+          hospital_id: string
+          id?: string
+          is_resubmitted?: boolean | null
+          package_code: string
+          package_name: string
+          patient_id: string
+          pre_auth_id?: string | null
+          scheme_id: string
+          settled_amount?: number | null
+          settled_at?: string | null
+          status?: string | null
+          submitted_at?: string | null
+        }
+        Update: {
+          admission_id?: string
+          appeal_letter?: string | null
+          appeal_submitted_at?: string | null
+          approved_amount?: number | null
+          bill_id?: string | null
+          claim_number?: string | null
+          claimed_amount?: number
+          created_at?: string | null
+          denial_code?: string | null
+          denial_reason?: string | null
+          hospital_id?: string
+          id?: string
+          is_resubmitted?: boolean | null
+          package_code?: string
+          package_name?: string
+          patient_id?: string
+          pre_auth_id?: string | null
+          scheme_id?: string
+          settled_amount?: number | null
+          settled_at?: string | null
+          status?: string | null
+          submitted_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pmjay_claims_admission_id_fkey"
+            columns: ["admission_id"]
+            isOneToOne: false
+            referencedRelation: "admissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pmjay_claims_bill_id_fkey"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "bills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pmjay_claims_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pmjay_claims_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pmjay_claims_pre_auth_id_fkey"
+            columns: ["pre_auth_id"]
+            isOneToOne: false
+            referencedRelation: "pre_auth_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pmjay_claims_scheme_id_fkey"
+            columns: ["scheme_id"]
+            isOneToOne: false
+            referencedRelation: "govt_schemes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pmjay_packages: {
+        Row: {
+          created_at: string | null
+          hospital_id: string
+          id: string
+          includes: string[] | null
+          is_active: boolean | null
+          max_days: number | null
+          package_code: string
+          package_name: string
+          pre_auth_required: boolean | null
+          procedure_group: string | null
+          rate_inr: number
+          scheme_id: string | null
+          specialty: string
+        }
+        Insert: {
+          created_at?: string | null
+          hospital_id: string
+          id?: string
+          includes?: string[] | null
+          is_active?: boolean | null
+          max_days?: number | null
+          package_code: string
+          package_name: string
+          pre_auth_required?: boolean | null
+          procedure_group?: string | null
+          rate_inr: number
+          scheme_id?: string | null
+          specialty: string
+        }
+        Update: {
+          created_at?: string | null
+          hospital_id?: string
+          id?: string
+          includes?: string[] | null
+          is_active?: boolean | null
+          max_days?: number | null
+          package_code?: string
+          package_name?: string
+          pre_auth_required?: boolean | null
+          procedure_group?: string | null
+          rate_inr?: number
+          scheme_id?: string | null
+          specialty?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pmjay_packages_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pmjay_packages_scheme_id_fkey"
+            columns: ["scheme_id"]
+            isOneToOne: false
+            referencedRelation: "govt_schemes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       po_items: {
         Row: {
           created_at: string | null
@@ -7859,6 +8144,133 @@ export type Database = {
             columns: ["po_id"]
             isOneToOne: false
             referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pre_auth_requests: {
+        Row: {
+          admission_id: string | null
+          ai_approval_score: number | null
+          approved_amount: number | null
+          auth_number: string | null
+          beneficiary_id: string
+          clinical_summary: string | null
+          created_at: string | null
+          followup_count: number | null
+          hospital_id: string
+          id: string
+          justification: string | null
+          last_followup_at: string | null
+          package_code: string
+          package_id: string | null
+          package_name: string
+          patient_id: string
+          portal_claim_id: string | null
+          rejection_code: string | null
+          rejection_reason: string | null
+          requested_amount: number
+          response_at: string | null
+          scheme_id: string
+          status: string | null
+          submission_method: string | null
+          submitted_at: string | null
+        }
+        Insert: {
+          admission_id?: string | null
+          ai_approval_score?: number | null
+          approved_amount?: number | null
+          auth_number?: string | null
+          beneficiary_id: string
+          clinical_summary?: string | null
+          created_at?: string | null
+          followup_count?: number | null
+          hospital_id: string
+          id?: string
+          justification?: string | null
+          last_followup_at?: string | null
+          package_code: string
+          package_id?: string | null
+          package_name: string
+          patient_id: string
+          portal_claim_id?: string | null
+          rejection_code?: string | null
+          rejection_reason?: string | null
+          requested_amount: number
+          response_at?: string | null
+          scheme_id: string
+          status?: string | null
+          submission_method?: string | null
+          submitted_at?: string | null
+        }
+        Update: {
+          admission_id?: string | null
+          ai_approval_score?: number | null
+          approved_amount?: number | null
+          auth_number?: string | null
+          beneficiary_id?: string
+          clinical_summary?: string | null
+          created_at?: string | null
+          followup_count?: number | null
+          hospital_id?: string
+          id?: string
+          justification?: string | null
+          last_followup_at?: string | null
+          package_code?: string
+          package_id?: string | null
+          package_name?: string
+          patient_id?: string
+          portal_claim_id?: string | null
+          rejection_code?: string | null
+          rejection_reason?: string | null
+          requested_amount?: number
+          response_at?: string | null
+          scheme_id?: string
+          status?: string | null
+          submission_method?: string | null
+          submitted_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pre_auth_requests_admission_id_fkey"
+            columns: ["admission_id"]
+            isOneToOne: false
+            referencedRelation: "admissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pre_auth_requests_beneficiary_id_fkey"
+            columns: ["beneficiary_id"]
+            isOneToOne: false
+            referencedRelation: "scheme_beneficiaries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pre_auth_requests_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pre_auth_requests_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "pmjay_packages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pre_auth_requests_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pre_auth_requests_scheme_id_fkey"
+            columns: ["scheme_id"]
+            isOneToOne: false
+            referencedRelation: "govt_schemes"
             referencedColumns: ["id"]
           },
         ]
@@ -8530,6 +8942,73 @@ export type Database = {
             columns: ["hospital_id"]
             isOneToOne: false
             referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scheme_beneficiaries: {
+        Row: {
+          beneficiary_id: string
+          beneficiary_name: string | null
+          card_number: string | null
+          created_at: string | null
+          expiry_date: string | null
+          family_id: string | null
+          hospital_id: string
+          id: string
+          patient_id: string
+          scheme_id: string
+          verification_status: string | null
+          verified_at: string | null
+        }
+        Insert: {
+          beneficiary_id: string
+          beneficiary_name?: string | null
+          card_number?: string | null
+          created_at?: string | null
+          expiry_date?: string | null
+          family_id?: string | null
+          hospital_id: string
+          id?: string
+          patient_id: string
+          scheme_id: string
+          verification_status?: string | null
+          verified_at?: string | null
+        }
+        Update: {
+          beneficiary_id?: string
+          beneficiary_name?: string | null
+          card_number?: string | null
+          created_at?: string | null
+          expiry_date?: string | null
+          family_id?: string | null
+          hospital_id?: string
+          id?: string
+          patient_id?: string
+          scheme_id?: string
+          verification_status?: string | null
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheme_beneficiaries_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheme_beneficiaries_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheme_beneficiaries_scheme_id_fkey"
+            columns: ["scheme_id"]
+            isOneToOne: false
+            referencedRelation: "govt_schemes"
             referencedColumns: ["id"]
           },
         ]
