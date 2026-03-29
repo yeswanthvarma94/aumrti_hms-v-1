@@ -679,6 +679,79 @@ const CollectionsTab: React.FC<CollectionsTabProps> = ({ hospitalId }) => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Pay Link Modal */}
+      <Dialog open={!!payLinkModal} onOpenChange={() => setPayLinkModal(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Link2 size={16} /> Generate Payment Link</DialogTitle>
+          </DialogHeader>
+          {payLinkModal && (
+            <div className="space-y-4">
+              <div className="bg-muted/50 rounded-lg p-3 text-sm">
+                <p><strong>{payLinkModal.patient_name}</strong> • {payLinkModal.bill_number}</p>
+                <p className="font-mono mt-1">Balance: {fmt(payLinkModal.balance_due)}</p>
+              </div>
+
+              <div>
+                <Label className="text-xs">Amount (₹)</Label>
+                <Input type="number" value={payLinkAmount} onChange={(e) => setPayLinkAmount(Number(e.target.value))} className="h-9 mt-1 font-mono" />
+              </div>
+
+              <div>
+                <Label className="text-xs mb-2 block">Expiry</Label>
+                <div className="flex gap-2">
+                  {[1, 3, 7, 30].map(d => (
+                    <Button key={d} size="sm" variant={payLinkExpiry === d ? "default" : "outline"}
+                      className="h-7 text-xs" onClick={() => setPayLinkExpiry(d)}>
+                      {d} day{d > 1 ? "s" : ""}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {!generatedPayUrl ? (
+                <Button onClick={generatePayLink} disabled={payLinkGenerating || payLinkAmount <= 0} className="w-full">
+                  {payLinkGenerating ? "Generating..." : "Generate Pay Link"}
+                </Button>
+              ) : (
+                <div className="space-y-3">
+                  <div className="bg-muted/30 rounded-lg p-3 border border-border">
+                    <p className="text-[10px] font-bold uppercase text-muted-foreground mb-1">Pay Link</p>
+                    <p className="text-xs font-mono break-all text-foreground">{generatedPayUrl}</p>
+                  </div>
+
+                  <div className="flex justify-center">
+                    <QRCodeSVG value={generatedPayUrl} size={120} />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={() => {
+                      navigator.clipboard.writeText(generatedPayUrl);
+                      toast({ title: "Link copied ✓" });
+                    }}>
+                      <Copy size={13} /> Copy Link
+                    </Button>
+                    <Button size="sm" className="gap-1 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                      onClick={() => sendPayLinkWhatsApp(payLinkModal, generatedPayUrl)}>
+                      <MessageSquare size={13} /> WhatsApp
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Campaign Modal */}
+      {showCampaign && (
+        <CollectionCampaignModal
+          hospitalId={hospitalId}
+          onClose={() => setShowCampaign(false)}
+          onComplete={() => { setShowCampaign(false); loadData(); }}
+        />
+      )}
     </div>
   );
 };
