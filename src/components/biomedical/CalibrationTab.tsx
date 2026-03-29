@@ -57,8 +57,7 @@ const CalibrationTab: React.FC<Props> = ({ onRefresh }) => {
       const eq = equipment.find((e) => e.id === form.equipment_id);
       await supabase.from("clinical_alerts").insert({
         hospital_id: HOSPITAL_ID, alert_type: "calibration_failed", severity: "high",
-        message: `Equipment calibration ${form.result.replace(/_/g, " ")}: ${eq?.equipment_name || "Unknown"}`,
-        is_read: false,
+        alert_message: `Equipment calibration ${form.result.replace(/_/g, " ")}: ${eq?.equipment_name || "Unknown"}`,
       });
     }
 

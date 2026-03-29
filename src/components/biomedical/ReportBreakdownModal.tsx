@@ -44,10 +44,9 @@ const ReportBreakdownModal: React.FC<Props> = ({ open, onClose, onSaved }) => {
     if (form.severity === "critical") {
       const eq = equipment.find((e) => e.id === form.equipment_id);
       await supabase.from("clinical_alerts").insert({
-        hospital_id: HOSPITAL_ID, patient_id: null, alert_type: "equipment_breakdown",
-        severity: "high", message: `Critical equipment breakdown: ${eq?.equipment_name || "Unknown"} (${eq?.equipment_code || ""})`,
-        is_read: false,
-      }).then(() => {});
+        hospital_id: HOSPITAL_ID, alert_type: "equipment_breakdown",
+        severity: "high", alert_message: `Critical equipment breakdown: ${eq?.equipment_name || "Unknown"} (${eq?.equipment_code || ""})`,
+      });
     }
 
     setSaving(false);
