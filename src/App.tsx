@@ -85,6 +85,7 @@ import LMSPage from "./pages/lms/LMSPage";
 import CRMPage from "./pages/crm/CRMPage";
 import PROPage from "./pages/pro/PROPage";
 import PhysioPage from "./pages/physio/PhysioPage";
+import MortuaryPage from "./pages/mortuary/MortuaryPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -178,6 +179,7 @@ const App = () => (
             <Route path="/crm" element={<CRMPage />} />
             <Route path="/pro" element={<PROPage />} />
             <Route path="/physio" element={<PhysioPage />} />
+            <Route path="/mortuary" element={<MortuaryPage />} />
             <Route path="/admin/go-live" element={<GoLiveChecklistPage />} />
             <Route path="/admin/data-migration" element={<DataMigrationPage />} />
           </Route>
