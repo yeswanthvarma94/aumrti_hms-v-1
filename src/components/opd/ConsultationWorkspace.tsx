@@ -358,13 +358,7 @@ const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onT
         status: "active",
       }, { onConflict: "hospital_id,patient_id,record_type,visit_id" }).then(() => {});
 
-      (supabase as any).from("icd_codings").upsert({
-        hospital_id: hospitalId,
-        visit_type: "opd",
-        visit_id: encounterId,
-        status: encounter.icd10_code ? "coded" : "pending",
-        primary_icd_code: encounter.icd10_code || null,
-      }, { onConflict: "hospital_id,visit_type,visit_id" }).then(() => {});
+      // ICD coding not required for OPD visits
     }
 
     onTokenUpdate();
