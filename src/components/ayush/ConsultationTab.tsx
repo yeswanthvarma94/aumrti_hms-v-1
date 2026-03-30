@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Plus, Save, X } from "lucide-react";
+import { Search, Plus, Save, X, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -26,15 +26,53 @@ interface DrugItem {
   duration: string;
 }
 
+interface AyushToken {
+  id: string;
+  token_number: string;
+  token_prefix: string;
+  status: string;
+  created_at: string;
+  patient_id: string;
+  doctor_id: string | null;
+  patient?: { id: string; full_name: string; uhid: string; gender: string | null; dob: string | null; phone: string | null };
+  doctor?: { full_name: string } | null;
+}
+
+// Map AYUSH system to department name search patterns
+const SYSTEM_DEPT_MAP: Record<string, string[]> = {
+  ayurveda: ["%ayurveda%", "%ayurved%"],
+  homeopathy: ["%homeopathy%", "%homoeopathy%", "%homeo%"],
+  unani: ["%unani%"],
+  siddha: ["%siddha%"],
+  yoga: ["%yoga%", "%naturopathy%", "%naturo%"],
+};
+
+const statusStyles: Record<string, string> = {
+  waiting: "border-l-amber-400",
+  called: "border-l-orange-400",
+  in_consultation: "border-l-blue-400",
+  completed: "border-l-green-400 opacity-60",
+};
+
+const statusLabel: Record<string, string> = {
+  waiting: "Waiting",
+  called: "Called",
+  in_consultation: "With Doctor",
+  completed: "Done",
+};
+
 const NADI_TEMPLATES = ["Vata dominant, irregular, thready", "Pitta dominant, sharp, bounding", "Kapha dominant, slow, steady", "Mixed Vata-Pitta"];
 const TONGUE_TEMPLATES = ["Coated white", "Red/dry", "Pale", "Normal", "Yellow coating"];
 
 export default function ConsultationTab({ system, showNew, onShowNewDone }: Props) {
-  const [patients, setPatients] = useState<any[]>([]);
+  const [tokens, setTokens] = useState<AyushToken[]>([]);
+  const [selectedToken, setSelectedToken] = useState<AyushToken | null>(null);
   const [search, setSearch] = useState("");
-  const [selectedPatient, setSelectedPatient] = useState<any>(null);
   const [recentEncounters, setRecentEncounters] = useState<any[]>([]);
   const [drugs, setDrugs] = useState<any[]>([]);
+  const [hospitalId, setHospitalId] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   // Form state
   const [complaint, setComplaint] = useState("");
@@ -63,13 +101,69 @@ export default function ConsultationTab({ system, showNew, onShowNewDone }: Prop
   const [potency, setPotency] = useState("30c");
   const [homDose, setHomDose] = useState("1 dose");
 
-  useEffect(() => {
-    loadDrugs();
-  }, []);
+  const fetchTokens = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setLoading(false); return; }
 
+    const { data: userData } = await supabase.from("users").select("id, hospital_id").eq("auth_user_id", user.id).single();
+    if (!userData) { setLoading(false); return; }
+    setHospitalId(userData.hospital_id);
+    setUserId(userData.id);
+
+    // Find departments matching the selected AYUSH system
+    const patterns = SYSTEM_DEPT_MAP[system] || [`%${system}%`];
+    let deptIds: string[] = [];
+    for (const pattern of patterns) {
+      const { data: depts } = await supabase
+        .from("departments")
+        .select("id")
+        .eq("hospital_id", userData.hospital_id)
+        .ilike("name", pattern);
+      if (depts) deptIds.push(...depts.map(d => d.id));
+    }
+    // Deduplicate
+    deptIds = [...new Set(deptIds)];
+
+    if (deptIds.length === 0) {
+      setTokens([]);
+      setLoading(false);
+      return;
+    }
+
+    const today = new Date().toISOString().split("T")[0];
+    const { data, error } = await supabase
+      .from("opd_tokens")
+      .select("id, token_number, token_prefix, status, created_at, patient_id, doctor_id, patient:patients(id, full_name, uhid, gender, dob, phone), doctor:users!opd_tokens_doctor_id_fkey(full_name)")
+      .eq("hospital_id", userData.hospital_id)
+      .in("department_id", deptIds)
+      .eq("visit_date", today)
+      .order("created_at", { ascending: true });
+
+    if (error) {
+      console.error("Error fetching AYUSH tokens:", error);
+      toast.error("Failed to load queue");
+      setLoading(false);
+      return;
+    }
+    setTokens((data as unknown as AyushToken[]) || []);
+    setLoading(false);
+  }, [system]);
+
+  useEffect(() => { setSelectedToken(null); setLoading(true); fetchTokens(); }, [fetchTokens]);
+
+  // Realtime
   useEffect(() => {
-    if (search.length >= 2) searchPatients();
-  }, [search]);
+    if (!hospitalId) return;
+    const channel = supabase
+      .channel(`ayush-tokens-${system}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "opd_tokens", filter: `hospital_id=eq.${hospitalId}` }, () => fetchTokens())
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [hospitalId, system, fetchTokens]);
+
+  useEffect(() => { loadDrugs(); }, []);
+
+  const selectedPatient = selectedToken?.patient || null;
 
   useEffect(() => {
     if (selectedPatient) loadRecentEncounters();
@@ -78,13 +172,6 @@ export default function ConsultationTab({ system, showNew, onShowNewDone }: Prop
   const loadDrugs = async () => {
     const { data } = await supabase.from("ayush_drug_master").select("*").eq("is_active", true).order("drug_name");
     if (data) setDrugs(data);
-  };
-
-  const searchPatients = async () => {
-    const { data } = await supabase.from("patients").select("id, full_name, uhid, phone, date_of_birth, gender")
-      .or(`full_name.ilike.%${search}%,uhid.ilike.%${search}%,phone.ilike.%${search}%`)
-      .limit(20);
-    if (data) setPatients(data);
   };
 
   const loadRecentEncounters = async () => {
@@ -183,29 +270,47 @@ export default function ConsultationTab({ system, showNew, onShowNewDone }: Prop
     return Math.floor((Date.now() - new Date(dob).getTime()) / 31557600000) + "y";
   };
 
+  const filteredTokens = tokens.filter((t) => {
+    if (!search) return true;
+    const s = search.toLowerCase();
+    return (t.patient?.full_name?.toLowerCase().includes(s) || t.patient?.uhid?.toLowerCase().includes(s) || t.token_number.includes(s));
+  });
+
   return (
     <div className="flex h-full overflow-hidden">
-      {/* Left - Patient List */}
+      {/* Left - OPD Token Queue */}
       <div className="w-[280px] border-r flex flex-col bg-muted/20">
-        <div className="p-3 border-b">
-          <div className="relative">
+        <div className="p-3 border-b flex items-center gap-2">
+          <div className="relative flex-1">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Search patient..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8 h-9 text-sm" />
+            <Input placeholder="Filter queue..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8 h-9 text-sm" />
           </div>
+          <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0" onClick={() => { setLoading(true); fetchTokens(); }}>
+            <RefreshCw className="h-4 w-4" />
+          </Button>
         </div>
         <div className="flex-1 overflow-y-auto">
-          {patients.map((p) => (
-            <button
-              key={p.id}
-              className={`w-full text-left px-3 py-2 border-b text-sm hover:bg-accent/50 transition ${selectedPatient?.id === p.id ? "bg-accent" : ""}`}
-              onClick={() => setSelectedPatient(p)}
-            >
-              <p className="font-medium truncate">{p.full_name}</p>
-              <p className="text-xs text-muted-foreground">{p.uhid} · {calcAge(p.date_of_birth)} · {p.gender}</p>
-            </button>
-          ))}
-          {patients.length === 0 && search.length >= 2 && (
-            <p className="text-xs text-muted-foreground text-center py-4">No patients found</p>
+          {loading ? (
+            <p className="text-xs text-muted-foreground text-center py-8">Loading queue...</p>
+          ) : filteredTokens.length === 0 ? (
+            <div className="text-center py-8 px-3">
+              <p className="text-xs text-muted-foreground">No OPD tokens for this department today</p>
+              <p className="text-xs text-muted-foreground mt-1">Register patients via OPD with the {system} department</p>
+            </div>
+          ) : (
+            filteredTokens.map((t) => (
+              <button
+                key={t.id}
+                className={`w-full text-left px-3 py-2 border-b border-l-4 text-sm hover:bg-accent/50 transition ${statusStyles[t.status] || ""} ${selectedToken?.id === t.id ? "bg-accent" : ""}`}
+                onClick={() => setSelectedToken(t)}
+              >
+                <div className="flex items-center justify-between">
+                  <p className="font-medium truncate">{t.patient?.full_name || "—"}</p>
+                  <Badge variant="outline" className="text-[10px] h-5">{t.token_prefix}-{t.token_number}</Badge>
+                </div>
+                <p className="text-xs text-muted-foreground">{t.patient?.uhid} · {calcAge(t.patient?.dob || null)} · {statusLabel[t.status] || t.status}</p>
+              </button>
+            ))
           )}
         </div>
       </div>
@@ -223,7 +328,7 @@ export default function ConsultationTab({ system, showNew, onShowNewDone }: Prop
               <CardContent className="p-3 flex items-center gap-4">
                 <div>
                   <p className="font-semibold">{selectedPatient.full_name}</p>
-                  <p className="text-xs text-muted-foreground">{selectedPatient.uhid} · {calcAge(selectedPatient.date_of_birth)} · {selectedPatient.gender}</p>
+                  <p className="text-xs text-muted-foreground">{selectedPatient.uhid} · {calcAge(selectedPatient.dob)} · {selectedPatient.gender}</p>
                 </div>
                 {recentEncounters.length > 0 && (
                   <Badge variant="outline" className="ml-auto">
