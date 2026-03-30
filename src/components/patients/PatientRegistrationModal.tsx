@@ -18,6 +18,7 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess }) => {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
   const [showReferralModal, setShowReferralModal] = useState(false);
+  const [referralDoctorId, setReferralDoctorId] = useState<string | null>(null);
   const [dpdpConsent, setDpdpConsent] = useState(false);
   const [hospitalName, setHospitalName] = useState("Hospital");
   const [hospitalIdState, setHospitalIdState] = useState("");
@@ -136,6 +137,30 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess }) => {
           consent_given: true,
           consent_text: consentText,
         } as any);
+
+        // Sync referral to CRM
+        if (referralDoctorId) {
+          await supabase.from("patient_acquisition").insert({
+            hospital_id: hospitalId,
+            patient_id: newPatient.id,
+            source: "referral_doctor",
+            referral_doctor_id: referralDoctorId,
+            first_visit_date: new Date().toISOString().split("T")[0],
+            is_new_patient: true,
+          } as any);
+
+          const { data: rd } = await supabase
+            .from("referral_doctors")
+            .select("total_referrals, total_revenue")
+            .eq("id", referralDoctorId)
+            .single();
+          if (rd) {
+            await supabase.from("referral_doctors").update({
+              total_referrals: (rd.total_referrals || 0) + 1,
+              last_referral_at: new Date().toISOString(),
+            }).eq("id", referralDoctorId);
+          }
+        }
       }
       toast({ title: `Patient registered — ${uhid}` });
       onSuccess();
@@ -322,7 +347,7 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess }) => {
         <AddReferralDoctorModal
           open={showReferralModal}
           onClose={() => setShowReferralModal(false)}
-          onSaved={(name) => { set("referral_source", name); setShowReferralModal(false); }}
+          onSaved={(name, id) => { set("referral_source", name); setReferralDoctorId(id || null); setShowReferralModal(false); }}
           hospitalId={hospitalIdState}
         />
       </div>

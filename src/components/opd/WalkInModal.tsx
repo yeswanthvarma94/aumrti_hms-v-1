@@ -67,6 +67,7 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated }) => {
   const [nextToken, setNextToken] = useState("A-1");
   const [submitting, setSubmitting] = useState(false);
   const [referralSource, setReferralSource] = useState("");
+  const [referralDoctorId, setReferralDoctorId] = useState<string | null>(null);
   const [showReferralModal, setShowReferralModal] = useState(false);
 
   // Payment fields
@@ -299,7 +300,33 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated }) => {
       });
       if (tokenErr) throw tokenErr;
 
-      // Set receipt data and go to receipt step
+      // Sync referral to CRM: create patient_acquisition + increment referral_doctors counters
+      if (referralDoctorId) {
+        const today2 = new Date().toISOString().split("T")[0];
+        await supabase.from("patient_acquisition").insert({
+          hospital_id: hospitalId,
+          patient_id: patientId,
+          source: "referral_doctor",
+          referral_doctor_id: referralDoctorId,
+          first_visit_date: today2,
+          first_visit_revenue: fee,
+          is_new_patient: !useExisting,
+        } as any);
+
+        // Increment referral count and revenue on the referral doctor
+        const { data: rd } = await supabase
+          .from("referral_doctors")
+          .select("total_referrals, total_revenue")
+          .eq("id", referralDoctorId)
+          .single();
+        if (rd) {
+          await supabase.from("referral_doctors").update({
+            total_referrals: (rd.total_referrals || 0) + 1,
+            total_revenue: (rd.total_revenue || 0) + fee,
+            last_referral_at: new Date().toISOString(),
+          }).eq("id", referralDoctorId);
+        }
+      }
       const rData = {
         billNumber,
         patientName: patientDisplayName || "—",
@@ -516,7 +543,7 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated }) => {
               {referralSource && (
                 <div className="mt-1 px-3 py-1.5 bg-teal-50 border border-teal-200 rounded-lg text-xs text-teal-800 flex items-center justify-between">
                   <span>Referred by: <strong>{referralSource}</strong></span>
-                  <button onClick={() => setReferralSource("")} className="text-teal-500 hover:text-teal-700 ml-2">✕</button>
+                  <button onClick={() => { setReferralSource(""); setReferralDoctorId(null); }} className="text-teal-500 hover:text-teal-700 ml-2">✕</button>
                 </div>
               )}
             </div>
@@ -733,7 +760,7 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated }) => {
         <AddReferralDoctorModal
           open={showReferralModal}
           onClose={() => setShowReferralModal(false)}
-          onSaved={(name) => setReferralSource(name)}
+          onSaved={(name, id) => { setReferralSource(name); setReferralDoctorId(id || null); }}
           hospitalId={hospitalId}
         />
       </div>
