@@ -272,27 +272,39 @@ export default function ConsultationTab({ system, showNew, onShowNewDone }: Prop
 
   return (
     <div className="flex h-full overflow-hidden">
-      {/* Left - Patient List */}
+      {/* Left - OPD Token Queue */}
       <div className="w-[280px] border-r flex flex-col bg-muted/20">
-        <div className="p-3 border-b">
-          <div className="relative">
+        <div className="p-3 border-b flex items-center gap-2">
+          <div className="relative flex-1">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Search patient..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8 h-9 text-sm" />
+            <Input placeholder="Filter queue..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8 h-9 text-sm" />
           </div>
+          <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0" onClick={() => { setLoading(true); fetchTokens(); }}>
+            <RefreshCw className="h-4 w-4" />
+          </Button>
         </div>
         <div className="flex-1 overflow-y-auto">
-          {patients.map((p) => (
-            <button
-              key={p.id}
-              className={`w-full text-left px-3 py-2 border-b text-sm hover:bg-accent/50 transition ${selectedPatient?.id === p.id ? "bg-accent" : ""}`}
-              onClick={() => setSelectedPatient(p)}
-            >
-              <p className="font-medium truncate">{p.full_name}</p>
-              <p className="text-xs text-muted-foreground">{p.uhid} · {calcAge(p.date_of_birth)} · {p.gender}</p>
-            </button>
-          ))}
-          {patients.length === 0 && search.length >= 2 && (
-            <p className="text-xs text-muted-foreground text-center py-4">No patients found</p>
+          {loading ? (
+            <p className="text-xs text-muted-foreground text-center py-8">Loading queue...</p>
+          ) : filteredTokens.length === 0 ? (
+            <div className="text-center py-8 px-3">
+              <p className="text-xs text-muted-foreground">No OPD tokens for this department today</p>
+              <p className="text-xs text-muted-foreground mt-1">Register patients via OPD with the {system} department</p>
+            </div>
+          ) : (
+            filteredTokens.map((t) => (
+              <button
+                key={t.id}
+                className={`w-full text-left px-3 py-2 border-b border-l-4 text-sm hover:bg-accent/50 transition ${statusStyles[t.status] || ""} ${selectedToken?.id === t.id ? "bg-accent" : ""}`}
+                onClick={() => setSelectedToken(t)}
+              >
+                <div className="flex items-center justify-between">
+                  <p className="font-medium truncate">{t.patient?.full_name || "—"}</p>
+                  <Badge variant="outline" className="text-[10px] h-5">{t.token_prefix}-{t.token_number}</Badge>
+                </div>
+                <p className="text-xs text-muted-foreground">{t.patient?.uhid} · {calcAge(t.patient?.dob || null)} · {statusLabel[t.status] || t.status}</p>
+              </button>
+            ))
           )}
         </div>
       </div>
