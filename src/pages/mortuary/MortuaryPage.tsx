@@ -155,22 +155,38 @@ export default function MortuaryPage() {
   useEffect(() => { loadAll(); }, []);
 
   const loadAll = async () => {
-    const [a, m, mc, r, d, p, doc] = await Promise.all([
+    const [a, m, mc, r, d, doc] = await Promise.all([
       supabase.from("mortuary_admissions").select("*").eq("hospital_id", HOSPITAL_ID).order("admitted_at", { ascending: false }),
       supabase.from("mlc_records").select("*").eq("hospital_id", HOSPITAL_ID).order("created_at", { ascending: false }),
       supabase.from("mccd_certificates").select("*").eq("hospital_id", HOSPITAL_ID).order("created_at", { ascending: false }),
       supabase.from("body_releases").select("*").eq("hospital_id", HOSPITAL_ID).order("released_at", { ascending: false }),
       supabase.from("organ_donations").select("*").eq("hospital_id", HOSPITAL_ID).order("created_at", { ascending: false }),
-      supabase.from("patients").select("id, full_name, uhid, gender, date_of_birth, phone").eq("hospital_id", HOSPITAL_ID).order("created_at", { ascending: false }).limit(200),
       supabase.from("users").select("id, full_name, role").eq("hospital_id", HOSPITAL_ID),
     ]);
+    if (a.error) { console.error("mortuary_admissions load error:", a.error.message); toast.error("Failed to load mortuary records"); }
+    if (m.error) console.error("mlc_records load error:", m.error.message);
+    if (mc.error) console.error("mccd_certificates load error:", mc.error.message);
+    if (r.error) console.error("body_releases load error:", r.error.message);
+    if (d.error) console.error("organ_donations load error:", d.error.message);
     if (a.data) setAdmissions(a.data as any);
     if (m.data) setMlcRecords(m.data as any);
     if (mc.data) setMccdCerts(mc.data as any);
     if (r.data) setReleases(r.data as any);
     if (d.data) setDonations(d.data as any);
-    if (p.data) setPatients(p.data);
     if (doc.data) setDoctors(doc.data);
+    // Load patient names for display in tables (for already-linked records)
+    const patientIds = new Set<string>();
+    if (a.data) a.data.forEach((x: any) => patientIds.add(x.patient_id));
+    if (m.data) m.data.forEach((x: any) => patientIds.add(x.patient_id));
+    if (d.data) d.data.forEach((x: any) => patientIds.add(x.patient_id));
+    if (mc.data) mc.data.forEach((x: any) => patientIds.add(x.patient_id));
+    const ids = Array.from(patientIds).filter(Boolean);
+    if (ids.length > 0) {
+      const { data: pData } = await supabase.from("patients").select("id, full_name, uhid, gender, dob, phone").in("id", ids);
+      if (pData) setPatients(pData);
+    } else {
+      setPatients([]);
+    }
   };
 
   const getPatient = (id: string) => patients.find(p => p.id === id);
