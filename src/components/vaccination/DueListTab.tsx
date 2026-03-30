@@ -48,6 +48,7 @@ const DueListTab: React.FC<Props> = ({ hospitalId }) => {
   const getAge = (dob: string | null) => {
     if (!dob) return "—";
     const months = Math.floor((Date.now() - new Date(dob).getTime()) / (30.44 * 86400000));
+    if (months < 1) return `${Math.max(0, Math.floor((Date.now() - new Date(dob).getTime()) / 86400000))} d`;
     if (months < 24) return `${months} mo`;
     return `${Math.floor(months / 12)} yr`;
   };
