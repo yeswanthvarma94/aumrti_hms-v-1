@@ -3140,6 +3140,223 @@ export type Database = {
           },
         ]
       }
+      dental_charts: {
+        Row: {
+          calculus: string | null
+          chart_data: Json
+          chart_date: string
+          created_at: string | null
+          created_by: string
+          encounter_id: string | null
+          hospital_id: string
+          id: string
+          oral_hygiene: string | null
+          patient_id: string
+          soft_tissue_notes: string | null
+        }
+        Insert: {
+          calculus?: string | null
+          chart_data?: Json
+          chart_date?: string
+          created_at?: string | null
+          created_by: string
+          encounter_id?: string | null
+          hospital_id: string
+          id?: string
+          oral_hygiene?: string | null
+          patient_id: string
+          soft_tissue_notes?: string | null
+        }
+        Update: {
+          calculus?: string | null
+          chart_data?: Json
+          chart_date?: string
+          created_at?: string | null
+          created_by?: string
+          encounter_id?: string | null
+          hospital_id?: string
+          id?: string
+          oral_hygiene?: string | null
+          patient_id?: string
+          soft_tissue_notes?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dental_charts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dental_charts_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dental_charts_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dental_lab_orders: {
+        Row: {
+          cost: number | null
+          created_at: string | null
+          expected_date: string | null
+          hospital_id: string
+          id: string
+          lab_name: string | null
+          material: string | null
+          notes: string | null
+          order_date: string
+          ordered_by: string
+          patient_id: string
+          received_date: string | null
+          shade: string | null
+          special_instructions: string | null
+          status: string | null
+          tooth_numbers: string
+          work_type: string
+        }
+        Insert: {
+          cost?: number | null
+          created_at?: string | null
+          expected_date?: string | null
+          hospital_id: string
+          id?: string
+          lab_name?: string | null
+          material?: string | null
+          notes?: string | null
+          order_date?: string
+          ordered_by: string
+          patient_id: string
+          received_date?: string | null
+          shade?: string | null
+          special_instructions?: string | null
+          status?: string | null
+          tooth_numbers: string
+          work_type: string
+        }
+        Update: {
+          cost?: number | null
+          created_at?: string | null
+          expected_date?: string | null
+          hospital_id?: string
+          id?: string
+          lab_name?: string | null
+          material?: string | null
+          notes?: string | null
+          order_date?: string
+          ordered_by?: string
+          patient_id?: string
+          received_date?: string | null
+          shade?: string | null
+          special_instructions?: string | null
+          status?: string | null
+          tooth_numbers?: string
+          work_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dental_lab_orders_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dental_lab_orders_ordered_by_fkey"
+            columns: ["ordered_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dental_lab_orders_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dental_treatment_plans: {
+        Row: {
+          chart_id: string | null
+          consent_date: string | null
+          created_at: string | null
+          created_by: string
+          hospital_id: string
+          id: string
+          patient_consent: boolean | null
+          patient_id: string
+          plan_items: Json
+          status: string | null
+          total_cost: number | null
+        }
+        Insert: {
+          chart_id?: string | null
+          consent_date?: string | null
+          created_at?: string | null
+          created_by: string
+          hospital_id: string
+          id?: string
+          patient_consent?: boolean | null
+          patient_id: string
+          plan_items?: Json
+          status?: string | null
+          total_cost?: number | null
+        }
+        Update: {
+          chart_id?: string | null
+          consent_date?: string | null
+          created_at?: string | null
+          created_by?: string
+          hospital_id?: string
+          id?: string
+          patient_consent?: boolean | null
+          patient_id?: string
+          plan_items?: Json
+          status?: string | null
+          total_cost?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dental_treatment_plans_chart_id_fkey"
+            columns: ["chart_id"]
+            isOneToOne: false
+            referencedRelation: "dental_charts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dental_treatment_plans_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dental_treatment_plans_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dental_treatment_plans_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       department_indents: {
         Row: {
           approved_at: string | null
@@ -10565,6 +10782,67 @@ export type Database = {
             columns: ["signed_by"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      periodontal_charts: {
+        Row: {
+          bleeding_index: number | null
+          chart_date: string
+          created_at: string | null
+          created_by: string
+          diagnosis: string | null
+          hospital_id: string
+          id: string
+          patient_id: string
+          perio_data: Json
+          plaque_index: number | null
+        }
+        Insert: {
+          bleeding_index?: number | null
+          chart_date?: string
+          created_at?: string | null
+          created_by: string
+          diagnosis?: string | null
+          hospital_id: string
+          id?: string
+          patient_id: string
+          perio_data?: Json
+          plaque_index?: number | null
+        }
+        Update: {
+          bleeding_index?: number | null
+          chart_date?: string
+          created_at?: string | null
+          created_by?: string
+          diagnosis?: string | null
+          hospital_id?: string
+          id?: string
+          patient_id?: string
+          perio_data?: Json
+          plaque_index?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "periodontal_charts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "periodontal_charts_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "periodontal_charts_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
             referencedColumns: ["id"]
           },
         ]
