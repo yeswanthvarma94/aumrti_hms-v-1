@@ -120,6 +120,7 @@ export default function MortuaryPage() {
   const [mccdForm, setMccdForm] = useState<string | null>(null);
   const [organModal, setOrganModal] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showPatientReg, setShowPatientReg] = useState<"admit" | "mlc" | null>(null);
 
   // Form states
   const [admitForm, setAdmitForm] = useState({
