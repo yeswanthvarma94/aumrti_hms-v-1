@@ -15,6 +15,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
 import { format, differenceInDays } from "date-fns";
+import PatientSearchPicker from "@/components/shared/PatientSearchPicker";
+import PatientRegistrationModal from "@/components/patients/PatientRegistrationModal";
 
 const HOSPITAL_ID = "8f3d08b3-8835-42a7-920e-fdf5a78260bc";
 
