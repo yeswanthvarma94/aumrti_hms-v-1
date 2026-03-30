@@ -66,7 +66,7 @@ const AddReferralDoctorModal: React.FC<Props> = ({ open, onClose, onSaved, hospi
   }, [searchQuery, doSearch]);
 
   const selectExisting = (doc: any) => {
-    onSaved(doc.doctor_name);
+    onSaved(doc.doctor_name, doc.id);
     onClose();
   };
 
@@ -81,15 +81,17 @@ const AddReferralDoctorModal: React.FC<Props> = ({ open, onClose, onSaved, hospi
       return;
     }
     const payload = { ...form, hospital_id: hospitalId };
-    const { error } = editDoc
-      ? await supabase.from("referral_doctors").update(payload).eq("id", editDoc.id)
-      : await supabase.from("referral_doctors").insert(payload);
-    if (error) {
-      toast({ title: "Error saving", description: error.message, variant: "destructive" });
-      return;
+    if (editDoc) {
+      const { error } = await supabase.from("referral_doctors").update(payload).eq("id", editDoc.id);
+      if (error) { toast({ title: "Error saving", description: error.message, variant: "destructive" }); return; }
+      toast({ title: "Doctor updated" });
+      onSaved(form.doctor_name, editDoc.id);
+    } else {
+      const { data, error } = await supabase.from("referral_doctors").insert(payload).select("id").single();
+      if (error) { toast({ title: "Error saving", description: error.message, variant: "destructive" }); return; }
+      toast({ title: "Referral doctor added" });
+      onSaved(form.doctor_name, data?.id);
     }
-    toast({ title: editDoc ? "Doctor updated" : "Referral doctor added" });
-    onSaved(form.doctor_name);
     onClose();
   };
 
