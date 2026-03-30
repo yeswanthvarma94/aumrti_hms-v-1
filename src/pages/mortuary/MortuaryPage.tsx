@@ -875,6 +875,34 @@ export default function MortuaryPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Patient Registration Modal */}
+      {showPatientReg && (
+        <div onClick={e => e.stopPropagation()}>
+          <PatientRegistrationModal
+            onClose={() => setShowPatientReg(null)}
+            onSuccess={async () => {
+              // Get the most recently created patient
+              const { data } = await supabase
+                .from("patients")
+                .select("id, full_name, uhid")
+                .eq("hospital_id", HOSPITAL_ID)
+                .order("created_at", { ascending: false })
+                .limit(1)
+                .maybeSingle();
+              if (data) {
+                if (showPatientReg === "admit") {
+                  setAdmitForm(f => ({ ...f, patient_id: data.id }));
+                } else if (showPatientReg === "mlc") {
+                  setMlcForm(f => ({ ...f, patient_id: data.id }));
+                }
+              }
+              setShowPatientReg(null);
+              await loadAll();
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }
