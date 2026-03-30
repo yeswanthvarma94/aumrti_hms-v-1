@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Search, Printer, MessageSquare } from "lucide-react";
+import { Search, Printer, MessageSquare, Syringe } from "lucide-react";
 
 interface Props { hospitalId: string; }
 
@@ -230,7 +230,7 @@ const PatientCardTab: React.FC<Props> = ({ hospitalId }) => {
 
       {!selectedPatient && (
         <div className="text-center py-16 text-muted-foreground">
-          <SyringeIcon className="h-12 w-12 mx-auto mb-3 opacity-30" />
+          <Syringe className="h-12 w-12 mx-auto mb-3 opacity-30" />
           <p className="text-sm">Search for a patient to view their vaccination card</p>
         </div>
       )}
@@ -238,5 +238,4 @@ const PatientCardTab: React.FC<Props> = ({ hospitalId }) => {
   );
 };
 
-import { Syringe } from "lucide-react";
 export default PatientCardTab;
