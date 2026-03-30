@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Plus, Save, X } from "lucide-react";
+import { Search, Plus, Save, X, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -26,15 +26,53 @@ interface DrugItem {
   duration: string;
 }
 
+interface AyushToken {
+  id: string;
+  token_number: string;
+  token_prefix: string;
+  status: string;
+  created_at: string;
+  patient_id: string;
+  doctor_id: string | null;
+  patient?: { id: string; full_name: string; uhid: string; gender: string | null; dob: string | null; phone: string | null };
+  doctor?: { full_name: string } | null;
+}
+
+// Map AYUSH system to department name search patterns
+const SYSTEM_DEPT_MAP: Record<string, string[]> = {
+  ayurveda: ["%ayurveda%", "%ayurved%"],
+  homeopathy: ["%homeopathy%", "%homoeopathy%", "%homeo%"],
+  unani: ["%unani%"],
+  siddha: ["%siddha%"],
+  yoga: ["%yoga%", "%naturopathy%", "%naturo%"],
+};
+
+const statusStyles: Record<string, string> = {
+  waiting: "border-l-amber-400",
+  called: "border-l-orange-400",
+  in_consultation: "border-l-blue-400",
+  completed: "border-l-green-400 opacity-60",
+};
+
+const statusLabel: Record<string, string> = {
+  waiting: "Waiting",
+  called: "Called",
+  in_consultation: "With Doctor",
+  completed: "Done",
+};
+
 const NADI_TEMPLATES = ["Vata dominant, irregular, thready", "Pitta dominant, sharp, bounding", "Kapha dominant, slow, steady", "Mixed Vata-Pitta"];
 const TONGUE_TEMPLATES = ["Coated white", "Red/dry", "Pale", "Normal", "Yellow coating"];
 
 export default function ConsultationTab({ system, showNew, onShowNewDone }: Props) {
-  const [patients, setPatients] = useState<any[]>([]);
+  const [tokens, setTokens] = useState<AyushToken[]>([]);
+  const [selectedToken, setSelectedToken] = useState<AyushToken | null>(null);
   const [search, setSearch] = useState("");
-  const [selectedPatient, setSelectedPatient] = useState<any>(null);
   const [recentEncounters, setRecentEncounters] = useState<any[]>([]);
   const [drugs, setDrugs] = useState<any[]>([]);
+  const [hospitalId, setHospitalId] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   // Form state
   const [complaint, setComplaint] = useState("");
@@ -63,13 +101,69 @@ export default function ConsultationTab({ system, showNew, onShowNewDone }: Prop
   const [potency, setPotency] = useState("30c");
   const [homDose, setHomDose] = useState("1 dose");
 
-  useEffect(() => {
-    loadDrugs();
-  }, []);
+  const fetchTokens = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setLoading(false); return; }
 
+    const { data: userData } = await supabase.from("users").select("id, hospital_id").eq("auth_user_id", user.id).single();
+    if (!userData) { setLoading(false); return; }
+    setHospitalId(userData.hospital_id);
+    setUserId(userData.id);
+
+    // Find departments matching the selected AYUSH system
+    const patterns = SYSTEM_DEPT_MAP[system] || [`%${system}%`];
+    let deptIds: string[] = [];
+    for (const pattern of patterns) {
+      const { data: depts } = await supabase
+        .from("departments")
+        .select("id")
+        .eq("hospital_id", userData.hospital_id)
+        .ilike("name", pattern);
+      if (depts) deptIds.push(...depts.map(d => d.id));
+    }
+    // Deduplicate
+    deptIds = [...new Set(deptIds)];
+
+    if (deptIds.length === 0) {
+      setTokens([]);
+      setLoading(false);
+      return;
+    }
+
+    const today = new Date().toISOString().split("T")[0];
+    const { data, error } = await supabase
+      .from("opd_tokens")
+      .select("id, token_number, token_prefix, status, created_at, patient_id, doctor_id, patient:patients(id, full_name, uhid, gender, dob, phone), doctor:users!opd_tokens_doctor_id_fkey(full_name)")
+      .eq("hospital_id", userData.hospital_id)
+      .in("department_id", deptIds)
+      .eq("visit_date", today)
+      .order("created_at", { ascending: true });
+
+    if (error) {
+      console.error("Error fetching AYUSH tokens:", error);
+      toast.error("Failed to load queue");
+      setLoading(false);
+      return;
+    }
+    setTokens((data as unknown as AyushToken[]) || []);
+    setLoading(false);
+  }, [system]);
+
+  useEffect(() => { setSelectedToken(null); setLoading(true); fetchTokens(); }, [fetchTokens]);
+
+  // Realtime
   useEffect(() => {
-    if (search.length >= 2) searchPatients();
-  }, [search]);
+    if (!hospitalId) return;
+    const channel = supabase
+      .channel(`ayush-tokens-${system}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "opd_tokens", filter: `hospital_id=eq.${hospitalId}` }, () => fetchTokens())
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [hospitalId, system, fetchTokens]);
+
+  useEffect(() => { loadDrugs(); }, []);
+
+  const selectedPatient = selectedToken?.patient || null;
 
   useEffect(() => {
     if (selectedPatient) loadRecentEncounters();
@@ -78,13 +172,6 @@ export default function ConsultationTab({ system, showNew, onShowNewDone }: Prop
   const loadDrugs = async () => {
     const { data } = await supabase.from("ayush_drug_master").select("*").eq("is_active", true).order("drug_name");
     if (data) setDrugs(data);
-  };
-
-  const searchPatients = async () => {
-    const { data } = await supabase.from("patients").select("id, full_name, uhid, phone, date_of_birth, gender")
-      .or(`full_name.ilike.%${search}%,uhid.ilike.%${search}%,phone.ilike.%${search}%`)
-      .limit(20);
-    if (data) setPatients(data);
   };
 
   const loadRecentEncounters = async () => {
