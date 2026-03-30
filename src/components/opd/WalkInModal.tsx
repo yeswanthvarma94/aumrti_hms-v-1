@@ -300,7 +300,33 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated }) => {
       });
       if (tokenErr) throw tokenErr;
 
-      // Set receipt data and go to receipt step
+      // Sync referral to CRM: create patient_acquisition + increment referral_doctors counters
+      if (referralDoctorId) {
+        const today2 = new Date().toISOString().split("T")[0];
+        await supabase.from("patient_acquisition").insert({
+          hospital_id: hospitalId,
+          patient_id: patientId,
+          source: "referral_doctor",
+          referral_doctor_id: referralDoctorId,
+          first_visit_date: today2,
+          first_visit_revenue: fee,
+          is_new_patient: !useExisting,
+        } as any);
+
+        // Increment referral count and revenue on the referral doctor
+        const { data: rd } = await supabase
+          .from("referral_doctors")
+          .select("total_referrals, total_revenue")
+          .eq("id", referralDoctorId)
+          .single();
+        if (rd) {
+          await supabase.from("referral_doctors").update({
+            total_referrals: (rd.total_referrals || 0) + 1,
+            total_revenue: (rd.total_revenue || 0) + fee,
+            last_referral_at: new Date().toISOString(),
+          }).eq("id", referralDoctorId);
+        }
+      }
       const rData = {
         billNumber,
         patientName: patientDisplayName || "—",
