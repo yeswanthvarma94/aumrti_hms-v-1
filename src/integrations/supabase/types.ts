@@ -2612,6 +2612,54 @@ export type Database = {
           },
         ]
       }
+      cold_chain_log: {
+        Row: {
+          alert_triggered: boolean | null
+          corrective_action: string | null
+          hospital_id: string
+          id: string
+          recorded_at: string | null
+          recorded_by: string | null
+          temperature_c: number
+          unit_name: string
+        }
+        Insert: {
+          alert_triggered?: boolean | null
+          corrective_action?: string | null
+          hospital_id: string
+          id?: string
+          recorded_at?: string | null
+          recorded_by?: string | null
+          temperature_c: number
+          unit_name: string
+        }
+        Update: {
+          alert_triggered?: boolean | null
+          corrective_action?: string | null
+          hospital_id?: string
+          id?: string
+          recorded_at?: string | null
+          recorded_by?: string | null
+          temperature_c?: number
+          unit_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cold_chain_log_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cold_chain_log_recorded_by_fkey"
+            columns: ["recorded_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cold_storage_log: {
         Row: {
           alert_triggered: boolean | null
@@ -13171,6 +13219,362 @@ export type Database = {
             columns: ["hospital_id"]
             isOneToOne: false
             referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vaccination_due: {
+        Row: {
+          created_at: string | null
+          dose_number: number
+          due_date: string
+          hospital_id: string
+          id: string
+          patient_id: string
+          reminder_sent: boolean | null
+          reminder_sent_at: string | null
+          status: string | null
+          vaccine_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          dose_number: number
+          due_date: string
+          hospital_id: string
+          id?: string
+          patient_id: string
+          reminder_sent?: boolean | null
+          reminder_sent_at?: string | null
+          status?: string | null
+          vaccine_id: string
+        }
+        Update: {
+          created_at?: string | null
+          dose_number?: number
+          due_date?: string
+          hospital_id?: string
+          id?: string
+          patient_id?: string
+          reminder_sent?: boolean | null
+          reminder_sent_at?: string | null
+          status?: string | null
+          vaccine_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vaccination_due_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vaccination_due_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vaccination_due_vaccine_id_fkey"
+            columns: ["vaccine_id"]
+            isOneToOne: false
+            referencedRelation: "vaccine_master"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vaccination_records: {
+        Row: {
+          administered_at: string
+          administered_by: string
+          aefi_description: string | null
+          aefi_reported: boolean | null
+          aefi_severity: string | null
+          batch_number: string | null
+          camp_id: string | null
+          created_at: string | null
+          dose_number: number | null
+          expiry_date: string | null
+          hospital_id: string
+          id: string
+          manufacturer: string | null
+          next_dose_due: string | null
+          notes: string | null
+          patient_id: string
+          route: string | null
+          site: string | null
+          vaccine_id: string
+          vvm_status: string | null
+        }
+        Insert: {
+          administered_at: string
+          administered_by: string
+          aefi_description?: string | null
+          aefi_reported?: boolean | null
+          aefi_severity?: string | null
+          batch_number?: string | null
+          camp_id?: string | null
+          created_at?: string | null
+          dose_number?: number | null
+          expiry_date?: string | null
+          hospital_id: string
+          id?: string
+          manufacturer?: string | null
+          next_dose_due?: string | null
+          notes?: string | null
+          patient_id: string
+          route?: string | null
+          site?: string | null
+          vaccine_id: string
+          vvm_status?: string | null
+        }
+        Update: {
+          administered_at?: string
+          administered_by?: string
+          aefi_description?: string | null
+          aefi_reported?: boolean | null
+          aefi_severity?: string | null
+          batch_number?: string | null
+          camp_id?: string | null
+          created_at?: string | null
+          dose_number?: number | null
+          expiry_date?: string | null
+          hospital_id?: string
+          id?: string
+          manufacturer?: string | null
+          next_dose_due?: string | null
+          notes?: string | null
+          patient_id?: string
+          route?: string | null
+          site?: string | null
+          vaccine_id?: string
+          vvm_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vaccination_records_administered_by_fkey"
+            columns: ["administered_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vaccination_records_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vaccination_records_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vaccination_records_vaccine_id_fkey"
+            columns: ["vaccine_id"]
+            isOneToOne: false
+            referencedRelation: "vaccine_master"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vaccine_camps: {
+        Row: {
+          actual_count: number | null
+          camp_date: string
+          camp_name: string
+          conducted_by: string | null
+          created_at: string | null
+          hospital_id: string
+          id: string
+          location: string
+          notes: string | null
+          status: string | null
+          target_count: number | null
+          target_population: string | null
+          vaccines_planned: Json | null
+        }
+        Insert: {
+          actual_count?: number | null
+          camp_date: string
+          camp_name: string
+          conducted_by?: string | null
+          created_at?: string | null
+          hospital_id: string
+          id?: string
+          location: string
+          notes?: string | null
+          status?: string | null
+          target_count?: number | null
+          target_population?: string | null
+          vaccines_planned?: Json | null
+        }
+        Update: {
+          actual_count?: number | null
+          camp_date?: string
+          camp_name?: string
+          conducted_by?: string | null
+          created_at?: string | null
+          hospital_id?: string
+          id?: string
+          location?: string
+          notes?: string | null
+          status?: string | null
+          target_count?: number | null
+          target_population?: string | null
+          vaccines_planned?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vaccine_camps_conducted_by_fkey"
+            columns: ["conducted_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vaccine_camps_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vaccine_master: {
+        Row: {
+          age_given: string | null
+          contraindications: string | null
+          created_at: string | null
+          dose_ml: number | null
+          hospital_id: string | null
+          id: string
+          is_active: boolean | null
+          manufacturer: string | null
+          nis_schedule: boolean | null
+          route: string
+          site: string | null
+          storage_temp_c: string | null
+          type: string
+          vaccine_code: string
+          vaccine_name: string
+          vvm_type: string | null
+          week_of_life: number | null
+        }
+        Insert: {
+          age_given?: string | null
+          contraindications?: string | null
+          created_at?: string | null
+          dose_ml?: number | null
+          hospital_id?: string | null
+          id?: string
+          is_active?: boolean | null
+          manufacturer?: string | null
+          nis_schedule?: boolean | null
+          route: string
+          site?: string | null
+          storage_temp_c?: string | null
+          type: string
+          vaccine_code: string
+          vaccine_name: string
+          vvm_type?: string | null
+          week_of_life?: number | null
+        }
+        Update: {
+          age_given?: string | null
+          contraindications?: string | null
+          created_at?: string | null
+          dose_ml?: number | null
+          hospital_id?: string | null
+          id?: string
+          is_active?: boolean | null
+          manufacturer?: string | null
+          nis_schedule?: boolean | null
+          route?: string
+          site?: string | null
+          storage_temp_c?: string | null
+          type?: string
+          vaccine_code?: string
+          vaccine_name?: string
+          vvm_type?: string | null
+          week_of_life?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vaccine_master_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vaccine_stock: {
+        Row: {
+          batch_number: string
+          created_at: string | null
+          expiry_date: string
+          hospital_id: string
+          id: string
+          manufacturer: string
+          quantity_balance: number | null
+          quantity_received: number
+          quantity_used: number | null
+          quantity_wasted: number | null
+          received_date: string
+          stock_type: string | null
+          storage_location: string | null
+          vaccine_id: string
+        }
+        Insert: {
+          batch_number: string
+          created_at?: string | null
+          expiry_date: string
+          hospital_id: string
+          id?: string
+          manufacturer: string
+          quantity_balance?: number | null
+          quantity_received: number
+          quantity_used?: number | null
+          quantity_wasted?: number | null
+          received_date: string
+          stock_type?: string | null
+          storage_location?: string | null
+          vaccine_id: string
+        }
+        Update: {
+          batch_number?: string
+          created_at?: string | null
+          expiry_date?: string
+          hospital_id?: string
+          id?: string
+          manufacturer?: string
+          quantity_balance?: number | null
+          quantity_received?: number
+          quantity_used?: number | null
+          quantity_wasted?: number | null
+          received_date?: string
+          stock_type?: string | null
+          storage_location?: string | null
+          vaccine_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vaccine_stock_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vaccine_stock_vaccine_id_fkey"
+            columns: ["vaccine_id"]
+            isOneToOne: false
+            referencedRelation: "vaccine_master"
             referencedColumns: ["id"]
           },
         ]
