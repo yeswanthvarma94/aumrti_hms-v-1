@@ -708,6 +708,156 @@ export type Database = {
           },
         ]
       }
+      ayush_drug_master: {
+        Row: {
+          anupana: string | null
+          contraindications: string | null
+          created_at: string | null
+          dose_adult: string | null
+          drug_name: string
+          formulation_type: string
+          hospital_id: string | null
+          id: string
+          indications: string | null
+          is_active: boolean | null
+          manufacturer: string | null
+          system: string
+        }
+        Insert: {
+          anupana?: string | null
+          contraindications?: string | null
+          created_at?: string | null
+          dose_adult?: string | null
+          drug_name: string
+          formulation_type: string
+          hospital_id?: string | null
+          id?: string
+          indications?: string | null
+          is_active?: boolean | null
+          manufacturer?: string | null
+          system: string
+        }
+        Update: {
+          anupana?: string | null
+          contraindications?: string | null
+          created_at?: string | null
+          dose_adult?: string | null
+          drug_name?: string
+          formulation_type?: string
+          hospital_id?: string | null
+          id?: string
+          indications?: string | null
+          is_active?: boolean | null
+          manufacturer?: string | null
+          system?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ayush_drug_master_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ayush_encounters: {
+        Row: {
+          akriti_pariksha: string | null
+          ayurvedic_diagnosis: string | null
+          chief_complaint: string
+          created_at: string | null
+          diet_advice: string | null
+          drik_pariksha: string | null
+          encounter_date: string
+          follow_up_days: number | null
+          hospital_id: string
+          icd_code: string | null
+          id: string
+          jivha_pariksha: string | null
+          lifestyle_advice: string | null
+          mala_pariksha: string | null
+          mutra_pariksha: string | null
+          nadi_pariksha: string | null
+          patient_id: string
+          practitioner_id: string
+          prescription: Json | null
+          shabda_pariksha: string | null
+          sparsha_pariksha: string | null
+          system: string
+        }
+        Insert: {
+          akriti_pariksha?: string | null
+          ayurvedic_diagnosis?: string | null
+          chief_complaint: string
+          created_at?: string | null
+          diet_advice?: string | null
+          drik_pariksha?: string | null
+          encounter_date?: string
+          follow_up_days?: number | null
+          hospital_id: string
+          icd_code?: string | null
+          id?: string
+          jivha_pariksha?: string | null
+          lifestyle_advice?: string | null
+          mala_pariksha?: string | null
+          mutra_pariksha?: string | null
+          nadi_pariksha?: string | null
+          patient_id: string
+          practitioner_id: string
+          prescription?: Json | null
+          shabda_pariksha?: string | null
+          sparsha_pariksha?: string | null
+          system: string
+        }
+        Update: {
+          akriti_pariksha?: string | null
+          ayurvedic_diagnosis?: string | null
+          chief_complaint?: string
+          created_at?: string | null
+          diet_advice?: string | null
+          drik_pariksha?: string | null
+          encounter_date?: string
+          follow_up_days?: number | null
+          hospital_id?: string
+          icd_code?: string | null
+          id?: string
+          jivha_pariksha?: string | null
+          lifestyle_advice?: string | null
+          mala_pariksha?: string | null
+          mutra_pariksha?: string | null
+          nadi_pariksha?: string | null
+          patient_id?: string
+          practitioner_id?: string
+          prescription?: Json | null
+          shabda_pariksha?: string | null
+          sparsha_pariksha?: string | null
+          system?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ayush_encounters_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ayush_encounters_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ayush_encounters_practitioner_id_fkey"
+            columns: ["practitioner_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bank_accounts: {
         Row: {
           account_name: string
@@ -9891,6 +10041,95 @@ export type Database = {
           },
         ]
       }
+      panchakarma_schedules: {
+        Row: {
+          billed: boolean | null
+          completed_at: string | null
+          created_at: string | null
+          duration_minutes: number | null
+          hospital_id: string
+          id: string
+          observations: string | null
+          oil_medicine: string | null
+          oil_quantity_ml: number | null
+          patient_feedback: string | null
+          patient_id: string
+          prescribed_by: string
+          procedure_type: string
+          scheduled_date: string
+          session_time: string | null
+          status: string | null
+          therapist_id: string | null
+        }
+        Insert: {
+          billed?: boolean | null
+          completed_at?: string | null
+          created_at?: string | null
+          duration_minutes?: number | null
+          hospital_id: string
+          id?: string
+          observations?: string | null
+          oil_medicine?: string | null
+          oil_quantity_ml?: number | null
+          patient_feedback?: string | null
+          patient_id: string
+          prescribed_by: string
+          procedure_type: string
+          scheduled_date: string
+          session_time?: string | null
+          status?: string | null
+          therapist_id?: string | null
+        }
+        Update: {
+          billed?: boolean | null
+          completed_at?: string | null
+          created_at?: string | null
+          duration_minutes?: number | null
+          hospital_id?: string
+          id?: string
+          observations?: string | null
+          oil_medicine?: string | null
+          oil_quantity_ml?: number | null
+          patient_feedback?: string | null
+          patient_id?: string
+          prescribed_by?: string
+          procedure_type?: string
+          scheduled_date?: string
+          session_time?: string | null
+          status?: string | null
+          therapist_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "panchakarma_schedules_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "panchakarma_schedules_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "panchakarma_schedules_prescribed_by_fkey"
+            columns: ["prescribed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "panchakarma_schedules_therapist_id_fkey"
+            columns: ["therapist_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       partograph_records: {
         Row: {
           admission_id: string
@@ -11700,6 +11939,73 @@ export type Database = {
             columns: ["po_id"]
             isOneToOne: false
             referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prakriti_assessments: {
+        Row: {
+          assessed_at: string
+          assessed_by: string
+          created_at: string | null
+          dominant_dosha: string
+          hospital_id: string
+          id: string
+          kapha_score: number
+          patient_id: string
+          pitta_score: number
+          prakriti_summary: string | null
+          responses: Json
+          vata_score: number
+        }
+        Insert: {
+          assessed_at?: string
+          assessed_by: string
+          created_at?: string | null
+          dominant_dosha: string
+          hospital_id: string
+          id?: string
+          kapha_score: number
+          patient_id: string
+          pitta_score: number
+          prakriti_summary?: string | null
+          responses?: Json
+          vata_score: number
+        }
+        Update: {
+          assessed_at?: string
+          assessed_by?: string
+          created_at?: string | null
+          dominant_dosha?: string
+          hospital_id?: string
+          id?: string
+          kapha_score?: number
+          patient_id?: string
+          pitta_score?: number
+          prakriti_summary?: string | null
+          responses?: Json
+          vata_score?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prakriti_assessments_assessed_by_fkey"
+            columns: ["assessed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prakriti_assessments_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prakriti_assessments_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
             referencedColumns: ["id"]
           },
         ]
