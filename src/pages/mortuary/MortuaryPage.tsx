@@ -15,6 +15,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
 import { format, differenceInDays } from "date-fns";
+import PatientSearchPicker from "@/components/shared/PatientSearchPicker";
+import PatientRegistrationModal from "@/components/patients/PatientRegistrationModal";
 
 const HOSPITAL_ID = "8f3d08b3-8835-42a7-920e-fdf5a78260bc";
 
@@ -118,6 +120,7 @@ export default function MortuaryPage() {
   const [mccdForm, setMccdForm] = useState<string | null>(null);
   const [organModal, setOrganModal] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showPatientReg, setShowPatientReg] = useState<"admit" | "mlc" | null>(null);
 
   // Form states
   const [admitForm, setAdmitForm] = useState({
@@ -152,22 +155,38 @@ export default function MortuaryPage() {
   useEffect(() => { loadAll(); }, []);
 
   const loadAll = async () => {
-    const [a, m, mc, r, d, p, doc] = await Promise.all([
+    const [a, m, mc, r, d, doc] = await Promise.all([
       supabase.from("mortuary_admissions").select("*").eq("hospital_id", HOSPITAL_ID).order("admitted_at", { ascending: false }),
       supabase.from("mlc_records").select("*").eq("hospital_id", HOSPITAL_ID).order("created_at", { ascending: false }),
       supabase.from("mccd_certificates").select("*").eq("hospital_id", HOSPITAL_ID).order("created_at", { ascending: false }),
       supabase.from("body_releases").select("*").eq("hospital_id", HOSPITAL_ID).order("released_at", { ascending: false }),
       supabase.from("organ_donations").select("*").eq("hospital_id", HOSPITAL_ID).order("created_at", { ascending: false }),
-      supabase.from("patients").select("id, full_name, uhid, gender, date_of_birth, phone").eq("hospital_id", HOSPITAL_ID).order("created_at", { ascending: false }).limit(200),
       supabase.from("users").select("id, full_name, role").eq("hospital_id", HOSPITAL_ID),
     ]);
+    if (a.error) { console.error("mortuary_admissions load error:", a.error.message); toast.error("Failed to load mortuary records"); }
+    if (m.error) console.error("mlc_records load error:", m.error.message);
+    if (mc.error) console.error("mccd_certificates load error:", mc.error.message);
+    if (r.error) console.error("body_releases load error:", r.error.message);
+    if (d.error) console.error("organ_donations load error:", d.error.message);
     if (a.data) setAdmissions(a.data as any);
     if (m.data) setMlcRecords(m.data as any);
     if (mc.data) setMccdCerts(mc.data as any);
     if (r.data) setReleases(r.data as any);
     if (d.data) setDonations(d.data as any);
-    if (p.data) setPatients(p.data);
     if (doc.data) setDoctors(doc.data);
+    // Load patient names for display in tables (for already-linked records)
+    const patientIds = new Set<string>();
+    if (a.data) a.data.forEach((x: any) => patientIds.add(x.patient_id));
+    if (m.data) m.data.forEach((x: any) => patientIds.add(x.patient_id));
+    if (d.data) d.data.forEach((x: any) => patientIds.add(x.patient_id));
+    if (mc.data) mc.data.forEach((x: any) => patientIds.add(x.patient_id));
+    const ids = Array.from(patientIds).filter(Boolean);
+    if (ids.length > 0) {
+      const { data: pData } = await supabase.from("patients").select("id, full_name, uhid, gender, dob, phone").in("id", ids);
+      if (pData) setPatients(pData);
+    } else {
+      setPatients([]);
+    }
   };
 
   const getPatient = (id: string) => patients.find(p => p.id === id);
@@ -672,10 +691,12 @@ export default function MortuaryPage() {
           <DialogHeader><DialogTitle>Admit to Mortuary</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div><Label>Patient *</Label>
-              <Select value={admitForm.patient_id} onValueChange={v => setAdmitForm(f => ({ ...f, patient_id: v }))}>
-                <SelectTrigger><SelectValue placeholder="Select patient" /></SelectTrigger>
-                <SelectContent>{patients.map(p => <SelectItem key={p.id} value={p.id}>{p.full_name} ({p.uhid})</SelectItem>)}</SelectContent>
-              </Select>
+              <PatientSearchPicker
+                hospitalId={HOSPITAL_ID}
+                value={admitForm.patient_id}
+                onChange={v => setAdmitForm(f => ({ ...f, patient_id: v }))}
+                onRegisterNew={() => setShowPatientReg("admit")}
+              />
             </div>
             <div><Label>Time of Death *</Label><Input type="datetime-local" value={admitForm.time_of_death} onChange={e => setAdmitForm(f => ({ ...f, time_of_death: e.target.value }))} /></div>
             <div><Label>Pronounced by *</Label>
@@ -706,10 +727,12 @@ export default function MortuaryPage() {
           <DialogHeader><DialogTitle>Register Medico-Legal Case</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div><Label>Patient *</Label>
-              <Select value={mlcForm.patient_id} onValueChange={v => setMlcForm(f => ({ ...f, patient_id: v }))}>
-                <SelectTrigger><SelectValue placeholder="Select patient" /></SelectTrigger>
-                <SelectContent>{patients.map(p => <SelectItem key={p.id} value={p.id}>{p.full_name} ({p.uhid})</SelectItem>)}</SelectContent>
-              </Select>
+              <PatientSearchPicker
+                hospitalId={HOSPITAL_ID}
+                value={mlcForm.patient_id}
+                onChange={v => setMlcForm(f => ({ ...f, patient_id: v }))}
+                onRegisterNew={() => setShowPatientReg("mlc")}
+              />
             </div>
             <div><Label>Link to Mortuary Case</Label>
               <Select value={mlcForm.mortuary_id} onValueChange={v => setMlcForm(f => ({ ...f, mortuary_id: v }))}>
@@ -852,6 +875,34 @@ export default function MortuaryPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Patient Registration Modal */}
+      {showPatientReg && (
+        <div onClick={e => e.stopPropagation()}>
+          <PatientRegistrationModal
+            onClose={() => setShowPatientReg(null)}
+            onSuccess={async () => {
+              // Get the most recently created patient
+              const { data } = await supabase
+                .from("patients")
+                .select("id, full_name, uhid")
+                .eq("hospital_id", HOSPITAL_ID)
+                .order("created_at", { ascending: false })
+                .limit(1)
+                .maybeSingle();
+              if (data) {
+                if (showPatientReg === "admit") {
+                  setAdmitForm(f => ({ ...f, patient_id: data.id }));
+                } else if (showPatientReg === "mlc") {
+                  setMlcForm(f => ({ ...f, patient_id: data.id }));
+                }
+              }
+              setShowPatientReg(null);
+              await loadAll();
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }
