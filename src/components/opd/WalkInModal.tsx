@@ -543,7 +543,7 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated }) => {
               {referralSource && (
                 <div className="mt-1 px-3 py-1.5 bg-teal-50 border border-teal-200 rounded-lg text-xs text-teal-800 flex items-center justify-between">
                   <span>Referred by: <strong>{referralSource}</strong></span>
-                  <button onClick={() => setReferralSource("")} className="text-teal-500 hover:text-teal-700 ml-2">✕</button>
+                  <button onClick={() => { setReferralSource(""); setReferralDoctorId(null); }} className="text-teal-500 hover:text-teal-700 ml-2">✕</button>
                 </div>
               )}
             </div>
