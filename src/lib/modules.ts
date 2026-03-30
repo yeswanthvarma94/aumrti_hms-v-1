@@ -72,6 +72,7 @@ export const ALL_MODULES: ModuleDefinition[] = [
   { name: "Physiotherapy", desc: "Rehab, outcomes & HEP plans", icon: "🦿", route: "/physio", category: "Specialized", roles: ["physiotherapist", "doctor", "super_admin"], isNew: true },
   { name: "Mortuary & Medico-Legal", desc: "Mortuary register, MCCD, MLC & organ donation", icon: "🏥", route: "/mortuary", category: "Specialized", roles: ["mortuary_officer", "medical_officer", "super_admin"], isNew: true },
   { name: "Vaccination", desc: "NIS immunization, cold chain & camps", icon: "💉", route: "/vaccination", category: "Clinical", roles: ["nurse", "doctor", "super_admin"], isNew: true },
+  { name: "Dental", desc: "FDI tooth chart, perio & treatment plans", icon: "🦷", route: "/dental", category: "Specialized", roles: ["dentist", "super_admin"], isNew: true },
   { name: "Medical Records", desc: "MRD, ICD coding & retention", icon: "🗂️", route: "/mrd", category: "Operations", roles: ["mrd_officer", "super_admin", "billing_executive"], isNew: true },
   { name: "Biomedical Engineering", desc: "Equipment, PM, calibration & breakdowns", icon: "🔧", route: "/biomedical", category: "Operations", roles: ["biomedical_technician", "super_admin", "hospital_admin"], isNew: true },
   { name: "Housekeeping", desc: "Cleaning tasks, BMW & linen", icon: "🧹", route: "/housekeeping", category: "Operations", roles: ["housekeeping_supervisor", "super_admin", "hospital_admin"], isNew: true },

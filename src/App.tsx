@@ -87,6 +87,7 @@ import PROPage from "./pages/pro/PROPage";
 import PhysioPage from "./pages/physio/PhysioPage";
 import MortuaryPage from "./pages/mortuary/MortuaryPage";
 import VaccinationPage from "./pages/vaccination/VaccinationPage";
+import DentalPage from "./pages/dental/DentalPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -182,6 +183,7 @@ const App = () => (
             <Route path="/physio" element={<PhysioPage />} />
             <Route path="/mortuary" element={<MortuaryPage />} />
             <Route path="/vaccination" element={<VaccinationPage />} />
+            <Route path="/dental" element={<DentalPage />} />
             <Route path="/admin/go-live" element={<GoLiveChecklistPage />} />
             <Route path="/admin/data-migration" element={<DataMigrationPage />} />
           </Route>
