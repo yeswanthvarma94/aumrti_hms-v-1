@@ -6,24 +6,35 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import PatientSearchPicker from "@/components/shared/PatientSearchPicker";
-import { ChevronDown, AlertTriangle } from "lucide-react";
+import { ChevronDown, AlertTriangle, X, Search, Syringe } from "lucide-react";
 
 interface Props { hospitalId: string; onRecorded: () => void; }
+
+interface SelectedVaccine {
+  vaccineId: string;
+  vaccineName: string;
+  vaccineCode: string;
+  doseNumber: number;
+  site: string;
+}
 
 const RecordVaccineTab: React.FC<Props> = ({ hospitalId, onRecorded }) => {
   const [patientId, setPatientId] = useState("");
   const [patientName, setPatientName] = useState("");
   const [vaccines, setVaccines] = useState<any[]>([]);
-  const [vaccineId, setVaccineId] = useState("");
-  const [doseNumber, setDoseNumber] = useState(1);
+  const [selectedVaccines, setSelectedVaccines] = useState<SelectedVaccine[]>([]);
+  const [vaccineSearch, setVaccineSearch] = useState("");
+  const [vaccinePopoverOpen, setVaccinePopoverOpen] = useState(false);
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [batchNumber, setBatchNumber] = useState("");
   const [expiryDate, setExpiryDate] = useState("");
-  const [site, setSite] = useState("");
   const [vvmStatus, setVvmStatus] = useState("ok");
   const [aefiReported, setAefiReported] = useState(false);
   const [aefiDesc, setAefiDesc] = useState("");
@@ -35,79 +46,127 @@ const RecordVaccineTab: React.FC<Props> = ({ hospitalId, onRecorded }) => {
       .then(({ data }) => setVaccines(data || []));
   }, []);
 
+  // Auto-determine dose numbers when patient changes
   useEffect(() => {
-    if (vaccineId) {
-      const v = vaccines.find((x) => x.id === vaccineId);
-      if (v?.site) setSite(v.site);
-      // Auto-determine dose
-      if (patientId) {
-        supabase.from("vaccination_records").select("dose_number")
-          .eq("patient_id", patientId).eq("vaccine_id", vaccineId).eq("hospital_id", hospitalId)
-          .order("dose_number", { ascending: false }).limit(1)
-          .then(({ data }) => setDoseNumber((data?.[0]?.dose_number || 0) + 1));
-      }
+    if (patientId && selectedVaccines.length > 0) {
+      updateDoseNumbers();
     }
-  }, [vaccineId, patientId]);
+  }, [patientId]);
+
+  const updateDoseNumbers = async () => {
+    if (!patientId) return;
+    const updated = await Promise.all(selectedVaccines.map(async (sv) => {
+      const { data } = await supabase.from("vaccination_records").select("dose_number")
+        .eq("patient_id", patientId).eq("vaccine_id", sv.vaccineId).eq("hospital_id", hospitalId)
+        .order("dose_number", { ascending: false }).limit(1);
+      return { ...sv, doseNumber: (data?.[0]?.dose_number || 0) + 1 };
+    }));
+    setSelectedVaccines(updated);
+  };
+
+  const toggleVaccine = async (vaccine: any) => {
+    const existing = selectedVaccines.find(sv => sv.vaccineId === vaccine.id);
+    if (existing) {
+      setSelectedVaccines(prev => prev.filter(sv => sv.vaccineId !== vaccine.id));
+    } else {
+      let doseNumber = 1;
+      if (patientId) {
+        const { data } = await supabase.from("vaccination_records").select("dose_number")
+          .eq("patient_id", patientId).eq("vaccine_id", vaccine.id).eq("hospital_id", hospitalId)
+          .order("dose_number", { ascending: false }).limit(1);
+        doseNumber = (data?.[0]?.dose_number || 0) + 1;
+      }
+      setSelectedVaccines(prev => [...prev, {
+        vaccineId: vaccine.id,
+        vaccineName: vaccine.vaccine_name,
+        vaccineCode: vaccine.vaccine_code,
+        doseNumber,
+        site: vaccine.site || "",
+      }]);
+    }
+  };
+
+  const removeVaccine = (vaccineId: string) => {
+    setSelectedVaccines(prev => prev.filter(sv => sv.vaccineId !== vaccineId));
+  };
+
+  const updateVaccineDose = (vaccineId: string, dose: number) => {
+    setSelectedVaccines(prev => prev.map(sv => sv.vaccineId === vaccineId ? { ...sv, doseNumber: dose } : sv));
+  };
+
+  const updateVaccineSite = (vaccineId: string, site: string) => {
+    setSelectedVaccines(prev => prev.map(sv => sv.vaccineId === vaccineId ? { ...sv, site } : sv));
+  };
+
+  const filteredVaccines = vaccines.filter(v =>
+    !vaccineSearch ||
+    v.vaccine_name.toLowerCase().includes(vaccineSearch.toLowerCase()) ||
+    v.vaccine_code.toLowerCase().includes(vaccineSearch.toLowerCase())
+  );
 
   const handleSubmit = async () => {
-    if (!patientId || !vaccineId) { toast.error("Select patient and vaccine"); return; }
+    if (!patientId || selectedVaccines.length === 0) {
+      toast.error("Select patient and at least one vaccine");
+      return;
+    }
     setSaving(true);
 
     const { data: userData } = await supabase.auth.getUser();
     const userId = userData?.user?.id;
     const { data: userRow } = await supabase.from("users").select("id").eq("auth_user_id", userId).single();
+    const administeredBy = userRow?.id || patientId;
 
-    const { error } = await supabase.from("vaccination_records").insert({
-      hospital_id: hospitalId,
-      patient_id: patientId,
-      vaccine_id: vaccineId,
-      dose_number: doseNumber,
-      administered_at: date,
-      administered_by: userRow?.id || patientId,
-      batch_number: batchNumber || null,
-      expiry_date: expiryDate || null,
-      site: site || null,
-      vvm_status: vvmStatus,
-      aefi_reported: aefiReported,
-      aefi_description: aefiReported ? aefiDesc : null,
-      aefi_severity: aefiReported && aefiSeverity ? aefiSeverity : null,
-    });
+    let successCount = 0;
+    let failCount = 0;
 
-    if (error) { toast.error("Failed to record: " + error.message); setSaving(false); return; }
+    for (const sv of selectedVaccines) {
+      const { error } = await supabase.from("vaccination_records").insert({
+        hospital_id: hospitalId,
+        patient_id: patientId,
+        vaccine_id: sv.vaccineId,
+        dose_number: sv.doseNumber,
+        administered_at: date,
+        administered_by: administeredBy,
+        batch_number: batchNumber || null,
+        expiry_date: expiryDate || null,
+        site: sv.site || null,
+        vvm_status: vvmStatus,
+        aefi_reported: aefiReported,
+        aefi_description: aefiReported ? aefiDesc : null,
+        aefi_severity: aefiReported && aefiSeverity ? aefiSeverity : null,
+      });
 
-    // Update vaccination_due
-    await supabase.from("vaccination_due")
-      .update({ status: "given" })
-      .eq("patient_id", patientId).eq("vaccine_id", vaccineId)
-      .eq("dose_number", doseNumber).eq("hospital_id", hospitalId);
+      if (error) { failCount++; console.error(`Failed ${sv.vaccineCode}:`, error.message); continue; }
+      successCount++;
 
-    // Deduct stock
-    const { data: stock } = await supabase.from("vaccine_stock")
-      .select("id, quantity_used").eq("vaccine_id", vaccineId).eq("hospital_id", hospitalId)
-      .gt("quantity_balance", 0).order("expiry_date").limit(1);
-    if (stock && stock.length > 0) {
-      await supabase.from("vaccine_stock").update({ quantity_used: stock[0].quantity_used + 1 }).eq("id", stock[0].id);
-    }
+      // Update vaccination_due
+      await supabase.from("vaccination_due")
+        .update({ status: "given" })
+        .eq("patient_id", patientId).eq("vaccine_id", sv.vaccineId)
+        .eq("dose_number", sv.doseNumber).eq("hospital_id", hospitalId);
 
-    // Auto-schedule next dose for multi-dose vaccines
-    const selectedVaccine = vaccines.find((v) => v.id === vaccineId);
-    if (selectedVaccine && selectedVaccine.doses > doseNumber) {
-      // Fetch patient DOB for next dose calculation
-      const { data: patData } = await supabase.from("patients").select("dob").eq("id", patientId).single();
-      if (patData?.dob) {
-        const nextDoseNum = doseNumber + 1;
-        // Check if next dose already exists
+      // Deduct stock
+      const { data: stock } = await supabase.from("vaccine_stock")
+        .select("id, quantity_used").eq("vaccine_id", sv.vaccineId).eq("hospital_id", hospitalId)
+        .gt("quantity_balance", 0).order("expiry_date").limit(1);
+      if (stock && stock.length > 0) {
+        await supabase.from("vaccine_stock").update({ quantity_used: stock[0].quantity_used + 1 }).eq("id", stock[0].id);
+      }
+
+      // Auto-schedule next dose
+      const selectedVaccine = vaccines.find((v) => v.id === sv.vaccineId);
+      if (selectedVaccine && selectedVaccine.doses > sv.doseNumber) {
+        const nextDoseNum = sv.doseNumber + 1;
         const { data: existing } = await supabase.from("vaccination_due")
-          .select("id").eq("patient_id", patientId).eq("vaccine_id", vaccineId)
+          .select("id").eq("patient_id", patientId).eq("vaccine_id", sv.vaccineId)
           .eq("dose_number", nextDoseNum).eq("hospital_id", hospitalId).limit(1);
         if (!existing || existing.length === 0) {
-          // Calculate next due date: typically 4 weeks after current dose
           const nextDue = new Date(date);
           nextDue.setDate(nextDue.getDate() + 28);
           await supabase.from("vaccination_due").insert({
             hospital_id: hospitalId,
             patient_id: patientId,
-            vaccine_id: vaccineId,
+            vaccine_id: sv.vaccineId,
             dose_number: nextDoseNum,
             due_date: nextDue.toISOString().split("T")[0],
             status: "due",
@@ -116,10 +175,11 @@ const RecordVaccineTab: React.FC<Props> = ({ hospitalId, onRecorded }) => {
       }
     }
 
-    toast.success(`Vaccination recorded — Dose ${doseNumber}`);
+    if (successCount > 0) toast.success(`${successCount} vaccination${successCount > 1 ? "s" : ""} recorded`);
+    if (failCount > 0) toast.error(`${failCount} failed to record`);
+
     onRecorded();
-    // Reset
-    setPatientId(""); setPatientName(""); setVaccineId(""); setBatchNumber(""); setExpiryDate("");
+    setPatientId(""); setPatientName(""); setSelectedVaccines([]); setBatchNumber(""); setExpiryDate("");
     setAefiReported(false); setAefiDesc(""); setAefiSeverity("");
     setSaving(false);
   };
@@ -132,23 +192,84 @@ const RecordVaccineTab: React.FC<Props> = ({ hospitalId, onRecorded }) => {
           onChange={(id) => { setPatientId(id); }} />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label className="text-sm">Vaccine</Label>
-          <Select value={vaccineId} onValueChange={setVaccineId}>
-            <SelectTrigger><SelectValue placeholder="Select vaccine" /></SelectTrigger>
-            <SelectContent className="max-h-60">
-              {vaccines.map((v) => (
-                <SelectItem key={v.id} value={v.id}>{v.vaccine_code} — {v.vaccine_name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label className="text-sm">Dose Number</Label>
-          <Input type="number" min={1} value={doseNumber} onChange={(e) => setDoseNumber(Number(e.target.value))} />
-        </div>
+      {/* Multi-select vaccine picker */}
+      <div>
+        <Label className="text-sm font-medium mb-1 block">Vaccines</Label>
+        <Popover open={vaccinePopoverOpen} onOpenChange={setVaccinePopoverOpen}>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className="w-full justify-between h-auto min-h-10 py-2">
+              <span className="text-muted-foreground text-sm">
+                {selectedVaccines.length === 0 ? "Select vaccines..." : `${selectedVaccines.length} vaccine${selectedVaccines.length > 1 ? "s" : ""} selected`}
+              </span>
+              <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+            <div className="p-2 border-b">
+              <div className="flex items-center gap-2 px-2 py-1 rounded-md border bg-background">
+                <Search className="h-4 w-4 text-muted-foreground" />
+                <input
+                  className="flex-1 text-sm bg-transparent outline-none placeholder:text-muted-foreground"
+                  placeholder="Search vaccines..."
+                  value={vaccineSearch}
+                  onChange={(e) => setVaccineSearch(e.target.value)}
+                  autoFocus
+                />
+              </div>
+            </div>
+            <div className="max-h-60 overflow-auto p-1">
+              {filteredVaccines.map((v) => {
+                const isSelected = selectedVaccines.some(sv => sv.vaccineId === v.id);
+                return (
+                  <div
+                    key={v.id}
+                    className="flex items-center gap-2 px-2 py-1.5 rounded-sm cursor-pointer hover:bg-accent text-sm"
+                    onClick={() => toggleVaccine(v)}
+                  >
+                    <Checkbox checked={isSelected} className="pointer-events-none" />
+                    <span className="font-mono text-xs text-muted-foreground w-12">{v.vaccine_code}</span>
+                    <span className="flex-1 truncate">{v.vaccine_name}</span>
+                  </div>
+                );
+              })}
+              {filteredVaccines.length === 0 && (
+                <p className="text-center text-sm text-muted-foreground py-4">No vaccines found</p>
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
       </div>
+
+      {/* Selected vaccines list */}
+      {selectedVaccines.length > 0 && (
+        <div className="space-y-2">
+          <Label className="text-xs text-muted-foreground">Selected Vaccines ({selectedVaccines.length})</Label>
+          {selectedVaccines.map((sv) => (
+            <div key={sv.vaccineId} className="flex items-center gap-2 p-2 rounded-md border bg-muted/30">
+              <Syringe className="h-4 w-4 text-primary shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">{sv.vaccineCode} — {sv.vaccineName}</p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Label className="text-xs">Dose</Label>
+                <Input
+                  type="number" min={1} className="w-16 h-7 text-xs"
+                  value={sv.doseNumber}
+                  onChange={(e) => updateVaccineDose(sv.vaccineId, Number(e.target.value))}
+                />
+                <Input
+                  className="w-28 h-7 text-xs" placeholder="Site"
+                  value={sv.site}
+                  onChange={(e) => updateVaccineSite(sv.vaccineId, e.target.value)}
+                />
+                <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => removeVaccine(sv.vaccineId)}>
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="grid grid-cols-3 gap-4">
         <div>
@@ -165,23 +286,17 @@ const RecordVaccineTab: React.FC<Props> = ({ hospitalId, onRecorded }) => {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label className="text-sm">Site</Label>
-          <Input value={site} onChange={(e) => setSite(e.target.value)} placeholder="e.g. Left upper arm" />
-        </div>
-        <div>
-          <Label className="text-sm">VVM Status</Label>
-          <Select value={vvmStatus} onValueChange={setVvmStatus}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ok">OK ✅</SelectItem>
-              <SelectItem value="stage1">Stage 1</SelectItem>
-              <SelectItem value="stage2">Stage 2 ⚠️</SelectItem>
-              <SelectItem value="discarded">Discarded ❌</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+      <div>
+        <Label className="text-sm">VVM Status</Label>
+        <Select value={vvmStatus} onValueChange={setVvmStatus}>
+          <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ok">OK ✅</SelectItem>
+            <SelectItem value="stage1">Stage 1</SelectItem>
+            <SelectItem value="stage2">Stage 2 ⚠️</SelectItem>
+            <SelectItem value="discarded">Discarded ❌</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <Collapsible>
@@ -212,8 +327,8 @@ const RecordVaccineTab: React.FC<Props> = ({ hospitalId, onRecorded }) => {
         </CollapsibleContent>
       </Collapsible>
 
-      <Button onClick={handleSubmit} disabled={saving} className="w-full">
-        {saving ? "Recording..." : "Record Vaccination"}
+      <Button onClick={handleSubmit} disabled={saving || selectedVaccines.length === 0} className="w-full">
+        {saving ? "Recording..." : `Record ${selectedVaccines.length || ""} Vaccination${selectedVaccines.length > 1 ? "s" : ""}`}
       </Button>
     </Card>
   );
