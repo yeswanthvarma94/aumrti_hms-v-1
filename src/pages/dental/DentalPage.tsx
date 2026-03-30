@@ -19,8 +19,15 @@ interface PatientRow {
   id: string;
   full_name: string;
   uhid: string;
-  gender: string;
-  age_years: number | null;
+  gender: string | null;
+  dob: string | null;
+}
+
+function calcAge(dob: string | null): string {
+  if (!dob) return "—";
+  const diff = Date.now() - new Date(dob).getTime();
+  const years = Math.floor(diff / (365.25 * 24 * 60 * 60 * 1000));
+  return `${years}y`;
 }
 
 const DentalPage: React.FC = () => {
@@ -29,6 +36,7 @@ const DentalPage: React.FC = () => {
   const [patients, setPatients] = useState<PatientRow[]>([]);
   const [selectedPatient, setSelectedPatient] = useState<PatientRow | null>(null);
   const [activeTab, setActiveTab] = useState("chart");
+  const [userId, setUserId] = useState<string | null>(null);
 
   // Chart state
   const [chartData, setChartData] = useState<ChartData>({});
@@ -39,12 +47,18 @@ const DentalPage: React.FC = () => {
 
   useEffect(() => {
     searchPatients("");
+    supabase.auth.getUser().then(({ data }) => {
+      if (data?.user) {
+        supabase.from("users").select("id").eq("auth_user_id", data.user.id).single()
+          .then(({ data: u }) => { if (u) setUserId(u.id); });
+      }
+    });
   }, []);
 
   const searchPatients = async (q: string) => {
     let query = supabase
       .from("patients")
-      .select("id, full_name, uhid, gender, age_years")
+      .select("id, full_name, uhid, gender, dob")
       .eq("hospital_id", HOSPITAL_ID)
       .order("created_at", { ascending: false })
       .limit(50);
@@ -61,7 +75,6 @@ const DentalPage: React.FC = () => {
   const selectPatient = async (p: PatientRow) => {
     setSelectedPatient(p);
     setActiveTab("chart");
-    // Load latest chart
     const { data } = await supabase
       .from("dental_charts")
       .select("*")
@@ -98,7 +111,7 @@ const DentalPage: React.FC = () => {
       </div>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Left Panel - Patient List */}
+        {/* Left Panel */}
         <div className="w-[280px] border-r bg-card flex flex-col shrink-0">
           <div className="p-2 border-b">
             <div className="relative">
@@ -127,7 +140,7 @@ const DentalPage: React.FC = () => {
                   <div className="min-w-0 flex-1">
                     <p className="font-medium text-xs truncate">{p.full_name}</p>
                     <p className="text-[10px] text-muted-foreground">
-                      {p.uhid} · {p.gender} · {p.age_years ? `${p.age_years}y` : "—"}
+                      {p.uhid} · {p.gender || "—"} · {calcAge(p.dob)}
                     </p>
                   </div>
                 </button>
@@ -139,7 +152,7 @@ const DentalPage: React.FC = () => {
           </ScrollArea>
         </div>
 
-        {/* Right Panel - Workspace */}
+        {/* Right Panel */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {!selectedPatient ? (
             <div className="flex-1 flex items-center justify-center text-muted-foreground">
@@ -150,7 +163,6 @@ const DentalPage: React.FC = () => {
             </div>
           ) : (
             <>
-              {/* Patient header */}
               <div className="px-4 py-2 border-b bg-muted/20 flex items-center gap-3 shrink-0">
                 <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
                   <User size={16} className="text-primary" />
@@ -158,13 +170,12 @@ const DentalPage: React.FC = () => {
                 <div>
                   <p className="font-semibold text-sm">{selectedPatient.full_name}</p>
                   <p className="text-[11px] text-muted-foreground">
-                    {selectedPatient.uhid} · {selectedPatient.gender} · {selectedPatient.age_years ? `${selectedPatient.age_years} yrs` : "—"}
+                    {selectedPatient.uhid} · {selectedPatient.gender || "—"} · {calcAge(selectedPatient.dob)}
                   </p>
                 </div>
                 {chartId && <Badge variant="outline" className="text-[10px] ml-auto">Existing Chart</Badge>}
               </div>
 
-              {/* Tabs */}
               <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
                 <TabsList className="mx-4 mt-2 w-fit shrink-0">
                   <TabsTrigger value="chart">🦷 Tooth Chart</TabsTrigger>
@@ -187,16 +198,17 @@ const DentalPage: React.FC = () => {
                       softTissueNotes={softTissueNotes}
                       setSoftTissueNotes={setSoftTissueNotes}
                       chartId={chartId}
+                      userId={userId}
                     />
                   </TabsContent>
                   <TabsContent value="perio" className="mt-0 h-full">
-                    <PeriodontalTab patientId={selectedPatient.id} hospitalId={HOSPITAL_ID} />
+                    <PeriodontalTab patientId={selectedPatient.id} hospitalId={HOSPITAL_ID} userId={userId} />
                   </TabsContent>
                   <TabsContent value="treatment" className="mt-0 h-full">
-                    <TreatmentPlanTab patientId={selectedPatient.id} hospitalId={HOSPITAL_ID} />
+                    <TreatmentPlanTab patientId={selectedPatient.id} hospitalId={HOSPITAL_ID} userId={userId} />
                   </TabsContent>
                   <TabsContent value="lab" className="mt-0 h-full">
-                    <LabOrdersTab patientId={selectedPatient.id} hospitalId={HOSPITAL_ID} />
+                    <LabOrdersTab patientId={selectedPatient.id} hospitalId={HOSPITAL_ID} userId={userId} />
                   </TabsContent>
                 </div>
               </Tabs>

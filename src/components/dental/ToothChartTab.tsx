@@ -45,12 +45,13 @@ interface ToothChartTabProps {
   softTissueNotes: string;
   setSoftTissueNotes: (v: string) => void;
   chartId: string | null;
+  userId: string | null;
 }
 
 const ToothChartTab: React.FC<ToothChartTabProps> = ({
   patientId, hospitalId, chartData, setChartData,
   oralHygiene, setOralHygiene, calculus, setCalculus,
-  softTissueNotes, setSoftTissueNotes, chartId,
+  softTissueNotes, setSoftTissueNotes, chartId, userId,
 }) => {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
@@ -72,11 +73,13 @@ const ToothChartTab: React.FC<ToothChartTabProps> = ({
   };
 
   const handleSave = async () => {
+    if (!userId) { toast({ title: "Please log in first", variant: "destructive" }); return; }
     setSaving(true);
     try {
-      const payload = {
+      const payload: any = {
         hospital_id: hospitalId,
         patient_id: patientId,
+        created_by: userId,
         chart_date: new Date().toISOString().split("T")[0],
         chart_data: chartData as any,
         oral_hygiene: oralHygiene || null,
@@ -102,12 +105,10 @@ const ToothChartTab: React.FC<ToothChartTabProps> = ({
 
   return (
     <div className="space-y-4 overflow-y-auto" style={{ maxHeight: "calc(100vh - 240px)" }}>
-      {/* Interactive FDI Chart */}
       <div className="bg-card rounded-lg border p-4">
         <FDIToothChart chartData={chartData} onSurfaceClick={handleSurfaceClick} />
       </div>
 
-      {/* Oral Hygiene Section */}
       <div className="bg-card rounded-lg border p-4 space-y-3">
         <h4 className="text-sm font-semibold">Oral Hygiene Assessment</h4>
         <div className="flex gap-4">
@@ -115,15 +116,7 @@ const ToothChartTab: React.FC<ToothChartTabProps> = ({
             <p className="text-xs text-muted-foreground mb-1">Oral Hygiene</p>
             <div className="flex gap-1">
               {["good", "fair", "poor"].map((v) => (
-                <Button
-                  key={v}
-                  size="sm"
-                  variant={oralHygiene === v ? "default" : "outline"}
-                  onClick={() => setOralHygiene(v)}
-                  className="capitalize h-8 text-xs"
-                >
-                  {v}
-                </Button>
+                <Button key={v} size="sm" variant={oralHygiene === v ? "default" : "outline"} onClick={() => setOralHygiene(v)} className="capitalize h-8 text-xs">{v}</Button>
               ))}
             </div>
           </div>
@@ -131,27 +124,14 @@ const ToothChartTab: React.FC<ToothChartTabProps> = ({
             <p className="text-xs text-muted-foreground mb-1">Calculus</p>
             <div className="flex gap-1">
               {["none", "mild", "moderate", "heavy"].map((v) => (
-                <Button
-                  key={v}
-                  size="sm"
-                  variant={calculus === v ? "default" : "outline"}
-                  onClick={() => setCalculus(v)}
-                  className="capitalize h-8 text-xs"
-                >
-                  {v}
-                </Button>
+                <Button key={v} size="sm" variant={calculus === v ? "default" : "outline"} onClick={() => setCalculus(v)} className="capitalize h-8 text-xs">{v}</Button>
               ))}
             </div>
           </div>
         </div>
         <div>
           <p className="text-xs text-muted-foreground mb-1">Soft Tissue Notes</p>
-          <Textarea
-            value={softTissueNotes}
-            onChange={(e) => setSoftTissueNotes(e.target.value)}
-            placeholder="Gingival findings, mucosal lesions..."
-            rows={2}
-          />
+          <Textarea value={softTissueNotes} onChange={(e) => setSoftTissueNotes(e.target.value)} placeholder="Gingival findings, mucosal lesions..." rows={2} />
         </div>
       </div>
 
@@ -160,23 +140,14 @@ const ToothChartTab: React.FC<ToothChartTabProps> = ({
         {saving ? "Saving..." : "Save Chart"}
       </Button>
 
-      {/* Surface status modal */}
       <Dialog open={!!modal} onOpenChange={() => setModal(null)}>
         <DialogContent className="max-w-xs">
           <DialogHeader>
-            <DialogTitle>
-              Tooth {modal?.tooth} — Surface {modal?.surface}
-            </DialogTitle>
+            <DialogTitle>Tooth {modal?.tooth} — Surface {modal?.surface}</DialogTitle>
           </DialogHeader>
           <div className="grid grid-cols-3 gap-2">
             {STATUSES.map((s) => (
-              <Badge
-                key={s.value}
-                className={`cursor-pointer justify-center py-2 ${STATUS_BADGE_COLORS[s.value]}`}
-                onClick={() => applyStatus(s.value)}
-              >
-                {s.label}
-              </Badge>
+              <Badge key={s.value} className={`cursor-pointer justify-center py-2 ${STATUS_BADGE_COLORS[s.value]}`} onClick={() => applyStatus(s.value)}>{s.label}</Badge>
             ))}
           </div>
         </DialogContent>

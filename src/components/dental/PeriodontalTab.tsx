@@ -18,6 +18,7 @@ type ProbeData = Record<number, {
 interface PeriodontalTabProps {
   patientId: string;
   hospitalId: string;
+  userId: string | null;
 }
 
 const depthColor = (v: number) => {
@@ -26,7 +27,7 @@ const depthColor = (v: number) => {
   return "bg-red-100 text-red-800";
 };
 
-const PeriodontalTab: React.FC<PeriodontalTabProps> = ({ patientId, hospitalId }) => {
+const PeriodontalTab: React.FC<PeriodontalTabProps> = ({ patientId, hospitalId, userId }) => {
   const { toast } = useToast();
   const [probeData, setProbeData] = useState<ProbeData>(() => {
     const init: ProbeData = {};
@@ -51,23 +52,23 @@ const PeriodontalTab: React.FC<PeriodontalTabProps> = ({ patientId, hospitalId }
       if (d.palatal_bop) bopSites++;
     });
     const bleedingIndex = totalSites > 0 ? Math.round((bopSites / totalSites) * 100) : 0;
-
     let diagnosis = "Healthy";
     if (maxDepth >= 6) diagnosis = "Stage III-IV Periodontitis";
     else if (maxDepth >= 4) diagnosis = "Stage I-II Periodontitis";
     else if (bleedingIndex > 10) diagnosis = "Gingivitis";
-
     return { bleedingIndex, maxDepth, maxTooth, diagnosis };
   }, [probeData]);
 
   const handleSave = async () => {
+    if (!userId) { toast({ title: "Please log in first", variant: "destructive" }); return; }
     setSaving(true);
     try {
       const { error } = await supabase.from("periodontal_charts").insert({
         hospital_id: hospitalId,
         patient_id: patientId,
+        created_by: userId,
         chart_date: new Date().toISOString().split("T")[0],
-        probing_data: probeData as any,
+        perio_data: probeData as any,
         bleeding_index: stats.bleedingIndex,
         diagnosis: stats.diagnosis === "Healthy" ? "healthy"
           : stats.diagnosis === "Gingivitis" ? "gingivitis"
@@ -96,7 +97,6 @@ const PeriodontalTab: React.FC<PeriodontalTabProps> = ({ patientId, hospitalId }
 
   return (
     <div className="space-y-4 overflow-y-auto" style={{ maxHeight: "calc(100vh - 240px)" }}>
-      {/* Summary stats */}
       <div className="flex gap-3">
         <Badge variant="outline" className="text-xs">Bleeding Index: {stats.bleedingIndex}%</Badge>
         <Badge variant="outline" className="text-xs">Deepest: {stats.maxDepth}mm (tooth {stats.maxTooth})</Badge>
@@ -105,7 +105,6 @@ const PeriodontalTab: React.FC<PeriodontalTabProps> = ({ patientId, hospitalId }
         </Badge>
       </div>
 
-      {/* Grid */}
       <div className="bg-card rounded-lg border overflow-x-auto">
         <table className="w-full text-xs">
           <thead>

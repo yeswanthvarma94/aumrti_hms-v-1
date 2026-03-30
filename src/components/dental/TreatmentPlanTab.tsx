@@ -29,12 +29,12 @@ interface TreatmentItem {
 interface TreatmentPlanTabProps {
   patientId: string;
   hospitalId: string;
+  userId: string | null;
 }
 
 const PRIORITY_COLORS = { urgent: "bg-red-500 text-white", soon: "bg-amber-500 text-white", elective: "bg-muted text-muted-foreground" };
-const STATUS_COLORS = { planned: "outline", in_progress: "default", completed: "default", skipped: "secondary" } as const;
 
-const TreatmentPlanTab: React.FC<TreatmentPlanTabProps> = ({ patientId, hospitalId }) => {
+const TreatmentPlanTab: React.FC<TreatmentPlanTabProps> = ({ patientId, hospitalId, userId }) => {
   const { toast } = useToast();
   const [items, setItems] = useState<TreatmentItem[]>([]);
   const [consent, setConsent] = useState(false);
@@ -45,9 +45,7 @@ const TreatmentPlanTab: React.FC<TreatmentPlanTabProps> = ({ patientId, hospital
     tooth_number: "", procedure: "", priority: "soon", cost: 0, sessions: 1, status: "planned",
   });
 
-  useEffect(() => {
-    loadPlan();
-  }, [patientId]);
+  useEffect(() => { loadPlan(); }, [patientId]);
 
   const loadPlan = async () => {
     const { data } = await supabase
@@ -59,8 +57,8 @@ const TreatmentPlanTab: React.FC<TreatmentPlanTabProps> = ({ patientId, hospital
       .limit(1);
     if (data && data.length > 0) {
       setPlanId(data[0].id);
-      const procedures = data[0].procedures as any;
-      if (Array.isArray(procedures)) setItems(procedures);
+      const planItems = data[0].plan_items as any;
+      if (Array.isArray(planItems)) setItems(planItems);
       setConsent(data[0].patient_consent || false);
     }
   };
@@ -83,18 +81,20 @@ const TreatmentPlanTab: React.FC<TreatmentPlanTabProps> = ({ patientId, hospital
   const totalCost = items.reduce((s, i) => s + (i.cost || 0), 0);
 
   const handleSave = async () => {
+    if (!userId) { toast({ title: "Please log in first", variant: "destructive" }); return; }
     setSaving(true);
     try {
-      const payload = {
+      const payload: any = {
         hospital_id: hospitalId,
         patient_id: patientId,
-        procedures: items as any,
+        created_by: userId,
+        plan_items: items,
         total_cost: totalCost,
         patient_consent: consent,
         consent_date: consent ? new Date().toISOString().split("T")[0] : null,
-        status: items.every(i => i.status === "completed") ? "completed" as const
-          : items.some(i => i.status === "in_progress" || i.status === "completed") ? "partially_done" as const
-          : "active" as const,
+        status: items.every(i => i.status === "completed") ? "completed"
+          : items.some(i => i.status === "in_progress" || i.status === "completed") ? "partially_done"
+          : "active",
       };
       if (planId) {
         const { error } = await supabase.from("dental_treatment_plans").update(payload).eq("id", planId);
@@ -145,9 +145,7 @@ const TreatmentPlanTab: React.FC<TreatmentPlanTabProps> = ({ patientId, hospital
                 <TableCell className="text-xs text-center">{item.sessions}</TableCell>
                 <TableCell>
                   <Select value={item.status} onValueChange={(v) => updateItemStatus(idx, v as TreatmentItem["status"])}>
-                    <SelectTrigger className="h-7 text-xs w-28">
-                      <SelectValue />
-                    </SelectTrigger>
+                    <SelectTrigger className="h-7 text-xs w-28"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="planned">Planned</SelectItem>
                       <SelectItem value="in_progress">In Progress</SelectItem>
@@ -167,7 +165,6 @@ const TreatmentPlanTab: React.FC<TreatmentPlanTabProps> = ({ patientId, hospital
         )}
       </div>
 
-      {/* Consent */}
       <div className="flex items-center gap-3 bg-card rounded-lg border p-3">
         <Switch checked={consent} onCheckedChange={setConsent} />
         <span className="text-sm">Patient consented to treatment plan</span>
@@ -179,7 +176,6 @@ const TreatmentPlanTab: React.FC<TreatmentPlanTabProps> = ({ patientId, hospital
         {saving ? "Saving..." : "Save Treatment Plan"}
       </Button>
 
-      {/* Add Item Modal */}
       <Dialog open={showAdd} onOpenChange={setShowAdd}>
         <DialogContent className="max-w-sm">
           <DialogHeader><DialogTitle>Add Treatment Item</DialogTitle></DialogHeader>

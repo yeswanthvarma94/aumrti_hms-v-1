@@ -35,9 +35,10 @@ const STATUS_COLORS: Record<string, string> = {
 interface LabOrdersTabProps {
   patientId: string;
   hospitalId: string;
+  userId: string | null;
 }
 
-const LabOrdersTab: React.FC<LabOrdersTabProps> = ({ patientId, hospitalId }) => {
+const LabOrdersTab: React.FC<LabOrdersTabProps> = ({ patientId, hospitalId, userId }) => {
   const { toast } = useToast();
   const [orders, setOrders] = useState<any[]>([]);
   const [showNew, setShowNew] = useState(false);
@@ -61,14 +62,18 @@ const LabOrdersTab: React.FC<LabOrdersTabProps> = ({ patientId, hospitalId }) =>
   };
 
   const handleSubmit = async () => {
-    if (!form.work_type) return;
+    if (!form.work_type || !userId) {
+      if (!userId) toast({ title: "Please log in first", variant: "destructive" });
+      return;
+    }
     setSubmitting(true);
     try {
       const { error } = await supabase.from("dental_lab_orders").insert({
         hospital_id: hospitalId,
         patient_id: patientId,
+        ordered_by: userId,
         work_type: form.work_type,
-        tooth_numbers: form.tooth_numbers,
+        tooth_numbers: form.tooth_numbers || "N/A",
         lab_name: form.lab_name || null,
         material: form.material || null,
         shade: form.shade || null,
@@ -131,9 +136,7 @@ const LabOrdersTab: React.FC<LabOrdersTabProps> = ({ patientId, hospitalId }) =>
                 <TableCell className="text-xs">{o.order_date ? new Date(o.order_date).toLocaleDateString("en-IN") : "—"}</TableCell>
                 <TableCell className="text-xs">{o.expected_date ? new Date(o.expected_date).toLocaleDateString("en-IN") : "—"}</TableCell>
                 <TableCell>
-                  <Badge className={`text-[10px] ${STATUS_COLORS[o.status] || ""}`}>
-                    {o.status?.replace(/_/g, " ")}
-                  </Badge>
+                  <Badge className={`text-[10px] ${STATUS_COLORS[o.status] || ""}`}>{o.status?.replace(/_/g, " ")}</Badge>
                 </TableCell>
                 <TableCell>
                   {o.status === "ordered" && (
@@ -152,7 +155,6 @@ const LabOrdersTab: React.FC<LabOrdersTabProps> = ({ patientId, hospitalId }) =>
         </Table>
       </div>
 
-      {/* New Lab Order Modal */}
       <Dialog open={showNew} onOpenChange={setShowNew}>
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>New Lab Order</DialogTitle></DialogHeader>
