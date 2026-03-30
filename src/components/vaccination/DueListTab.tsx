@@ -19,7 +19,7 @@ const DueListTab: React.FC<Props> = ({ hospitalId }) => {
     setLoading(true);
     const today = new Date().toISOString().split("T")[0];
     let q = supabase.from("vaccination_due")
-      .select("*, patients(full_name, uhid, phone, date_of_birth), vaccine_master(vaccine_name, vaccine_code)")
+      .select("*, patients(full_name, uhid, phone, dob), vaccine_master(vaccine_name, vaccine_code)")
       .eq("hospital_id", hospitalId);
 
     if (filter === "overdue") {
@@ -48,6 +48,7 @@ const DueListTab: React.FC<Props> = ({ hospitalId }) => {
   const getAge = (dob: string | null) => {
     if (!dob) return "—";
     const months = Math.floor((Date.now() - new Date(dob).getTime()) / (30.44 * 86400000));
+    if (months < 1) return `${Math.max(0, Math.floor((Date.now() - new Date(dob).getTime()) / 86400000))} d`;
     if (months < 24) return `${months} mo`;
     return `${Math.floor(months / 12)} yr`;
   };
@@ -103,7 +104,7 @@ const DueListTab: React.FC<Props> = ({ hospitalId }) => {
                   <p className="font-medium text-sm">{item.patients?.full_name}</p>
                   <p className="text-xs text-muted-foreground font-mono">{item.patients?.uhid}</p>
                 </TableCell>
-                <TableCell className="text-sm">{getAge(item.patients?.date_of_birth)}</TableCell>
+                <TableCell className="text-sm">{getAge(item.patients?.dob)}</TableCell>
                 <TableCell>
                   <Badge variant="outline" className="text-xs">{item.vaccine_master?.vaccine_code}</Badge>
                 </TableCell>

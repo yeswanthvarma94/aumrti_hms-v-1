@@ -34,9 +34,9 @@ const VaccinationPage: React.FC = () => {
 
     const [givenRes, overdueRes, weekRes, coldRes] = await Promise.all([
       supabase.from("vaccination_records").select("id", { count: "exact", head: true })
-        .eq("hospital_id", HOSPITAL_ID).eq("administered_at", today),
+        .eq("hospital_id", HOSPITAL_ID).gte("administered_at", today).lte("administered_at", today),
       supabase.from("vaccination_due").select("id", { count: "exact", head: true })
-        .eq("hospital_id", HOSPITAL_ID).eq("status", "overdue"),
+        .eq("hospital_id", HOSPITAL_ID).in("status", ["overdue"]).lt("due_date", today),
       supabase.from("vaccination_due").select("id", { count: "exact", head: true })
         .eq("hospital_id", HOSPITAL_ID).eq("status", "due").lte("due_date", weekLater),
       supabase.from("cold_chain_log").select("temperature_c, alert_triggered")
