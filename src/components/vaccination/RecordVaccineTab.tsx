@@ -101,8 +101,8 @@ const RecordVaccineTab: React.FC<Props> = ({ hospitalId, onRecorded }) => {
     <Card className="p-4 max-w-2xl space-y-4">
       <div>
         <Label className="text-sm font-medium mb-1 block">Patient</Label>
-        <PatientSearchPicker hospitalId={hospitalId} value={patientId} displayValue={patientName}
-          onSelect={(id, name) => { setPatientId(id); setPatientName(name); }} />
+        <PatientSearchPicker hospitalId={hospitalId} value={patientId} selectedLabel={patientName}
+          onChange={(id) => { setPatientId(id); }} />
       </div>
 
       <div className="grid grid-cols-2 gap-4">

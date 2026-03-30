@@ -230,7 +230,7 @@ const PatientCardTab: React.FC<Props> = ({ hospitalId }) => {
 
       {!selectedPatient && (
         <div className="text-center py-16 text-muted-foreground">
-          <Syringe className="h-12 w-12 mx-auto mb-3 opacity-30" />
+          <SyringeIcon className="h-12 w-12 mx-auto mb-3 opacity-30" />
           <p className="text-sm">Search for a patient to view their vaccination card</p>
         </div>
       )}

@@ -51,9 +51,8 @@ const ColdChainTab: React.FC<Props> = ({ hospitalId, onLogged }) => {
         hospital_id: hospitalId,
         alert_type: "cold_chain_breach",
         severity: "critical",
-        title: `Cold chain breach: ${temp}°C in ${unitName}`,
-        message: `Temperature ${temp}°C is outside safe range (2-8°C). Vaccines may be compromised.`,
-      }).then(() => {});
+        alert_message: `Cold chain breach: ${temp}°C in ${unitName}. Outside safe range (2-8°C).`,
+      });
     } else {
       toast.success(`Temperature logged: ${temp}°C ✅`);
     }
