@@ -43,7 +43,7 @@ export default function CreatePackageModal({ open, onClose }: Props) {
     }
     setSaving(true);
     const totalMins = components.reduce((s, c) => s + (c.estimated_mins || 0), 0);
-    const { error } = await supabase.from("health_packages").insert({
+    const { error } = await supabase.from("health_packages").insert([{
       hospital_id: HOSPITAL_ID,
       package_name: form.package_name,
       package_code: form.package_code,
@@ -54,9 +54,9 @@ export default function CreatePackageModal({ open, onClose }: Props) {
       max_age: form.max_age ? +form.max_age : null,
       price: +form.price,
       estimated_hours: form.estimated_hours ? +form.estimated_hours : totalMins > 0 ? +(totalMins / 60).toFixed(1) : null,
-      components: components,
+      components: components as any,
       total_components: components.length,
-    });
+    }]);
     setSaving(false);
     if (error) { toast.error("Failed: " + error.message); return; }
     toast.success("Package created");

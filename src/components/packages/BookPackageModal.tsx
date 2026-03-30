@@ -51,7 +51,7 @@ export default function BookPackageModal({ open, onClose }: Props) {
         <div className="space-y-4">
           <div>
             <Label>Patient *</Label>
-            <PatientSearchPicker onSelect={(id) => setPatientId(id)} />
+            <PatientSearchPicker hospitalId={HOSPITAL_ID} value={patientId} onChange={(id) => setPatientId(id)} />
           </div>
           <div>
             <Label>Package *</Label>
