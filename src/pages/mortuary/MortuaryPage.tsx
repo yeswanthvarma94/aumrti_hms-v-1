@@ -691,10 +691,12 @@ export default function MortuaryPage() {
           <DialogHeader><DialogTitle>Admit to Mortuary</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div><Label>Patient *</Label>
-              <Select value={admitForm.patient_id} onValueChange={v => setAdmitForm(f => ({ ...f, patient_id: v }))}>
-                <SelectTrigger><SelectValue placeholder="Select patient" /></SelectTrigger>
-                <SelectContent>{patients.map(p => <SelectItem key={p.id} value={p.id}>{p.full_name} ({p.uhid})</SelectItem>)}</SelectContent>
-              </Select>
+              <PatientSearchPicker
+                hospitalId={HOSPITAL_ID}
+                value={admitForm.patient_id}
+                onChange={v => setAdmitForm(f => ({ ...f, patient_id: v }))}
+                onRegisterNew={() => setShowPatientReg("admit")}
+              />
             </div>
             <div><Label>Time of Death *</Label><Input type="datetime-local" value={admitForm.time_of_death} onChange={e => setAdmitForm(f => ({ ...f, time_of_death: e.target.value }))} /></div>
             <div><Label>Pronounced by *</Label>
