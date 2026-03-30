@@ -89,6 +89,33 @@ const RecordVaccineTab: React.FC<Props> = ({ hospitalId, onRecorded }) => {
       await supabase.from("vaccine_stock").update({ quantity_used: stock[0].quantity_used + 1 }).eq("id", stock[0].id);
     }
 
+    // Auto-schedule next dose for multi-dose vaccines
+    const selectedVaccine = vaccines.find((v) => v.id === vaccineId);
+    if (selectedVaccine && selectedVaccine.doses > doseNumber) {
+      // Fetch patient DOB for next dose calculation
+      const { data: patData } = await supabase.from("patients").select("dob").eq("id", patientId).single();
+      if (patData?.dob) {
+        const nextDoseNum = doseNumber + 1;
+        // Check if next dose already exists
+        const { data: existing } = await supabase.from("vaccination_due")
+          .select("id").eq("patient_id", patientId).eq("vaccine_id", vaccineId)
+          .eq("dose_number", nextDoseNum).eq("hospital_id", hospitalId).limit(1);
+        if (!existing || existing.length === 0) {
+          // Calculate next due date: typically 4 weeks after current dose
+          const nextDue = new Date(date);
+          nextDue.setDate(nextDue.getDate() + 28);
+          await supabase.from("vaccination_due").insert({
+            hospital_id: hospitalId,
+            patient_id: patientId,
+            vaccine_id: vaccineId,
+            dose_number: nextDoseNum,
+            due_date: nextDue.toISOString().split("T")[0],
+            status: "due",
+          });
+        }
+      }
+    }
+
     toast.success(`Vaccination recorded — Dose ${doseNumber}`);
     onRecorded();
     // Reset

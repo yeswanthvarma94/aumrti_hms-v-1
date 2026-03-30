@@ -104,7 +104,7 @@ const DueListTab: React.FC<Props> = ({ hospitalId }) => {
                   <p className="font-medium text-sm">{item.patients?.full_name}</p>
                   <p className="text-xs text-muted-foreground font-mono">{item.patients?.uhid}</p>
                 </TableCell>
-                <TableCell className="text-sm">{getAge(item.patients?.date_of_birth)}</TableCell>
+                <TableCell className="text-sm">{getAge(item.patients?.dob)}</TableCell>
                 <TableCell>
                   <Badge variant="outline" className="text-xs">{item.vaccine_master?.vaccine_code}</Badge>
                 </TableCell>

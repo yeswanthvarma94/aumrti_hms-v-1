@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { Input } from "@/components/ui/input";
+import React, { useState, useRef } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Search, Printer, MessageSquare, Syringe } from "lucide-react";
+import { Printer, MessageSquare, Syringe } from "lucide-react";
+import PatientSearchPicker from "@/components/shared/PatientSearchPicker";
 
 interface Props { hospitalId: string; }
 
@@ -22,32 +22,24 @@ const MILESTONES = [
 ];
 
 const PatientCardTab: React.FC<Props> = ({ hospitalId }) => {
-  const [search, setSearch] = useState("");
-  const [patients, setPatients] = useState<any[]>([]);
+  const [patientId, setPatientId] = useState("");
   const [selectedPatient, setSelectedPatient] = useState<any>(null);
   const [vaccines, setVaccines] = useState<any[]>([]);
   const [records, setRecords] = useState<any[]>([]);
   const [dueItems, setDueItems] = useState<any[]>([]);
   const [optionalVaccines, setOptionalVaccines] = useState<any[]>([]);
+  const printRef = useRef<HTMLDivElement>(null);
 
-  const searchPatients = useCallback(async (q: string) => {
-    if (q.length < 2) { setPatients([]); return; }
-    const { data } = await supabase.from("patients").select("id, full_name, uhid, date_of_birth, phone")
-      .eq("hospital_id", hospitalId)
-      .or(`full_name.ilike.%${q}%,uhid.ilike.%${q}%,phone.ilike.%${q}%`)
-      .limit(10);
-    setPatients(data || []);
-  }, [hospitalId]);
+  const handlePatientSelect = async (id: string) => {
+    setPatientId(id);
+    if (!id) { setSelectedPatient(null); return; }
 
-  useEffect(() => {
-    const t = setTimeout(() => searchPatients(search), 300);
-    return () => clearTimeout(t);
-  }, [search, searchPatients]);
-
-  const selectPatient = async (p: any) => {
+    // Fetch full patient
+    const { data: p, error: pErr } = await supabase.from("patients")
+      .select("id, full_name, uhid, dob, phone, gender")
+      .eq("id", id).single();
+    if (pErr || !p) { toast.error("Failed to load patient"); return; }
     setSelectedPatient(p);
-    setPatients([]);
-    setSearch("");
 
     const [vacRes, recRes, dueRes, optRes] = await Promise.all([
       supabase.from("vaccine_master").select("*").eq("nis_schedule", true).order("week_of_life"),
@@ -63,10 +55,9 @@ const PatientCardTab: React.FC<Props> = ({ hospitalId }) => {
     setDueItems(dueRes.data || []);
     setOptionalVaccines(optRes.data || []);
 
-    // Auto-generate due schedule if no due items exist
-    if ((dueRes.data || []).length === 0 && p.date_of_birth) {
-      await generateDueSchedule(p.id, p.date_of_birth, vacRes.data || [], recRes.data || []);
-      // Re-fetch
+    // Auto-generate due schedule if no due items and patient has DOB
+    if ((dueRes.data || []).length === 0 && p.dob) {
+      await generateDueSchedule(p.id, p.dob, vacRes.data || [], recRes.data || []);
       const { data: newDue } = await supabase.from("vaccination_due")
         .select("*, vaccine_master(vaccine_name, vaccine_code, week_of_life)")
         .eq("patient_id", p.id).eq("hospital_id", hospitalId).in("status", ["due", "overdue"]);
@@ -74,7 +65,7 @@ const PatientCardTab: React.FC<Props> = ({ hospitalId }) => {
     }
   };
 
-  const generateDueSchedule = async (patientId: string, dob: string, vacs: any[], given: any[]) => {
+  const generateDueSchedule = async (pid: string, dob: string, vacs: any[], given: any[]) => {
     const dobDate = new Date(dob);
     const givenSet = new Set(given.map((g: any) => `${g.vaccine_id}-${g.dose_number}`));
     const dueList: any[] = [];
@@ -87,7 +78,7 @@ const PatientCardTab: React.FC<Props> = ({ hospitalId }) => {
       dueDate.setDate(dueDate.getDate() + v.week_of_life * 7);
       dueList.push({
         hospital_id: hospitalId,
-        patient_id: patientId,
+        patient_id: pid,
         vaccine_id: v.id,
         dose_number: 1,
         due_date: dueDate.toISOString().split("T")[0],
@@ -95,7 +86,8 @@ const PatientCardTab: React.FC<Props> = ({ hospitalId }) => {
       });
     }
     if (dueList.length > 0) {
-      await supabase.from("vaccination_due").insert(dueList);
+      const { error } = await supabase.from("vaccination_due").insert(dueList);
+      if (error) console.error("Due schedule insert error:", error.message);
     }
   };
 
@@ -116,17 +108,44 @@ const PatientCardTab: React.FC<Props> = ({ hospitalId }) => {
     return `${Math.floor(months / 12)} years`;
   };
 
+  const printCard = () => {
+    if (!printRef.current) return;
+    const win = window.open("", "_blank");
+    if (!win) { toast.error("Popup blocked — allow popups to print"); return; }
+    win.document.write(`<html><head><title>Vaccination Card - ${selectedPatient?.full_name}</title>
+      <style>body{font-family:Inter,sans-serif;padding:24px;font-size:13px}
+      h2{margin:0 0 4px}table{width:100%;border-collapse:collapse;margin-top:12px}
+      th,td{border:1px solid #ccc;padding:6px 8px;text-align:left;font-size:12px}
+      th{background:#f1f5f9}.given{color:#16a34a;font-weight:600}.overdue{color:#dc2626;font-weight:600}
+      .header{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #1a2f5a;padding-bottom:8px;margin-bottom:12px}
+      </style></head><body>`);
+    win.document.write(`<div class="header"><div><h2>${selectedPatient?.full_name}</h2>
+      <p>UHID: ${selectedPatient?.uhid} | DOB: ${selectedPatient?.dob ? new Date(selectedPatient.dob).toLocaleDateString("en-IN") : "N/A"} | Age: ${selectedPatient?.dob ? getAge(selectedPatient.dob) : "N/A"}</p></div>
+      <div><strong>Vaccination Card</strong></div></div>`);
+    win.document.write(`<table><tr><th>Vaccine</th><th>Code</th><th>Dose</th><th>Status</th><th>Date</th></tr>`);
+    for (const v of vaccines) {
+      const s = getVaccineStatus(v.id);
+      const cls = s.status === "given" ? "given" : s.status === "overdue" ? "overdue" : "";
+      win.document.write(`<tr><td>${v.vaccine_name}</td><td>${v.vaccine_code}</td><td>1</td>
+        <td class="${cls}">${s.status === "given" ? "✅ Given" : s.status === "overdue" ? "⚠️ Overdue" : "Upcoming"}</td>
+        <td>${s.date ? new Date(s.date).toLocaleDateString("en-IN") : "—"}</td></tr>`);
+    }
+    win.document.write(`</table><p style="margin-top:24px;font-size:10px;color:#666">Printed on ${new Date().toLocaleDateString("en-IN")} at ${new Date().toLocaleTimeString("en-IN")}</p></body></html>`);
+    win.document.close();
+    win.print();
+  };
+
   const sendWhatsApp = () => {
     if (!selectedPatient) return;
     const lines = [`Vaccination record for ${selectedPatient.full_name}:`];
     for (const r of records) {
       const vm = (r as any).vaccine_master;
-      lines.push(`✅ ${vm?.vaccine_name || "Vaccine"}: ${r.administered_at}`);
+      lines.push(`✅ ${vm?.vaccine_name || "Vaccine"}: ${new Date(r.administered_at).toLocaleDateString("en-IN")}`);
     }
     for (const d of dueItems) {
       const vm = (d as any).vaccine_master;
-      if (d.status === "overdue") lines.push(`⚠️ OVERDUE: ${vm?.vaccine_name} (due: ${d.due_date})`);
-      else lines.push(`📅 Next: ${vm?.vaccine_name} on ${d.due_date}`);
+      if (d.status === "overdue") lines.push(`⚠️ OVERDUE: ${vm?.vaccine_name} (due: ${new Date(d.due_date).toLocaleDateString("en-IN")})`);
+      else lines.push(`📅 Next: ${vm?.vaccine_name} on ${new Date(d.due_date).toLocaleDateString("en-IN")}`);
     }
     const msg = encodeURIComponent(lines.join("\n"));
     const phone = selectedPatient.phone?.replace(/\D/g, "") || "";
@@ -135,40 +154,32 @@ const PatientCardTab: React.FC<Props> = ({ hospitalId }) => {
 
   return (
     <div className="space-y-4 pb-4">
-      {/* Search */}
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-        <Input placeholder="Search patient by name / UHID / phone" value={search}
-          onChange={(e) => setSearch(e.target.value)} className="pl-9" />
-        {patients.length > 0 && (
-          <div className="absolute z-10 w-full bg-background border rounded-md shadow-lg mt-1 max-h-48 overflow-auto">
-            {patients.map((p) => (
-              <button key={p.id} onClick={() => selectPatient(p)}
-                className="w-full text-left px-3 py-2 hover:bg-muted text-sm flex justify-between">
-                <span className="font-medium">{p.full_name}</span>
-                <span className="text-muted-foreground font-mono text-xs">{p.uhid}</span>
-              </button>
-            ))}
-          </div>
-        )}
+      {/* Patient Search */}
+      <div className="max-w-md">
+        <PatientSearchPicker
+          hospitalId={hospitalId}
+          value={patientId}
+          onChange={handlePatientSelect}
+          placeholder="Search patient by name or UHID…"
+        />
       </div>
 
       {selectedPatient && (
-        <>
+        <div ref={printRef}>
           {/* Patient Info */}
-          <Card className="p-3 flex items-center justify-between">
+          <Card className="p-3 flex items-center justify-between mb-4">
             <div>
               <p className="font-semibold">{selectedPatient.full_name}
                 <span className="ml-2 text-xs font-mono text-muted-foreground">{selectedPatient.uhid}</span>
               </p>
-              {selectedPatient.date_of_birth && (
+              {selectedPatient.dob && (
                 <p className="text-sm text-muted-foreground">
-                  DOB: {new Date(selectedPatient.date_of_birth).toLocaleDateString("en-IN")} · Age: {getAge(selectedPatient.date_of_birth)}
+                  DOB: {new Date(selectedPatient.dob).toLocaleDateString("en-IN")} · Age: {getAge(selectedPatient.dob)}
                 </p>
               )}
             </div>
             <div className="flex gap-2">
-              <Button size="sm" variant="outline" onClick={() => toast.info("Print feature coming soon")}>
+              <Button size="sm" variant="outline" onClick={printCard}>
                 <Printer className="h-4 w-4 mr-1" /> Print Card
               </Button>
               <Button size="sm" variant="outline" onClick={sendWhatsApp}>
@@ -178,7 +189,7 @@ const PatientCardTab: React.FC<Props> = ({ hospitalId }) => {
           </Card>
 
           {/* NIS Timeline */}
-          <div>
+          <div className="mb-4">
             <h3 className="text-sm font-semibold mb-2">National Immunization Schedule</h3>
             <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-9 gap-2">
               {MILESTONES.map((ms) => {
@@ -216,8 +227,7 @@ const PatientCardTab: React.FC<Props> = ({ hospitalId }) => {
                 {optionalVaccines.map((v: any) => {
                   const s = getVaccineStatus(v.id);
                   return (
-                    <Badge key={v.id} variant={s.status === "given" ? "default" : "outline"}
-                      className="text-xs">
+                    <Badge key={v.id} variant={s.status === "given" ? "default" : "outline"} className="text-xs">
                       {v.vaccine_name} {s.status === "given" ? "✅" : ""}
                     </Badge>
                   );
@@ -225,7 +235,7 @@ const PatientCardTab: React.FC<Props> = ({ hospitalId }) => {
               </div>
             </div>
           )}
-        </>
+        </div>
       )}
 
       {!selectedPatient && (
