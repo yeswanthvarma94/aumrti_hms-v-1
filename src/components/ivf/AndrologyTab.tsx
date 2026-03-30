@@ -132,7 +132,7 @@ const AndrologyTab = () => {
           <div className="space-y-3">
             <div>
               <Label className="text-xs">Patient *</Label>
-              <PatientSearchPicker value={patientId} onSelect={(id) => setPatientId(id)} />
+              <PatientSearchPicker hospitalId="" value={patientId} onChange={(id) => setPatientId(id)} />
             </div>
             <div className="grid grid-cols-3 gap-2">
               <div><Label className="text-xs">Volume (mL) ≥1.4</Label><Input type="number" step="0.01" value={volume} onChange={(e) => setVolume(e.target.value)} /></div>

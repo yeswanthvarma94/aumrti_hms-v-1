@@ -142,15 +142,17 @@ const CouplesTab = ({ showRegister, onCloseRegister, onRefreshKPIs }: Props) => 
             <div>
               <Label>Female Patient *</Label>
               <PatientSearchPicker
+                hospitalId=""
                 value={femaleId}
-                onSelect={(id, name) => { setFemaleId(id); setFemaleName(name); }}
+                onChange={(id) => { setFemaleId(id); }}
               />
             </div>
             <div>
               <Label>Male Patient</Label>
               <PatientSearchPicker
+                hospitalId=""
                 value={maleId}
-                onSelect={(id, name) => { setMaleId(id); setMaleName(name); }}
+                onChange={(id) => { setMaleId(id); }}
               />
             </div>
             <div>
