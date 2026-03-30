@@ -2959,6 +2959,59 @@ export type Database = {
           },
         ]
       }
+      corporate_accounts: {
+        Row: {
+          address: string | null
+          company_name: string
+          contact_email: string | null
+          contact_person: string | null
+          contact_phone: string | null
+          created_at: string | null
+          credit_days: number | null
+          gstin: string | null
+          hospital_id: string
+          id: string
+          is_active: boolean | null
+          negotiated_rate_percent: number | null
+        }
+        Insert: {
+          address?: string | null
+          company_name: string
+          contact_email?: string | null
+          contact_person?: string | null
+          contact_phone?: string | null
+          created_at?: string | null
+          credit_days?: number | null
+          gstin?: string | null
+          hospital_id: string
+          id?: string
+          is_active?: boolean | null
+          negotiated_rate_percent?: number | null
+        }
+        Update: {
+          address?: string | null
+          company_name?: string
+          contact_email?: string | null
+          contact_person?: string | null
+          contact_phone?: string | null
+          created_at?: string | null
+          credit_days?: number | null
+          gstin?: string | null
+          hospital_id?: string
+          id?: string
+          is_active?: boolean | null
+          negotiated_rate_percent?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "corporate_accounts_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cross_match_records: {
         Row: {
           admission_id: string | null
@@ -5399,6 +5452,77 @@ export type Database = {
             columns: ["vendor_id"]
             isOneToOne: false
             referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      health_packages: {
+        Row: {
+          components: Json
+          created_at: string | null
+          description: string | null
+          display_order: number | null
+          estimated_hours: number | null
+          hospital_id: string
+          id: string
+          includes_meal: boolean | null
+          is_active: boolean | null
+          max_age: number | null
+          min_age: number | null
+          package_code: string
+          package_name: string
+          package_type: string
+          price: number
+          target_gender: string | null
+          total_components: number | null
+          validity_days: number | null
+        }
+        Insert: {
+          components?: Json
+          created_at?: string | null
+          description?: string | null
+          display_order?: number | null
+          estimated_hours?: number | null
+          hospital_id: string
+          id?: string
+          includes_meal?: boolean | null
+          is_active?: boolean | null
+          max_age?: number | null
+          min_age?: number | null
+          package_code: string
+          package_name: string
+          package_type?: string
+          price: number
+          target_gender?: string | null
+          total_components?: number | null
+          validity_days?: number | null
+        }
+        Update: {
+          components?: Json
+          created_at?: string | null
+          description?: string | null
+          display_order?: number | null
+          estimated_hours?: number | null
+          hospital_id?: string
+          id?: string
+          includes_meal?: boolean | null
+          is_active?: boolean | null
+          max_age?: number | null
+          min_age?: number | null
+          package_code?: string
+          package_name?: string
+          package_type?: string
+          price?: number
+          target_gender?: string | null
+          total_components?: number | null
+          validity_days?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "health_packages_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
             referencedColumns: ["id"]
           },
         ]
@@ -10037,6 +10161,112 @@ export type Database = {
             columns: ["scored_by"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      package_bookings: {
+        Row: {
+          bill_id: string | null
+          booking_date: string
+          completed_at: string | null
+          components_done: Json | null
+          coordinator: string | null
+          corporate_account_id: string | null
+          created_at: string | null
+          current_station: string | null
+          employee_id: string | null
+          hospital_id: string
+          id: string
+          notes: string | null
+          package_id: string
+          patient_id: string
+          report_url: string | null
+          scheduled_date: string
+          scheduled_time: string | null
+          status: string | null
+        }
+        Insert: {
+          bill_id?: string | null
+          booking_date?: string
+          completed_at?: string | null
+          components_done?: Json | null
+          coordinator?: string | null
+          corporate_account_id?: string | null
+          created_at?: string | null
+          current_station?: string | null
+          employee_id?: string | null
+          hospital_id: string
+          id?: string
+          notes?: string | null
+          package_id: string
+          patient_id: string
+          report_url?: string | null
+          scheduled_date: string
+          scheduled_time?: string | null
+          status?: string | null
+        }
+        Update: {
+          bill_id?: string | null
+          booking_date?: string
+          completed_at?: string | null
+          components_done?: Json | null
+          coordinator?: string | null
+          corporate_account_id?: string | null
+          created_at?: string | null
+          current_station?: string | null
+          employee_id?: string | null
+          hospital_id?: string
+          id?: string
+          notes?: string | null
+          package_id?: string
+          patient_id?: string
+          report_url?: string | null
+          scheduled_date?: string
+          scheduled_time?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "package_bookings_bill_id_fkey"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "bills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "package_bookings_coordinator_fkey"
+            columns: ["coordinator"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "package_bookings_corporate_account_id_fkey"
+            columns: ["corporate_account_id"]
+            isOneToOne: false
+            referencedRelation: "corporate_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "package_bookings_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "package_bookings_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "health_packages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "package_bookings_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
             referencedColumns: ["id"]
           },
         ]
