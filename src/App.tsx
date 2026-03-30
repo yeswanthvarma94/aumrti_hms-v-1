@@ -90,6 +90,7 @@ import VaccinationPage from "./pages/vaccination/VaccinationPage";
 import DentalPage from "./pages/dental/DentalPage";
 import AyushPage from "./pages/ayush/AyushPage";
 import PackagesPage from "./pages/packages/PackagesPage";
+import IVFPage from "./pages/ivf/IVFPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -188,6 +189,7 @@ const App = () => (
             <Route path="/dental" element={<DentalPage />} />
             <Route path="/ayush" element={<AyushPage />} />
             <Route path="/packages" element={<PackagesPage />} />
+            <Route path="/ivf" element={<IVFPage />} />
             <Route path="/admin/go-live" element={<GoLiveChecklistPage />} />
             <Route path="/admin/data-migration" element={<DataMigrationPage />} />
           </Route>
