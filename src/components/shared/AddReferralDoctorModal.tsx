@@ -11,7 +11,7 @@ import { Search, Plus, UserCheck } from "lucide-react";
 interface Props {
   open: boolean;
   onClose: () => void;
-  onSaved: (doctorName: string) => void;
+  onSaved: (doctorName: string, doctorId?: string) => void;
   hospitalId: string;
   editDoc?: any;
 }
