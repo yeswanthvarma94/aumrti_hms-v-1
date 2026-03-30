@@ -103,7 +103,7 @@ export default function PrakritiTab() {
       const dominant = getDominantDosha();
       const prompt = `Patient Prakriti Assessment: Vata=${vataScore}/30, Pitta=${pittaScore}/30, Kapha=${kaphaScore}/30. Dominant dosha: ${dominant}. Generate a concise Prakriti summary (3-4 sentences) covering: personality traits, health tendencies, and dietary/lifestyle recommendations based on Ayurvedic principles.`;
       const result = await callAI({ featureKey: "prakriti_analysis", hospitalId: userRow?.hospital_id || "", prompt, maxTokens: 300 });
-      setAiSummary(result);
+      setAiSummary(typeof result === "string" ? result : String(result));
     } catch {
       setAiSummary(`Patient is predominantly ${getDominantDosha().replace("_", "-")} constitution. Vata: ${vataScore}, Pitta: ${pittaScore}, Kapha: ${kaphaScore}.`);
     } finally {

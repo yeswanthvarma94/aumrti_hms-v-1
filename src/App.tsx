@@ -185,6 +185,7 @@ const App = () => (
             <Route path="/mortuary" element={<MortuaryPage />} />
             <Route path="/vaccination" element={<VaccinationPage />} />
             <Route path="/dental" element={<DentalPage />} />
+            <Route path="/ayush" element={<AyushPage />} />
             <Route path="/admin/go-live" element={<GoLiveChecklistPage />} />
             <Route path="/admin/data-migration" element={<DataMigrationPage />} />
           </Route>
