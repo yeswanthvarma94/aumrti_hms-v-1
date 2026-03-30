@@ -19,7 +19,7 @@ const DueListTab: React.FC<Props> = ({ hospitalId }) => {
     setLoading(true);
     const today = new Date().toISOString().split("T")[0];
     let q = supabase.from("vaccination_due")
-      .select("*, patients(full_name, uhid, phone, date_of_birth), vaccine_master(vaccine_name, vaccine_code)")
+      .select("*, patients(full_name, uhid, phone, dob), vaccine_master(vaccine_name, vaccine_code)")
       .eq("hospital_id", hospitalId);
 
     if (filter === "overdue") {
