@@ -88,6 +88,7 @@ import PhysioPage from "./pages/physio/PhysioPage";
 import MortuaryPage from "./pages/mortuary/MortuaryPage";
 import VaccinationPage from "./pages/vaccination/VaccinationPage";
 import DentalPage from "./pages/dental/DentalPage";
+import AyushPage from "./pages/ayush/AyushPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -184,6 +185,7 @@ const App = () => (
             <Route path="/mortuary" element={<MortuaryPage />} />
             <Route path="/vaccination" element={<VaccinationPage />} />
             <Route path="/dental" element={<DentalPage />} />
+            <Route path="/ayush" element={<AyushPage />} />
             <Route path="/admin/go-live" element={<GoLiveChecklistPage />} />
             <Route path="/admin/data-migration" element={<DataMigrationPage />} />
           </Route>
