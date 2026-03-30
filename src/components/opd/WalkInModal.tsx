@@ -760,7 +760,7 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated }) => {
         <AddReferralDoctorModal
           open={showReferralModal}
           onClose={() => setShowReferralModal(false)}
-          onSaved={(name) => setReferralSource(name)}
+          onSaved={(name, id) => { setReferralSource(name); setReferralDoctorId(id || null); }}
           hospitalId={hospitalId}
         />
       </div>
