@@ -75,6 +75,7 @@ export const ALL_MODULES: ModuleDefinition[] = [
   { name: "Vaccination", desc: "NIS immunization, cold chain & camps", icon: "💉", route: "/vaccination", category: "Clinical", roles: ["nurse", "doctor", "super_admin"], isNew: true },
   { name: "Dental", desc: "FDI tooth chart, perio & treatment plans", icon: "🦷", route: "/dental", category: "Specialized", roles: ["dentist", "super_admin"], isNew: true },
   { name: "AYUSH", desc: "Ayurveda, Homeopathy, Unani, Siddha, Yoga", icon: "🌿", route: "/ayush", category: "Specialized", roles: ["ayush_doctor", "super_admin"], isNew: true },
+  { name: "IVF & ART", desc: "IVF cycles, embryology & ICMR compliance", icon: "🧬", route: "/ivf", category: "Specialized", roles: ["ivf_doctor", "embryologist", "super_admin"], isNew: true },
   { name: "Medical Records", desc: "MRD, ICD coding & retention", icon: "🗂️", route: "/mrd", category: "Operations", roles: ["mrd_officer", "super_admin", "billing_executive"], isNew: true },
   { name: "Biomedical Engineering", desc: "Equipment, PM, calibration & breakdowns", icon: "🔧", route: "/biomedical", category: "Operations", roles: ["biomedical_technician", "super_admin", "hospital_admin"], isNew: true },
   { name: "Housekeeping", desc: "Cleaning tasks, BMW & linen", icon: "🧹", route: "/housekeeping", category: "Operations", roles: ["housekeeping_supervisor", "super_admin", "hospital_admin"], isNew: true },
