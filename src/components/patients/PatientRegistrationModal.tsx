@@ -318,12 +318,14 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess }) => {
           </button>
         </div>
       </div>
-      <AddReferralDoctorModal
-        open={showReferralModal}
-        onClose={() => setShowReferralModal(false)}
-        onSaved={(name) => { set("referral_source", name); setShowReferralModal(false); }}
-        hospitalId={hospitalIdState}
-      />
+      <div onClick={(e) => e.stopPropagation()}>
+        <AddReferralDoctorModal
+          open={showReferralModal}
+          onClose={() => setShowReferralModal(false)}
+          onSaved={(name) => { set("referral_source", name); setShowReferralModal(false); }}
+          hospitalId={hospitalIdState}
+        />
+      </div>
     </div>
   );
 };

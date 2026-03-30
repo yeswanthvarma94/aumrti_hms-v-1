@@ -729,12 +729,14 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated }) => {
           </>
         )}
       </div>
-      <AddReferralDoctorModal
-        open={showReferralModal}
-        onClose={() => setShowReferralModal(false)}
-        onSaved={(name) => setReferralSource(name)}
-        hospitalId={hospitalId}
-      />
+      <div onClick={(e) => e.stopPropagation()}>
+        <AddReferralDoctorModal
+          open={showReferralModal}
+          onClose={() => setShowReferralModal(false)}
+          onSaved={(name) => setReferralSource(name)}
+          hospitalId={hospitalId}
+        />
+      </div>
     </div>
   );
 };
