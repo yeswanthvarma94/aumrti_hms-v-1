@@ -41,6 +41,7 @@ export const ALL_MODULES: ModuleDefinition[] = [
   { name: "Operation Theatre", desc: "OT scheduling & WHO checklist", icon: "🔪", route: "/ot", category: "Clinical", roles: ["doctor", "nurse", "super_admin"] },
   { name: "Nursing", desc: "MAR, handover & care plans", icon: "💉", route: "/nursing", category: "Clinical", roles: ["nurse", "super_admin"] },
   { name: "Telemedicine", desc: "Video consultations", icon: "📹", route: "/telemedicine", category: "Clinical", roles: ["doctor", "super_admin"] },
+  { name: "Health Packages", desc: "Preventive checkup packages & corporate", icon: "📋", route: "/packages", category: "Clinical", roles: ["receptionist", "doctor", "super_admin"], isNew: true },
 
   // ── DIAGNOSTICS ──
   { name: "Laboratory (LIS)", desc: "Sample collection & results", icon: "🔬", route: "/lab", category: "Diagnostics", roles: ["lab_technician", "doctor", "super_admin"] },
