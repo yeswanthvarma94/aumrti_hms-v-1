@@ -477,6 +477,104 @@ export type Database = {
           },
         ]
       }
+      andrology_reports: {
+        Row: {
+          concentration_m_ml: number | null
+          couple_id: string | null
+          created_at: string | null
+          dfi_percent: number | null
+          hospital_id: string
+          icsi_indicated: boolean | null
+          id: string
+          leukocytes: number | null
+          morphology_pct: number | null
+          non_progressive_pct: number | null
+          patient_id: string
+          ph: number | null
+          progressive_motility_pct: number | null
+          report_notes: string | null
+          reported_by: string | null
+          test_date: string
+          total_count: number | null
+          total_motility_pct: number | null
+          vitality_pct: number | null
+          volume_ml: number | null
+        }
+        Insert: {
+          concentration_m_ml?: number | null
+          couple_id?: string | null
+          created_at?: string | null
+          dfi_percent?: number | null
+          hospital_id: string
+          icsi_indicated?: boolean | null
+          id?: string
+          leukocytes?: number | null
+          morphology_pct?: number | null
+          non_progressive_pct?: number | null
+          patient_id: string
+          ph?: number | null
+          progressive_motility_pct?: number | null
+          report_notes?: string | null
+          reported_by?: string | null
+          test_date: string
+          total_count?: number | null
+          total_motility_pct?: number | null
+          vitality_pct?: number | null
+          volume_ml?: number | null
+        }
+        Update: {
+          concentration_m_ml?: number | null
+          couple_id?: string | null
+          created_at?: string | null
+          dfi_percent?: number | null
+          hospital_id?: string
+          icsi_indicated?: boolean | null
+          id?: string
+          leukocytes?: number | null
+          morphology_pct?: number | null
+          non_progressive_pct?: number | null
+          patient_id?: string
+          ph?: number | null
+          progressive_motility_pct?: number | null
+          report_notes?: string | null
+          reported_by?: string | null
+          test_date?: string
+          total_count?: number | null
+          total_motility_pct?: number | null
+          vitality_pct?: number | null
+          volume_ml?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "andrology_reports_couple_id_fkey"
+            columns: ["couple_id"]
+            isOneToOne: false
+            referencedRelation: "art_couples"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "andrology_reports_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "andrology_reports_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "andrology_reports_reported_by_fkey"
+            columns: ["reported_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       api_configurations: {
         Row: {
           config: Json
@@ -574,6 +672,89 @@ export type Database = {
             columns: ["hospital_id"]
             isOneToOne: false
             referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      art_couples: {
+        Row: {
+          afc_count: number | null
+          amh_level: number | null
+          consent_obtained: boolean | null
+          couple_code: string
+          created_at: string | null
+          female_patient_id: string
+          hospital_id: string
+          icmr_reg_number: string | null
+          id: string
+          indication: string | null
+          is_active: boolean | null
+          male_patient_id: string | null
+          registered_at: string | null
+          sperm_analysis_done: boolean | null
+          treating_doctor: string
+        }
+        Insert: {
+          afc_count?: number | null
+          amh_level?: number | null
+          consent_obtained?: boolean | null
+          couple_code: string
+          created_at?: string | null
+          female_patient_id: string
+          hospital_id: string
+          icmr_reg_number?: string | null
+          id?: string
+          indication?: string | null
+          is_active?: boolean | null
+          male_patient_id?: string | null
+          registered_at?: string | null
+          sperm_analysis_done?: boolean | null
+          treating_doctor: string
+        }
+        Update: {
+          afc_count?: number | null
+          amh_level?: number | null
+          consent_obtained?: boolean | null
+          couple_code?: string
+          created_at?: string | null
+          female_patient_id?: string
+          hospital_id?: string
+          icmr_reg_number?: string | null
+          id?: string
+          indication?: string | null
+          is_active?: boolean | null
+          male_patient_id?: string | null
+          registered_at?: string | null
+          sperm_analysis_done?: boolean | null
+          treating_doctor?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "art_couples_female_patient_id_fkey"
+            columns: ["female_patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "art_couples_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "art_couples_male_patient_id_fkey"
+            columns: ["male_patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "art_couples_treating_doctor_fkey"
+            columns: ["treating_doctor"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -4692,6 +4873,173 @@ export type Database = {
           },
         ]
       }
+      embryo_bank: {
+        Row: {
+          canister_number: string
+          consent_expiry: string | null
+          couple_id: string
+          created_at: string | null
+          cycle_id: string
+          disposition: string | null
+          embryo_id: string
+          freeze_date: string
+          freeze_method: string | null
+          goblet_number: string
+          hospital_id: string
+          id: string
+          storage_location: string | null
+          straw_number: string
+          survival_status: string | null
+          tank_number: string
+          thaw_date: string | null
+        }
+        Insert: {
+          canister_number: string
+          consent_expiry?: string | null
+          couple_id: string
+          created_at?: string | null
+          cycle_id: string
+          disposition?: string | null
+          embryo_id: string
+          freeze_date: string
+          freeze_method?: string | null
+          goblet_number: string
+          hospital_id: string
+          id?: string
+          storage_location?: string | null
+          straw_number: string
+          survival_status?: string | null
+          tank_number: string
+          thaw_date?: string | null
+        }
+        Update: {
+          canister_number?: string
+          consent_expiry?: string | null
+          couple_id?: string
+          created_at?: string | null
+          cycle_id?: string
+          disposition?: string | null
+          embryo_id?: string
+          freeze_date?: string
+          freeze_method?: string | null
+          goblet_number?: string
+          hospital_id?: string
+          id?: string
+          storage_location?: string | null
+          straw_number?: string
+          survival_status?: string | null
+          tank_number?: string
+          thaw_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "embryo_bank_couple_id_fkey"
+            columns: ["couple_id"]
+            isOneToOne: false
+            referencedRelation: "art_couples"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "embryo_bank_cycle_id_fkey"
+            columns: ["cycle_id"]
+            isOneToOne: false
+            referencedRelation: "ivf_cycles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "embryo_bank_embryo_id_fkey"
+            columns: ["embryo_id"]
+            isOneToOne: false
+            referencedRelation: "embryology_records"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "embryo_bank_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      embryology_records: {
+        Row: {
+          blast_expansion: number | null
+          blast_grade: string | null
+          blast_icm: string | null
+          blast_te: string | null
+          created_at: string | null
+          cycle_id: string
+          day3_cell_count: number | null
+          day3_fragmentation: string | null
+          day3_grade: string | null
+          disposition: string | null
+          embryo_id: string
+          fertilization_status: string | null
+          freeze_date: string | null
+          hospital_id: string
+          id: string
+          inseminated_at: string | null
+          insemination_type: string | null
+          oocyte_maturity: string | null
+        }
+        Insert: {
+          blast_expansion?: number | null
+          blast_grade?: string | null
+          blast_icm?: string | null
+          blast_te?: string | null
+          created_at?: string | null
+          cycle_id: string
+          day3_cell_count?: number | null
+          day3_fragmentation?: string | null
+          day3_grade?: string | null
+          disposition?: string | null
+          embryo_id: string
+          fertilization_status?: string | null
+          freeze_date?: string | null
+          hospital_id: string
+          id?: string
+          inseminated_at?: string | null
+          insemination_type?: string | null
+          oocyte_maturity?: string | null
+        }
+        Update: {
+          blast_expansion?: number | null
+          blast_grade?: string | null
+          blast_icm?: string | null
+          blast_te?: string | null
+          created_at?: string | null
+          cycle_id?: string
+          day3_cell_count?: number | null
+          day3_fragmentation?: string | null
+          day3_grade?: string | null
+          disposition?: string | null
+          embryo_id?: string
+          fertilization_status?: string | null
+          freeze_date?: string | null
+          hospital_id?: string
+          id?: string
+          inseminated_at?: string | null
+          insemination_type?: string | null
+          oocyte_maturity?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "embryology_records_cycle_id_fkey"
+            columns: ["cycle_id"]
+            isOneToOne: false
+            referencedRelation: "ivf_cycles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "embryology_records_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       emi_installments: {
         Row: {
           amount: number
@@ -6954,6 +7302,105 @@ export type Database = {
             columns: ["recorded_by"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ivf_cycles: {
+        Row: {
+          beta_hcg_1: number | null
+          beta_hcg_1_date: string | null
+          beta_hcg_2: number | null
+          beta_hcg_2_date: string | null
+          blastocysts: number | null
+          clinical_pregnancy: boolean | null
+          couple_id: string
+          created_at: string | null
+          cycle_number: number
+          cycle_type: string
+          delivery_outcome: string | null
+          embryos_day3: number | null
+          embryos_frozen: number | null
+          embryos_transferred: number | null
+          et_date: string | null
+          fertilized: number | null
+          hospital_id: string
+          id: string
+          mature_oocytes: number | null
+          oocytes_retrieved: number | null
+          opu_date: string | null
+          protocol: string | null
+          start_date: string
+          status: string | null
+          trigger_date: string | null
+        }
+        Insert: {
+          beta_hcg_1?: number | null
+          beta_hcg_1_date?: string | null
+          beta_hcg_2?: number | null
+          beta_hcg_2_date?: string | null
+          blastocysts?: number | null
+          clinical_pregnancy?: boolean | null
+          couple_id: string
+          created_at?: string | null
+          cycle_number: number
+          cycle_type: string
+          delivery_outcome?: string | null
+          embryos_day3?: number | null
+          embryos_frozen?: number | null
+          embryos_transferred?: number | null
+          et_date?: string | null
+          fertilized?: number | null
+          hospital_id: string
+          id?: string
+          mature_oocytes?: number | null
+          oocytes_retrieved?: number | null
+          opu_date?: string | null
+          protocol?: string | null
+          start_date: string
+          status?: string | null
+          trigger_date?: string | null
+        }
+        Update: {
+          beta_hcg_1?: number | null
+          beta_hcg_1_date?: string | null
+          beta_hcg_2?: number | null
+          beta_hcg_2_date?: string | null
+          blastocysts?: number | null
+          clinical_pregnancy?: boolean | null
+          couple_id?: string
+          created_at?: string | null
+          cycle_number?: number
+          cycle_type?: string
+          delivery_outcome?: string | null
+          embryos_day3?: number | null
+          embryos_frozen?: number | null
+          embryos_transferred?: number | null
+          et_date?: string | null
+          fertilized?: number | null
+          hospital_id?: string
+          id?: string
+          mature_oocytes?: number | null
+          oocytes_retrieved?: number | null
+          opu_date?: string | null
+          protocol?: string | null
+          start_date?: string
+          status?: string | null
+          trigger_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ivf_cycles_couple_id_fkey"
+            columns: ["couple_id"]
+            isOneToOne: false
+            referencedRelation: "art_couples"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ivf_cycles_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
             referencedColumns: ["id"]
           },
         ]
@@ -13618,6 +14065,91 @@ export type Database = {
           {
             foreignKeyName: "sterilization_cycles_operator_id_fkey"
             columns: ["operator_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stimulation_monitoring: {
+        Row: {
+          created_at: string | null
+          current_dose: string | null
+          cycle_id: string
+          dose_adjustment: string | null
+          e2_level: number | null
+          endometrium_mm: number | null
+          endometrium_pattern: string | null
+          hospital_id: string
+          id: string
+          left_follicles: Json | null
+          lh_level: number | null
+          notes: string | null
+          p4_level: number | null
+          recorded_by: string
+          right_follicles: Json | null
+          scan_date: string
+          scan_day: number
+          trigger_criteria_met: boolean | null
+        }
+        Insert: {
+          created_at?: string | null
+          current_dose?: string | null
+          cycle_id: string
+          dose_adjustment?: string | null
+          e2_level?: number | null
+          endometrium_mm?: number | null
+          endometrium_pattern?: string | null
+          hospital_id: string
+          id?: string
+          left_follicles?: Json | null
+          lh_level?: number | null
+          notes?: string | null
+          p4_level?: number | null
+          recorded_by: string
+          right_follicles?: Json | null
+          scan_date: string
+          scan_day: number
+          trigger_criteria_met?: boolean | null
+        }
+        Update: {
+          created_at?: string | null
+          current_dose?: string | null
+          cycle_id?: string
+          dose_adjustment?: string | null
+          e2_level?: number | null
+          endometrium_mm?: number | null
+          endometrium_pattern?: string | null
+          hospital_id?: string
+          id?: string
+          left_follicles?: Json | null
+          lh_level?: number | null
+          notes?: string | null
+          p4_level?: number | null
+          recorded_by?: string
+          right_follicles?: Json | null
+          scan_date?: string
+          scan_day?: number
+          trigger_criteria_met?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stimulation_monitoring_cycle_id_fkey"
+            columns: ["cycle_id"]
+            isOneToOne: false
+            referencedRelation: "ivf_cycles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stimulation_monitoring_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stimulation_monitoring_recorded_by_fkey"
+            columns: ["recorded_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
