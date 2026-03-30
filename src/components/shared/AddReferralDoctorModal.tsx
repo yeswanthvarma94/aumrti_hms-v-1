@@ -51,8 +51,11 @@ const AddReferralDoctorModal: React.FC<Props> = ({ open, onClose, onSaved, hospi
   };
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
+    <Dialog open={open} onOpenChange={(nextOpen) => { if (!nextOpen) onClose(); }}>
+      <DialogContent
+        className="max-w-md"
+        onInteractOutside={(event) => event.preventDefault()}
+      >
         <DialogHeader><DialogTitle>{editDoc ? "Edit" : "Add"} Referral Doctor</DialogTitle></DialogHeader>
         <div className="grid gap-3">
           <div><Label>Doctor Name *</Label><Input value={form.doctor_name} onChange={e => setForm({ ...form, doctor_name: e.target.value })} /></div>
