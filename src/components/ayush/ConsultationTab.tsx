@@ -328,7 +328,7 @@ export default function ConsultationTab({ system, showNew, onShowNewDone }: Prop
               <CardContent className="p-3 flex items-center gap-4">
                 <div>
                   <p className="font-semibold">{selectedPatient.full_name}</p>
-                  <p className="text-xs text-muted-foreground">{selectedPatient.uhid} · {calcAge(selectedPatient.date_of_birth)} · {selectedPatient.gender}</p>
+                  <p className="text-xs text-muted-foreground">{selectedPatient.uhid} · {calcAge(selectedPatient.dob)} · {selectedPatient.gender}</p>
                 </div>
                 {recentEncounters.length > 0 && (
                   <Badge variant="outline" className="ml-auto">
