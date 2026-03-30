@@ -727,10 +727,12 @@ export default function MortuaryPage() {
           <DialogHeader><DialogTitle>Register Medico-Legal Case</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div><Label>Patient *</Label>
-              <Select value={mlcForm.patient_id} onValueChange={v => setMlcForm(f => ({ ...f, patient_id: v }))}>
-                <SelectTrigger><SelectValue placeholder="Select patient" /></SelectTrigger>
-                <SelectContent>{patients.map(p => <SelectItem key={p.id} value={p.id}>{p.full_name} ({p.uhid})</SelectItem>)}</SelectContent>
-              </Select>
+              <PatientSearchPicker
+                hospitalId={HOSPITAL_ID}
+                value={mlcForm.patient_id}
+                onChange={v => setMlcForm(f => ({ ...f, patient_id: v }))}
+                onRegisterNew={() => setShowPatientReg("mlc")}
+              />
             </div>
             <div><Label>Link to Mortuary Case</Label>
               <Select value={mlcForm.mortuary_id} onValueChange={v => setMlcForm(f => ({ ...f, mortuary_id: v }))}>
