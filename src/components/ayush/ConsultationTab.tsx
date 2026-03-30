@@ -270,6 +270,12 @@ export default function ConsultationTab({ system, showNew, onShowNewDone }: Prop
     return Math.floor((Date.now() - new Date(dob).getTime()) / 31557600000) + "y";
   };
 
+  const filteredTokens = tokens.filter((t) => {
+    if (!search) return true;
+    const s = search.toLowerCase();
+    return (t.patient?.full_name?.toLowerCase().includes(s) || t.patient?.uhid?.toLowerCase().includes(s) || t.token_number.includes(s));
+  });
+
   return (
     <div className="flex h-full overflow-hidden">
       {/* Left - OPD Token Queue */}
