@@ -1,64 +1,51 @@
 
 
-## Dental Module (/dental) — Implementation Plan
+## Vaccination Module — Fix All 8 Issues
 
-### Overview
-Build a complete dental module with an interactive FDI tooth chart as centerpiece, periodontal charting, treatment planning, and lab order management. Uses existing `dental_charts`, `periodontal_charts`, `dental_treatment_plans`, and `dental_lab_orders` tables.
+### Root Cause
+The `patients` table column is `dob`, but the vaccination module references `date_of_birth` everywhere. This causes Supabase query failures (`column patients_1.date_of_birth does not exist`), breaking patient search, due list, and all DOB-dependent features.
 
-### Architecture
-- **Page**: `src/pages/dental/DentalPage.tsx` — split-panel layout (280px patient list + workspace)
-- **Components** (6 new files in `src/components/dental/`):
-  - `FDIToothChart.tsx` — Interactive SVG tooth chart (32 permanent teeth, FDI numbering)
-  - `ToothSVG.tsx` — Single tooth component with 5 clickable triangular surface segments (M/D/B/L/O)
-  - `PeriodontalTab.tsx` — Fast keyboard-entry grid for probing depths + auto-diagnosis
-  - `TreatmentPlanTab.tsx` — Treatment plan builder with billing integration
-  - `LabOrdersTab.tsx` — Dental lab order management (crown/bridge/denture tracking)
-  - `ToothChartTab.tsx` — Wrapper tab combining FDIToothChart + oral hygiene section + save
+### Fix Summary
 
-### Key Technical Details
+#### 1. `src/components/vaccination/PatientCardTab.tsx` — 5 fixes
+- Replace all `date_of_birth` references with `dob` in patient select queries and usage
+- Replace inline patient search with `PatientSearchPicker` component (same pattern used in RecordVaccineTab) — fixes **Issue 1: patient search**
+- Fix `generateDueSchedule` to use `dob` — fixes **Issue 3: DOB** and **Issue 4: newborn**
+- After recording a vaccine, auto-schedule next dose in `vaccination_due` — fixes **Issue 7: next dose auto-schedule**
+- Implement Print Vaccination Card using `window.print()` with a formatted printable div — fixes **Issue 8: print card**
 
-**Interactive FDI Tooth Chart (`FDIToothChart.tsx` + `ToothSVG.tsx`)**
-- Each tooth rendered as an SVG square divided into 5 triangular segments (Mesial, Distal, Buccal, Lingual, Occlusal)
-- Layout: 4 quadrants — UR(18-11) | UL(21-28) | LR(48-41) | LL(31-38)
-- Click any surface segment → modal to set status (Normal/Caries/Filling/Crown/RCT/Missing/Implant)
-- Colour coding: white=healthy, red=caries, blue=filling, gold=crown, pink=RCT, grey=missing, green=implant, orange=bridge
-- Chart data stored as JSONB in `dental_charts.chart_data`
-- Legend bar below chart
+#### 2. `src/components/vaccination/DueListTab.tsx` — 1 fix
+- Change `patients(full_name, uhid, phone, date_of_birth)` to `patients(full_name, uhid, phone, dob)` — fixes **Issue 2: due list fails**
+- Change `item.patients?.date_of_birth` to `item.patients?.dob` in `getAge()`
 
-**Periodontal Tab**
-- Grid: 32 rows (teeth) x columns for Buccal D/M/C probe + BOP, Palatal D/M/C + BOP
-- Tab-key navigation for fast entry
-- Colour: white (1-3mm), amber (4-5mm), red (6mm+)
-- Auto-calculates plaque/bleeding index and suggests diagnosis
-- Saves to `periodontal_charts` table
+#### 3. `src/pages/vaccination/VaccinationPage.tsx` — 1 fix
+- KPI query for `vaccination_records` uses `.eq("administered_at", today)` but `administered_at` is a `date` column — ensure correct date comparison
+- Fix overdue count query to properly surface overdue items — fixes **Issue 5: overdue not found**
 
-**Treatment Plan Tab**
-- Add items: tooth number, procedure (from predefined list), priority, cost, sessions
-- Table view with status tracking (Planned → In Progress → Completed)
-- Patient consent toggle with date
-- When item marked Completed → auto-creates bill line item via `bills` table insert
+#### 4. `src/components/vaccination/RecordVaccineTab.tsx` — 1 fix
+- After successful recording, auto-generate next due dose for multi-dose vaccines (e.g., BCG is single-dose but OPV/DPT have multiple) — fixes **Issue 6: no BCG record** and **Issue 7: next dose auto-scheduled**
 
-**Lab Orders Tab**
-- CRUD for dental lab orders (crown, bridge, denture, etc.)
-- Status workflow: Ordered → In Lab → Ready → Delivered
+### Technical Details
 
-### Routing & Navigation Changes
-- **`src/App.tsx`**: Add `/dental` route inside AppShell
-- **`src/lib/modules.ts`**: Add Dental module under "Specialized" category with roles `["dentist", "super_admin"]`
+**Column fix** (`date_of_birth` → `dob`):
+- PatientCardTab: patient select query, `getAge()`, `generateDueSchedule()`, `selectPatient()` DOB check
+- DueListTab: join select and age display
 
-### Files Created (7)
-1. `src/pages/dental/DentalPage.tsx`
-2. `src/components/dental/ToothSVG.tsx`
-3. `src/components/dental/FDIToothChart.tsx`
-4. `src/components/dental/ToothChartTab.tsx`
-5. `src/components/dental/PeriodontalTab.tsx`
-6. `src/components/dental/TreatmentPlanTab.tsx`
-7. `src/components/dental/LabOrdersTab.tsx`
+**Patient search replacement**:
+- Remove custom inline search, use `PatientSearchPicker` with `onRegisterNew` prop for creating new patients
+- After patient selected, fetch full patient data including `dob` for vaccination card display
 
-### Files Modified (2)
-1. `src/App.tsx` — add route
-2. `src/lib/modules.ts` — add module definition
+**Print card**:
+- Create a printable section with patient info + NIS timeline + records
+- Use CSS `@media print` or `window.print()` approach
 
-### No Database Changes
-All tables already exist from the previous migration.
+**Next dose auto-schedule**:
+- After recording a vaccine, look up vaccine_master for multi-dose schedules
+- Insert next dose into `vaccination_due` with calculated due date
+
+### Files Changed
+1. `src/components/vaccination/PatientCardTab.tsx` — major rewrite (search, dob, print, next-dose)
+2. `src/components/vaccination/DueListTab.tsx` — column name fix
+3. `src/components/vaccination/RecordVaccineTab.tsx` — add next-dose scheduling after record
+4. `src/pages/vaccination/VaccinationPage.tsx` — minor KPI query fix
 
