@@ -67,6 +67,7 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated }) => {
   const [nextToken, setNextToken] = useState("A-1");
   const [submitting, setSubmitting] = useState(false);
   const [referralSource, setReferralSource] = useState("");
+  const [referralDoctorId, setReferralDoctorId] = useState<string | null>(null);
   const [showReferralModal, setShowReferralModal] = useState(false);
 
   // Payment fields
