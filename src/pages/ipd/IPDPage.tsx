@@ -4,6 +4,7 @@ import BedMap from "@/components/ipd/BedMap";
 import IPDWorkspace from "@/components/ipd/IPDWorkspace";
 import WardStats from "@/components/ipd/WardStats";
 import AdmitPatientModal from "@/components/ipd/AdmitPatientModal";
+import BedForecastCard from "@/components/ipd/BedForecastCard";
 
 export interface BedData {
   id: string;
