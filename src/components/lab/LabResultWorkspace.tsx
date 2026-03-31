@@ -101,12 +101,12 @@ const LabResultWorkspace: React.FC<Props> = ({ order, onRefresh }) => {
   const [labHospitalId, setLabHospitalId] = useState<string>("");
   const [validating, setValidating] = useState(false);
 
-  // Get current user id
+  // Get current user id and hospital id
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) return;
-      supabase.from("users").select("id").eq("auth_user_id", user.id).limit(1).single()
-        .then(({ data }) => { if (data) setCurrentUserId(data.id); });
+      supabase.from("users").select("id, hospital_id").eq("auth_user_id", user.id).limit(1).single()
+        .then(({ data }) => { if (data) { setCurrentUserId(data.id); setLabHospitalId(data.hospital_id); } });
     });
   }, []);
 
