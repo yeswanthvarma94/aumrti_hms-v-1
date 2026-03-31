@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { format, differenceInDays } from "date-fns";
+import PredictiveMaintenanceSection from "./PredictiveMaintenanceSection";
 
 const HOSPITAL_ID = "8f3d08b3-8835-42a7-920e-fdf5a78260bc";
 
