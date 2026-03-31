@@ -600,6 +600,8 @@ Guidelines:
         {/* ═══ TAB 5: ANALYTICS ═══ */}
         <TabsContent value="analytics" className="flex-1 overflow-hidden mt-0">
           <ScrollArea className="h-full">
+            <div className="space-y-4">
+            <ReferralPatternAnalyser />
             <div className="grid grid-cols-2 gap-4">
               {/* Source Attribution */}
               <Card>
