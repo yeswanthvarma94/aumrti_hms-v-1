@@ -595,6 +595,20 @@ const LabResultWorkspace: React.FC<Props> = ({ order, onRefresh }) => {
                           ✓ Critical acknowledged
                         </div>
                       )}
+                      {/* Trend analysis for validated numeric results */}
+                      {isValidated && isNumeric && item.result_numeric != null && (
+                        <div className="mx-4 my-1">
+                          <LabTrendPanel
+                            testName={item.test_name}
+                            currentResult={item.result_numeric}
+                            unit={item.unit}
+                            normalMin={item.normal_min}
+                            normalMax={item.normal_max}
+                            patientId={order.patient_id}
+                            hospitalId=""
+                          />
+                        </div>
+                      )}
                     </React.Fragment>
                   );
                 })}
