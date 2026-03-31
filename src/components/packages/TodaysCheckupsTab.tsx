@@ -120,12 +120,11 @@ export default function TodaysCheckupsTab({ onRefreshKPIs }: Props) {
           await supabase.from("lab_orders").insert({
             hospital_id: HOSPITAL_ID,
             patient_id: booking.patient_id,
-            test_id: test.id,
-            order_number: `PKG-${Date.now()}`,
+            ordered_by: HOSPITAL_ID,
             status: "ordered",
             priority: "routine",
-            source: "health_package",
-          });
+            clinical_notes: `Health package: ${booking.health_packages?.package_name} — ${testName}`,
+          } as any);
         }
       }
       toast.success(`${labComponents.length} lab orders created`);

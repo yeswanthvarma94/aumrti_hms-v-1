@@ -122,9 +122,9 @@ export default function CorporateTab() {
               full_name: emp.name,
               phone: emp.phone || null,
               dob: emp.dob || null,
-              gender: emp.gender || "other",
+              gender: (emp.gender || "other") as any,
               uhid: `EMP-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-            })
+            } as any)
             .select("id")
             .single();
           
