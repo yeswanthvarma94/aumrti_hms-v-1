@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import OutcomeTrajectoryPredictor from "@/components/physio/OutcomeTrajectoryPredictor";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
