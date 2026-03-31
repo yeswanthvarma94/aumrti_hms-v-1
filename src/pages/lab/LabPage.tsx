@@ -2,10 +2,12 @@ import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Microscope } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import LabQueuePanel from "@/components/lab/LabQueuePanel";
 import LabInfoPanel from "@/components/lab/LabInfoPanel";
 import LabResultWorkspace from "@/components/lab/LabResultWorkspace";
 import NewLabOrderModal from "@/components/lab/NewLabOrderModal";
+import LabQCDashboard from "@/components/lab/LabQCDashboard";
 
 interface LabOrder {
   id: string;
