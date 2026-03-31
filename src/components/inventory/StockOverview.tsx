@@ -55,6 +55,16 @@ const StockOverview: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [adjustItem, setAdjustItem] = useState<StockItem | null>(null);
+  const [forecastItem, setForecastItem] = useState<StockItem | null>(null);
+  const [hospitalId, setHospitalId] = useState<string>("");
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      supabase.from("users").select("hospital_id").eq("auth_user_id", user.id).limit(1).maybeSingle()
+        .then(({ data }) => { if (data) setHospitalId(data.hospital_id); });
+    });
+  }, []);
 
   const loadData = async () => {
     const [itemsRes, stockRes] = await Promise.all([
