@@ -9,6 +9,7 @@ import {
   usePaymentModes, useInsuranceSummary, useDailyHeatmap, type DateRange,
 } from "@/hooks/useAnalyticsData";
 import { Skeleton } from "@/components/ui/skeleton";
+import RevenueForecastCard from "./RevenueForecastCard";
 
 const fmt = (n: number) => {
   if (n >= 10000000) return `₹${(n / 10000000).toFixed(1)}Cr`;
