@@ -4,11 +4,13 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { runSepsisCheck, type SepsisResult } from "@/lib/clinicalPredictions";
 
 interface Props {
   admissionId: string;
   hospitalId: string | null;
   userId: string | null;
+  patientId?: string;
 }
 
 interface VitalRecord {
@@ -25,10 +27,12 @@ interface VitalRecord {
   recorded_by: string;
 }
 
-const IPDVitalsTab: React.FC<Props> = ({ admissionId, hospitalId, userId }) => {
+const IPDVitalsTab: React.FC<Props> = ({ admissionId, hospitalId, userId, patientId }) => {
   const [vitals, setVitals] = useState<VitalRecord[]>([]);
   const [form, setForm] = useState({ bp_s: "", bp_d: "", pulse: "", temp: "", spo2: "", rr: "", pain: "" });
   const [saving, setSaving] = useState(false);
+  const [sepsisResult, setSepsisResult] = useState<SepsisResult | null>(null);
+  const [sepsisChecking, setSepsisChecking] = useState(false);
 
   const fetchVitals = useCallback(() => {
     if (!admissionId) return;
@@ -41,6 +45,31 @@ const IPDVitalsTab: React.FC<Props> = ({ admissionId, hospitalId, userId }) => {
   }, [admissionId]);
 
   useEffect(() => { fetchVitals(); }, [fetchVitals]);
+
+  // Check for active sepsis alert
+  useEffect(() => {
+    if (!admissionId) return;
+    supabase.from("sepsis_alerts")
+      .select("*")
+      .eq("admission_id", admissionId)
+      .eq("resolved", false)
+      .order("alert_fired_at", { ascending: false })
+      .limit(1)
+      .then(({ data }) => {
+        if (data && data.length > 0) {
+          const alert = data[0] as any;
+          setSepsisResult({
+            score: alert.news2_score,
+            riskLevel: alert.risk_level,
+            clinicalNote: alert.clinical_interpretation ? {
+              clinical_interpretation: alert.clinical_interpretation,
+              urgent_actions: alert.urgent_actions || [],
+              escalate_immediately: alert.risk_level === "critical",
+            } : null,
+          });
+        }
+      });
+  }, [admissionId]);
 
   const calcNEWS2 = () => {
     let score = 0;
@@ -77,16 +106,84 @@ const IPDVitalsTab: React.FC<Props> = ({ admissionId, hospitalId, userId }) => {
     setSaving(false);
     if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
     toast({ title: "Vitals recorded" });
+
+    // Run sepsis check if NEWS2 >= 3
+    if (news2 >= 3 && patientId) {
+      setSepsisChecking(true);
+      const result = await runSepsisCheck(
+        {
+          rr: form.rr ? parseInt(form.rr) : undefined,
+          spo2: form.spo2 ? parseInt(form.spo2) : undefined,
+          temperature: form.temp ? parseFloat(form.temp) : undefined,
+          bp_systolic: form.bp_s ? parseInt(form.bp_s) : undefined,
+          bp_diastolic: form.bp_d ? parseInt(form.bp_d) : undefined,
+          pulse: form.pulse ? parseInt(form.pulse) : undefined,
+        },
+        hospitalId,
+        patientId,
+        admissionId
+      );
+      setSepsisChecking(false);
+      if (result) {
+        setSepsisResult(result);
+        if (result.riskLevel === "critical") {
+          toast({ title: "🚨 CRITICAL: Sepsis Risk Detected", description: `NEWS2 Score: ${result.score} — Urgent escalation recommended`, variant: "destructive" });
+        } else if (result.riskLevel === "high") {
+          toast({ title: "⚠️ High Sepsis Risk", description: `NEWS2 Score: ${result.score} — Clinical review required` });
+        }
+      }
+    }
+
     setForm({ bp_s: "", bp_d: "", pulse: "", temp: "", spo2: "", rr: "", pain: "" });
     fetchVitals();
+  };
+
+  const handleAcknowledgeSepsis = async () => {
+    if (!admissionId || !userId) return;
+    await supabase.from("sepsis_alerts")
+      .update({ acknowledged: true, acknowledged_by: userId, acknowledged_at: new Date().toISOString() } as any)
+      .eq("admission_id", admissionId)
+      .eq("resolved", false);
+    toast({ title: "Sepsis alert acknowledged" });
   };
 
   const latestNEWS2 = vitals[0]?.news2_score ?? null;
 
   return (
     <div className="h-full flex flex-col overflow-hidden p-4">
-      {/* NEWS2 warning */}
-      {latestNEWS2 !== null && latestNEWS2 >= 5 && (
+      {/* Sepsis Alert Banner */}
+      {sepsisResult && sepsisResult.riskLevel !== "low" && (
+        <div className={cn(
+          "flex-shrink-0 border-l-[3px] p-3 rounded-r mb-3",
+          sepsisResult.riskLevel === "critical" ? "bg-red-50 border-red-600" : "bg-amber-50 border-amber-500"
+        )}>
+          <div className="flex items-center justify-between mb-1">
+            <span className={cn("text-sm font-bold", sepsisResult.riskLevel === "critical" ? "text-red-700" : "text-amber-700")}>
+              {sepsisResult.riskLevel === "critical" ? "🚨 CRITICAL SEPSIS RISK" : "⚠️ HIGH SEPSIS RISK"} — NEWS2: {sepsisResult.score}
+            </span>
+            <Button size="sm" variant="outline" onClick={handleAcknowledgeSepsis}
+              className={cn("text-[11px] h-6", sepsisResult.riskLevel === "critical" ? "border-red-300 text-red-600" : "border-amber-300 text-amber-600")}>
+              ✓ Acknowledge
+            </Button>
+          </div>
+          {sepsisResult.clinicalNote && (
+            <>
+              <p className="text-xs text-slate-700 mb-1">{sepsisResult.clinicalNote.clinical_interpretation}</p>
+              {sepsisResult.clinicalNote.urgent_actions.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {sepsisResult.clinicalNote.urgent_actions.map((a, i) => (
+                    <span key={i} className="text-[10px] bg-white border border-slate-200 px-2 py-0.5 rounded-full text-slate-700">{a}</span>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+          {sepsisChecking && <p className="text-[10px] text-slate-500 mt-1">🔄 Running AI clinical assessment...</p>}
+        </div>
+      )}
+
+      {/* NEWS2 warning (legacy, show if no sepsis alert but high score) */}
+      {!sepsisResult && latestNEWS2 !== null && latestNEWS2 >= 5 && (
         <div className="flex-shrink-0 bg-red-50 border-l-[3px] border-red-500 p-2.5 rounded-r mb-3 flex items-center justify-between">
           <span className="text-xs text-red-700 font-medium">⚠️ High NEWS2 Score ({latestNEWS2}) — Consider escalation protocol</span>
           <Button size="sm" variant="outline" className="text-[11px] h-6 border-red-300 text-red-600">Notify Senior</Button>

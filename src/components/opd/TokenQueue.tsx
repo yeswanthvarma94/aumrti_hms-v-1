@@ -1,9 +1,12 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import EmptyState from "@/components/EmptyState";
 import WalkInModal from "./WalkInModal";
+import { Badge } from "@/components/ui/badge";
+import { predictNoShow, type NoShowPrediction } from "@/lib/clinicalPredictions";
+import { sendWhatsApp } from "@/lib/whatsapp-send";
 import type { OpdToken } from "@/pages/opd/OPDPage";
 
 interface Props {
@@ -56,12 +59,54 @@ const TokenQueue: React.FC<Props> = ({ tokens, selectedTokenId, onSelectToken, h
   const [departments, setDepartments] = useState<{ id: string; name: string }[]>([]);
   const [activeDept, setActiveDept] = useState<string>("all");
   const [showModal, setShowModal] = useState(false);
+  const [predictions, setPredictions] = useState<Record<string, NoShowPrediction>>({});
+  const [predictingIds, setPredictingIds] = useState<Set<string>>(new Set());
+  const [reminderSending, setReminderSending] = useState<string | null>(null);
 
   useEffect(() => {
     if (!hospitalId) return;
     supabase.from("departments").select("id, name").eq("hospital_id", hospitalId).eq("is_active", true)
       .then(({ data }) => setDepartments(data || []));
   }, [hospitalId]);
+
+  // Run no-show predictions for waiting tokens
+  const runPredictions = useCallback(async () => {
+    if (!hospitalId || tokens.length === 0) return;
+    const waitingTokens = tokens.filter(t => t.status === "waiting" && !predictions[t.id] && !predictingIds.has(t.id));
+    if (waitingTokens.length === 0) return;
+
+    const newPredicting = new Set(predictingIds);
+    waitingTokens.forEach(t => newPredicting.add(t.id));
+    setPredictingIds(newPredicting);
+
+    for (const token of waitingTokens.slice(0, 5)) {
+      const result = await predictNoShow(
+        { id: token.id, patient_id: token.patient_id, doctor_id: token.doctor_id, created_at: token.created_at, hospital_id: token.hospital_id },
+        token.patient?.full_name || "Patient",
+        token.doctor?.full_name || null
+      );
+      if (result) {
+        setPredictions(prev => ({ ...prev, [token.id]: result }));
+      }
+    }
+  }, [hospitalId, tokens, predictions, predictingIds]);
+
+  useEffect(() => {
+    if (!loading && tokens.length > 0) {
+      const timer = setTimeout(runPredictions, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [loading, tokens.length, runPredictions]);
+
+  const handleSendReminder = async (token: OpdToken) => {
+    if (!hospitalId || !token.patient?.phone) return;
+    setReminderSending(token.id);
+    const doctorName = token.doctor?.full_name || "your doctor";
+    const message = `Dear ${token.patient.full_name}, reminder: your appointment with Dr. ${doctorName} is today. Please confirm attendance. Reply YES to confirm or call the hospital to reschedule.`;
+    await sendWhatsApp({ hospitalId, phone: token.patient.phone, message });
+    await supabase.from("no_show_predictions").update({ reminder_sent: true } as any).eq("appointment_id", token.id);
+    setReminderSending(null);
+  };
 
   const filtered = useMemo(() => {
     let list = [...tokens];
@@ -74,6 +119,10 @@ const TokenQueue: React.FC<Props> = ({ tokens, selectedTokenId, onSelectToken, h
   const inRoomCount = tokens.filter((t) => t.status === "in_consultation").length;
   const doneCount = tokens.filter((t) => t.status === "completed").length;
   const today = new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+
+  // No-show analytics
+  const highRiskCount = Object.values(predictions).filter(p => p.risk_score >= 70).length;
+  const medRiskCount = Object.values(predictions).filter(p => p.risk_score >= 40 && p.risk_score < 70).length;
 
   return (
     <>
@@ -133,6 +182,8 @@ const TokenQueue: React.FC<Props> = ({ tokens, selectedTokenId, onSelectToken, h
               />
             ) : filtered.map((token) => {
               const isSelected = token.id === selectedTokenId;
+              const pred = predictions[token.id];
+              const showRiskBadge = pred && token.status === "waiting";
               return (
                 <button
                   key={token.id}
@@ -146,11 +197,19 @@ const TokenQueue: React.FC<Props> = ({ tokens, selectedTokenId, onSelectToken, h
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-lg font-bold text-[#1A2F5A]">{token.token_number}</span>
-                    {token.priority !== "normal" && priorityBadge[token.priority] && (
-                      <span className={cn("text-[9px] px-1.5 py-px rounded-full font-bold", priorityBadge[token.priority].bg, priorityBadge[token.priority].text)}>
-                        {priorityBadge[token.priority].label}
-                      </span>
-                    )}
+                    <div className="flex items-center gap-1">
+                      {showRiskBadge && pred.risk_score >= 70 && (
+                        <Badge className="text-[8px] px-1.5 py-0 bg-red-100 text-red-700 border-red-200 hover:bg-red-100">🔴 High Risk</Badge>
+                      )}
+                      {showRiskBadge && pred.risk_score >= 40 && pred.risk_score < 70 && (
+                        <Badge className="text-[8px] px-1.5 py-0 bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-100">🟡 Med Risk</Badge>
+                      )}
+                      {token.priority !== "normal" && priorityBadge[token.priority] && (
+                        <span className={cn("text-[9px] px-1.5 py-px rounded-full font-bold", priorityBadge[token.priority].bg, priorityBadge[token.priority].text)}>
+                          {priorityBadge[token.priority].label}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div className="flex items-center justify-between mt-1">
                     <span className="text-[13px] font-medium text-slate-900 truncate max-w-[140px]">{token.patient?.full_name || "—"}</span>
@@ -167,10 +226,32 @@ const TokenQueue: React.FC<Props> = ({ tokens, selectedTokenId, onSelectToken, h
                       </span>
                     </div>
                   )}
+                  {/* Send Reminder button for high-risk */}
+                  {showRiskBadge && pred.risk_score >= 70 && token.patient?.phone && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleSendReminder(token); }}
+                      disabled={reminderSending === token.id}
+                      className="mt-1.5 w-full text-[10px] font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded py-1 transition-colors"
+                    >
+                      {reminderSending === token.id ? "Sending..." : "📱 Send Reminder"}
+                    </button>
+                  )}
                 </button>
               );
             })}
         </div>
+
+        {/* No-Show Analytics Card */}
+        {(highRiskCount > 0 || medRiskCount > 0) && (
+          <div className="flex-shrink-0 border-t border-slate-100 bg-slate-50 p-2.5">
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Today's No-Show Risk</p>
+            <div className="flex items-center gap-3">
+              {highRiskCount > 0 && <span className="text-[11px] text-red-600 font-medium">🔴 {highRiskCount} High</span>}
+              {medRiskCount > 0 && <span className="text-[11px] text-amber-600 font-medium">🟡 {medRiskCount} Medium</span>}
+              <span className="text-[11px] text-slate-400">~{Math.round(highRiskCount * 0.7 + medRiskCount * 0.3)} est. no-shows</span>
+            </div>
+          </div>
+        )}
 
         {/* Footer */}
         <div className="flex-shrink-0 border-t border-slate-100 p-2">
