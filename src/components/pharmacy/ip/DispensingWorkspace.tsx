@@ -451,6 +451,13 @@ const DispensingWorkspace: React.FC<Props> = ({ hospitalId, prescription, onDisp
         </div>
       </div>
 
+      {/* Allergy Banner */}
+      {patient?.allergies && (
+        <div className="flex-shrink-0 px-5">
+          <AllergyBanner allergies={patient.allergies} />
+        </div>
+      )}
+
       {/* ADR Check Panel — shown when drugs are loaded */}
       {drugRows.length > 0 && patient && (
         <div className="flex-shrink-0 px-5 py-2 border-b border-border bg-card space-y-1.5">
