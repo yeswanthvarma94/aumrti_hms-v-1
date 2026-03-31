@@ -22,6 +22,8 @@ const navTabs = [
 
 const InventoryPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState("stock");
+  const [showDemandReview, setShowDemandReview] = useState(false);
+  const [hospitalId, setHospitalId] = useState("");
   const [kpis, setKpis] = useState({ totalItems: 0, lowStock: 0, expiring: 0, pendingIndents: 0 });
 
   useEffect(() => {
