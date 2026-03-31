@@ -531,6 +531,13 @@ const PhysioPage: React.FC = () => {
                     </LineChart>
                   </ResponsiveContainer>
                 ) : <p className="text-sm text-muted-foreground text-center py-16">Click a score row with 2+ assessments to see progress</p>}
+                {outcomeChart.length > 0 && (
+                  <OutcomeTrajectoryPredictor
+                    referralId={outcomes[0]?.referral_id || ""}
+                    diagnosis={activeRefList.find(r => r.id === outcomes[0]?.referral_id)?.diagnosis || "Unknown"}
+                    scores={outcomeChart.map((o: any) => ({ tool: o.tool, score: o.score, max_score: 100, assessment_type: o.assessment_type }))}
+                  />
+                )}
               </Card>
             </div>
           </div>
