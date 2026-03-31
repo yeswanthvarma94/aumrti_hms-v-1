@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Pill, Save, Check, RotateCcw, AlertTriangle, Loader2 } from "lucide-react";
 import FiveRightsPanel from "./FiveRightsPanel";
+import ADRCheckPanel from "./ADRCheckPanel";
 import AllergyBanner from "@/components/clinical/AllergyBanner";
 import { logNABHEvidence } from "@/lib/nabh-evidence";
 import type { PrescriptionItem } from "./PrescriptionQueue";
