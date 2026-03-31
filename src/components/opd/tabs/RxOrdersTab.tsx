@@ -13,6 +13,10 @@ interface Props {
   onChange: (partial: Partial<PrescriptionData>) => void;
   hospitalId: string | null;
   patientAllergies?: string[];
+  diagnosis?: string;
+  icdCode?: string;
+  patientAge?: number;
+  patientGender?: string;
 }
 
 const FREQUENCIES = ["OD", "BD", "TDS", "QID", "SOS", "STAT", "HS", "AC", "PC"];
