@@ -17,7 +17,7 @@ export default function ProgressTrackerTab() {
 
   useEffect(() => {
     supabase.from("package_bookings")
-      .select("*, health_packages(package_name), patients(first_name, last_name, uhid, date_of_birth, gender)")
+      .select("*, health_packages(package_name), patients(full_name, uhid, dob, gender)")
       .eq("hospital_id", HOSPITAL_ID)
       .in("status", ["awaiting_report", "completed"])
       .order("created_at", { ascending: false })
