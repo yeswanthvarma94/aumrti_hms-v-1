@@ -1,51 +1,61 @@
 
 
-## Vaccination Module — Fix All 8 Issues
+## Fix Health Packages — 3 Issues
 
-### Root Cause
-The `patients` table column is `dob`, but the vaccination module references `date_of_birth` everywhere. This causes Supabase query failures (`column patients_1.date_of_birth does not exist`), breaking patient search, due list, and all DOB-dependent features.
+### Issue 1: Stations not syncing with Lab/Doctors/Diagnostics + No vitals entry
 
-### Fix Summary
+**Root Cause**: The "Today's Checkups" tab has a hardcoded `STATIONS` array with generic names. When clicking "Complete Vitals →" or "Complete Lab →", it only updates a JSON key in `components_done` — it doesn't actually create vitals records, lab orders, or link to any real clinical module. There's no vitals entry form, no lab order creation, and no doctor consultation link.
 
-#### 1. `src/components/vaccination/PatientCardTab.tsx` — 5 fixes
-- Replace all `date_of_birth` references with `dob` in patient select queries and usage
-- Replace inline patient search with `PatientSearchPicker` component (same pattern used in RecordVaccineTab) — fixes **Issue 1: patient search**
-- Fix `generateDueSchedule` to use `dob` — fixes **Issue 3: DOB** and **Issue 4: newborn**
-- After recording a vaccine, auto-schedule next dose in `vaccination_due` — fixes **Issue 7: next dose auto-schedule**
-- Implement Print Vaccination Card using `window.print()` with a formatted printable div — fixes **Issue 8: print card**
+**Fix**: Add station-specific actions when completing each station:
+- **Vitals station**: Show a vitals entry form (BP, pulse, SpO2, temp, height, weight, BMI) and save to a `package_vitals` or inline JSON on the booking
+- **Lab station**: Auto-create lab orders from the package's `components` list (which maps to `lab_test_master`) and link to `/lab`
+- **ECG/X-Ray/USG stations**: Mark as done with optional notes/findings
+- **Doctor station**: Link to doctor consultation, allow notes entry
+- Each station completion should record who completed it and when
 
-#### 2. `src/components/vaccination/DueListTab.tsx` — 1 fix
-- Change `patients(full_name, uhid, phone, date_of_birth)` to `patients(full_name, uhid, phone, dob)` — fixes **Issue 2: due list fails**
-- Change `item.patients?.date_of_birth` to `item.patients?.dob` in `getAge()`
+**Files**: `src/components/packages/TodaysCheckupsTab.tsx` — add station-specific modals/forms
 
-#### 3. `src/pages/vaccination/VaccinationPage.tsx` — 1 fix
-- KPI query for `vaccination_records` uses `.eq("administered_at", today)` but `administered_at` is a `date` column — ensure correct date comparison
-- Fix overdue count query to properly surface overdue items — fixes **Issue 5: overdue not found**
+### Issue 2: AI Report not generated
 
-#### 4. `src/components/vaccination/RecordVaccineTab.tsx` — 1 fix
-- After successful recording, auto-generate next due dose for multi-dose vaccines (e.g., BCG is single-dose but OPV/DPT have multiple) — fixes **Issue 6: no BCG record** and **Issue 7: next dose auto-scheduled**
+**Root Cause**: `callAI()` returns an `AIResponse` object `{ text, provider, model, error }`, but `ProgressTrackerTab.tsx` line 56 treats the return as a raw string:
+```ts
+const response = await callAI({...});
+setReports((prev) => ({ ...prev, [booking.id]: response })); // response is AIResponse, not string
+```
+Additionally, if no AI provider is configured, `callAI` returns `{ text: "", error: "No AI provider configured" }` silently.
 
-### Technical Details
+**Fix**:
+- Change to `response.text` and check `response.error`
+- Show toast with error message if `response.error` exists
+- Store `response.text` in the reports state
 
-**Column fix** (`date_of_birth` → `dob`):
-- PatientCardTab: patient select query, `getAge()`, `generateDueSchedule()`, `selectPatient()` DOB check
-- DueListTab: join select and age display
+**Files**: `src/components/packages/ProgressTrackerTab.tsx`
 
-**Patient search replacement**:
-- Remove custom inline search, use `PatientSearchPicker` with `onRegisterNew` prop for creating new patients
-- After patient selected, fetch full patient data including `dob` for vaccination card display
+### Issue 3: Corporate bulk booking from CSV not working
 
-**Print card**:
-- Create a printable section with patient info + NIS timeline + records
-- Use CSS `@media print` or `window.print()` approach
+**Root Cause**: The `CorporateTab` has no CSV upload or bulk booking functionality at all — it only has a manual "Add Corporate Account" form. The bulk booking feature was never built.
 
-**Next dose auto-schedule**:
-- After recording a vaccine, look up vaccine_master for multi-dose schedules
-- Insert next dose into `vaccination_due` with calculated due date
+**Fix**: Add to `CorporateTab`:
+- **CSV Upload section**: File input accepting `.csv` with columns: `name, phone, dob, gender, employee_id`
+- **Parse CSV**: Use `FileReader` + basic CSV parsing
+- **Preview table**: Show parsed employees before booking
+- **Select package + date**: Pick health package and scheduled date for all employees
+- **Bulk book**: Loop through employees, upsert each as a patient (match by phone), then insert `package_bookings` for each
+- **Corporate invoice**: Single bill linked to the corporate account (not individual patients)
+- RLS uses `get_user_hospital_id()` which requires auth — the hardcoded `HOSPITAL_ID` bypass won't work for INSERT. Need to ensure the user is logged in, or the code should show a clear error.
 
-### Files Changed
-1. `src/components/vaccination/PatientCardTab.tsx` — major rewrite (search, dob, print, next-dose)
-2. `src/components/vaccination/DueListTab.tsx` — column name fix
-3. `src/components/vaccination/RecordVaccineTab.tsx` — add next-dose scheduling after record
-4. `src/pages/vaccination/VaccinationPage.tsx` — minor KPI query fix
+**Files**: `src/components/packages/CorporateTab.tsx`
+
+### Migration
+- **Add RLS policy**: Add a public INSERT/UPDATE policy for `package_bookings` and `corporate_accounts` that allows `anon` role OR adjust to use `authenticated` with proper hospital_id check. Current policies require `get_user_hospital_id()` which needs a logged-in user — if using hardcoded HOSPITAL_ID, writes will fail.
+- Consider adding a permissive SELECT/INSERT policy for development, or switch all components to use authenticated user's hospital_id.
+
+### Summary of Changes
+
+| File | Change |
+|------|--------|
+| `TodaysCheckupsTab.tsx` | Add vitals entry form, lab order creation, station-specific completion modals |
+| `ProgressTrackerTab.tsx` | Fix `callAI` return handling (`response.text` + error check) |
+| `CorporateTab.tsx` | Add CSV upload, parse, preview, bulk package booking |
+| Migration | Add permissive RLS policies or fix auth flow for writes |
 
