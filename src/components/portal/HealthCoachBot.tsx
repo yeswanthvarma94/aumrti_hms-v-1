@@ -65,7 +65,7 @@ const HealthCoachBot: React.FC<Props> = ({ patientId, hospitalId, patientName, h
         prompt: `You are a friendly health assistant at an Indian hospital.
 Patient context:
 - Name: ${patient?.full_name || patientName}
-- Allergies: ${(patient?.allergies as string[])?.join(", ") || "None known"}
+- Allergies: ${Array.isArray(patient?.allergies) ? (patient.allergies as unknown as string[]).join(", ") : "None known"}
 - Recent diagnosis: ${recentAdm?.admitting_diagnosis || "No recent visit"}
 
 Conversation so far:
