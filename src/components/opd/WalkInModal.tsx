@@ -96,6 +96,11 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated, defaultD
       .then(({ data }) => setDoctors(data || []));
   }, [hospitalId]);
 
+  // Auto-select department if defaultDeptId provided
+  useEffect(() => {
+    if (defaultDeptId) setDeptId(defaultDeptId);
+  }, [defaultDeptId]);
+
   // Fetch next token number
   useEffect(() => {
     const today = new Date().toISOString().split("T")[0];
