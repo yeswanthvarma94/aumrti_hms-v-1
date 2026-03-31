@@ -29,7 +29,7 @@ const PredictiveMaintenanceSection: React.FC = () => {
     try {
       const { data: equipment } = await supabase
         .from("equipment_master")
-        .select("id, equipment_name, equipment_code, make, model, purchase_date, last_pm_date, amc_type, status")
+        .select("id, equipment_name, equipment_code, make, model, purchase_date, amc_type, status")
         .eq("hospital_id", HOSPITAL_ID)
         .in("status", ["operational", "under_maintenance"]);
 
