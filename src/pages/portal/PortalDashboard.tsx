@@ -311,6 +311,13 @@ const PortalDashboard: React.FC<{ session: PortalSession }> = ({ session }) => {
           </div>
         </button>
       </div>
+
+      <HealthCoachBot
+        patientId={session.patientId}
+        hospitalId={session.hospitalId}
+        patientName={session.fullName}
+        hospitalName="Aumrti Hospital"
+      />
     </div>
   );
 };

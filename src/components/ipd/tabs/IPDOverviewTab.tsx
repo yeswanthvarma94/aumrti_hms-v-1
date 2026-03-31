@@ -230,6 +230,9 @@ const IPDOverviewTab: React.FC<Props> = ({ admissionId, hospitalId, onTabChange,
             })}
           </div>
 
+          {/* Discharge TAT Timer */}
+          <DischargeTATTimer admissionId={admissionId} hospitalId={hospitalId} medicalCleared={medicalCleared} />
+
           {/* Action for current step */}
           <div className="flex-1 flex flex-col justify-end">
             {currentStep === 0 && (
