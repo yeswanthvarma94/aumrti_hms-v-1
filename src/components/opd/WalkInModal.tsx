@@ -10,6 +10,7 @@ interface Props {
   hospitalId: string;
   onClose: () => void;
   onCreated: () => void;
+  defaultDeptId?: string;
 }
 
 interface FoundPatient {
