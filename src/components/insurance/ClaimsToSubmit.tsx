@@ -75,6 +75,7 @@ const ClaimsToSubmit: React.FC = () => {
         denial_risk: risk,
         has_pre_auth: hasPreAuth,
         patient_id: b.patient_id,
+        admission_id: b.admission_id,
       };
     }));
     setLoading(false);
