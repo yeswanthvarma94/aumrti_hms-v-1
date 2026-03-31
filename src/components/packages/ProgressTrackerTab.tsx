@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { callAI } from "@/lib/aiProvider";
@@ -53,7 +52,17 @@ Keep language professional but accessible. Max 300 words.`,
         maxTokens: 400,
       });
 
-      setReports((prev) => ({ ...prev, [booking.id]: response }));
+      if (response.error) {
+        toast.error(response.error);
+        return;
+      }
+
+      if (!response.text) {
+        toast.error("No report text generated. Check AI provider configuration.");
+        return;
+      }
+
+      setReports((prev) => ({ ...prev, [booking.id]: response.text }));
 
       await supabase.from("package_bookings").update({ status: "completed", completed_at: new Date().toISOString() }).eq("id", booking.id);
       toast.success("Report generated successfully");
@@ -90,7 +99,7 @@ Keep language professional but accessible. Max 300 words.`,
                     Generate Health Report
                   </Button>
                 )}
-                {b.status === "completed" && (
+                {(b.status === "completed" || report) && (
                   <>
                     <Button size="sm" variant="outline"><Download className="h-4 w-4 mr-1" /> Download Report</Button>
                     <Button size="sm" variant="outline"><MessageSquare className="h-4 w-4 mr-1" /> WhatsApp to Patient</Button>
