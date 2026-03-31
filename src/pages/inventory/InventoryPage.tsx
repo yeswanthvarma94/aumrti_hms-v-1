@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from "react";
-import { Package, ClipboardList, FileText, PackageCheck, Building2, BarChart3, TrendingUp } from "lucide-react";
+import { Package, ClipboardList, FileText, PackageCheck, Building2, BarChart3, Brain } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import StockOverview from "@/components/inventory/StockOverview";
 import IndentsPanel from "@/components/inventory/IndentsPanel";
 import PurchaseOrdersPanel from "@/components/inventory/PurchaseOrdersPanel";
 import GRNPanel from "@/components/inventory/GRNPanel";
 import VendorsPanel from "@/components/inventory/VendorsPanel";
 import ReportsPanel from "@/components/inventory/ReportsPanel";
+import InventoryDemandReview from "@/components/inventory/InventoryDemandReview";
 
 const navTabs = [
   { id: "stock", label: "Stock Overview", icon: Package },
