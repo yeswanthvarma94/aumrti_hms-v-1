@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Search, Download, ChevronDown, ChevronRight, Plus } from "lucide-react";
+import { Search, Download, ChevronDown, ChevronRight, Plus, BarChart3 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import EmptyState from "@/components/EmptyState";
 import StockAdjustmentModal from "./StockAdjustmentModal";
+import DrugForecastPanel from "./DrugForecastPanel";
 
 interface StockItem {
   id: string;
