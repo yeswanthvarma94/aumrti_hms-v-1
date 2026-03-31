@@ -37,7 +37,7 @@ interface DrugSafetyMeta {
   tooltip: string;
 }
 
-const RxOrdersTab: React.FC<Props> = ({ prescription, onChange, hospitalId, patientAllergies = [] }) => {
+const RxOrdersTab: React.FC<Props> = ({ prescription, onChange, hospitalId, patientAllergies = [], diagnosis, icdCode, patientAge, patientGender }) => {
   const [showAddDrug, setShowAddDrug] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<{ drug_name: string; generic_name: string | null; is_ndps: boolean }[]>([]);
