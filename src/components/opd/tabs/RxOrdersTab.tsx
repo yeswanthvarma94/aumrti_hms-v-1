@@ -6,6 +6,7 @@ import type { PrescriptionData, DrugEntry, LabOrder, RadiologyOrder } from "../C
 import { checkDrugSafety, type DrugSafetyResult } from "@/lib/drugSafetyCheck";
 import DrugSafetyAlertModal from "@/components/opd/DrugSafetyAlertModal";
 import AllergyBanner from "@/components/clinical/AllergyBanner";
+import ClinicalDecisionSupport from "@/components/opd/ClinicalDecisionSupport";
 
 interface Props {
   prescription: PrescriptionData;
