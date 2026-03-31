@@ -57,6 +57,9 @@ const RevenueTab: React.FC<{ range: DateRange }> = ({ range }) => {
         <AnalyticsKPICard icon="💊" iconBg="bg-red-100" value={fmt(k.pharmacyRevenue)} valueColor="text-red-500" label="Pharmacy Sales" subtitle={`${k.pharmacyCount} bills`} />
       </div>
 
+      {/* AI Revenue Forecast */}
+      <RevenueForecastCard />
+
       {/* Trend + Breakdown */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-4">
         <div className="bg-card border border-border rounded-xl p-4">
