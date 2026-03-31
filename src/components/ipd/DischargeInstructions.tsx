@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Loader2, Printer, Copy, Send, Globe } from "lucide-react";
+import { Loader2, Printer, Copy, Send, Globe, Volume2, VolumeX } from "lucide-react";
 import { callAI } from "@/lib/aiProvider";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -16,13 +16,13 @@ interface Props {
 }
 
 const LANGUAGES = [
-  { code: "English", label: "English", native: "English" },
-  { code: "Hindi", label: "Hindi", native: "हिन्दी" },
-  { code: "Telugu", label: "Telugu", native: "తెలుగు" },
-  { code: "Tamil", label: "Tamil", native: "தமிழ்" },
-  { code: "Kannada", label: "Kannada", native: "ಕನ್ನಡ" },
-  { code: "Marathi", label: "Marathi", native: "मराठी" },
-  { code: "Malayalam", label: "Malayalam", native: "മലയാളം" },
+  { code: "English", label: "English", native: "English", tts: "en-IN" },
+  { code: "Hindi", label: "Hindi", native: "हिन्दी", tts: "hi-IN" },
+  { code: "Telugu", label: "Telugu", native: "తెలుగు", tts: "te-IN" },
+  { code: "Tamil", label: "Tamil", native: "தமிழ்", tts: "ta-IN" },
+  { code: "Kannada", label: "Kannada", native: "ಕನ್ನಡ", tts: "kn-IN" },
+  { code: "Marathi", label: "Marathi", native: "मराठी", tts: "mr-IN" },
+  { code: "Malayalam", label: "Malayalam", native: "മലയാളം", tts: "ml-IN" },
 ];
 
 const DischargeInstructions: React.FC<Props> = ({
@@ -38,6 +38,7 @@ const DischargeInstructions: React.FC<Props> = ({
   const [selectedLang, setSelectedLang] = useState("English");
   const [instructions, setInstructions] = useState("");
   const [generating, setGenerating] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
 
   const generate = async () => {
     setGenerating(true);
@@ -115,6 +116,25 @@ Write ONLY in ${langLabel}. Do not include English unless the language selected 
     toast({ title: "Instructions copied to clipboard" });
   };
 
+  const handlePlayAudio = () => {
+    if (speaking) {
+      window.speechSynthesis.cancel();
+      setSpeaking(false);
+      return;
+    }
+
+    const lang = LANGUAGES.find((l) => l.code === selectedLang);
+    const utterance = new SpeechSynthesisUtterance(instructions);
+    utterance.lang = lang?.tts || "en-IN";
+    utterance.rate = 0.85; // slightly slower for medical instructions
+
+    utterance.onend = () => setSpeaking(false);
+    utterance.onerror = () => setSpeaking(false);
+
+    setSpeaking(true);
+    window.speechSynthesis.speak(utterance);
+  };
+
   return (
     <div className="mt-4">
       <div className="flex items-center gap-2 mb-2">
@@ -165,7 +185,7 @@ Write ONLY in ${langLabel}. Do not include English unless the language selected 
             {instructions}
           </pre>
 
-          <div className="flex gap-2 mt-3">
+          <div className="flex gap-2 mt-3 flex-wrap">
             <Button variant="outline" size="sm" className="text-xs h-7" onClick={handlePrint}>
               <Printer size={12} className="mr-1" /> Print
             </Button>
@@ -175,7 +195,19 @@ Write ONLY in ${langLabel}. Do not include English unless the language selected 
             <Button variant="outline" size="sm" className="text-xs h-7" onClick={handleCopy}>
               <Copy size={12} className="mr-1" /> Copy
             </Button>
+            <Button
+              variant={speaking ? "default" : "outline"}
+              size="sm"
+              className={cn("text-xs h-7", speaking && "bg-primary")}
+              onClick={handlePlayAudio}
+            >
+              {speaking ? <VolumeX size={12} className="mr-1" /> : <Volume2 size={12} className="mr-1" />}
+              {speaking ? "Stop" : `🔊 Play in ${selectedLang}`}
+            </Button>
           </div>
+          <p className="text-[10px] text-muted-foreground mt-2">
+            Audio uses device text-to-speech. Configure Sarvam Bulbul V3 in API Hub for higher quality.
+          </p>
         </div>
       )}
     </div>
