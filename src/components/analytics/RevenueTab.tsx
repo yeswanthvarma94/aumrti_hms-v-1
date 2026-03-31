@@ -9,6 +9,7 @@ import {
   usePaymentModes, useInsuranceSummary, useDailyHeatmap, type DateRange,
 } from "@/hooks/useAnalyticsData";
 import { Skeleton } from "@/components/ui/skeleton";
+import RevenueForecastCard from "./RevenueForecastCard";
 
 const fmt = (n: number) => {
   if (n >= 10000000) return `₹${(n / 10000000).toFixed(1)}Cr`;
@@ -55,6 +56,9 @@ const RevenueTab: React.FC<{ range: DateRange }> = ({ range }) => {
         <AnalyticsKPICard icon="🛏️" iconBg="bg-purple-100" value={fmt(k.ipdRevenue)} valueColor="text-purple-500" label="IPD Collections" subtitle={`${k.ipdCount} discharges`} />
         <AnalyticsKPICard icon="💊" iconBg="bg-red-100" value={fmt(k.pharmacyRevenue)} valueColor="text-red-500" label="Pharmacy Sales" subtitle={`${k.pharmacyCount} bills`} />
       </div>
+
+      {/* AI Revenue Forecast */}
+      <RevenueForecastCard />
 
       {/* Trend + Breakdown */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-4">

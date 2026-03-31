@@ -4,7 +4,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Send, AlertTriangle } from "lucide-react";
+import { Send, AlertTriangle, Bot } from "lucide-react";
+import DenialPredictorPanel from "@/components/insurance/DenialPredictorPanel";
 
 interface ClaimRow {
   bill_id: string;
@@ -15,18 +16,23 @@ interface ClaimRow {
   denial_risk: number;
   has_pre_auth: boolean;
   patient_id: string;
+  admission_id?: string | null;
 }
 
 const ClaimsToSubmit: React.FC = () => {
   const [rows, setRows] = useState<ClaimRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState<string | null>(null);
+  const [selectedForReview, setSelectedForReview] = useState<ClaimRow | null>(null);
+  const [hospitalId, setHospitalId] = useState<string>("");
   const { toast } = useToast();
 
   useEffect(() => { loadData(); }, []);
 
   const loadData = async () => {
     setLoading(true);
+    const { data: userData } = await supabase.from("users").select("hospital_id").limit(1).single();
+    if (userData?.hospital_id) setHospitalId(userData.hospital_id);
     // Get finalised bills for insurance patients that don't have claims yet
     const { data: bills } = await supabase
       .from("bills")
@@ -71,6 +77,7 @@ const ClaimsToSubmit: React.FC = () => {
         denial_risk: risk,
         has_pre_auth: hasPreAuth,
         patient_id: b.patient_id,
+        admission_id: b.admission_id,
       };
     }));
     setLoading(false);
@@ -144,21 +151,39 @@ const ClaimsToSubmit: React.FC = () => {
                 </TableCell>
                 <TableCell>{riskBadge(r.denial_risk)}</TableCell>
                 <TableCell>
-                  {r.denial_risk > 60 ? (
-                    <Button size="sm" variant="outline" className="text-[11px] h-7 text-amber-600 gap-1" disabled>
-                      <AlertTriangle size={12} /> Fix Issues
+                  <div className="flex gap-1">
+                    <Button size="sm" variant="outline" className="text-[11px] h-7 gap-1" onClick={() => setSelectedForReview(r)}>
+                      <Bot size={12} /> AI Review
                     </Button>
-                  ) : (
                     <Button size="sm" className="text-[11px] h-7 gap-1" onClick={() => submitClaim(r)} disabled={submitting === r.bill_id}>
-                      <Send size={12} /> Submit Claim
+                      <Send size={12} /> Submit
                     </Button>
-                  )}
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </div>
+
+      {/* AI Denial Predictor Panel */}
+      {selectedForReview && hospitalId && (
+        <div className="mt-4 max-w-xl">
+          <DenialPredictorPanel
+            claimData={{
+              tpa_name: selectedForReview.tpa_name,
+              claimed_amount: selectedForReview.total_amount,
+              documents_count: selectedForReview.has_pre_auth ? 3 : 1,
+            }}
+            preAuthNumber={selectedForReview.has_pre_auth ? "PA-APPROVED" : null}
+            hospitalId={hospitalId}
+            onProceedSubmit={() => {
+              submitClaim(selectedForReview);
+              setSelectedForReview(null);
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 };
