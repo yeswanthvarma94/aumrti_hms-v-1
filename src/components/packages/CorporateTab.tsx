@@ -28,7 +28,7 @@ export default function CorporateTab() {
     const { error } = await supabase.from("corporate_accounts").insert({
       hospital_id: HOSPITAL_ID, ...form,
     });
-    if (error) { toast.error("Failed to add account"); return; }
+    if (error) { console.error("Corporate account insert error:", error); toast.error(error.message || "Failed to add account"); return; }
     toast.success("Corporate account added");
     setShowAdd(false);
     setForm({ company_name: "", contact_person: "", contact_phone: "", contact_email: "", gstin: "", credit_days: 30, negotiated_rate_percent: 0 });

@@ -17,7 +17,7 @@ export default function ProgressTrackerTab() {
 
   useEffect(() => {
     supabase.from("package_bookings")
-      .select("*, health_packages(package_name), patients(first_name, last_name, uhid, date_of_birth, gender)")
+      .select("*, health_packages(package_name), patients(full_name, uhid, dob, gender)")
       .eq("hospital_id", HOSPITAL_ID)
       .in("status", ["awaiting_report", "completed"])
       .order("created_at", { ascending: false })
@@ -29,8 +29,8 @@ export default function ProgressTrackerTab() {
     setGenerating(booking.id);
     try {
       const patient = booking.patients;
-      const age = patient?.date_of_birth
-        ? Math.floor((Date.now() - new Date(patient.date_of_birth).getTime()) / 31557600000)
+      const age = patient?.dob
+        ? Math.floor((Date.now() - new Date(patient.dob).getTime()) / 31557600000)
         : "N/A";
 
       const response = await callAI({
@@ -38,7 +38,7 @@ export default function ProgressTrackerTab() {
         hospitalId: HOSPITAL_ID,
         prompt: `Generate a professional health report summary for a preventive health checkup patient.
 
-Patient: ${patient?.first_name} ${patient?.last_name}, Age: ${age}, Gender: ${patient?.gender || "N/A"}
+Patient: ${patient?.full_name}, Age: ${age}, Gender: ${patient?.gender || "N/A"}
 Package: ${booking.health_packages?.package_name}
 Date: ${booking.scheduled_date}
 
@@ -74,7 +74,7 @@ Keep language professional but accessible. Max 300 words.`,
           <Card key={b.id}>
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-sm">{patient?.first_name} {patient?.last_name} — {b.health_packages?.package_name}</CardTitle>
+                <CardTitle className="text-sm">{patient?.full_name} — {b.health_packages?.package_name}</CardTitle>
                 <Badge variant={b.status === "completed" ? "default" : "secondary"}>{b.status.replace("_", " ")}</Badge>
               </div>
               <p className="text-xs text-muted-foreground">UHID: {patient?.uhid} • Scheduled: {b.scheduled_date}</p>

@@ -19,7 +19,7 @@ export default function TodaysCheckupsTab({ onRefreshKPIs }: Props) {
     const today = new Date().toISOString().split("T")[0];
     const { data } = await supabase
       .from("package_bookings")
-      .select("*, health_packages(package_name, components, total_components), patients(first_name, last_name, uhid, date_of_birth, gender)")
+      .select("*, health_packages(package_name, components, total_components), patients(full_name, uhid, dob, gender)")
       .eq("hospital_id", HOSPITAL_ID)
       .eq("scheduled_date", today)
       .order("created_at");
@@ -81,8 +81,8 @@ export default function TodaysCheckupsTab({ onRefreshKPIs }: Props) {
             <CardContent className="p-4">
               <div className="flex items-start justify-between mb-3">
                 <div>
-                  <p className="font-semibold">{patient?.first_name} {patient?.last_name}</p>
-                  <p className="text-xs text-muted-foreground">UHID: {patient?.uhid} • {patient?.gender}</p>
+                   <p className="font-semibold">{patient?.full_name}</p>
+                   <p className="text-xs text-muted-foreground">UHID: {patient?.uhid} • {patient?.gender}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant="outline">{pkg?.package_name}</Badge>
