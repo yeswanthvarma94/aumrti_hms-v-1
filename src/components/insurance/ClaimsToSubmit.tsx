@@ -16,6 +16,7 @@ interface ClaimRow {
   denial_risk: number;
   has_pre_auth: boolean;
   patient_id: string;
+  admission_id?: string | null;
 }
 
 const ClaimsToSubmit: React.FC = () => {
