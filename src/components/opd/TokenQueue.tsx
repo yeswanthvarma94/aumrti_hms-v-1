@@ -104,7 +104,7 @@ const TokenQueue: React.FC<Props> = ({ tokens, selectedTokenId, onSelectToken, h
     const doctorName = token.doctor?.full_name || "your doctor";
     const message = `Dear ${token.patient.full_name}, reminder: your appointment with Dr. ${doctorName} is today. Please confirm attendance. Reply YES to confirm or call the hospital to reschedule.`;
     await sendWhatsApp({ hospitalId, phone: token.patient.phone, message });
-    await supabase.from("no_show_predictions").update({ reminder_sent: true } as any).eq("token_id", token.id);
+    await supabase.from("no_show_predictions").update({ reminder_sent: true } as any).eq("appointment_id", token.id);
     setReminderSending(null);
   };
 
