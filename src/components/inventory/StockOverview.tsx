@@ -220,6 +220,11 @@ const StockOverview: React.FC = () => {
                     <td className="px-3 py-2 text-right text-muted-foreground">₹{item.stock_value.toLocaleString("en-IN")}</td>
                     <td className="px-3 py-2 text-center">
                       <Button variant="ghost" size="sm" className="text-[10px] h-6 px-2" onClick={() => setAdjustItem(item)}>Adjust</Button>
+                      {hospitalId && (
+                        <Button variant="ghost" size="sm" className="text-[10px] h-6 px-2" onClick={() => setForecastItem(item)}>
+                          <BarChart3 className="h-3 w-3 mr-1" />Forecast
+                        </Button>
+                      )}
                     </td>
                   </tr>
                   {isExpanded && item.batches.length > 0 && (
