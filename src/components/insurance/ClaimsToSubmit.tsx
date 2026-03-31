@@ -4,7 +4,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Send, AlertTriangle } from "lucide-react";
+import { Send, AlertTriangle, Bot } from "lucide-react";
+import DenialPredictorPanel from "@/components/insurance/DenialPredictorPanel";
 
 interface ClaimRow {
   bill_id: string;
