@@ -276,6 +276,66 @@ export type Database = {
           },
         ]
       }
+      ai_feature_logs: {
+        Row: {
+          created_at: string | null
+          error_message: string | null
+          feature_key: string
+          hospital_id: string
+          id: string
+          input_summary: string | null
+          latency_ms: number | null
+          module: string
+          output_summary: string | null
+          patient_id: string | null
+          success: boolean | null
+          tokens_used: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          error_message?: string | null
+          feature_key: string
+          hospital_id: string
+          id?: string
+          input_summary?: string | null
+          latency_ms?: number | null
+          module: string
+          output_summary?: string | null
+          patient_id?: string | null
+          success?: boolean | null
+          tokens_used?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          error_message?: string | null
+          feature_key?: string
+          hospital_id?: string
+          id?: string
+          input_summary?: string | null
+          latency_ms?: number | null
+          module?: string
+          output_summary?: string | null
+          patient_id?: string | null
+          success?: boolean | null
+          tokens_used?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_feature_logs_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_feature_logs_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_provider_config: {
         Row: {
           api_key_ref: string | null
@@ -9323,6 +9383,57 @@ export type Database = {
           },
         ]
       }
+      no_show_predictions: {
+        Row: {
+          appointment_id: string | null
+          hospital_id: string
+          id: string
+          outcome: string | null
+          patient_id: string
+          predicted_at: string | null
+          reminder_sent: boolean | null
+          risk_factors: Json | null
+          risk_score: number
+        }
+        Insert: {
+          appointment_id?: string | null
+          hospital_id: string
+          id?: string
+          outcome?: string | null
+          patient_id: string
+          predicted_at?: string | null
+          reminder_sent?: boolean | null
+          risk_factors?: Json | null
+          risk_score: number
+        }
+        Update: {
+          appointment_id?: string | null
+          hospital_id?: string
+          id?: string
+          outcome?: string | null
+          patient_id?: string
+          predicted_at?: string | null
+          reminder_sent?: boolean | null
+          risk_factors?: Json | null
+          risk_score?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "no_show_predictions_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "no_show_predictions_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       nursing_handovers: {
         Row: {
           completed_at: string | null
@@ -13518,6 +13629,80 @@ export type Database = {
           },
         ]
       }
+      revenue_alerts: {
+        Row: {
+          alert_type: string
+          bill_id: string | null
+          created_at: string | null
+          description: string
+          estimated_amount: number | null
+          flagged_by: string | null
+          hospital_id: string
+          id: string
+          patient_id: string | null
+          resolved: boolean | null
+          resolved_by: string | null
+          severity: string | null
+        }
+        Insert: {
+          alert_type: string
+          bill_id?: string | null
+          created_at?: string | null
+          description: string
+          estimated_amount?: number | null
+          flagged_by?: string | null
+          hospital_id: string
+          id?: string
+          patient_id?: string | null
+          resolved?: boolean | null
+          resolved_by?: string | null
+          severity?: string | null
+        }
+        Update: {
+          alert_type?: string
+          bill_id?: string | null
+          created_at?: string | null
+          description?: string
+          estimated_amount?: number | null
+          flagged_by?: string | null
+          hospital_id?: string
+          id?: string
+          patient_id?: string | null
+          resolved?: boolean | null
+          resolved_by?: string | null
+          severity?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "revenue_alerts_bill_id_fkey"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "bills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "revenue_alerts_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "revenue_alerts_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "revenue_alerts_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       role_permissions: {
         Row: {
           created_at: string | null
@@ -13619,6 +13804,80 @@ export type Database = {
             columns: ["scheme_id"]
             isOneToOne: false
             referencedRelation: "govt_schemes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sepsis_alerts: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          admission_id: string
+          alert_fired_at: string | null
+          escalated: boolean | null
+          hospital_id: string
+          id: string
+          news2_score: number
+          patient_id: string
+          resolved: boolean | null
+          risk_level: string
+          vitals_snapshot: Json
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          admission_id: string
+          alert_fired_at?: string | null
+          escalated?: boolean | null
+          hospital_id: string
+          id?: string
+          news2_score: number
+          patient_id: string
+          resolved?: boolean | null
+          risk_level: string
+          vitals_snapshot: Json
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          admission_id?: string
+          alert_fired_at?: string | null
+          escalated?: boolean | null
+          hospital_id?: string
+          id?: string
+          news2_score?: number
+          patient_id?: string
+          resolved?: boolean | null
+          risk_level?: string
+          vitals_snapshot?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sepsis_alerts_acknowledged_by_fkey"
+            columns: ["acknowledged_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sepsis_alerts_admission_id_fkey"
+            columns: ["admission_id"]
+            isOneToOne: false
+            referencedRelation: "admissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sepsis_alerts_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sepsis_alerts_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
             referencedColumns: ["id"]
           },
         ]
