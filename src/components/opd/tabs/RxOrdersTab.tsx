@@ -210,7 +210,7 @@ const RxOrdersTab: React.FC<Props> = ({ prescription, onChange, hospitalId, pati
   };
 
   return (
-    <div className="h-full flex flex-col overflow-hidden">
+    <div className="h-full flex overflow-hidden">
       {/* Allergy Banner — always visible */}
       <AllergyBanner allergies={patientAllergies?.join(", ") || null} />
 
