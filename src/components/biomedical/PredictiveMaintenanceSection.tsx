@@ -50,7 +50,7 @@ const PredictiveMaintenanceSection: React.FC = () => {
 
 Equipment: ${eq.equipment_name} (${eq.make || ""} ${eq.model || ""})
 Age: ${eq.purchase_date ? Math.floor((Date.now() - new Date(eq.purchase_date).getTime()) / 31536000000) + " years" : "Unknown"}
-Last PM: ${eq.last_pm_date || "Unknown"}
+Last PM: Unknown
 AMC: ${eq.amc_type || "none"}
 
 Breakdown history:
