@@ -476,7 +476,7 @@ const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onT
         {activeTab === 0 && <ComplaintTab encounter={encounter} onChange={updateEncounter} />}
         {activeTab === 1 && <VitalsTab encounter={encounter} onChange={updateEncounter} />}
         {activeTab === 2 && <ExaminationTab encounter={encounter} onChange={updateEncounter} />}
-        {activeTab === 3 && <RxOrdersTab prescription={prescription} onChange={updatePrescription} hospitalId={hospitalId} patientAllergies={token?.patient?.allergies ? token.patient.allergies.split(",").map(a => a.trim()) : []} />}
+        {activeTab === 3 && <RxOrdersTab prescription={prescription} onChange={updatePrescription} hospitalId={hospitalId} patientAllergies={token?.patient?.allergies ? token.patient.allergies.split(",").map(a => a.trim()) : []} diagnosis={encounter.diagnosis} icdCode={encounter.icd10_code} patientAge={patientAge || undefined} patientGender={token?.patient?.gender || undefined} />}
         {activeTab === 4 && <HistoryTab token={token} encounterId={encounterId} />}
         {activeTab === 5 && specialty === 'obstetric' && hospitalId && (
           <ObstetricSheet patientId={token.patient_id} hospitalId={hospitalId} encounterId={encounterId} />
