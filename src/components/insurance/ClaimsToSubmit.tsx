@@ -23,6 +23,8 @@ const ClaimsToSubmit: React.FC = () => {
   const [rows, setRows] = useState<ClaimRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState<string | null>(null);
+  const [selectedForReview, setSelectedForReview] = useState<ClaimRow | null>(null);
+  const [hospitalId, setHospitalId] = useState<string>("");
   const { toast } = useToast();
 
   useEffect(() => { loadData(); }, []);
