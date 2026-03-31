@@ -154,6 +154,7 @@ const AlertsTab: React.FC<Props> = ({ onNavigate }) => {
           </div>
         ))
       )}
+      </div>
     </div>
   );
 };
