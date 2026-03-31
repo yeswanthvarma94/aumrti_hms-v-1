@@ -29,8 +29,8 @@ export default function ProgressTrackerTab() {
     setGenerating(booking.id);
     try {
       const patient = booking.patients;
-      const age = patient?.date_of_birth
-        ? Math.floor((Date.now() - new Date(patient.date_of_birth).getTime()) / 31557600000)
+      const age = patient?.dob
+        ? Math.floor((Date.now() - new Date(patient.dob).getTime()) / 31557600000)
         : "N/A";
 
       const response = await callAI({
