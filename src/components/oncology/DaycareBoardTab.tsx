@@ -200,6 +200,9 @@ const DaycareBoardTab: React.FC<DaycareBoardTabProps> = ({ showNewOrder, onClose
 
   return (
     <div className="space-y-4 mt-3">
+      {/* Vial Sharing Opportunities */}
+      <VialSharingCard orders={orders} />
+
       {/* Chair Grid */}
       <div>
         <h3 className="text-sm font-semibold text-muted-foreground mb-2">CHAIR STATUS</h3>
