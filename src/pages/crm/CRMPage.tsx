@@ -688,6 +688,7 @@ Guidelines:
                 </CardContent>
               </Card>
             </div>
+            </div>
           </ScrollArea>
         </TabsContent>
       </Tabs>
