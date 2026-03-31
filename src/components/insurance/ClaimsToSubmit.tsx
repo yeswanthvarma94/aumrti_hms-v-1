@@ -151,15 +151,14 @@ const ClaimsToSubmit: React.FC = () => {
                 </TableCell>
                 <TableCell>{riskBadge(r.denial_risk)}</TableCell>
                 <TableCell>
-                  {r.denial_risk > 60 ? (
-                    <Button size="sm" variant="outline" className="text-[11px] h-7 text-amber-600 gap-1" disabled>
-                      <AlertTriangle size={12} /> Fix Issues
+                  <div className="flex gap-1">
+                    <Button size="sm" variant="outline" className="text-[11px] h-7 gap-1" onClick={() => setSelectedForReview(r)}>
+                      <Bot size={12} /> AI Review
                     </Button>
-                  ) : (
                     <Button size="sm" className="text-[11px] h-7 gap-1" onClick={() => submitClaim(r)} disabled={submitting === r.bill_id}>
-                      <Send size={12} /> Submit Claim
+                      <Send size={12} /> Submit
                     </Button>
-                  )}
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
