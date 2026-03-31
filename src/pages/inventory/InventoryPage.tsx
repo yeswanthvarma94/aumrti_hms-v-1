@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from "react";
-import { Package, ClipboardList, FileText, PackageCheck, Building2, BarChart3, TrendingUp } from "lucide-react";
+import { Package, ClipboardList, FileText, PackageCheck, Building2, BarChart3, Brain } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import StockOverview from "@/components/inventory/StockOverview";
 import IndentsPanel from "@/components/inventory/IndentsPanel";
 import PurchaseOrdersPanel from "@/components/inventory/PurchaseOrdersPanel";
 import GRNPanel from "@/components/inventory/GRNPanel";
 import VendorsPanel from "@/components/inventory/VendorsPanel";
 import ReportsPanel from "@/components/inventory/ReportsPanel";
+import InventoryDemandReview from "@/components/inventory/InventoryDemandReview";
 
 const navTabs = [
   { id: "stock", label: "Stock Overview", icon: Package },
@@ -20,7 +22,17 @@ const navTabs = [
 
 const InventoryPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState("stock");
+  const [showDemandReview, setShowDemandReview] = useState(false);
+  const [hospitalId, setHospitalId] = useState("");
   const [kpis, setKpis] = useState({ totalItems: 0, lowStock: 0, expiring: 0, pendingIndents: 0 });
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      supabase.from("users").select("hospital_id").eq("auth_user_id", user.id).maybeSingle()
+        .then(({ data }) => { if (data) setHospitalId(data.hospital_id); });
+    });
+  }, []);
 
   useEffect(() => {
     const loadKpis = async () => {
@@ -84,6 +96,11 @@ const InventoryPage: React.FC = () => {
             ⚠️ {kpis.expiring} Expiring
           </span>
           <span className="text-xs px-2.5 py-1 rounded-full bg-muted text-muted-foreground font-medium">📋 {kpis.pendingIndents} Pending</span>
+          {hospitalId && (
+            <Button size="sm" variant="outline" className="text-xs h-7 gap-1.5" onClick={() => setShowDemandReview(true)}>
+              <Brain className="h-3 w-3" /> AI Demand Review
+            </Button>
+          )}
         </div>
       </div>
 
@@ -113,6 +130,9 @@ const InventoryPage: React.FC = () => {
           {renderContent()}
         </div>
       </div>
+      {showDemandReview && hospitalId && (
+        <InventoryDemandReview hospitalId={hospitalId} onClose={() => setShowDemandReview(false)} />
+      )}
     </div>
   );
 };

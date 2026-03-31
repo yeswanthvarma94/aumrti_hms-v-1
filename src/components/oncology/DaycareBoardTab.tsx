@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ShieldAlert, CheckCircle2, Clock, AlertTriangle, XCircle } from "lucide-react";
+import VialSharingCard from "./VialSharingCard";
 
 interface DaycareBoardTabProps {
   showNewOrder: boolean;
@@ -199,6 +200,9 @@ const DaycareBoardTab: React.FC<DaycareBoardTabProps> = ({ showNewOrder, onClose
 
   return (
     <div className="space-y-4 mt-3">
+      {/* Vial Sharing Opportunities */}
+      <VialSharingCard orders={orders} />
+
       {/* Chair Grid */}
       <div>
         <h3 className="text-sm font-semibold text-muted-foreground mb-2">CHAIR STATUS</h3>

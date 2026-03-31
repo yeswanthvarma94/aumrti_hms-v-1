@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { format, differenceInDays } from "date-fns";
+import PredictiveMaintenanceSection from "./PredictiveMaintenanceSection";
 
 const HOSPITAL_ID = "8f3d08b3-8835-42a7-920e-fdf5a78260bc";
 
@@ -121,7 +122,12 @@ const AlertsTab: React.FC<Props> = ({ onNavigate }) => {
   };
 
   return (
-    <div className="flex-1 overflow-auto space-y-2">
+    <div className="flex-1 overflow-auto space-y-4">
+      {/* Predictive Maintenance AI Section */}
+      <PredictiveMaintenanceSection />
+
+      {/* Regular Alerts */}
+      <div className="space-y-2">
       {alerts.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
           <p className="text-3xl mb-2">✅</p>
@@ -148,6 +154,7 @@ const AlertsTab: React.FC<Props> = ({ onNavigate }) => {
           </div>
         ))
       )}
+      </div>
     </div>
   );
 };

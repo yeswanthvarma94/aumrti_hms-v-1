@@ -4,6 +4,7 @@ import BedMap from "@/components/ipd/BedMap";
 import IPDWorkspace from "@/components/ipd/IPDWorkspace";
 import WardStats from "@/components/ipd/WardStats";
 import AdmitPatientModal from "@/components/ipd/AdmitPatientModal";
+import BedForecastCard from "@/components/ipd/BedForecastCard";
 
 export interface BedData {
   id: string;
@@ -154,11 +155,23 @@ const IPDPage: React.FC = () => {
     setAdmitModal({ open: true });
   };
 
+  const totalBeds = beds.length;
+  const occupiedBeds = beds.filter((b) => b.status === "occupied").length;
+
   return (
     <div className="flex flex-row h-full overflow-hidden">
-      <BedMap beds={beds} selectedBedId={selectedBedId} onSelectBed={handleBedSelect}
-        hospitalId={hospitalId} loading={loading} onRefresh={fetchData} onNewAdmission={handleNewAdmission} />
-      <IPDWorkspace bed={selectedBed} hospitalId={hospitalId} onRefresh={fetchData} />
+      <div className="flex flex-col flex-1 overflow-hidden">
+        {hospitalId && totalBeds > 0 && (
+          <div className="flex-shrink-0 p-3 border-b border-border">
+            <BedForecastCard hospitalId={hospitalId} totalBeds={totalBeds} currentOccupancy={occupiedBeds} />
+          </div>
+        )}
+        <div className="flex flex-row flex-1 overflow-hidden">
+          <BedMap beds={beds} selectedBedId={selectedBedId} onSelectBed={handleBedSelect}
+            hospitalId={hospitalId} loading={loading} onRefresh={fetchData} onNewAdmission={handleNewAdmission} />
+          <IPDWorkspace bed={selectedBed} hospitalId={hospitalId} onRefresh={fetchData} />
+        </div>
+      </div>
       <WardStats admissions={admissions} onSelectBed={setSelectedBedId} />
 
       <AdmitPatientModal
