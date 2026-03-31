@@ -91,7 +91,7 @@ Allergies: ${Array.isArray(patient?.allergies) ? patient.allergies.join(", ") : 
 ADMISSION:
 Date: ${admittedDate}
 Discharge: Today
-Ward: ${wardRes?.data?.ward_name || "—"} | Bed: ${bedRes?.data?.bed_number || "—"}
+Ward: ${(wardRes?.data as any)?.ward_name || "—"} | Bed: ${(bedRes?.data as any)?.bed_number || "—"}
 Diagnosis: ${admission.admitting_diagnosis || "As per treating doctor"}
 Length of Stay: ${los} days
 
