@@ -27,6 +27,14 @@ const InventoryPage: React.FC = () => {
   const [kpis, setKpis] = useState({ totalItems: 0, lowStock: 0, expiring: 0, pendingIndents: 0 });
 
   useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      supabase.from("users").select("hospital_id").eq("auth_user_id", user.id).maybeSingle()
+        .then(({ data }) => { if (data) setHospitalId(data.hospital_id); });
+    });
+  }, []);
+
+  useEffect(() => {
     const loadKpis = async () => {
       const [itemsRes, stockRes, indentsRes] = await Promise.all([
         (supabase as any).from("inventory_items").select("id, reorder_level, max_stock_level").eq("is_active", true),
