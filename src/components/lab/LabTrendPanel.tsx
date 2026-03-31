@@ -53,8 +53,8 @@ const LabTrendPanel: React.FC<Props> = ({ testName, currentResult, unit, normalM
       const matchingHistory = (history || []).filter((h: any) => h.lab_test_master?.test_name === testName);
 
       // Filter out current result to avoid double-counting, build chart
-      const histValues = (history || [])
-        .map(h => ({ value: Number(h.result_numeric), date: h.created_at?.split("T")[0] || "" }))
+      const histValues = (matchingHistory || [])
+        .map((h: any) => ({ value: Number(h.result_numeric), date: h.created_at?.split("T")[0] || "" }))
         .filter(h => !isNaN(h.value));
 
       if (histValues.length < 2) {
