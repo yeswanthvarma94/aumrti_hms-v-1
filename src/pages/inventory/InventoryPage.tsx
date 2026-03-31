@@ -130,6 +130,9 @@ const InventoryPage: React.FC = () => {
           {renderContent()}
         </div>
       </div>
+      {showDemandReview && hospitalId && (
+        <InventoryDemandReview hospitalId={hospitalId} onClose={() => setShowDemandReview(false)} />
+      )}
     </div>
   );
 };
