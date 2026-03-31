@@ -249,11 +249,12 @@ const IPDOverviewTab: React.FC<Props> = ({ admissionId, hospitalId, onTabChange,
                 Clear Pharmacy
               </Button>
             )}
-            {currentStep === 3 && (
-              <Button size="sm" className="text-[11px] h-7 w-full bg-amber-600 hover:bg-amber-700 text-white" onClick={handleDischargeSummary} disabled={savingStep === "discharge_summary_done"}>
-                {savingStep === "discharge_summary_done" ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <FileText className="h-3 w-3 mr-1" />}
-                Generate Summary & Discharge
-              </Button>
+            {currentStep === 3 && hospitalId && (
+              <DischargeSummaryGenerator
+                admissionId={admissionId}
+                hospitalId={hospitalId}
+                onSummaryDone={() => setDischargeSummaryDone(true)}
+              />
             )}
             {currentStep === 4 && (
               <p className="text-[11px] text-emerald-600 font-medium text-center">✅ Patient discharged</p>
