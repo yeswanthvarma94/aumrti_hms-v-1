@@ -7,6 +7,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useWhatsAppNotification } from "@/components/whatsapp/WhatsAppNotificationCard";
 import { sendLabResultReady } from "@/lib/whatsapp-notifications";
+import LabTrendPanel from "./LabTrendPanel";
 
 interface LabOrder {
   id: string;
