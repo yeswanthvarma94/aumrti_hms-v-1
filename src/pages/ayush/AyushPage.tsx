@@ -10,6 +10,7 @@ import ConsultationTab from "@/components/ayush/ConsultationTab";
 import PrakritiTab from "@/components/ayush/PrakritiTab";
 import PanchakarmaTab from "@/components/ayush/PanchakarmaTab";
 import PrescriptionsTab from "@/components/ayush/PrescriptionsTab";
+import WalkInModal from "@/components/opd/WalkInModal";
 
 type AyushSystem = "ayurveda" | "homeopathy" | "unani" | "siddha" | "yoga";
 
@@ -21,12 +22,55 @@ const SYSTEMS: { key: AyushSystem; label: string; icon: string }[] = [
   { key: "yoga", label: "Yoga & Naturopathy", icon: "🧘" },
 ];
 
+const SYSTEM_DEPT_MAP: Record<string, string[]> = {
+  ayurveda: ["%ayurveda%", "%ayurved%"],
+  homeopathy: ["%homeopathy%", "%homoeopathy%", "%homeo%"],
+  unani: ["%unani%"],
+  siddha: ["%siddha%"],
+  yoga: ["%yoga%", "%naturopathy%", "%naturo%"],
+};
+
 export default function AyushPage() {
   const [system, setSystem] = useState<AyushSystem>("ayurveda");
   const [activeTab, setActiveTab] = useState("consultation");
   const [kpis, setKpis] = useState({ todayConsults: 0, todayPK: 0, activePatients: 0 });
   const [showNewConsult, setShowNewConsult] = useState(false);
   const [showNewPK, setShowNewPK] = useState(false);
+  const [showWalkIn, setShowWalkIn] = useState(false);
+  const [hospitalId, setHospitalId] = useState<string | null>(null);
+  const [ayushDeptId, setAyushDeptId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const init = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: userData } = await supabase.from("users").select("hospital_id").eq("auth_user_id", user.id).maybeSingle();
+      if (userData) setHospitalId(userData.hospital_id);
+    };
+    init();
+  }, []);
+
+  // Resolve AYUSH department ID for current system
+  useEffect(() => {
+    if (!hospitalId) return;
+    const resolveDept = async () => {
+      const patterns = SYSTEM_DEPT_MAP[system] || [`%${system}%`];
+      for (const pattern of patterns) {
+        const { data } = await supabase
+          .from("departments")
+          .select("id")
+          .eq("hospital_id", hospitalId)
+          .ilike("name", pattern)
+          .limit(1);
+        if (data && data.length > 0) {
+          setAyushDeptId(data[0].id);
+          return;
+        }
+      }
+      setAyushDeptId(null);
+    };
+    resolveDept();
+  }, [hospitalId, system]);
 
   useEffect(() => {
     loadKPIs();
@@ -55,7 +99,7 @@ export default function AyushPage() {
       <div className="flex items-center justify-between px-4 border-b bg-background" style={{ height: 52 }}>
         <h1 className="text-base font-bold flex items-center gap-2">🌿 AYUSH & Integrative Medicine</h1>
         <div className="flex gap-2">
-          <Button size="sm" onClick={() => { setActiveTab("consultation"); setShowNewConsult(true); }}>
+          <Button size="sm" onClick={() => setShowWalkIn(true)}>
             <Plus className="h-4 w-4 mr-1" /> New Consultation
           </Button>
           <Button size="sm" variant="outline" onClick={() => { setActiveTab("panchakarma"); setShowNewPK(true); }}>
@@ -125,6 +169,20 @@ export default function AyushPage() {
           <PrescriptionsTab system={system} />
         </TabsContent>
       </Tabs>
+
+      {/* WalkIn Registration Modal */}
+      {showWalkIn && hospitalId && (
+        <WalkInModal
+          hospitalId={hospitalId}
+          defaultDeptId={ayushDeptId || undefined}
+          onClose={() => setShowWalkIn(false)}
+          onCreated={() => {
+            setShowWalkIn(false);
+            setActiveTab("consultation");
+            toast.success("Patient registered — token issued");
+          }}
+        />
+      )}
     </div>
   );
 }

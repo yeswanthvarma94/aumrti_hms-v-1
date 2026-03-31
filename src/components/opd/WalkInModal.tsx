@@ -10,6 +10,7 @@ interface Props {
   hospitalId: string;
   onClose: () => void;
   onCreated: () => void;
+  defaultDeptId?: string;
 }
 
 interface FoundPatient {
@@ -38,7 +39,7 @@ const PAYMENT_MODES = [
 
 const DEFAULT_CONSULTATION_FEE = 500;
 
-const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated }) => {
+const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated, defaultDeptId }) => {
   const { toast } = useToast();
   const [step, setStep] = useState<"details" | "payment" | "receipt">("details");
   const receiptRef = useRef<HTMLDivElement>(null);
@@ -94,6 +95,11 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated }) => {
     supabase.from("users").select("id, full_name, department_id").eq("hospital_id", hospitalId).eq("role", "doctor").eq("is_active", true)
       .then(({ data }) => setDoctors(data || []));
   }, [hospitalId]);
+
+  // Auto-select department if defaultDeptId provided
+  useEffect(() => {
+    if (defaultDeptId) setDeptId(defaultDeptId);
+  }, [defaultDeptId]);
 
   // Fetch next token number
   useEffect(() => {
