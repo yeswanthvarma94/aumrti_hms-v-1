@@ -54,9 +54,14 @@ export default function PrakritiTab() {
 
   useEffect(() => {
     if (search.length >= 2) {
-      supabase.from("patients").select("id, full_name, uhid, phone, date_of_birth, gender")
+      supabase.from("patients").select("id, full_name, uhid, phone, dob, gender")
         .or(`full_name.ilike.%${search}%,uhid.ilike.%${search}%`).limit(20)
-        .then(({ data }) => { if (data) setPatients(data); });
+        .then(({ data, error }) => {
+          if (error) console.error("Patient search error:", error.message);
+          if (data) setPatients(data);
+        });
+    } else {
+      setPatients([]);
     }
   }, [search]);
 
