@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Calendar, FlaskConical, Receipt, Pill, Download } from "lucide-react";
 import type { PortalSession } from "./PortalLogin";
+import HealthCoachBot from "@/components/portal/HealthCoachBot";
 
 function getGreeting() {
   const h = new Date().getHours();
