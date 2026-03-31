@@ -165,6 +165,25 @@ const ClaimsToSubmit: React.FC = () => {
           </TableBody>
         </Table>
       </div>
+
+      {/* AI Denial Predictor Panel */}
+      {selectedForReview && hospitalId && (
+        <div className="mt-4 max-w-xl">
+          <DenialPredictorPanel
+            claimData={{
+              tpa_name: selectedForReview.tpa_name,
+              claimed_amount: selectedForReview.total_amount,
+              documents_count: selectedForReview.has_pre_auth ? 3 : 1,
+            }}
+            preAuthNumber={selectedForReview.has_pre_auth ? "PA-APPROVED" : null}
+            hospitalId={hospitalId}
+            onProceedSubmit={() => {
+              submitClaim(selectedForReview);
+              setSelectedForReview(null);
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 };
