@@ -566,28 +566,31 @@ Guidelines:
         {/* ═══ TAB 4: SEGMENTS ═══ */}
         <TabsContent value="segments" className="flex-1 overflow-hidden mt-0">
           <ScrollArea className="h-full">
-            <div className="grid grid-cols-2 gap-3">
-              {segments.map(seg => (
-                <Card key={seg.id}>
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="font-medium">{seg.segment_name}</h3>
-                        <Badge variant="secondary" className="text-xs mt-1">{seg.segment_type.replace(/_/g, " ")}</Badge>
+            <div className="space-y-4">
+              <PatientPropensitySection />
+              <div className="grid grid-cols-2 gap-3">
+                {segments.map(seg => (
+                  <Card key={seg.id}>
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="font-medium">{seg.segment_name}</h3>
+                          <Badge variant="secondary" className="text-xs mt-1">{seg.segment_type.replace(/_/g, " ")}</Badge>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-2xl font-bold">{seg.patient_count}</p>
+                          <p className="text-xs text-muted-foreground">patients</p>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-2xl font-bold">{seg.patient_count}</p>
-                        <p className="text-xs text-muted-foreground">patients</p>
+                      <div className="flex gap-2 mt-3">
+                        <Button size="sm" variant="outline" className="text-xs" onClick={() => {
+                          setShowNewCampaign(true);
+                        }}>Create Campaign</Button>
                       </div>
-                    </div>
-                    <div className="flex gap-2 mt-3">
-                      <Button size="sm" variant="outline" className="text-xs" onClick={() => {
-                        setShowNewCampaign(true);
-                      }}>Create Campaign</Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
             </div>
           </ScrollArea>
         </TabsContent>
