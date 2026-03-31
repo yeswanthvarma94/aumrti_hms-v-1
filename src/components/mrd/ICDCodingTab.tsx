@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Check, X, Bot, Loader2, Library } from "lucide-react";
+import { Check, X, Bot, Loader2, Library, Plus, DollarSign, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { callAI } from "@/lib/aiProvider";
 import { toast } from "sonner";
@@ -39,12 +39,16 @@ const ICDCodingTab: React.FC<Props> = ({ hospitalId, onRefresh }) => {
   const [primaryCode, setPrimaryCode] = useState("");
   const [primaryDesc, setPrimaryDesc] = useState("");
   const [pcsCode, setPcsCode] = useState("");
+  const [secondaryCodes, setSecondaryCodes] = useState<{ code: string; description: string }[]>([]);
   const [saving, setSaving] = useState(false);
 
   // AI suggestion state
   const [aiLoading, setAiLoading] = useState(false);
   const [aiSuggestion, setAiSuggestion] = useState<AISuggestion | null>(null);
   const [aiDismissed, setAiDismissed] = useState(false);
+
+  // Revenue impact state
+  const [revenueImpact, setRevenueImpact] = useState<{ amount: number; scheme: string } | null>(null);
 
   useEffect(() => { if (hospitalId) fetchItems(); }, [filter, hospitalId]);
 
@@ -67,6 +71,38 @@ const ICDCodingTab: React.FC<Props> = ({ hospitalId, onRefresh }) => {
     }
   };
 
+  const logAIAction = async (action: "accepted" | "rejected", code: string, reason?: string) => {
+    try {
+      await (supabase as any).from("ai_feature_logs").insert({
+        hospital_id: hospitalId,
+        feature_key: "icd_coding",
+        module: "mrd",
+        success: action === "accepted",
+        input_summary: `Code: ${code} | Visit: ${selected?.visit_type}/${selected?.visit_id}`,
+        output_summary: action === "accepted" ? `Accepted ${code}` : `Rejected ${code}: ${reason || "manual override"}`,
+      });
+    } catch (e) {
+      console.warn("Failed to log AI action:", e);
+    }
+  };
+
+  const fetchRevenueImpact = async (icdCode: string) => {
+    try {
+      const { data } = await (supabase as any)
+        .from("pmjay_packages")
+        .select("package_name, package_rate, scheme_name")
+        .ilike("procedure_code", `%${icdCode}%`)
+        .limit(1);
+      if (data && data.length > 0) {
+        setRevenueImpact({ amount: data[0].package_rate, scheme: data[0].scheme_name || "PMJAY" });
+      } else {
+        setRevenueImpact(null);
+      }
+    } catch {
+      setRevenueImpact(null);
+    }
+  };
+
   const suggestICDCode = useCallback(async (item: any) => {
     if (!item.visit_id || !item.visit_type || !hospitalId) return;
     if (item.ai_suggestion) return;
@@ -76,12 +112,10 @@ const ICDCodingTab: React.FC<Props> = ({ hospitalId, onRefresh }) => {
     setAiDismissed(false);
 
     try {
-      // ── STEP 1: Gather clinical text from the edge function ──
       const { data: efData, error: efError } = await supabase.functions.invoke("ai-icd-suggest", {
         body: { visit_type: item.visit_type, visit_id: item.visit_id, hospital_id: hospitalId },
       });
 
-      // Extract clinical text — the edge function may return it or a suggestion
       let clinicalText = "";
       if (efError || efData?.error) {
         const errMsg = efData?.error || "";
@@ -93,13 +127,11 @@ const ICDCodingTab: React.FC<Props> = ({ hospitalId, onRefresh }) => {
         return;
       }
 
-      // If edge function returned a direct suggestion, use it as clinical text
       if (typeof efData === "string") {
         clinicalText = efData;
       } else if (efData?.clinical_text) {
         clinicalText = efData.clinical_text;
       } else if (efData?.primary_code) {
-        // Old-style direct suggestion — still works as fallback
         setAiSuggestion(efData as AISuggestion);
         (supabase as any).from("icd_codings").update({
           ai_suggestion: efData.primary_code,
@@ -114,7 +146,6 @@ const ICDCodingTab: React.FC<Props> = ({ hospitalId, onRefresh }) => {
         return;
       }
 
-      // ── STEP 2: Get hospital's active code preference ──
       const { data: settings } = await (supabase as any)
         .from("hospital_icd_settings")
         .select("active_set, show_common_first")
@@ -124,7 +155,6 @@ const ICDCodingTab: React.FC<Props> = ({ hospitalId, onRefresh }) => {
       const activeSet = settings?.active_set || "all";
       const showCommonFirst = settings?.show_common_first ?? true;
 
-      // ── STEP 3: Search ICD-10 table for candidates ──
       const searchTerms = clinicalText
         .toLowerCase()
         .replace(/[^\w\s]/g, " ")
@@ -144,7 +174,6 @@ const ICDCodingTab: React.FC<Props> = ({ hospitalId, onRefresh }) => {
       } else if (activeSet === "hospital_only") {
         query = query.eq("hospital_id", hospitalId);
       }
-      // 'all': no additional filter
 
       if (showCommonFirst) {
         query = query.order("common_india", { ascending: false }).order("use_count", { ascending: false });
@@ -156,7 +185,6 @@ const ICDCodingTab: React.FC<Props> = ({ hospitalId, onRefresh }) => {
       let finalCandidates = candidates;
 
       if (!finalCandidates || finalCandidates.length === 0) {
-        // Broader fallback search
         const firstTerm = searchTerms.split(" | ")[0];
         const { data: broadCandidates } = await (supabase as any)
           .from("icd10_codes")
@@ -167,7 +195,7 @@ const ICDCodingTab: React.FC<Props> = ({ hospitalId, onRefresh }) => {
           .limit(10);
 
         if (!broadCandidates || broadCandidates.length === 0) {
-          return; // No match — user enters manually
+          return;
         }
         finalCandidates = broadCandidates;
       }
@@ -176,7 +204,6 @@ const ICDCodingTab: React.FC<Props> = ({ hospitalId, onRefresh }) => {
         .map((c: any) => `${c.code}: ${c.description} (${c.category || ""})`)
         .join("\n");
 
-      // ── STEP 4: Claude picks from candidates ──
       const response = await callAI({
         featureKey: "icd_coding",
         hospitalId,
@@ -186,6 +213,7 @@ Clinical documentation:
 "${clinicalText.slice(0, 800)}"
 
 Select the most accurate primary ICD-10 code from this list ONLY.
+Also suggest up to 3 secondary codes that commonly co-occur.
 Do not suggest codes outside this list.
 
 Available codes:
@@ -209,7 +237,6 @@ Return ONLY valid JSON (no markdown, no explanation):
         return;
       }
 
-      // ── STEP 5: Parse response ──
       let parsed: AISuggestion | null = null;
       try {
         const clean = response.text
@@ -218,27 +245,29 @@ Return ONLY valid JSON (no markdown, no explanation):
           .trim();
         parsed = JSON.parse(clean);
       } catch {
-        return; // Parse failed — silent exit
+        return;
       }
 
       if (!parsed?.primary_code) return;
 
-      // ── STEP 6: Save to DB ──
+      // Confidence-based auto-fill
+      if (parsed.confidence >= 0.80) {
+        setPrimaryCode(parsed.primary_code);
+        setPrimaryDesc(parsed.primary_description);
+      }
+
       (supabase as any).from("icd_codings").update({
         ai_suggestion: parsed.primary_code,
         ai_confidence: parsed.confidence,
-        primary_icd_code: parsed.primary_code,
-        primary_icd_desc: parsed.primary_description,
+        primary_icd_code: parsed.confidence >= 0.80 ? parsed.primary_code : undefined,
+        primary_icd_desc: parsed.confidence >= 0.80 ? parsed.primary_description : undefined,
       }).eq("id", item.id).then(() => {});
 
       setAiSuggestion(parsed);
-
-      // ── STEP 7: Increment use_count ──
       await incrementUseCount(parsed.primary_code);
 
     } catch (e) {
       console.error("ICD suggestion failed:", e);
-      // Silent fail — user can enter code manually
     } finally {
       setAiLoading(false);
     }
@@ -249,7 +278,13 @@ Return ONLY valid JSON (no markdown, no explanation):
     setPrimaryCode(item.primary_icd_code || "");
     setPrimaryDesc(item.primary_icd_desc || "");
     setPcsCode(item.pcs_code || "");
+    setSecondaryCodes([]);
     setAiDismissed(false);
+    setRevenueImpact(null);
+
+    if (item.status === "validated" && item.primary_icd_code) {
+      fetchRevenueImpact(item.primary_icd_code);
+    }
 
     if (item.ai_suggestion) {
       setAiSuggestion({
@@ -270,7 +305,10 @@ Return ONLY valid JSON (no markdown, no explanation):
     if (!aiSuggestion) return;
     setPrimaryCode(aiSuggestion.primary_code);
     setPrimaryDesc(aiSuggestion.primary_description);
-    // Increment use_count for accepted secondary codes too
+    if (aiSuggestion.secondary_suggestions) {
+      setSecondaryCodes(aiSuggestion.secondary_suggestions);
+    }
+    logAIAction("accepted", aiSuggestion.primary_code);
     aiSuggestion.secondary_suggestions?.forEach((s) => incrementUseCount(s.code));
     toast.success("AI suggestion accepted");
   };
@@ -279,7 +317,26 @@ Return ONLY valid JSON (no markdown, no explanation):
     if (!aiSuggestion) return;
     setPrimaryCode(aiSuggestion.primary_code);
     setPrimaryDesc(aiSuggestion.primary_description);
+    logAIAction("accepted", aiSuggestion.primary_code);
     toast.success("Primary code accepted");
+  };
+
+  const addSecondaryCode = (code: string, description: string) => {
+    if (secondaryCodes.find(s => s.code === code)) return;
+    setSecondaryCodes(prev => [...prev, { code, description }]);
+    incrementUseCount(code);
+    toast.success(`Added secondary code: ${code}`);
+  };
+
+  const removeSecondaryCode = (code: string) => {
+    setSecondaryCodes(prev => prev.filter(s => s.code !== code));
+  };
+
+  const dismissAI = () => {
+    if (aiSuggestion) {
+      logAIAction("rejected", aiSuggestion.primary_code, "dismissed by coder");
+    }
+    setAiDismissed(true);
   };
 
   const saveCoding = async (validate = false) => {
@@ -308,12 +365,21 @@ Return ONLY valid JSON (no markdown, no explanation):
     const { error } = await (supabase as any).from("icd_codings").update(updates).eq("id", selected.id);
     if (error) { toast.error(error.message); setSaving(false); return; }
 
-    // Increment use_count for the code that was saved
     if (primaryCode) await incrementUseCount(primaryCode);
+
+    // Log if AI suggestion was used or overridden
+    if (aiSuggestion && primaryCode !== aiSuggestion.primary_code) {
+      logAIAction("rejected", aiSuggestion.primary_code, `overridden with ${primaryCode}`);
+    }
+
+    if (validate) {
+      fetchRevenueImpact(primaryCode);
+    }
 
     toast.success(validate ? "Coding validated ✓" : "Coding saved");
     setSelected(null);
     setAiSuggestion(null);
+    setSecondaryCodes([]);
     setSaving(false);
     fetchItems();
     onRefresh?.();
@@ -385,11 +451,26 @@ Return ONLY valid JSON (no markdown, no explanation):
 
             {/* AI Suggestion Box */}
             {aiSuggestion && !aiDismissed && !aiLoading && (
-              <div className="bg-accent/5 border border-accent/20 rounded-lg p-3 space-y-2">
+              <div className={`rounded-lg p-3 space-y-2 border-l-[3px] ${
+                aiSuggestion.confidence >= 0.80
+                  ? "bg-emerald-50 border-l-emerald-500 dark:bg-emerald-950/20"
+                  : aiSuggestion.confidence >= 0.60
+                    ? "bg-accent/5 border-l-accent/50"
+                    : "bg-amber-50 border-l-amber-500 dark:bg-amber-950/20"
+              }`}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Bot className="h-4 w-4 text-accent-foreground" />
                     <span className="text-sm font-semibold text-accent-foreground">AI Suggestion</span>
+                    {aiSuggestion.confidence >= 0.80 ? (
+                      <Badge variant="secondary" className="text-[10px] bg-emerald-100 text-emerald-700 gap-1">
+                        <CheckCircle2 className="h-2.5 w-2.5" /> High confidence — auto-filled
+                      </Badge>
+                    ) : aiSuggestion.confidence < 0.60 ? (
+                      <Badge variant="secondary" className="text-[10px] bg-amber-100 text-amber-700 gap-1">
+                        <AlertTriangle className="h-2.5 w-2.5" /> Low confidence — manual review
+                      </Badge>
+                    ) : null}
                   </div>
                   <Badge variant="outline" className="text-[10px] bg-accent/10 text-accent border-accent/20 gap-1">
                     <Library className="h-2.5 w-2.5" /> From your ICD-10 library
@@ -408,15 +489,30 @@ Return ONLY valid JSON (no markdown, no explanation):
                 {aiSuggestion.reasoning && (
                   <p className="text-xs italic text-muted-foreground">{aiSuggestion.reasoning}</p>
                 )}
+
+                {/* Secondary code suggestions */}
                 {aiSuggestion.secondary_suggestions && aiSuggestion.secondary_suggestions.length > 0 && (
-                  <div className="flex flex-wrap gap-1 pt-1">
-                    {aiSuggestion.secondary_suggestions.map((s, i) => (
-                      <Badge key={i} variant="outline" className="text-[10px]">
-                        {s.code} — {s.description}
-                      </Badge>
-                    ))}
+                  <div className="pt-1 space-y-1">
+                    <span className="text-[11px] font-semibold text-muted-foreground">Common secondary codes for this case:</span>
+                    <div className="space-y-1">
+                      {aiSuggestion.secondary_suggestions.map((s, i) => (
+                        <div key={i} className="flex items-center justify-between bg-background/60 rounded px-2 py-1">
+                          <span className="text-xs">{s.code} — {s.description}</span>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-5 text-[10px] px-1.5"
+                            onClick={() => addSecondaryCode(s.code, s.description)}
+                            disabled={secondaryCodes.some(sc => sc.code === s.code)}
+                          >
+                            <Plus className="h-3 w-3 mr-0.5" /> Add
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
+
                 <div className="flex gap-2 pt-1">
                   <Button size="sm" className="h-7 text-xs" onClick={acceptAll}>
                     <Check className="h-3 w-3 mr-1" /> Accept All
@@ -424,10 +520,20 @@ Return ONLY valid JSON (no markdown, no explanation):
                   <Button size="sm" variant="outline" className="h-7 text-xs" onClick={acceptPrimaryOnly}>
                     Accept Primary Only
                   </Button>
-                  <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive" onClick={() => setAiDismissed(true)}>
+                  <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive" onClick={dismissAI}>
                     <X className="h-3 w-3 mr-1" /> Dismiss
                   </Button>
                 </div>
+              </div>
+            )}
+
+            {/* Revenue Impact (for validated items) */}
+            {selected.status === "validated" && revenueImpact && (
+              <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 rounded-lg p-3 flex items-center gap-2">
+                <DollarSign className="h-4 w-4 text-emerald-600" />
+                <span className="text-xs text-emerald-700 dark:text-emerald-400">
+                  💰 <strong>Coding Impact:</strong> This episode coded correctly could attract <strong>₹{revenueImpact.amount.toLocaleString("en-IN")}</strong> under {revenueImpact.scheme} package
+                </span>
               </div>
             )}
 
@@ -437,6 +543,24 @@ Return ONLY valid JSON (no markdown, no explanation):
               <Input value={primaryCode} onChange={(e) => setPrimaryCode(e.target.value)} placeholder="e.g. J18.9" />
               <Input value={primaryDesc} onChange={(e) => setPrimaryDesc(e.target.value)} placeholder="Description" />
             </div>
+
+            {/* Secondary Codes */}
+            {secondaryCodes.length > 0 && (
+              <div className="space-y-2">
+                <Label className="text-xs">Secondary ICD-10 Codes</Label>
+                <div className="space-y-1">
+                  {secondaryCodes.map((sc) => (
+                    <div key={sc.code} className="flex items-center justify-between bg-muted rounded px-2 py-1">
+                      <span className="text-xs font-medium">{sc.code} — {sc.description}</span>
+                      <Button size="sm" variant="ghost" className="h-5 text-[10px] text-destructive" onClick={() => removeSecondaryCode(sc.code)}>
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label className="text-xs">Procedure Code (PCS)</Label>
               <Input value={pcsCode} onChange={(e) => setPcsCode(e.target.value)} placeholder="Optional procedure code" />
