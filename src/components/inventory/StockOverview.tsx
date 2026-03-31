@@ -278,6 +278,16 @@ const StockOverview: React.FC = () => {
       {adjustItem && (
         <StockAdjustmentModal item={adjustItem} onClose={() => setAdjustItem(null)} onSaved={() => { setAdjustItem(null); loadData(); }} />
       )}
+
+      {forecastItem && hospitalId && (
+        <DrugForecastPanel
+          itemId={forecastItem.id}
+          itemName={forecastItem.item_name}
+          currentStock={forecastItem.total_stock}
+          hospitalId={hospitalId}
+          onClose={() => setForecastItem(null)}
+        />
+      )}
     </div>
   );
 };
