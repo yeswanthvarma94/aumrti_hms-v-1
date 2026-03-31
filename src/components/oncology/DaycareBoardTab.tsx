@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ShieldAlert, CheckCircle2, Clock, AlertTriangle, XCircle } from "lucide-react";
+import VialSharingCard from "./VialSharingCard";
 
 interface DaycareBoardTabProps {
   showNewOrder: boolean;
