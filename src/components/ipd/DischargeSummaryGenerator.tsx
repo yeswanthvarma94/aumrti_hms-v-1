@@ -137,7 +137,7 @@ Use formal medical language. Keep factual. Do not invent details not provided. M
         success: true,
         input_summary: `Admission ${admissionId} | LOS: ${los}d`,
         output_summary: `Generated ${response.text.length} chars`,
-        tokens_used: response.tokensUsed || null,
+        tokens_used: (response as any).tokens_used || null,
       });
     } catch (err) {
       console.error("Discharge summary generation failed:", err);
