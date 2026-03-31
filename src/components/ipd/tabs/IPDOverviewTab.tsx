@@ -5,6 +5,7 @@ import { Activity, Pill, ClipboardList, CheckCircle2, Stethoscope, CreditCard, P
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import DischargeInstructions from "@/components/ipd/DischargeInstructions";
+import DischargeSummaryGenerator from "@/components/ipd/DischargeSummaryGenerator";
 
 interface Props {
   admissionId: string;
