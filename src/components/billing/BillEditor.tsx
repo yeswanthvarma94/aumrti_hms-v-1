@@ -300,6 +300,9 @@ const BillEditor: React.FC<Props> = ({ bill, hospitalId, onRefresh }) => {
         </div>
       </div>
 
+      {/* AI Revenue Intelligence */}
+      <RevenueIntelligencePanel bill={bill} hospitalId={hospitalId} lineItems={lineItems} />
+
       {/* Tabs */}
       <Tabs defaultValue="items" className="flex-1 flex flex-col overflow-hidden">
         <TabsList className="bg-card border-b border-border rounded-none h-11 px-5 flex-shrink-0">
