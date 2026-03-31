@@ -597,7 +597,7 @@ const LabResultWorkspace: React.FC<Props> = ({ order, onRefresh }) => {
                         </div>
                       )}
                       {/* Trend analysis for validated numeric results */}
-                      {isValidated && isNumeric && item.result_numeric != null && (
+                      {isValidated && isNumeric && item.result_numeric != null && labHospitalId && (
                         <div className="mx-4 my-1">
                           <LabTrendPanel
                             testName={item.test_name}
@@ -606,7 +606,7 @@ const LabResultWorkspace: React.FC<Props> = ({ order, onRefresh }) => {
                             normalMin={item.normal_min}
                             normalMax={item.normal_max}
                             patientId={order.patient_id}
-                            hospitalId=""
+                            hospitalId={labHospitalId}
                           />
                         </div>
                       )}
