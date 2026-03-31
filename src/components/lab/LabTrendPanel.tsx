@@ -30,15 +30,27 @@ const LabTrendPanel: React.FC<Props> = ({ testName, currentResult, unit, normalM
 
   useEffect(() => {
     const analyze = async () => {
-      // Get patient's last 5 results for this test
+      // Get patient's last 5 results for this test via lab_orders join
+      const { data: patientOrders } = await supabase
+        .from("lab_orders")
+        .select("id")
+        .eq("patient_id", patientId)
+        .order("order_date", { ascending: false })
+        .limit(20);
+
+      const orderIds = (patientOrders || []).map((o: any) => o.id);
+      if (orderIds.length === 0) { setLoading(false); return; }
+
       const { data: history } = await supabase
         .from("lab_order_items")
-        .select("result_numeric, created_at")
-        .eq("patient_id", patientId)
-        .eq("test_name", testName)
+        .select("result_numeric, created_at, test_id, lab_test_master:lab_test_master!lab_order_items_test_id_fkey(test_name)")
+        .in("lab_order_id", orderIds)
         .not("result_numeric", "is", null)
         .order("created_at", { ascending: false })
-        .limit(6);
+        .limit(50);
+
+      // Filter to matching test name
+      const matchingHistory = (history || []).filter((h: any) => h.lab_test_master?.test_name === testName);
 
       // Filter out current result to avoid double-counting, build chart
       const histValues = (history || [])
