@@ -96,6 +96,11 @@ const InventoryPage: React.FC = () => {
             ⚠️ {kpis.expiring} Expiring
           </span>
           <span className="text-xs px-2.5 py-1 rounded-full bg-muted text-muted-foreground font-medium">📋 {kpis.pendingIndents} Pending</span>
+          {hospitalId && (
+            <Button size="sm" variant="outline" className="text-xs h-7 gap-1.5" onClick={() => setShowDemandReview(true)}>
+              <Brain className="h-3 w-3" /> AI Demand Review
+            </Button>
+          )}
         </div>
       </div>
 
