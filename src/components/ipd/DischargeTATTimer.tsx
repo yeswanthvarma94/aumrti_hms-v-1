@@ -10,24 +10,22 @@ interface Props {
 
 const DischargeTATTimer: React.FC<Props> = ({ admissionId, hospitalId, medicalCleared }) => {
   const [startTime, setStartTime] = useState<string | null>(null);
-  const [elapsed, setElapsed] = useState(0); // seconds
+  const [elapsed, setElapsed] = useState(0);
 
-  // When medical clearance happens, start the TAT clock
   useEffect(() => {
     if (!medicalCleared || !admissionId) return;
 
     const init = async () => {
-      // Check if discharge_ordered_at is already set
       const { data } = await supabase
         .from("admissions")
-        .select("discharge_ordered_at")
+        .select("*")
         .eq("id", admissionId)
         .maybeSingle();
 
-      if (data?.discharge_ordered_at) {
-        setStartTime(data.discharge_ordered_at);
+      const dischargeOrderedAt = (data as any)?.discharge_ordered_at;
+      if (dischargeOrderedAt) {
+        setStartTime(dischargeOrderedAt);
       } else {
-        // Set it now
         const now = new Date().toISOString();
         await supabase.from("admissions").update({
           discharge_ordered_at: now,
@@ -38,7 +36,6 @@ const DischargeTATTimer: React.FC<Props> = ({ admissionId, hospitalId, medicalCl
     init();
   }, [medicalCleared, admissionId]);
 
-  // Update timer every second
   useEffect(() => {
     if (!startTime) return;
     const update = () => {
@@ -50,17 +47,15 @@ const DischargeTATTimer: React.FC<Props> = ({ admissionId, hospitalId, medicalCl
     return () => clearInterval(interval);
   }, [startTime]);
 
-  // Alert if > 2 hours
   useEffect(() => {
     if (!startTime || !hospitalId || elapsed < 7200) return;
-    // Only alert once at 2 hours mark (7200 ± 5 seconds)
     if (elapsed >= 7200 && elapsed <= 7205) {
       supabase.from("clinical_alerts").insert({
         hospital_id: hospitalId,
         alert_type: "discharge_delay",
         severity: "medium",
-        message: `Discharge TAT: ${Math.floor(elapsed / 60)} min elapsed. Review pending clearances.`,
-      }).then(() => {});
+        alert_message: `Discharge TAT: ${Math.floor(elapsed / 60)} min elapsed. Review pending clearances.`,
+      } as any).then(() => {});
     }
   }, [elapsed, startTime, hospitalId]);
 

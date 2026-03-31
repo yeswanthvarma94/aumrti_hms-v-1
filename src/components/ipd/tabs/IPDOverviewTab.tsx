@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import DischargeInstructions from "@/components/ipd/DischargeInstructions";
 import DischargeSummaryGenerator from "@/components/ipd/DischargeSummaryGenerator";
+import DischargeTATTimer from "@/components/ipd/DischargeTATTimer";
 
 interface Props {
   admissionId: string;
@@ -228,6 +229,9 @@ const IPDOverviewTab: React.FC<Props> = ({ admissionId, hospitalId, onTabChange,
               );
             })}
           </div>
+
+          {/* Discharge TAT Timer */}
+          <DischargeTATTimer admissionId={admissionId} hospitalId={hospitalId} medicalCleared={medicalCleared} />
 
           {/* Action for current step */}
           <div className="flex-1 flex flex-col justify-end">

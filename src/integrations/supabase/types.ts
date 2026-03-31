@@ -26,6 +26,7 @@ export type Database = {
           consultant_doctor_id: string | null
           created_at: string | null
           department_id: string | null
+          discharge_ordered_at: string | null
           discharge_summary_done: boolean | null
           discharge_type: string | null
           discharged_at: string | null
@@ -51,6 +52,7 @@ export type Database = {
           consultant_doctor_id?: string | null
           created_at?: string | null
           department_id?: string | null
+          discharge_ordered_at?: string | null
           discharge_summary_done?: boolean | null
           discharge_type?: string | null
           discharged_at?: string | null
@@ -76,6 +78,7 @@ export type Database = {
           consultant_doctor_id?: string | null
           created_at?: string | null
           department_id?: string | null
+          discharge_ordered_at?: string | null
           discharge_summary_done?: boolean | null
           discharge_type?: string | null
           discharged_at?: string | null
