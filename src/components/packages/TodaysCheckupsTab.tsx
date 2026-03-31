@@ -81,8 +81,8 @@ export default function TodaysCheckupsTab({ onRefreshKPIs }: Props) {
             <CardContent className="p-4">
               <div className="flex items-start justify-between mb-3">
                 <div>
-                  <p className="font-semibold">{patient?.first_name} {patient?.last_name}</p>
-                  <p className="text-xs text-muted-foreground">UHID: {patient?.uhid} • {patient?.gender}</p>
+                   <p className="font-semibold">{patient?.full_name}</p>
+                   <p className="text-xs text-muted-foreground">UHID: {patient?.uhid} • {patient?.gender}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant="outline">{pkg?.package_name}</Badge>

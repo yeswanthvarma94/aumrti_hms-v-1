@@ -74,7 +74,7 @@ Keep language professional but accessible. Max 300 words.`,
           <Card key={b.id}>
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-sm">{patient?.first_name} {patient?.last_name} — {b.health_packages?.package_name}</CardTitle>
+                <CardTitle className="text-sm">{patient?.full_name} — {b.health_packages?.package_name}</CardTitle>
                 <Badge variant={b.status === "completed" ? "default" : "secondary"}>{b.status.replace("_", " ")}</Badge>
               </div>
               <p className="text-xs text-muted-foreground">UHID: {patient?.uhid} • Scheduled: {b.scheduled_date}</p>
