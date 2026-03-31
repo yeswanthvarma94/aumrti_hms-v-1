@@ -38,7 +38,7 @@ export default function ProgressTrackerTab() {
         hospitalId: HOSPITAL_ID,
         prompt: `Generate a professional health report summary for a preventive health checkup patient.
 
-Patient: ${patient?.first_name} ${patient?.last_name}, Age: ${age}, Gender: ${patient?.gender || "N/A"}
+Patient: ${patient?.full_name}, Age: ${age}, Gender: ${patient?.gender || "N/A"}
 Package: ${booking.health_packages?.package_name}
 Date: ${booking.scheduled_date}
 
