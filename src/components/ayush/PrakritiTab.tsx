@@ -51,27 +51,85 @@ export default function PrakritiTab() {
   const [saving, setSaving] = useState(false);
   const [aiSummary, setAiSummary] = useState("");
   const [loadingAI, setLoadingAI] = useState(false);
+  const [hospitalId, setHospitalId] = useState<string | null>(null);
+  const [loadingPatients, setLoadingPatients] = useState(false);
 
   useEffect(() => {
-    if (search.length >= 2) {
-      supabase.from("patients").select("id, full_name, uhid, phone, dob, gender")
-        .or(`full_name.ilike.%${search}%,uhid.ilike.%${search}%`).limit(20)
-        .then(({ data, error }) => {
-          if (error) console.error("Patient search error:", error.message);
-          if (data) setPatients(data);
-        });
-    } else {
+    const loadHospitalContext = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from("users")
+        .select("hospital_id")
+        .eq("auth_user_id", user.id)
+        .maybeSingle();
+
+      if (error) {
+        console.error("Hospital context error:", error.message);
+        return;
+      }
+
+      setHospitalId(data?.hospital_id ?? null);
+    };
+
+    loadHospitalContext();
+  }, []);
+
+  useEffect(() => {
+    const searchPatients = async () => {
+      if (search.length < 2 || !hospitalId) {
+        setPatients([]);
+        return;
+      }
+
+      setLoadingPatients(true);
+      const { data, error } = await supabase
+        .from("patients")
+        .select("id, full_name, uhid, phone, dob, gender")
+        .eq("hospital_id", hospitalId)
+        .or(`full_name.ilike.%${search}%,uhid.ilike.%${search}%,phone.ilike.%${search}%`)
+        .limit(20);
+
+      if (error) {
+        console.error("Patient search error:", error.message);
+        setPatients([]);
+        setLoadingPatients(false);
+        return;
+      }
+
+      setPatients(data ?? []);
+      setLoadingPatients(false);
+    };
+
+    if (!hospitalId && search.length >= 2) {
       setPatients([]);
+      return;
     }
-  }, [search]);
+
+    searchPatients();
+  }, [search, hospitalId]);
 
   useEffect(() => {
     if (selectedPatient) loadExisting();
   }, [selectedPatient]);
 
   const loadExisting = async () => {
-    const { data } = await supabase.from("prakriti_assessments").select("*")
-      .eq("patient_id", selectedPatient.id).order("assessed_at", { ascending: false }).limit(1);
+    if (!selectedPatient || !hospitalId) return;
+
+    const { data, error } = await supabase.from("prakriti_assessments").select("*")
+      .eq("hospital_id", hospitalId)
+      .eq("patient_id", selectedPatient.id)
+      .order("assessed_at", { ascending: false }).limit(1);
+
+    if (error) {
+      console.error("Assessment load error:", error.message);
+      setExistingAssessment(null);
+      setAiSummary("");
+      setResponses({});
+      return;
+    }
+
     if (data && data.length > 0) {
       setExistingAssessment(data[0]);
       setAiSummary(data[0].prakriti_summary || "");
@@ -104,10 +162,11 @@ export default function PrakritiTab() {
     setLoadingAI(true);
     try {
       const { data: userData } = await supabase.auth.getUser();
-      const { data: userRow } = await supabase.from("users").select("hospital_id").eq("auth_user_id", userData?.user?.id).single();
+      const { data: userRow, error: userError } = await supabase.from("users").select("hospital_id").eq("auth_user_id", userData?.user?.id || "").maybeSingle();
+      if (userError || !userRow?.hospital_id) throw new Error("Hospital not found");
       const dominant = getDominantDosha();
       const prompt = `Patient Prakriti Assessment: Vata=${vataScore}/30, Pitta=${pittaScore}/30, Kapha=${kaphaScore}/30. Dominant dosha: ${dominant}. Generate a concise Prakriti summary (3-4 sentences) covering: personality traits, health tendencies, and dietary/lifestyle recommendations based on Ayurvedic principles.`;
-      const result = await callAI({ featureKey: "prakriti_analysis", hospitalId: userRow?.hospital_id || "", prompt, maxTokens: 300 });
+      const result = await callAI({ featureKey: "prakriti_analysis", hospitalId: userRow.hospital_id, prompt, maxTokens: 300 });
       setAiSummary(typeof result === "string" ? result : String(result));
     } catch {
       setAiSummary(`Patient is predominantly ${getDominantDosha().replace("_", "-")} constitution. Vata: ${vataScore}, Pitta: ${pittaScore}, Kapha: ${kaphaScore}.`);
@@ -122,8 +181,8 @@ export default function PrakritiTab() {
     setSaving(true);
     try {
       const { data: userData } = await supabase.auth.getUser();
-      const { data: userRow } = await supabase.from("users").select("id, hospital_id").eq("auth_user_id", userData?.user?.id).single();
-      if (!userRow) { toast.error("User not found"); return; }
+      const { data: userRow, error: userError } = await supabase.from("users").select("id, hospital_id").eq("auth_user_id", userData?.user?.id || "").maybeSingle();
+      if (userError || !userRow) { toast.error("User not found"); return; }
 
       const { error } = await supabase.from("prakriti_assessments").insert({
         hospital_id: userRow.hospital_id,
@@ -159,6 +218,10 @@ export default function PrakritiTab() {
           </div>
         </div>
         <div className="flex-1 overflow-y-auto">
+          {loadingPatients && <p className="px-3 py-2 text-xs text-muted-foreground">Searching patients...</p>}
+          {!loadingPatients && search.length >= 2 && patients.length === 0 && (
+            <p className="px-3 py-2 text-xs text-muted-foreground">No patients found</p>
+          )}
           {patients.map((p) => (
             <button
               key={p.id}
