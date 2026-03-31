@@ -122,7 +122,12 @@ const AlertsTab: React.FC<Props> = ({ onNavigate }) => {
   };
 
   return (
-    <div className="flex-1 overflow-auto space-y-2">
+    <div className="flex-1 overflow-auto space-y-4">
+      {/* Predictive Maintenance AI Section */}
+      <PredictiveMaintenanceSection />
+
+      {/* Regular Alerts */}
+      <div className="space-y-2">
       {alerts.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
           <p className="text-3xl mb-2">✅</p>
