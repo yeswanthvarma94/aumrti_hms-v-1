@@ -7875,6 +7875,63 @@ export type Database = {
           },
         ]
       }
+      lab_qc_entries: {
+        Row: {
+          analyzer: string
+          created_at: string | null
+          hospital_id: string
+          id: string
+          level: string
+          mean: number
+          recorded_at: string
+          recorded_by: string | null
+          sd: number
+          test_name: string
+          value: number
+        }
+        Insert: {
+          analyzer: string
+          created_at?: string | null
+          hospital_id: string
+          id?: string
+          level?: string
+          mean: number
+          recorded_at?: string
+          recorded_by?: string | null
+          sd: number
+          test_name: string
+          value: number
+        }
+        Update: {
+          analyzer?: string
+          created_at?: string | null
+          hospital_id?: string
+          id?: string
+          level?: string
+          mean?: number
+          recorded_at?: string
+          recorded_by?: string | null
+          sd?: number
+          test_name?: string
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lab_qc_entries_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lab_qc_entries_recorded_by_fkey"
+            columns: ["recorded_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lab_samples: {
         Row: {
           barcode: string | null

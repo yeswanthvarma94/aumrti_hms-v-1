@@ -7,6 +7,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useWhatsAppNotification } from "@/components/whatsapp/WhatsAppNotificationCard";
 import { sendLabResultReady } from "@/lib/whatsapp-notifications";
+import LabTrendPanel from "./LabTrendPanel";
 
 interface LabOrder {
   id: string;
@@ -97,14 +98,15 @@ const LabResultWorkspace: React.FC<Props> = ({ order, onRefresh }) => {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [samples, setSamples] = useState<any[]>([]);
   const [history, setHistory] = useState<any[]>([]);
+  const [labHospitalId, setLabHospitalId] = useState<string>("");
   const [validating, setValidating] = useState(false);
 
-  // Get current user id
+  // Get current user id and hospital id
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) return;
-      supabase.from("users").select("id").eq("auth_user_id", user.id).limit(1).single()
-        .then(({ data }) => { if (data) setCurrentUserId(data.id); });
+      supabase.from("users").select("id, hospital_id").eq("auth_user_id", user.id).limit(1).single()
+        .then(({ data }) => { if (data) { setCurrentUserId(data.id); setLabHospitalId(data.hospital_id); } });
     });
   }, []);
 
@@ -592,6 +594,20 @@ const LabResultWorkspace: React.FC<Props> = ({ order, onRefresh }) => {
                       {isCritical && item.critical_acknowledged && (
                         <div className="mx-4 my-1 bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-2 text-xs text-emerald-700 font-medium">
                           ✓ Critical acknowledged
+                        </div>
+                      )}
+                      {/* Trend analysis for validated numeric results */}
+                      {isValidated && isNumeric && item.result_numeric != null && labHospitalId && (
+                        <div className="mx-4 my-1">
+                          <LabTrendPanel
+                            testName={item.test_name}
+                            currentResult={item.result_numeric}
+                            unit={item.unit}
+                            normalMin={item.normal_min}
+                            normalMax={item.normal_max}
+                            patientId={order.patient_id}
+                            hospitalId={labHospitalId}
+                          />
                         </div>
                       )}
                     </React.Fragment>

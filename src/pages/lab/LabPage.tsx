@@ -2,10 +2,12 @@ import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Microscope } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import LabQueuePanel from "@/components/lab/LabQueuePanel";
 import LabInfoPanel from "@/components/lab/LabInfoPanel";
 import LabResultWorkspace from "@/components/lab/LabResultWorkspace";
 import NewLabOrderModal from "@/components/lab/NewLabOrderModal";
+import LabQCDashboard from "@/components/lab/LabQCDashboard";
 
 interface LabOrder {
   id: string;
@@ -98,36 +100,60 @@ const LabPage: React.FC = () => {
   const urgentCount = orders.filter((o) => o.priority === "urgent").length;
   const routineCount = orders.filter((o) => o.priority === "routine").length;
 
-  return (
-    <div className="flex h-full overflow-hidden">
-      {/* Left: Queue */}
-      <LabQueuePanel
-        orders={filteredOrders}
-        selectedOrderId={selectedOrderId}
-        onSelectOrder={setSelectedOrderId}
-        filterTab={filterTab}
-        onFilterChange={setFilterTab}
-        statCount={statCount}
-        urgentCount={urgentCount}
-        routineCount={routineCount}
-        onNewOrder={() => setShowNewOrder(true)}
-      />
+  const [mainTab, setMainTab] = useState<"worklist" | "qc">("worklist");
 
-      {/* Center: Workspace */}
-      {selectedOrder ? (
-        <LabResultWorkspace order={selectedOrder} onRefresh={fetchOrders} />
+  return (
+    <div className="flex flex-col" style={{ height: "calc(100vh - 56px)" }}>
+      {/* Top tab bar */}
+      <div className="h-[40px] flex-shrink-0 bg-card border-b border-border px-5 flex items-center gap-4">
+        <button
+          onClick={() => setMainTab("worklist")}
+          className={`text-xs font-semibold px-3 py-1.5 rounded-md transition-colors ${mainTab === "worklist" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
+        >
+          🔬 Worklist
+        </button>
+        <button
+          onClick={() => setMainTab("qc")}
+          className={`text-xs font-semibold px-3 py-1.5 rounded-md transition-colors ${mainTab === "qc" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
+        >
+          📊 QC Dashboard
+        </button>
+      </div>
+
+      {mainTab === "qc" && hospitalId ? (
+        <LabQCDashboard hospitalId={hospitalId} />
       ) : (
-        <div className="flex-1 bg-muted/30 flex items-center justify-center overflow-hidden">
-          <div className="text-center space-y-3">
-            <Microscope size={48} className="mx-auto text-muted-foreground/40" />
-            <p className="text-base text-muted-foreground">Select a test order from the queue</p>
-            <p className="text-sm text-muted-foreground/60">or create a new lab order</p>
-          </div>
+        <div className="flex flex-1 overflow-hidden">
+          {/* Left: Queue */}
+          <LabQueuePanel
+            orders={filteredOrders}
+            selectedOrderId={selectedOrderId}
+            onSelectOrder={setSelectedOrderId}
+            filterTab={filterTab}
+            onFilterChange={setFilterTab}
+            statCount={statCount}
+            urgentCount={urgentCount}
+            routineCount={routineCount}
+            onNewOrder={() => setShowNewOrder(true)}
+          />
+
+          {/* Center: Workspace */}
+          {selectedOrder ? (
+            <LabResultWorkspace order={selectedOrder} onRefresh={fetchOrders} />
+          ) : (
+            <div className="flex-1 bg-muted/30 flex items-center justify-center overflow-hidden">
+              <div className="text-center space-y-3">
+                <Microscope size={48} className="mx-auto text-muted-foreground/40" />
+                <p className="text-base text-muted-foreground">Select a test order from the queue</p>
+                <p className="text-sm text-muted-foreground/60">or create a new lab order</p>
+              </div>
+            </div>
+          )}
+
+          {/* Right: Info */}
+          <LabInfoPanel selectedOrder={selectedOrder} onSelectOrder={setSelectedOrderId} />
         </div>
       )}
-
-      {/* Right: Info */}
-      <LabInfoPanel selectedOrder={selectedOrder} onSelectOrder={setSelectedOrderId} />
 
       {/* New Order Modal */}
       {showNewOrder && hospitalId && (

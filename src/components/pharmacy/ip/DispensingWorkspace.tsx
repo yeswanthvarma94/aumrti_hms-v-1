@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Pill, Save, Check, RotateCcw, AlertTriangle, Loader2 } from "lucide-react";
 import FiveRightsPanel from "./FiveRightsPanel";
+import ADRCheckPanel from "./ADRCheckPanel";
 import AllergyBanner from "@/components/clinical/AllergyBanner";
 import { logNABHEvidence } from "@/lib/nabh-evidence";
 import type { PrescriptionItem } from "./PrescriptionQueue";
@@ -454,6 +455,24 @@ const DispensingWorkspace: React.FC<Props> = ({ hospitalId, prescription, onDisp
       {patient?.allergies && (
         <div className="flex-shrink-0 px-5">
           <AllergyBanner allergies={patient.allergies} />
+        </div>
+      )}
+
+      {/* ADR Check Panel — shown when drugs are loaded */}
+      {drugRows.length > 0 && patient && (
+        <div className="flex-shrink-0 px-5 py-2 border-b border-border bg-card space-y-1.5">
+          {drugRows.map((row, idx) => (
+            <ADRCheckPanel
+              key={`adr-${idx}-${row.drug_name}`}
+              drugName={row.drug_name}
+              drugDose={row.dose || ""}
+              currentMedications={drugRows.filter((_, i) => i !== idx).map(r => ({ drug_name: r.drug_name, dose: r.dose || "" }))}
+              patientAllergies={patient.allergies ? patient.allergies.split(",").map((a: string) => a.trim()) : []}
+              hospitalId={hospitalId}
+              onAcknowledged={() => {}}
+              onBlock={() => updateRow(idx, { dispense_qty: 0 })}
+            />
+          ))}
         </div>
       )}
 

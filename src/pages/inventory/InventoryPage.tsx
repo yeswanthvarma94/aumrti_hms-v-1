@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Package, ClipboardList, FileText, PackageCheck, Building2, BarChart3 } from "lucide-react";
+import { Package, ClipboardList, FileText, PackageCheck, Building2, BarChart3, TrendingUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import StockOverview from "@/components/inventory/StockOverview";

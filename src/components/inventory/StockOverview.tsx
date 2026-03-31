@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Search, Download, ChevronDown, ChevronRight, Plus } from "lucide-react";
+import { Search, Download, ChevronDown, ChevronRight, Plus, BarChart3 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import EmptyState from "@/components/EmptyState";
 import StockAdjustmentModal from "./StockAdjustmentModal";
+import DrugForecastPanel from "./DrugForecastPanel";
 
 interface StockItem {
   id: string;
@@ -54,6 +55,16 @@ const StockOverview: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [adjustItem, setAdjustItem] = useState<StockItem | null>(null);
+  const [forecastItem, setForecastItem] = useState<StockItem | null>(null);
+  const [hospitalId, setHospitalId] = useState<string>("");
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      supabase.from("users").select("hospital_id").eq("auth_user_id", user.id).limit(1).maybeSingle()
+        .then(({ data }) => { if (data) setHospitalId(data.hospital_id); });
+    });
+  }, []);
 
   const loadData = async () => {
     const [itemsRes, stockRes] = await Promise.all([
@@ -209,6 +220,11 @@ const StockOverview: React.FC = () => {
                     <td className="px-3 py-2 text-right text-muted-foreground">₹{item.stock_value.toLocaleString("en-IN")}</td>
                     <td className="px-3 py-2 text-center">
                       <Button variant="ghost" size="sm" className="text-[10px] h-6 px-2" onClick={() => setAdjustItem(item)}>Adjust</Button>
+                      {hospitalId && (
+                        <Button variant="ghost" size="sm" className="text-[10px] h-6 px-2" onClick={() => setForecastItem(item)}>
+                          <BarChart3 className="h-3 w-3 mr-1" />Forecast
+                        </Button>
+                      )}
                     </td>
                   </tr>
                   {isExpanded && item.batches.length > 0 && (
@@ -261,6 +277,16 @@ const StockOverview: React.FC = () => {
 
       {adjustItem && (
         <StockAdjustmentModal item={adjustItem} onClose={() => setAdjustItem(null)} onSaved={() => { setAdjustItem(null); loadData(); }} />
+      )}
+
+      {forecastItem && hospitalId && (
+        <DrugForecastPanel
+          itemId={forecastItem.id}
+          itemName={forecastItem.item_name}
+          currentStock={forecastItem.total_stock}
+          hospitalId={hospitalId}
+          onClose={() => setForecastItem(null)}
+        />
       )}
     </div>
   );
