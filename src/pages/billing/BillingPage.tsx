@@ -181,12 +181,13 @@ const BillingPage: React.FC = () => {
       const labRate = await getServiceRate('lab_test', 200);
 
       for (const li of (labItems || [])) {
-        // Try per-test rate from lab_test_master
+        // Try per-test rate from service_master by test name
         const { data: testRate } = await supabase
-          .from('lab_test_master')
+          .from('service_master')
           .select('fee')
           .eq('hospital_id', hospitalId!)
-          .ilike('test_name', `%${(li as any).lab_test_master?.test_name || ''}%`)
+          .ilike('name', `%${(li as any).lab_test_master?.test_name || ''}%`)
+          .eq('item_type', 'lab_test')
           .maybeSingle();
         const finalRate = testRate?.fee ? Number(testRate.fee) : labRate.fee;
         const labGstPct = labRate.gstPct;
