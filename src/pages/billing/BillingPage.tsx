@@ -143,6 +143,27 @@ const BillingPage: React.FC = () => {
     if (!hospitalId) return;
     const items: any[] = [];
 
+    // Helper: look up rate from service_master with fallback
+    const getServiceRate = async (itemType: string, fallback: number) => {
+      const { data } = await supabase
+        .from('service_master')
+        .select('fee, gst_percent, gst_applicable, hsn_code')
+        .eq('hospital_id', hospitalId)
+        .eq('item_type', itemType)
+        .eq('is_active', true)
+        .limit(1)
+        .maybeSingle();
+      if (!data) return { fee: fallback, gst: 0, gstPct: 0, hsn: '' };
+      const fee = Number(data.fee) || fallback;
+      const gstPct = data.gst_applicable ? (Number(data.gst_percent) || 0) : 0;
+      return {
+        fee,
+        gst: Math.round(fee * gstPct / 100 * 100) / 100,
+        gstPct,
+        hsn: data.hsn_code || ''
+      };
+    };
+
     // Lab charges
     const { data: labOrders } = await supabase
       .from("lab_orders")
@@ -157,15 +178,29 @@ const BillingPage: React.FC = () => {
         .select("*, lab_test_master(test_name)")
         .in("lab_order_id", orderIds);
 
-      (labItems || []).forEach((li: any) => {
+      const labRate = await getServiceRate('lab_test', 200);
+
+      for (const li of (labItems || [])) {
+        // Try per-test rate from service_master by test name
+        const { data: testRate } = await supabase
+          .from('service_master')
+          .select('fee')
+          .eq('hospital_id', hospitalId!)
+          .ilike('name', `%${(li as any).lab_test_master?.test_name || ''}%`)
+          .eq('item_type', 'lab_test')
+          .maybeSingle();
+        const finalRate = testRate?.fee ? Number(testRate.fee) : labRate.fee;
+        const labGstPct = labRate.gstPct;
+        const labGst = Math.round(finalRate * labGstPct / 100 * 100) / 100;
         items.push({
           hospital_id: hospitalId, bill_id: billId,
-          item_type: "lab", description: `Lab: ${li.lab_test_master?.test_name || "Test"}`,
-          quantity: 1, unit_rate: 200, taxable_amount: 200,
-          gst_percent: 12, gst_amount: 24, total_amount: 224,
-          hsn_code: "998931", source_module: "lab",
+          item_type: "lab", description: `Lab: ${(li as any).lab_test_master?.test_name || "Test"}`,
+          quantity: 1, unit_rate: finalRate, taxable_amount: finalRate,
+          gst_percent: labGstPct, gst_amount: labGst,
+          total_amount: finalRate + labGst,
+          hsn_code: labRate.hsn || "998931", source_module: "lab",
         });
-      });
+      }
     }
 
     // Radiology charges
@@ -175,15 +210,27 @@ const BillingPage: React.FC = () => {
       .eq("hospital_id", hospitalId)
       .eq("admission_id", admissionId);
 
-    (radOrders || []).forEach((ro: any) => {
+    const radRate = await getServiceRate('radiology', 500);
+
+    for (const ro of (radOrders || [])) {
+      const { data: studyRate } = await supabase
+        .from('service_master')
+        .select('fee, gst_percent, gst_applicable')
+        .eq('hospital_id', hospitalId!)
+        .ilike('name', `%${(ro as any).study_name || ''}%`)
+        .maybeSingle();
+      const radFee = studyRate?.fee ? Number(studyRate.fee) : radRate.fee;
+      const radGstPct = studyRate?.gst_applicable ? (Number(studyRate.gst_percent) || 0) : radRate.gstPct;
+      const radGst = Math.round(radFee * radGstPct / 100 * 100) / 100;
       items.push({
         hospital_id: hospitalId, bill_id: billId,
-        item_type: "radiology", description: `Radiology: ${ro.study_name}`,
-        quantity: 1, unit_rate: 500, taxable_amount: 500,
-        gst_percent: 12, gst_amount: 60, total_amount: 560,
+        item_type: "radiology", description: `Radiology: ${(ro as any).study_name}`,
+        quantity: 1, unit_rate: radFee, taxable_amount: radFee,
+        gst_percent: radGstPct, gst_amount: radGst,
+        total_amount: radFee + radGst,
         hsn_code: "998921", source_module: "radiology",
       });
-    });
+    }
 
     // Pharmacy IP dispenses
     const { data: pharma } = await supabase
@@ -209,7 +256,7 @@ const BillingPage: React.FC = () => {
     // Room charges
     const { data: admission } = await supabase
       .from("admissions")
-      .select("admitted_at, discharged_at, wards(name), beds(bed_number)")
+      .select("admitted_at, discharged_at, ward_id, wards(name, ward_type), beds(bed_number)")
       .eq("id", admissionId)
       .maybeSingle();
 
@@ -218,12 +265,30 @@ const BillingPage: React.FC = () => {
       const dischDate = admission.discharged_at ? new Date(admission.discharged_at) : new Date();
       const days = Math.max(1, Math.ceil((dischDate.getTime() - admitDate.getTime()) / 86400000));
       const wardName = (admission as any).wards?.name || "Ward";
+      const wardType = (admission as any).wards?.ward_type || "general";
       const bedNum = (admission as any).beds?.bed_number || "";
+
+      const { data: roomRate } = await supabase
+        .from('service_master')
+        .select('fee, gst_percent, gst_applicable')
+        .eq('hospital_id', hospitalId!)
+        .ilike('name', `%${wardType}%`)
+        .ilike('item_type', '%room%')
+        .eq('is_active', true)
+        .limit(1)
+        .maybeSingle();
+
+      const ratePerDay = roomRate?.fee ? Number(roomRate.fee) : 500;
+      const roomGstPct = roomRate?.gst_applicable ? (Number(roomRate.gst_percent) || 0) : 0;
+      const roomTotal = ratePerDay * days;
+      const roomGst = Math.round(roomTotal * roomGstPct / 100 * 100) / 100;
+
       items.push({
         hospital_id: hospitalId, bill_id: billId,
         item_type: "room_charge", description: `Room: ${wardName} - Bed ${bedNum} (${days} days)`,
-        quantity: days, unit_rate: 500, taxable_amount: days * 500,
-        gst_percent: 0, gst_amount: 0, total_amount: days * 500,
+        quantity: days, unit_rate: ratePerDay, taxable_amount: roomTotal,
+        gst_percent: roomGstPct, gst_amount: roomGst,
+        total_amount: roomTotal + roomGst,
         hsn_code: "999272", source_module: "ipd",
       });
     }
