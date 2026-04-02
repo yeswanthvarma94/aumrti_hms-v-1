@@ -21,13 +21,185 @@ const EndCaseModal: React.FC<Props> = ({ schedule, onClose, onEnded }) => {
     ? Math.round((Date.now() - new Date(schedule.actual_start_time).getTime()) / 60000)
     : 0;
 
+  const triggerOTBilling = async (otSchedule: OTSchedule) => {
+    const { data: userData } = await supabase.rpc("get_user_hospital_id") as any;
+    const hospitalId = userData;
+    if (!hospitalId) return;
+
+    if (!otSchedule.admission_id) {
+      toast({ title: "OT completed. Create bill manually for OPD procedure." });
+      return;
+    }
+
+    // Find or create IPD bill
+    const { data: existingBill } = await supabase
+      .from("bills")
+      .select("id, total_amount, balance_due")
+      .eq("hospital_id", hospitalId)
+      .eq("admission_id", otSchedule.admission_id)
+      .eq("bill_type", "ipd")
+      .maybeSingle();
+
+    let billId = existingBill?.id;
+
+    if (!billId) {
+      const today = new Date().toISOString().split("T")[0];
+      const { count } = await supabase
+        .from("bills")
+        .select("id", { count: "exact", head: true })
+        .eq("hospital_id", hospitalId);
+      const billNum = `BILL-${today.replace(/-/g, "")}-${String((count || 0) + 1).padStart(4, "0")}`;
+      const { data: newBill } = await supabase
+        .from("bills")
+        .insert({
+          hospital_id: hospitalId,
+          patient_id: otSchedule.patient_id,
+          admission_id: otSchedule.admission_id,
+          bill_number: billNum,
+          bill_type: "ipd",
+          bill_date: today,
+          bill_status: "draft",
+          payment_status: "unpaid",
+          total_amount: 0,
+          balance_due: 0,
+        })
+        .select("id")
+        .single();
+      billId = newBill?.id;
+    }
+
+    if (!billId) return;
+
+    // Fetch rates from service_master
+    const getRate = async (itemType: string, fallback: number) => {
+      const { data } = await supabase
+        .from("service_master")
+        .select("fee, gst_percent, gst_applicable, hsn_code")
+        .eq("hospital_id", hospitalId)
+        .eq("item_type", itemType)
+        .eq("is_active", true)
+        .limit(1)
+        .maybeSingle();
+      if (!data) return { fee: fallback, gstPct: 0, gst: 0, hsn: "" };
+      const fee = Number(data.fee) || fallback;
+      const gstPct = data.gst_applicable ? (Number(data.gst_percent) || 0) : 0;
+      return { fee, gstPct, gst: Math.round((fee * gstPct) / 100 * 100) / 100, hsn: data.hsn_code || "" };
+    };
+
+    const otRate = await getRate("ot_charge", 2000);
+    const surgRate = await getRate("surgeon_fee", 3000);
+    const anaesRate = await getRate("anaesthesia_fee", 1500);
+
+    // Calculate OT time charge
+    const actualDuration =
+      otSchedule.actual_start_time && otSchedule.actual_end_time
+        ? Math.ceil(
+            (new Date(otSchedule.actual_end_time).getTime() -
+              new Date(otSchedule.actual_start_time).getTime()) /
+              3600000
+          )
+        : Math.ceil((otSchedule.estimated_duration_minutes || 60) / 60);
+
+    const hours = Math.max(1, actualDuration);
+    const otTimeCharge = hours * otRate.fee;
+    const otTimeGst = Math.round((otTimeCharge * otRate.gstPct) / 100 * 100) / 100;
+
+    const lineItems: any[] = [];
+
+    // OT Time charge
+    lineItems.push({
+      hospital_id: hospitalId, bill_id: billId,
+      item_type: "ot_charge",
+      description: `OT Charges: ${otSchedule.surgery_name} (${hours} hr)`,
+      quantity: hours, unit_rate: otRate.fee,
+      taxable_amount: otTimeCharge, gst_percent: otRate.gstPct,
+      gst_amount: otTimeGst, total_amount: otTimeCharge + otTimeGst,
+      hsn_code: otRate.hsn || "999315", source_module: "ot",
+    });
+
+    // Surgeon fee
+    if (otSchedule.surgeon_id) {
+      lineItems.push({
+        hospital_id: hospitalId, bill_id: billId,
+        item_type: "surgeon_fee",
+        description: `Surgeon Fee: ${otSchedule.surgery_name}`,
+        quantity: 1, unit_rate: surgRate.fee,
+        taxable_amount: surgRate.fee, gst_percent: surgRate.gstPct,
+        gst_amount: surgRate.gst, total_amount: surgRate.fee + surgRate.gst,
+        hsn_code: surgRate.hsn || "999316", source_module: "ot",
+      });
+    }
+
+    // Anaesthesia fee
+    if (otSchedule.anaesthetist_id) {
+      lineItems.push({
+        hospital_id: hospitalId, bill_id: billId,
+        item_type: "anaesthesia_fee",
+        description: `Anaesthesia: ${otSchedule.anaesthesia_type || "General"}`,
+        quantity: 1, unit_rate: anaesRate.fee,
+        taxable_amount: anaesRate.fee, gst_percent: anaesRate.gstPct,
+        gst_amount: anaesRate.gst, total_amount: anaesRate.fee + anaesRate.gst,
+        hsn_code: anaesRate.hsn || "999317", source_module: "ot",
+      });
+    }
+
+    // Implants/consumables
+    const implants = otSchedule.implants_consumables as any[];
+    if (implants?.length) {
+      for (const imp of implants) {
+        const cost = Number(imp.cost || imp.price || 0);
+        if (cost > 0) {
+          lineItems.push({
+            hospital_id: hospitalId, bill_id: billId,
+            item_type: "implant",
+            description: `Implant: ${imp.name || imp.item_name || "Surgical Consumable"}`,
+            quantity: Number(imp.quantity || 1), unit_rate: cost,
+            taxable_amount: cost, gst_percent: 12,
+            gst_amount: Math.round(cost * 0.12 * 100) / 100,
+            total_amount: cost * 1.12,
+            hsn_code: "9021", source_module: "ot",
+          });
+        }
+      }
+    }
+
+    // Insert line items & recalculate
+    if (lineItems.length > 0) {
+      await supabase.from("bill_line_items").insert(lineItems);
+
+      const { data: allItems } = await supabase
+        .from("bill_line_items")
+        .select("taxable_amount, gst_amount, total_amount")
+        .eq("bill_id", billId);
+
+      const subtotal = (allItems || []).reduce((s, i) => s + Number(i.taxable_amount || 0), 0);
+      const gstTotal = (allItems || []).reduce((s, i) => s + Number(i.gst_amount || 0), 0);
+      const total = subtotal + gstTotal;
+
+      await supabase
+        .from("bills")
+        .update({
+          subtotal,
+          gst_amount: gstTotal,
+          total_amount: total,
+          taxable_amount: subtotal,
+          patient_payable: total,
+          balance_due: total,
+        })
+        .eq("id", billId);
+
+      toast({ title: `OT charges auto-billed: ₹${total.toLocaleString("en-IN")}` });
+    }
+  };
+
   const handleEnd = async () => {
     setSaving(true);
+    const endTime = new Date().toISOString();
     const { error } = await supabase
       .from("ot_schedules")
       .update({
         status: "completed",
-        actual_end_time: new Date().toISOString(),
+        actual_end_time: endTime,
         post_op_diagnosis: postOpDx || null,
         booking_notes: complications
           ? `${schedule.booking_notes || ""}\n\nComplications: ${complications}`.trim()
@@ -42,6 +214,10 @@ const EndCaseModal: React.FC<Props> = ({ schedule, onClose, onEnded }) => {
     }
 
     toast({ title: `Case completed ✓ — ${schedule.surgery_name} (${elapsed} min)` });
+
+    // Trigger OT billing with the actual_end_time set
+    await triggerOTBilling({ ...schedule, actual_end_time: endTime, status: "completed" });
+
     setSaving(false);
     onEnded();
   };
@@ -97,7 +273,7 @@ const EndCaseModal: React.FC<Props> = ({ schedule, onClose, onEnded }) => {
             disabled={saving}
             className="w-full bg-[hsl(var(--sidebar-accent))] text-white font-semibold py-3 rounded-lg hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50"
           >
-            {saving ? "Ending..." : "✓ End Case & Close OT"}
+            {saving ? "Ending & Billing..." : "✓ End Case & Close OT"}
           </button>
         </div>
       </div>
