@@ -46,7 +46,7 @@ const RequestsTab: React.FC<Props> = ({ showModal, onCloseModal, onRefresh }) =>
     const { data } = await supabase.from("blood_units")
       .select("*")
       .eq("component", req.component)
-      .eq("status", "available")
+      .in("status", ["available", "reserved"])
       .gt("expiry_at", new Date().toISOString())
       .order("expiry_at", { ascending: true });
 
