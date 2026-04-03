@@ -350,15 +350,33 @@ const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onT
 
     // Upsert MRD records for this encounter
     if (encounterId && hospitalId) {
-      (supabase as any).from("medical_records").upsert({
-        hospital_id: hospitalId,
-        patient_id: token.patient_id,
-        record_type: "opd",
-        visit_id: encounterId,
-        status: "active",
-      }, { onConflict: "hospital_id,patient_id,record_type,visit_id" }).then(() => {});
+      const { data: existingRecord } = await supabase
+        .from("medical_records")
+        .select("id")
+        .eq("hospital_id", hospitalId)
+        .eq("patient_id", token.patient_id)
+        .eq("visit_id", encounterId)
+        .maybeSingle();
 
-      // ICD coding not required for OPD visits
+      if (!existingRecord) {
+        await supabase.from("medical_records").insert({
+          hospital_id: hospitalId,
+          patient_id: token.patient_id,
+          visit_id: encounterId,
+          record_type: "opd",
+          status: "active",
+          destroy_after: new Date(Date.now() + 3 * 365 * 24 * 3600000)
+            .toISOString()
+            .split("T")[0],
+        });
+
+        await supabase.from("icd_codings").insert({
+          hospital_id: hospitalId,
+          visit_id: encounterId,
+          visit_type: "opd",
+          status: "pending",
+        });
+      }
     }
 
     onTokenUpdate();
