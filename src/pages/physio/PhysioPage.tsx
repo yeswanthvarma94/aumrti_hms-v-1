@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import OutcomeTrajectoryPredictor from "@/components/physio/OutcomeTrajectoryPredictor";
 import { supabase } from "@/integrations/supabase/client";
+import { useHospitalId } from "@/hooks/useHospitalId";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,10 +16,8 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { format } from "date-fns";
-import { Plus, ClipboardList, Calendar, BarChart3, Dumbbell, FileText, Activity, CheckCircle, Clock, User, Printer, MessageSquare } from "lucide-react";
+import { Plus, ClipboardList, Calendar, BarChart3, Dumbbell, FileText, Activity, CheckCircle, Clock, User, Printer, MessageSquare, Loader2 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip, ResponsiveContainer } from "recharts";
-
-const HOSPITAL_ID = "8f3d08b3-8835-42a7-920e-fdf5a78260bc";
 
 const MODALITIES = ["UST", "IFT", "TENS", "SWD", "Traction", "Exercise", "Manual Therapy", "Hot Pack", "Cold Pack", "Wax Bath", "Hydrotherapy", "Balance Training"];
 
