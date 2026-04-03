@@ -67,6 +67,91 @@ const RequestsTab: React.FC<Props> = ({ showModal, onCloseModal, onRefresh }) =>
     onRefresh();
   };
 
+  const issueUnit = async (unit: any) => {
+    if (!selectedReq) return;
+    const { data: user } = await supabase.from("users").select("id, hospital_id").limit(1).single();
+    if (!user) return;
+    const hospitalId = user.hospital_id;
+
+    // Insert blood_issues record
+    const { data: issueRecord, error } = await (supabase as any).from("blood_issues").insert({
+      hospital_id: hospitalId,
+      unit_id: unit.id,
+      patient_id: selectedReq.patient_id,
+      admission_id: selectedReq.admission_id || null,
+      issued_by: user.id,
+      issued_at: new Date().toISOString(),
+    }).select("id, admission_id").single();
+
+    if (error) {
+      toast({ title: "Issue failed", description: error.message, variant: "destructive" });
+      return;
+    }
+
+    // Update unit status to issued
+    await supabase.from("blood_units").update({ status: "issued" as any, issued_to: selectedReq.patient_id }).eq("id", unit.id);
+
+    // Update request units_issued
+    await (supabase as any).from("blood_requests").update({
+      status: "fulfilled",
+    }).eq("id", selectedReq.id);
+
+    toast({ title: "Blood unit issued", description: `${unit.unit_number} issued to ${selectedReq.patients?.full_name}` });
+
+    // Auto-bill if IPD admission
+    if (issueRecord?.admission_id) {
+      await createBloodBankBill(hospitalId, issueRecord, unit);
+    }
+
+    fetchRequests();
+    onRefresh();
+    setSelectedReq(null);
+  };
+
+  const createBloodBankBill = async (hospitalId: string, issue: any, unit: any) => {
+    if (!issue.admission_id) return;
+
+    // Get blood product rate from service_master
+    const { data: rate } = await supabase
+      .from("service_master")
+      .select("fee, gst_percent, gst_applicable")
+      .eq("hospital_id", hospitalId)
+      .ilike("name", `%${unit.component || "blood"}%`)
+      .maybeSingle();
+
+    const fee = rate?.fee ? Number(rate.fee) : 1500;
+    const gstPct = rate?.gst_applicable ? (Number(rate.gst_percent) || 0) : 0;
+    const gst = Math.round(fee * gstPct / 100 * 100) / 100;
+
+    // Find IPD bill
+    const { data: bill } = await supabase
+      .from("bills")
+      .select("id")
+      .eq("hospital_id", hospitalId)
+      .eq("admission_id", issue.admission_id)
+      .eq("bill_type", "ipd")
+      .maybeSingle();
+
+    if (!bill) return; // Bill doesn't exist yet — will be captured on auto-pull
+
+    await supabase.from("bill_line_items").insert({
+      hospital_id: hospitalId,
+      bill_id: bill.id,
+      item_type: "blood_product",
+      description: `Blood Product: ${(unit.component || "Blood").toUpperCase()} — ${unit.blood_group}${unit.rh_factor === "positive" ? "+" : "-"} (Unit: ${unit.unit_number})`,
+      quantity: 1,
+      unit_rate: fee,
+      taxable_amount: fee,
+      gst_percent: gstPct,
+      gst_amount: gst,
+      total_amount: fee + gst,
+      hsn_code: "999316",
+      source_module: "blood_bank",
+    });
+
+    toast({ title: `Blood product charged: ₹${(fee + gst).toLocaleString("en-IN")}` });
+  };
+
   const submitRequest = async () => {
     if (!form.patient_id || !form.indication) {
       toast({ title: "Fill all required fields", variant: "destructive" });
