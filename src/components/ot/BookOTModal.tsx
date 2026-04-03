@@ -129,6 +129,65 @@ const BookOTModal: React.FC<Props> = ({ rooms, selectedRoomId, selectedDate, pre
         hospital_id: hospitalId,
         ot_schedule_id: schedule.id,
       });
+
+      // Pre-operative blood request for major surgeries
+      const createPreOpBloodRequest = async (otSchedule: any) => {
+        const majorSurgeryTypes = ["cardiac", "ortho", "neuro", "abdominal", "vascular", "thoracic", "liver", "transplant"];
+        const isMajor = majorSurgeryTypes.some(
+          (t) =>
+            otSchedule.surgery_category?.toLowerCase().includes(t) ||
+            otSchedule.surgery_name?.toLowerCase().includes(t)
+        );
+
+        if (!isMajor && !otSchedule.booking_notes?.toLowerCase().includes("blood")) return;
+
+        const { data: patient } = await supabase
+          .from("patients")
+          .select("blood_group, full_name")
+          .eq("id", otSchedule.patient_id)
+          .single();
+
+        const bloodGroup = patient?.blood_group?.replace(/[+-]/g, "").trim() || null;
+        const rhFactor = patient?.blood_group?.includes("+") ? "positive" : "negative";
+
+        if (!bloodGroup) {
+          await supabase.from("clinical_alerts").insert({
+            hospital_id: hospitalId,
+            patient_id: otSchedule.patient_id,
+            alert_type: "pre_op_blood_group_unknown",
+            severity: "medium",
+            alert_message: `Surgery scheduled for ${patient?.full_name} on ${otSchedule.scheduled_date}. Blood group unknown — obtain blood group before surgery.`,
+          });
+          return;
+        }
+
+        await supabase.from("blood_requests").insert({
+          hospital_id: hospitalId,
+          patient_id: otSchedule.patient_id,
+          admission_id: otSchedule.admission_id || null,
+          ot_id: otSchedule.id,
+          blood_group: bloodGroup,
+          rh_factor: rhFactor,
+          component: "rbc",
+          units_required: 2,
+          urgency: "routine",
+          indication: `Pre-operative for ${otSchedule.surgery_name} on ${otSchedule.scheduled_date}`,
+          requested_by: form.surgeonId,
+          status: "pending",
+        });
+
+        toast({ title: "Pre-operative blood request sent to Blood Bank" });
+      };
+
+      await createPreOpBloodRequest({
+        id: schedule.id,
+        patient_id: form.patientId,
+        surgery_name: form.surgeryName,
+        surgery_category: form.category,
+        scheduled_date: form.date,
+        admission_id: null,
+        booking_notes: form.notes,
+      });
     }
 
     toast({ title: `OT booked — ${form.surgeryName} on ${form.date} at ${form.startTime}` });
