@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { logNABHEvidence } from "@/lib/nabh-evidence";
 import { supabase } from "@/integrations/supabase/client";
+import { useHospitalId } from "@/hooks/useHospitalId";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,10 +14,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { format, differenceInHours, differenceInMinutes } from "date-fns";
-import { Plus, Star, ClipboardList, Users, FileText, BarChart3, AlertTriangle, CheckCircle, Clock, Phone, MessageSquare, Printer } from "lucide-react";
+import { Plus, Star, ClipboardList, Users, FileText, BarChart3, AlertTriangle, CheckCircle, Clock, Phone, MessageSquare, Printer, Loader2 } from "lucide-react";
 import { PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip, ResponsiveContainer, Legend } from "recharts";
-
-const HOSPITAL_ID = "8f3d08b3-8835-42a7-920e-fdf5a78260bc";
 
 const CATEGORY_COLORS: Record<string, string> = {
   clinical_care: "#EF4444", billing: "#F59E0B", staff_behaviour: "#8B5CF6",
