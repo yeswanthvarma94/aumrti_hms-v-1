@@ -193,6 +193,101 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
     onRefresh();
   };
 
+  const createDialysisBill = async (session: any, hospitalId: string) => {
+    const { data: dialysisPatient } = await (supabase as any)
+      .from("dialysis_patients")
+      .select("patient_id")
+      .eq("id", session.dialysis_patient_id)
+      .single();
+
+    if (!dialysisPatient) return;
+
+    const { data: admission } = await supabase
+      .from("admissions")
+      .select("id")
+      .eq("hospital_id", hospitalId)
+      .eq("patient_id", dialysisPatient.patient_id)
+      .eq("status", "admitted")
+      .maybeSingle();
+
+    const { data: rate } = await (supabase as any)
+      .from("service_master")
+      .select("fee, gst_percent, gst_applicable")
+      .eq("hospital_id", hospitalId)
+      .ilike("name", "%dialysis%")
+      .maybeSingle();
+
+    const fee = rate?.fee ? Number(rate.fee) : 1500;
+    const gstPct = rate?.gst_applicable ? (Number(rate.gst_percent) || 0) : 0;
+    const gst = Math.round(fee * gstPct / 100 * 100) / 100;
+
+    const sessionDate = session.session_date || new Date().toISOString().split("T")[0];
+
+    if (admission?.id) {
+      const { data: ipdBill } = await supabase
+        .from("bills")
+        .select("id")
+        .eq("hospital_id", hospitalId)
+        .eq("admission_id", admission.id)
+        .eq("bill_type", "ipd")
+        .maybeSingle();
+
+      if (ipdBill?.id) {
+        await (supabase as any).from("bill_line_items").insert({
+          hospital_id: hospitalId,
+          bill_id: ipdBill.id,
+          item_type: "dialysis",
+          description: `Dialysis Session — ${sessionDate} (Machine: ${session.machine_id || "N/A"})`,
+          quantity: 1, unit_rate: fee,
+          taxable_amount: fee, gst_percent: gstPct,
+          gst_amount: gst, total_amount: fee + gst,
+          hsn_code: "999316", source_module: "dialysis",
+        });
+        return;
+      }
+    }
+
+    // Outpatient dialysis — create standalone bill
+    const { count } = await supabase
+      .from("bills")
+      .select("id", { count: "exact", head: true })
+      .eq("hospital_id", hospitalId);
+
+    const billNum = `DIAL-${sessionDate.replace(/-/g, "")}-${String((count || 0) + 1).padStart(4, "0")}`;
+
+    const { data: newBill } = await supabase
+      .from("bills")
+      .insert({
+        hospital_id: hospitalId,
+        patient_id: dialysisPatient.patient_id,
+        admission_id: admission?.id || null,
+        bill_number: billNum,
+        bill_type: "dialysis",
+        bill_date: sessionDate,
+        bill_status: "final",
+        payment_status: "unpaid",
+        total_amount: fee + gst,
+        balance_due: fee + gst,
+        subtotal: fee, gst_amount: gst,
+        taxable_amount: fee, patient_payable: fee + gst,
+      })
+      .select("id")
+      .single();
+
+    if (newBill) {
+      await (supabase as any).from("bill_line_items").insert({
+        hospital_id: hospitalId, bill_id: newBill.id,
+        item_type: "dialysis",
+        description: `Haemodialysis Session — ${sessionDate}`,
+        quantity: 1, unit_rate: fee,
+        taxable_amount: fee, gst_percent: gstPct,
+        gst_amount: gst, total_amount: fee + gst,
+        hsn_code: "999316", source_module: "dialysis",
+      });
+      toast({ title: `Dialysis billed: ₹${(fee + gst).toLocaleString("en-IN")}` });
+    }
+  };
+
   const endSession = async () => {
     if (!endMachine) return;
     const session = activeSessions[endMachine.id];
@@ -235,6 +330,11 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
       last_disinfected_at: new Date().toISOString(),
       disinfection_due_at: disinfectUntil,
     }).eq("id", endMachine.id);
+
+    // Auto-bill dialysis session
+    if (user) {
+      await createDialysisBill(session, user.hospital_id);
+    }
 
     if (ktv !== null && ktv < 1.2 && user) {
       await supabase.from("clinical_alerts").insert({
