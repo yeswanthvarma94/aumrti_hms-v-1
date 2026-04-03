@@ -152,6 +152,41 @@ const EmergencyWorkspace: React.FC<Props> = ({ visit, hospitalId, userId, onRefr
       disposition_time: new Date().toISOString(),
       is_active: disp === "discharged" ? false : true,
     }).eq("id", visit.id);
+
+    // Auto-create mortuary admission for expired patients
+    if ((disp === "expired" || disp === "deceased") && hospitalId && visit) {
+      const bodyNum = `BODY-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9000) + 1000).padStart(4, "0")}`;
+
+      await supabase.from("mortuary_admissions").insert({
+        hospital_id: hospitalId,
+        patient_id: visit.patient_id,
+        admission_id: null,
+        body_number: bodyNum,
+        time_of_death: new Date().toISOString(),
+        pronounced_by: userId,
+        cause_of_death: visit.chief_complaint || "Under investigation",
+        manner_of_death: "undetermined",
+        is_mlc: mlc || false,
+        status: "in_mortuary",
+        notes: `Patient brought from Emergency Department. MLC: ${mlc ? "Yes" : "No"}`,
+      });
+
+      toast({ title: `Mortuary admission created — Body No: ${bodyNum}` });
+
+      if (mlc) {
+        await supabase.from("mlc_records").insert({
+          hospital_id: hospitalId,
+          patient_id: visit.patient_id,
+          mlc_number: `MLC-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9000) + 1000).padStart(4, "0")}`,
+          incident_type: "unknown_cause",
+          police_station: mlcDetails.police_station || "",
+          officer_name: mlcDetails.officer || "",
+          fir_number: mlcDetails.fir || "",
+          status: "open",
+        });
+      }
+    }
+
     toast({ title: `Patient ${disp}` });
     onRefresh();
   };
