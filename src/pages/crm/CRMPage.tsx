@@ -42,7 +42,7 @@ const PLATFORM_COLORS = ["#4285F4", "#FF6B35", "#FFB700", "#1877F2", "#94A3B8"];
 import AddReferralDoctorModal from "@/components/shared/AddReferralDoctorModal";
 
 // ─────────── Campaign Modal ───────────
-const NewCampaignModal: React.FC<{ open: boolean; onClose: () => void; onSaved: () => void; segments: any[] }> = ({ open, onClose, onSaved, segments }) => {
+const NewCampaignModal: React.FC<{ open: boolean; onClose: () => void; onSaved: () => void; segments: any[]; hospitalId: string }> = ({ open, onClose, onSaved, segments, hospitalId }) => {
   const { toast } = useToast();
   const [form, setForm] = useState({
     campaign_name: "", campaign_type: "whatsapp_blast", target_segment: "",
