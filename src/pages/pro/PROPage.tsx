@@ -382,6 +382,8 @@ const PROPage: React.FC = () => {
     });
     if (error) { toast({ title: "Failed", description: error.message, variant: "destructive" }); return; }
     toast({ title: "Patient rights acknowledged — NABH PCC.1 ✓" });
+    logNABHEvidence(HOSPITAL_ID, "PCC.1",
+      `Patient rights acknowledged: ${rightsPatient.patient_name || "Patient"}, Language: ${rightsLang}, Signature captured.`);
     setRightsModal(false);
     setGuardianName("");
     setWitnessName("");
