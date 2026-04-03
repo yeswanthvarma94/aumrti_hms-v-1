@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { logNABHEvidence } from '@/lib/nabh-evidence';
+import { useHospitalId } from '@/hooks/useHospitalId';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -12,10 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
-import { GraduationCap, CheckCircle2, AlertTriangle, XCircle, Clock, Download, Printer, Send, Users, Plus, BookOpen } from 'lucide-react';
+import { GraduationCap, CheckCircle2, AlertTriangle, XCircle, Clock, Download, Printer, Send, Users, Plus, BookOpen, Loader2 } from 'lucide-react';
 import { format, addMonths, differenceInDays, isPast, isBefore, addDays } from 'date-fns';
-
-const HOSPITAL_ID = '8f3d08b3-8835-42a7-920e-fdf5a78260bc';
 
 interface Course {
   id: string;
@@ -80,8 +79,10 @@ const categoryColors: Record<string, string> = {
 };
 
 export default function LMSPage() {
+  const { hospitalId, loading: hospitalLoading } = useHospitalId();
   const [searchParams, setSearchParams] = useSearchParams();
   const isAdmin = searchParams.get('admin') === 'true';
+
 
   const [courses, setCourses] = useState<Course[]>([]);
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
@@ -151,8 +152,8 @@ export default function LMSPage() {
 
     const [coursesRes, usersRes, deptsRes] = await Promise.all([
       supabase.from('lms_courses').select('*').eq('is_active', true),
-      supabase.from('users').select('id, full_name, role, department_id').eq('hospital_id', HOSPITAL_ID),
-      supabase.from('departments').select('id, name').eq('hospital_id', HOSPITAL_ID),
+      supabase.from('users').select('id, full_name, role, department_id').eq('hospital_id', hospitalId),
+      supabase.from('departments').select('id, name').eq('hospital_id', hospitalId),
     ]);
 
     setCourses((coursesRes.data || []) as Course[]);
@@ -168,8 +169,8 @@ export default function LMSPage() {
     }
 
     const [enrollRes, certRes] = await Promise.all([
-      supabase.from('lms_enrollments').select('*').eq('hospital_id', HOSPITAL_ID),
-      supabase.from('lms_certificates').select('*').eq('hospital_id', HOSPITAL_ID),
+      supabase.from('lms_enrollments').select('*').eq('hospital_id', hospitalId),
+      supabase.from('lms_certificates').select('*').eq('hospital_id', hospitalId),
     ]);
 
     setEnrollments(enrollRes.data || []);
@@ -293,7 +294,7 @@ export default function LMSPage() {
         : null;
 
       await supabase.from('lms_certificates').insert({
-        hospital_id: HOSPITAL_ID,
+        hospital_id: hospitalId,
         user_id: quizEnrollment.user_id,
         course_id: quizCourse.id,
         enrollment_id: quizEnrollment.id,
@@ -302,7 +303,7 @@ export default function LMSPage() {
       });
 
       const staffUser = staffUsers.find(u => u.id === quizEnrollment.user_id);
-      logNABHEvidence(HOSPITAL_ID, "HRM.6",
+      logNABHEvidence(hospitalId, "HRM.6",
         `Training completed: ${staffUser?.full_name || "Staff"}, Course: ${quizCourse.course_name}, Score: ${scorePercent}%, Certificate: ${certNum}`);
     } else if (quizEnrollment.attempts + 1 >= 3) {
       updates.status = 'failed';
@@ -373,7 +374,7 @@ export default function LMSPage() {
     if (toEnrol.length === 0) { toast.info('All staff already enrolled'); return; }
 
     const rows = toEnrol.map(s => ({
-      hospital_id: HOSPITAL_ID,
+      hospital_id: hospitalId,
       user_id: s.id,
       course_id: bulkCourseId,
       due_date: bulkDueDate || null,
@@ -392,7 +393,7 @@ export default function LMSPage() {
     if (!newCourse.course_name) { toast.error('Course name required'); return; }
     const code = `CUST-${Date.now().toString(36).toUpperCase()}`;
     const { error } = await supabase.from('lms_courses').insert({
-      hospital_id: HOSPITAL_ID,
+      hospital_id: hospitalId,
       course_name: newCourse.course_name,
       course_code: code,
       category: newCourse.category,
@@ -475,6 +476,7 @@ export default function LMSPage() {
   }
 
   // ═════════════ RENDER ═════════════
+  if (hospitalLoading || !hospitalId) return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   return (
     <div className="flex flex-col h-[calc(100vh-56px)] overflow-hidden bg-background">
       {/* HEADER */}

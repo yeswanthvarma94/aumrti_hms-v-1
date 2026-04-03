@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useHospitalId } from "@/hooks/useHospitalId";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, AlertTriangle } from "lucide-react";
+import { Plus, AlertTriangle, Loader2 } from "lucide-react";
 import EquipmentTab from "@/components/biomedical/EquipmentTab";
 import MaintenanceTab from "@/components/biomedical/MaintenanceTab";
 import CalibrationTab from "@/components/biomedical/CalibrationTab";
@@ -13,9 +14,8 @@ import ReportsTab from "@/components/biomedical/ReportsTab";
 import AddEquipmentModal from "@/components/biomedical/AddEquipmentModal";
 import ReportBreakdownModal from "@/components/biomedical/ReportBreakdownModal";
 
-const HOSPITAL_ID = "8f3d08b3-8835-42a7-920e-fdf5a78260bc";
-
 const BiomedicalPage: React.FC = () => {
+  const { hospitalId, loading: hospitalLoading } = useHospitalId();
   const [tab, setTab] = useState("equipment");
   const [showAddEquipment, setShowAddEquipment] = useState(false);
   const [showBreakdown, setShowBreakdown] = useState(false);
@@ -27,9 +27,9 @@ const BiomedicalPage: React.FC = () => {
   useEffect(() => {
     const load = async () => {
       const [eqRes, pmRes, amcRes] = await Promise.all([
-        supabase.from("equipment_master").select("id, status", { count: "exact" }).eq("hospital_id", HOSPITAL_ID).eq("is_active", true),
-        supabase.from("pm_schedules").select("id", { count: "exact" }).eq("hospital_id", HOSPITAL_ID).eq("status", "overdue"),
-        supabase.from("amc_contracts").select("id", { count: "exact" }).eq("hospital_id", HOSPITAL_ID).eq("is_active", true).lte("end_date", new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0]),
+        supabase.from("equipment_master").select("id, status", { count: "exact" }).eq("hospital_id", hospitalId).eq("is_active", true),
+        supabase.from("pm_schedules").select("id", { count: "exact" }).eq("hospital_id", hospitalId).eq("status", "overdue"),
+        supabase.from("amc_contracts").select("id", { count: "exact" }).eq("hospital_id", hospitalId).eq("is_active", true).lte("end_date", new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0]),
       ]);
       const eqData = eqRes.data || [];
       setKpis({
@@ -51,6 +51,7 @@ const BiomedicalPage: React.FC = () => {
     { label: "AMC Expiring (30d)", value: kpis.amcExpiring, color: "text-amber-600", bg: "bg-amber-50" },
   ];
 
+  if (hospitalLoading || !hospitalId) return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   return (
     <div className="flex flex-col" style={{ height: "calc(100vh - 56px)" }}>
       {/* Header */}

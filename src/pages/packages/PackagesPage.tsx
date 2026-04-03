@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
+import { useHospitalId } from "@/hooks/useHospitalId";
 import { toast } from "sonner";
-import { CalendarCheck, Activity, CheckCircle2, IndianRupee, Plus } from "lucide-react";
+import { CalendarCheck, Activity, CheckCircle2, IndianRupee, Plus, Loader2 } from "lucide-react";
 import PackageCatalogueTab from "@/components/packages/PackageCatalogueTab";
 import TodaysCheckupsTab from "@/components/packages/TodaysCheckupsTab";
 import ProgressTrackerTab from "@/components/packages/ProgressTrackerTab";
@@ -14,9 +15,8 @@ import PackageAnalyticsTab from "@/components/packages/PackageAnalyticsTab";
 import BookPackageModal from "@/components/packages/BookPackageModal";
 import CreatePackageModal from "@/components/packages/CreatePackageModal";
 
-const HOSPITAL_ID = "8f3d08b3-8835-42a7-920e-fdf5a78260bc";
-
 export default function PackagesPage() {
+  const { hospitalId, loading: hospitalLoading } = useHospitalId();
   const [tab, setTab] = useState("checkups");
   const [showBook, setShowBook] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
@@ -26,11 +26,11 @@ export default function PackagesPage() {
     const today = new Date().toISOString().split("T")[0];
     const [booked, inProgress, completed] = await Promise.all([
       supabase.from("package_bookings").select("id", { count: "exact", head: true })
-        .eq("hospital_id", HOSPITAL_ID).eq("scheduled_date", today),
+        .eq("hospital_id", hospitalId).eq("scheduled_date", today),
       supabase.from("package_bookings").select("id", { count: "exact", head: true })
-        .eq("hospital_id", HOSPITAL_ID).eq("status", "in_progress"),
+        .eq("hospital_id", hospitalId).eq("status", "in_progress"),
       supabase.from("package_bookings").select("id", { count: "exact", head: true })
-        .eq("hospital_id", HOSPITAL_ID).eq("status", "completed").gte("completed_at", today + "T00:00:00"),
+        .eq("hospital_id", hospitalId).eq("status", "completed").gte("completed_at", today + "T00:00:00"),
     ]);
     setKpis({
       booked: booked.count || 0,
@@ -49,6 +49,7 @@ export default function PackagesPage() {
     { label: "Revenue Today", value: `₹${kpis.revenue.toLocaleString("en-IN")}`, icon: IndianRupee, color: "text-primary" },
   ];
 
+  if (hospitalLoading || !hospitalId) return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   return (
     <div className="flex flex-col h-[calc(100vh-56px)] overflow-hidden">
       {/* Header */}

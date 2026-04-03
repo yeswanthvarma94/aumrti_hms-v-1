@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { logNABHEvidence } from "@/lib/nabh-evidence";
 import { supabase } from "@/integrations/supabase/client";
+import { useHospitalId } from "@/hooks/useHospitalId";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,10 +14,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { format, differenceInHours, differenceInMinutes } from "date-fns";
-import { Plus, Star, ClipboardList, Users, FileText, BarChart3, AlertTriangle, CheckCircle, Clock, Phone, MessageSquare, Printer } from "lucide-react";
+import { Plus, Star, ClipboardList, Users, FileText, BarChart3, AlertTriangle, CheckCircle, Clock, Phone, MessageSquare, Printer, Loader2 } from "lucide-react";
 import { PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip, ResponsiveContainer, Legend } from "recharts";
-
-const HOSPITAL_ID = "8f3d08b3-8835-42a7-920e-fdf5a78260bc";
 
 const CATEGORY_COLORS: Record<string, string> = {
   clinical_care: "#EF4444", billing: "#F59E0B", staff_behaviour: "#8B5CF6",
@@ -52,6 +51,7 @@ const RESPONSIBILITIES_EN = [
 ];
 
 const PROPage: React.FC = () => {
+  const { hospitalId, loading: hospitalLoading } = useHospitalId();
   const { toast } = useToast();
   const [tab, setTab] = useState("grievances");
 
@@ -104,10 +104,10 @@ const PROPage: React.FC = () => {
 
   const loadKPIs = useCallback(async () => {
     const [gRes, slRes, csRes, vRes] = await Promise.all([
-      supabase.from("grievances").select("id", { count: "exact", head: true }).eq("hospital_id", HOSPITAL_ID).not("status", "in", '("resolved","closed")'),
-      supabase.from("grievances").select("id", { count: "exact", head: true }).eq("hospital_id", HOSPITAL_ID).eq("sla_breached", true).neq("status", "closed"),
-      supabase.from("feedback_records").select("overall_csat").eq("hospital_id", HOSPITAL_ID).not("overall_csat", "is", null),
-      supabase.from("visitor_passes").select("id", { count: "exact", head: true }).eq("hospital_id", HOSPITAL_ID).eq("status", "active"),
+      supabase.from("grievances").select("id", { count: "exact", head: true }).eq("hospital_id", hospitalId).not("status", "in", '("resolved","closed")'),
+      supabase.from("grievances").select("id", { count: "exact", head: true }).eq("hospital_id", hospitalId).eq("sla_breached", true).neq("status", "closed"),
+      supabase.from("feedback_records").select("overall_csat").eq("hospital_id", hospitalId).not("overall_csat", "is", null),
+      supabase.from("visitor_passes").select("id", { count: "exact", head: true }).eq("hospital_id", hospitalId).eq("status", "active"),
     ]);
     setOpenGrievances(gRes.count || 0);
     setSlaBreached(slRes.count || 0);
@@ -119,9 +119,9 @@ const PROPage: React.FC = () => {
 
     // Rights not signed
     const today = new Date().toISOString().split("T")[0];
-    const { data: admitted } = await supabase.from("admissions").select("id, patient_id").eq("hospital_id", HOSPITAL_ID).eq("status", "admitted");
+    const { data: admitted } = await supabase.from("admissions").select("id, patient_id").eq("hospital_id", hospitalId).eq("status", "admitted");
     if (admitted && admitted.length > 0) {
-      const { data: signed } = await supabase.from("patient_rights_acknowledgements").select("admission_id").eq("hospital_id", HOSPITAL_ID);
+      const { data: signed } = await supabase.from("patient_rights_acknowledgements").select("admission_id").eq("hospital_id", hospitalId);
       const signedIds = new Set((signed || []).map((s: any) => s.admission_id));
       const notSigned = admitted.filter(a => !signedIds.has(a.id));
       setRightsNotSigned(notSigned.length);
@@ -129,7 +129,7 @@ const PROPage: React.FC = () => {
   }, []);
 
   const loadGrievances = useCallback(async () => {
-    let q = supabase.from("grievances").select("*").eq("hospital_id", HOSPITAL_ID).order("created_at", { ascending: false });
+    let q = supabase.from("grievances").select("*").eq("hospital_id", hospitalId).order("created_at", { ascending: false });
     if (grievanceFilter === "open") q = q.in("status", ["open", "acknowledged"]);
     else if (grievanceFilter === "in_progress") q = q.eq("status", "in_progress");
     else if (grievanceFilter === "resolved") q = q.in("status", ["resolved", "closed"]);
@@ -138,7 +138,7 @@ const PROPage: React.FC = () => {
   }, [grievanceFilter]);
 
   const loadFeedbacks = useCallback(async () => {
-    const { data } = await supabase.from("feedback_records").select("*").eq("hospital_id", HOSPITAL_ID).order("created_at", { ascending: false }).limit(100);
+    const { data } = await supabase.from("feedback_records").select("*").eq("hospital_id", hospitalId).order("created_at", { ascending: false }).limit(100);
     setFeedbacks(data || []);
     if (data && data.length > 0) {
       setFeedbackCount(data.length);
@@ -152,14 +152,14 @@ const PROPage: React.FC = () => {
   }, []);
 
   const loadVisitors = useCallback(async () => {
-    const { data } = await supabase.from("visitor_passes").select("*").eq("hospital_id", HOSPITAL_ID).order("issued_at", { ascending: false }).limit(100);
+    const { data } = await supabase.from("visitor_passes").select("*").eq("hospital_id", hospitalId).order("issued_at", { ascending: false }).limit(100);
     setVisitors(data || []);
   }, []);
 
   const loadPendingRights = useCallback(async () => {
-    const { data: admitted } = await supabase.from("admissions").select("id, patient_id, ward_id, admitted_at").eq("hospital_id", HOSPITAL_ID).eq("status", "admitted");
+    const { data: admitted } = await supabase.from("admissions").select("id, patient_id, ward_id, admitted_at").eq("hospital_id", hospitalId).eq("status", "admitted");
     if (!admitted || admitted.length === 0) { setPendingRights([]); return; }
-    const { data: signed } = await supabase.from("patient_rights_acknowledgements").select("admission_id").eq("hospital_id", HOSPITAL_ID);
+    const { data: signed } = await supabase.from("patient_rights_acknowledgements").select("admission_id").eq("hospital_id", hospitalId);
     const signedIds = new Set((signed || []).map((s: any) => s.admission_id));
     const pending = admitted.filter(a => !signedIds.has(a.id));
     // Get patient names
@@ -167,7 +167,7 @@ const PROPage: React.FC = () => {
       const patIds = [...new Set(pending.map(p => p.patient_id))];
       const { data: patients } = await supabase.from("patients").select("id, full_name").in("id", patIds);
       const patMap = new Map((patients || []).map((p: any) => [p.id, p.full_name]));
-      const { data: wards } = await supabase.from("wards").select("id, name").eq("hospital_id", HOSPITAL_ID);
+      const { data: wards } = await supabase.from("wards").select("id, name").eq("hospital_id", hospitalId);
       const wardMap = new Map((wards || []).map((w: any) => [w.id, w.name]));
       setPendingRights(pending.map(p => ({
         ...p,
@@ -180,12 +180,12 @@ const PROPage: React.FC = () => {
   }, []);
 
   const loadStaff = useCallback(async () => {
-    const { data } = await supabase.from("users").select("id, full_name, role").eq("hospital_id", HOSPITAL_ID).limit(200);
+    const { data } = await supabase.from("users").select("id, full_name, role").eq("hospital_id", hospitalId).limit(200);
     setStaffList(data || []);
   }, []);
 
   const loadAnalytics = useCallback(async () => {
-    const { data: allG } = await supabase.from("grievances").select("category, created_at, tat_hours").eq("hospital_id", HOSPITAL_ID);
+    const { data: allG } = await supabase.from("grievances").select("category, created_at, tat_hours").eq("hospital_id", hospitalId);
     if (allG) {
       const catCount: Record<string, number> = {};
       allG.forEach((g: any) => { catCount[g.category] = (catCount[g.category] || 0) + 1; });
@@ -206,7 +206,7 @@ const PROPage: React.FC = () => {
   useEffect(() => {
     const checkSLA = async () => {
       const { data } = await supabase.from("grievances").select("id, severity, acknowledged_at, status, sla_breached")
-        .eq("hospital_id", HOSPITAL_ID).not("status", "in", '("resolved","closed")').eq("sla_breached", false);
+        .eq("hospital_id", hospitalId).not("status", "in", '("resolved","closed")').eq("sla_breached", false);
       if (!data) return;
       const now = new Date();
       for (const g of data) {
@@ -227,7 +227,7 @@ const PROPage: React.FC = () => {
   const submitGrievance = async () => {
     if (!gForm.patient_name || !gForm.description) { toast({ title: "Patient name and description required", variant: "destructive" }); return; }
     const { error } = await supabase.from("grievances").insert({
-      hospital_id: HOSPITAL_ID,
+      hospital_id: hospitalId,
       patient_name: gForm.patient_name,
       patient_phone: gForm.patient_phone || null,
       category: gForm.category,
@@ -259,7 +259,7 @@ const PROPage: React.FC = () => {
     }).eq("id", selectedGrievance.id);
     if (error) { toast({ title: "Failed", variant: "destructive" }); return; }
     toast({ title: "Grievance resolved" });
-    logNABHEvidence(HOSPITAL_ID, "PCC.6",
+    logNABHEvidence(hospitalId, "PCC.6",
       `Grievance resolved: ${selectedGrievance.category}, TAT: ${tat} hrs, Patient satisfied: pending`);
     // WhatsApp
     if (selectedGrievance.patient_phone) {
@@ -286,7 +286,7 @@ const PROPage: React.FC = () => {
   const searchPatients = async (q: string) => {
     setVForm(f => ({ ...f, patient_search: q }));
     if (q.length < 2) { setPatientResults([]); return; }
-    const { data } = await supabase.from("patients").select("id, full_name, phone").eq("hospital_id", HOSPITAL_ID).or(`full_name.ilike.%${q}%,phone.ilike.%${q}%`).limit(10);
+    const { data } = await supabase.from("patients").select("id, full_name, phone").eq("hospital_id", hospitalId).or(`full_name.ilike.%${q}%,phone.ilike.%${q}%`).limit(10);
     setPatientResults(data || []);
   };
 
@@ -297,7 +297,7 @@ const PROPage: React.FC = () => {
     const seq = Date.now().toString().slice(-6);
     const passNumber = `VP-${now.getFullYear()}-${seq}`;
     const { error } = await supabase.from("visitor_passes").insert({
-      hospital_id: HOSPITAL_ID,
+      hospital_id: hospitalId,
       patient_id: vForm.patient_id,
       visitor_name: vForm.visitor_name,
       visitor_phone: vForm.visitor_phone || null,
@@ -374,7 +374,7 @@ const PROPage: React.FC = () => {
     const canvas = canvasRef.current;
     const sig = canvas ? canvas.toDataURL("image/png") : null;
     const { error } = await supabase.from("patient_rights_acknowledgements").insert({
-      hospital_id: HOSPITAL_ID,
+      hospital_id: hospitalId,
       patient_id: rightsPatient.patient_id,
       admission_id: rightsPatient.id,
       language: rightsLang,
@@ -384,7 +384,7 @@ const PROPage: React.FC = () => {
     });
     if (error) { toast({ title: "Failed", description: error.message, variant: "destructive" }); return; }
     toast({ title: "Patient rights acknowledged — NABH PCC.1 ✓" });
-    logNABHEvidence(HOSPITAL_ID, "PCC.1",
+    logNABHEvidence(hospitalId, "PCC.1",
       `Patient rights acknowledged: ${rightsPatient.patient_name || "Patient"}, Language: ${rightsLang}, Signature captured.`);
     setRightsModal(false);
     setGuardianName("");
@@ -412,6 +412,7 @@ const PROPage: React.FC = () => {
 
   const renderStars = (n: number) => "⭐".repeat(Math.round(n));
 
+  if (hospitalLoading || !hospitalId) return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   return (
     <div className="flex flex-col" style={{ height: "calc(100vh - 56px)" }}>
       {/* Header */}

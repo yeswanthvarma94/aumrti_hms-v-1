@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useHospitalId } from "@/hooks/useHospitalId";
 import { useToast } from "@/hooks/use-toast";
 import { callAI } from "@/lib/aiProvider";
 import PatientPropensitySection from "@/components/crm/PatientPropensitySection";
@@ -18,12 +19,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import {
   Users, Megaphone, Star, UserCheck, BarChart3, Plus, Phone, Mail, MapPin,
-  MessageCircle, TrendingUp, Send, Search, Filter, RefreshCw, Eye
+  MessageCircle, TrendingUp, Send, Search, Filter, RefreshCw, Eye, Loader2
 } from "lucide-react";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts";
 import { format } from "date-fns";
-
-const HOSPITAL_ID = "8f3d08b3-8835-42a7-920e-fdf5a78260bc";
 
 const TIER_COLORS: Record<string, string> = {
   platinum: "bg-purple-100 text-purple-800",
@@ -43,7 +42,7 @@ const PLATFORM_COLORS = ["#4285F4", "#FF6B35", "#FFB700", "#1877F2", "#94A3B8"];
 import AddReferralDoctorModal from "@/components/shared/AddReferralDoctorModal";
 
 // ─────────── Campaign Modal ───────────
-const NewCampaignModal: React.FC<{ open: boolean; onClose: () => void; onSaved: () => void; segments: any[] }> = ({ open, onClose, onSaved, segments }) => {
+const NewCampaignModal: React.FC<{ open: boolean; onClose: () => void; onSaved: () => void; segments: any[]; hospitalId: string }> = ({ open, onClose, onSaved, segments, hospitalId }) => {
   const { toast } = useToast();
   const [form, setForm] = useState({
     campaign_name: "", campaign_type: "whatsapp_blast", target_segment: "",
@@ -53,7 +52,7 @@ const NewCampaignModal: React.FC<{ open: boolean; onClose: () => void; onSaved: 
   const save = async () => {
     if (!form.campaign_name) { toast({ title: "Campaign name required", variant: "destructive" }); return; }
     const { error } = await supabase.from("marketing_campaigns").insert({
-      hospital_id: HOSPITAL_ID, campaign_name: form.campaign_name, campaign_type: form.campaign_type,
+      hospital_id: hospitalId, campaign_name: form.campaign_name, campaign_type: form.campaign_type,
       target_segment: form.target_segment || null, start_date: form.start_date || null,
       end_date: form.end_date || null, budget_inr: form.budget_inr ? Number(form.budget_inr) : null,
       message_template: form.message_template || null, status: "draft",
@@ -62,6 +61,7 @@ const NewCampaignModal: React.FC<{ open: boolean; onClose: () => void; onSaved: 
     toast({ title: "Campaign created" }); onSaved(); onClose();
   };
 
+  
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-md">
@@ -104,7 +104,7 @@ const NewCampaignModal: React.FC<{ open: boolean; onClose: () => void; onSaved: 
 };
 
 // ─────────── Add Review Modal ───────────
-const AddReviewModal: React.FC<{ open: boolean; onClose: () => void; onSaved: () => void }> = ({ open, onClose, onSaved }) => {
+const AddReviewModal: React.FC<{ open: boolean; onClose: () => void; onSaved: () => void; hospitalId: string }> = ({ open, onClose, onSaved, hospitalId }) => {
   const { toast } = useToast();
   const [form, setForm] = useState({ platform: "google", reviewer_name: "", rating: "5", review_text: "", review_date: "" });
 
@@ -122,7 +122,7 @@ const AddReviewModal: React.FC<{ open: boolean; onClose: () => void; onSaved: ()
   const save = async () => {
     const sentiment = classifySentiment(form.review_text);
     const { error } = await supabase.from("online_reviews").insert({
-      hospital_id: HOSPITAL_ID, platform: form.platform, reviewer_name: form.reviewer_name || null,
+      hospital_id: hospitalId, platform: form.platform, reviewer_name: form.reviewer_name || null,
       rating: Number(form.rating), review_text: form.review_text || null,
       review_date: form.review_date || null, sentiment,
     });
@@ -163,6 +163,7 @@ const AddReviewModal: React.FC<{ open: boolean; onClose: () => void; onSaved: ()
 
 // ═══════════════ MAIN PAGE ═══════════════
 const CRMPage: React.FC = () => {
+  const { hospitalId, loading: hospitalLoading } = useHospitalId();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("referrals");
 
@@ -192,11 +193,11 @@ const CRMPage: React.FC = () => {
 
   const loadAll = async () => {
     const [d, c, r, s, a] = await Promise.all([
-      supabase.from("referral_doctors").select("*").eq("hospital_id", HOSPITAL_ID).order("total_referrals", { ascending: false }),
-      supabase.from("marketing_campaigns").select("*").eq("hospital_id", HOSPITAL_ID).order("created_at", { ascending: false }),
-      supabase.from("online_reviews").select("*").eq("hospital_id", HOSPITAL_ID).order("created_at", { ascending: false }),
-      supabase.from("patient_segments").select("*").eq("hospital_id", HOSPITAL_ID),
-      supabase.from("patient_acquisition").select("*").eq("hospital_id", HOSPITAL_ID),
+      supabase.from("referral_doctors").select("*").eq("hospital_id", hospitalId).order("total_referrals", { ascending: false }),
+      supabase.from("marketing_campaigns").select("*").eq("hospital_id", hospitalId).order("created_at", { ascending: false }),
+      supabase.from("online_reviews").select("*").eq("hospital_id", hospitalId).order("created_at", { ascending: false }),
+      supabase.from("patient_segments").select("*").eq("hospital_id", hospitalId),
+      supabase.from("patient_acquisition").select("*").eq("hospital_id", hospitalId),
     ]);
     if (d.data) setDoctors(d.data);
     if (c.data) setCampaigns(c.data);
@@ -213,7 +214,7 @@ const CRMPage: React.FC = () => {
         { segment_name: "Inactive Patients (6+ months)", segment_type: "inactive", criteria: { no_visit_months: 6 } },
       ];
       const { data: inserted } = await supabase.from("patient_segments").insert(
-        defaults.map(d => ({ ...d, hospital_id: HOSPITAL_ID }))
+        defaults.map(d => ({ ...d, hospital_id: hospitalId }))
       ).select();
       setSegments(inserted || []);
     } else {
@@ -247,7 +248,7 @@ const CRMPage: React.FC = () => {
       const hospitalName = "Aumrti Hospital";
       const result = await callAI({
         featureKey: "voice_scribe",
-        hospitalId: HOSPITAL_ID,
+        hospitalId: hospitalId,
         prompt: `You are the patient relations officer of an Indian hospital.
 Write a professional, empathetic response to this ${review.platform} review.
 Rating: ${review.rating}/5
@@ -694,9 +695,9 @@ Guidelines:
       </Tabs>
 
       {/* MODALS */}
-      <AddReferralDoctorModal open={showAddDoctor} onClose={() => setShowAddDoctor(false)} onSaved={() => loadAll()} hospitalId={HOSPITAL_ID} editDoc={editDoctor} />
-      <NewCampaignModal open={showNewCampaign} onClose={() => setShowNewCampaign(false)} onSaved={loadAll} segments={segments} />
-      <AddReviewModal open={showAddReview} onClose={() => setShowAddReview(false)} onSaved={loadAll} />
+      <AddReferralDoctorModal open={showAddDoctor} onClose={() => setShowAddDoctor(false)} onSaved={() => loadAll()} hospitalId={hospitalId} editDoc={editDoctor} />
+      <NewCampaignModal open={showNewCampaign} onClose={() => setShowNewCampaign(false)} onSaved={loadAll} segments={segments} hospitalId={hospitalId!} />
+      <AddReviewModal open={showAddReview} onClose={() => setShowAddReview(false)} onSaved={loadAll} hospitalId={hospitalId!} />
     </div>
   );
 };

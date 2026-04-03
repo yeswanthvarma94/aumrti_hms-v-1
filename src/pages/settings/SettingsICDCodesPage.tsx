@@ -12,11 +12,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Progress } from "@/components/ui/progress";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { supabase } from "@/integrations/supabase/client";
+import { useHospitalId } from "@/hooks/useHospitalId";
 import { toast } from "@/hooks/use-toast";
-import { Search, Upload, Download, Plus, Trash2, Eye, Package, FileText, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Search, Upload, Download, Plus, Trash2, Eye, Package, FileText, CheckCircle2, AlertTriangle, Loader2 } from "lucide-react";
 import * as XLSX from "xlsx";
-
-const HOSPITAL_ID = "8f3d08b3-8835-42a7-920e-fdf5a78260bc";
 
 interface CodeSet {
   id: string;
@@ -50,6 +49,7 @@ interface IcdSettings {
 }
 
 const SettingsICDCodesPage: React.FC = () => {
+  const { hospitalId, loading: hospitalLoading } = useHospitalId();
   const [tab, setTab] = useState("sets");
   const [settings, setSettings] = useState<IcdSettings | null>(null);
   const [codeSets, setCodeSets] = useState<CodeSet[]>([]);
@@ -99,7 +99,7 @@ const SettingsICDCodesPage: React.FC = () => {
     const { data } = await supabase
       .from("hospital_icd_settings")
       .select("*")
-      .eq("hospital_id", HOSPITAL_ID)
+      .eq("hospital_id", hospitalId)
       .maybeSingle();
     if (data) {
       setSettings(data as IcdSettings);
@@ -112,7 +112,7 @@ const SettingsICDCodesPage: React.FC = () => {
     const { data } = await supabase
       .from("icd10_code_sets")
       .select("*")
-      .eq("hospital_id", HOSPITAL_ID)
+      .eq("hospital_id", hospitalId)
       .order("created_at", { ascending: true });
     if (data) setCodeSets(data as CodeSet[]);
   };
@@ -122,7 +122,7 @@ const SettingsICDCodesPage: React.FC = () => {
     const { data } = await supabase
       .from("icd10_codes")
       .select("*")
-      .or(`hospital_id.is.null,hospital_id.eq.${HOSPITAL_ID}`)
+      .or(`hospital_id.is.null,hospital_id.eq.${hospitalId}`)
       .order("use_count", { ascending: false })
       .limit(1000);
     if (data) setCodes(data as ICDCode[]);
@@ -139,7 +139,7 @@ const SettingsICDCodesPage: React.FC = () => {
     } else {
       await supabase
         .from("hospital_icd_settings")
-        .insert({ hospital_id: HOSPITAL_ID, active_set: activeSet, show_common_first: showCommonFirst });
+        .insert({ hospital_id: hospitalId, active_set: activeSet, show_common_first: showCommonFirst });
     }
     toast({ title: "Preference saved" });
     setSaving(false);
@@ -233,7 +233,7 @@ const SettingsICDCodesPage: React.FC = () => {
     const { data: cs, error: csErr } = await supabase
       .from("icd10_code_sets")
       .insert({
-        hospital_id: HOSPITAL_ID,
+        hospital_id: hospitalId,
         set_name: setName,
         set_type: "hospital_uploaded",
         version: setVersion,
@@ -256,7 +256,7 @@ const SettingsICDCodesPage: React.FC = () => {
     const batchSize = 50;
     for (let i = 0; i < validRows.length; i += batchSize) {
       const batch = validRows.slice(i, i + batchSize).map((r) => ({
-        hospital_id: HOSPITAL_ID,
+        hospital_id: hospitalId,
         code_set_id: cs.id,
         code: r.code,
         description: r.description,
@@ -300,7 +300,7 @@ const SettingsICDCodesPage: React.FC = () => {
   const addCustomCode = async () => {
     if (!newCode.code || !newCode.description) return;
     await supabase.from("icd10_codes").insert({
-      hospital_id: HOSPITAL_ID,
+      hospital_id: hospitalId,
       code: newCode.code.trim(),
       description: newCode.description.trim(),
       category: newCode.category.trim() || null,
@@ -328,6 +328,7 @@ const SettingsICDCodesPage: React.FC = () => {
   const systemSet = codeSets.find((s) => s.set_type === "system_default");
   const uploadedSets = codeSets.filter((s) => s.set_type !== "system_default");
 
+  if (hospitalLoading || !hospitalId) return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   return (
     <SettingsPageWrapper title="ICD-10 Code Master" hideSave>
       <Tabs value={tab} onValueChange={setTab} className="w-full">

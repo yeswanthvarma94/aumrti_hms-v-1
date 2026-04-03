@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import OutcomeTrajectoryPredictor from "@/components/physio/OutcomeTrajectoryPredictor";
 import { supabase } from "@/integrations/supabase/client";
+import { useHospitalId } from "@/hooks/useHospitalId";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,10 +16,8 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { format } from "date-fns";
-import { Plus, ClipboardList, Calendar, BarChart3, Dumbbell, FileText, Activity, CheckCircle, Clock, User, Printer, MessageSquare } from "lucide-react";
+import { Plus, ClipboardList, Calendar, BarChart3, Dumbbell, FileText, Activity, CheckCircle, Clock, User, Printer, MessageSquare, Loader2 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip, ResponsiveContainer } from "recharts";
-
-const HOSPITAL_ID = "8f3d08b3-8835-42a7-920e-fdf5a78260bc";
 
 const MODALITIES = ["UST", "IFT", "TENS", "SWD", "Traction", "Exercise", "Manual Therapy", "Hot Pack", "Cold Pack", "Wax Bath", "Hydrotherapy", "Balance Training"];
 
@@ -45,6 +44,7 @@ const OUTCOME_TOOLS = [
 const EQUIPMENT_TYPES = ["ust", "ift", "tens", "swt", "traction", "hydrotherapy", "parallel_bars", "treadmill", "other"];
 
 const PhysioPage: React.FC = () => {
+  const { hospitalId, loading: hospitalLoading } = useHospitalId();
   const { toast } = useToast();
   const [tab, setTab] = useState("referrals");
 
@@ -96,10 +96,10 @@ const PhysioPage: React.FC = () => {
   const loadKPIs = useCallback(async () => {
     const today = format(new Date(), "yyyy-MM-dd");
     const [a, s, p, e] = await Promise.all([
-      supabase.from("physio_referrals").select("id", { count: "exact", head: true }).eq("hospital_id", HOSPITAL_ID).eq("status", "in_progress"),
-      supabase.from("physio_sessions").select("id", { count: "exact", head: true }).eq("hospital_id", HOSPITAL_ID).eq("session_date", today),
-      supabase.from("physio_referrals").select("id", { count: "exact", head: true }).eq("hospital_id", HOSPITAL_ID).eq("status", "pending"),
-      supabase.from("physio_equipment_bookings").select("id", { count: "exact", head: true }).eq("hospital_id", HOSPITAL_ID).eq("status", "in_use"),
+      supabase.from("physio_referrals").select("id", { count: "exact", head: true }).eq("hospital_id", hospitalId).eq("status", "in_progress"),
+      supabase.from("physio_sessions").select("id", { count: "exact", head: true }).eq("hospital_id", hospitalId).eq("session_date", today),
+      supabase.from("physio_referrals").select("id", { count: "exact", head: true }).eq("hospital_id", hospitalId).eq("status", "pending"),
+      supabase.from("physio_equipment_bookings").select("id", { count: "exact", head: true }).eq("hospital_id", hospitalId).eq("status", "in_use"),
     ]);
     setActiveReferrals(a.count || 0);
     setSessionsToday(s.count || 0);
@@ -108,7 +108,7 @@ const PhysioPage: React.FC = () => {
   }, []);
 
   const loadReferrals = useCallback(async () => {
-    let q = supabase.from("physio_referrals").select("*").eq("hospital_id", HOSPITAL_ID).order("created_at", { ascending: false });
+    let q = supabase.from("physio_referrals").select("*").eq("hospital_id", hospitalId).order("created_at", { ascending: false });
     if (refFilter === "pending") q = q.eq("status", "pending");
     else if (refFilter === "in_progress") q = q.in("status", ["accepted", "in_progress"]);
     else if (refFilter === "completed") q = q.in("status", ["completed", "discharged"]);
@@ -116,7 +116,7 @@ const PhysioPage: React.FC = () => {
     setReferrals(data || []);
 
     // Active refs for dropdowns
-    const { data: active } = await supabase.from("physio_referrals").select("id, patient_id, diagnosis").eq("hospital_id", HOSPITAL_ID).in("status", ["accepted", "in_progress"]);
+    const { data: active } = await supabase.from("physio_referrals").select("id, patient_id, diagnosis").eq("hospital_id", hospitalId).in("status", ["accepted", "in_progress"]);
     // Enrich with patient names
     if (active && active.length > 0) {
       const pIds = [...new Set(active.map(r => r.patient_id))];
@@ -135,22 +135,22 @@ const PhysioPage: React.FC = () => {
 
   const loadSessions = useCallback(async () => {
     const today = format(new Date(), "yyyy-MM-dd");
-    const { data } = await supabase.from("physio_sessions").select("*").eq("hospital_id", HOSPITAL_ID).eq("session_date", today).order("session_time");
+    const { data } = await supabase.from("physio_sessions").select("*").eq("hospital_id", hospitalId).eq("session_date", today).order("session_time");
     setSessions(data || []);
   }, []);
 
   const loadOutcomes = useCallback(async () => {
-    const { data } = await supabase.from("outcome_scores").select("*").eq("hospital_id", HOSPITAL_ID).order("scored_at", { ascending: false }).limit(100);
+    const { data } = await supabase.from("outcome_scores").select("*").eq("hospital_id", hospitalId).order("scored_at", { ascending: false }).limit(100);
     setOutcomes(data || []);
   }, []);
 
   const loadEquipment = useCallback(async () => {
-    const { data } = await supabase.from("physio_equipment_bookings").select("*").eq("hospital_id", HOSPITAL_ID).order("start_time", { ascending: false }).limit(50);
+    const { data } = await supabase.from("physio_equipment_bookings").select("*").eq("hospital_id", hospitalId).order("start_time", { ascending: false }).limit(50);
     setEquipment(data || []);
   }, []);
 
   const loadHEP = useCallback(async () => {
-    const { data } = await supabase.from("hep_plans").select("*").eq("hospital_id", HOSPITAL_ID).eq("is_active", true).order("created_at", { ascending: false }).limit(50);
+    const { data } = await supabase.from("hep_plans").select("*").eq("hospital_id", hospitalId).eq("is_active", true).order("created_at", { ascending: false }).limit(50);
     setHepPlans(data || []);
   }, []);
 
@@ -182,7 +182,7 @@ const PhysioPage: React.FC = () => {
     const ref = activeRefList.find(r => r.id === sForm.referral_id);
     const { data: u } = await supabase.auth.getUser();
     const { error } = await supabase.from("physio_sessions").insert({
-      hospital_id: HOSPITAL_ID,
+      hospital_id: hospitalId,
       referral_id: sForm.referral_id,
       patient_id: ref?.patient_id,
       therapist_id: u.user?.id,
@@ -203,7 +203,7 @@ const PhysioPage: React.FC = () => {
 
   // Physio billing
   const createPhysioBill = async (session: any) => {
-    const hospitalId = HOSPITAL_ID;
+    // hospitalId comes from useHospitalId hook
 
     const { data: rate } = await (supabase as any)
       .from("service_master")
@@ -322,7 +322,7 @@ const PhysioPage: React.FC = () => {
     const maxScore = tool?.max || 100;
     const { data: u } = await supabase.auth.getUser();
     await supabase.from("outcome_scores").insert({
-      hospital_id: HOSPITAL_ID,
+      hospital_id: hospitalId,
       patient_id: ref?.patient_id,
       referral_id: oForm.referral_id,
       tool: oForm.tool,
@@ -351,7 +351,7 @@ const PhysioPage: React.FC = () => {
     const ref = activeRefList.find(r => r.id === hepRefId);
     const { data: u } = await supabase.auth.getUser();
     await supabase.from("hep_plans").insert({
-      hospital_id: HOSPITAL_ID,
+      hospital_id: hospitalId,
       patient_id: ref?.patient_id,
       referral_id: hepRefId,
       created_by: u.user?.id,
@@ -384,6 +384,7 @@ const PhysioPage: React.FC = () => {
     setHepExercises(prev => [...prev, { name, sets: "3", reps: "10", hold: "5", instructions: "" }]);
   };
 
+  if (hospitalLoading || !hospitalId) return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   return (
     <div className="flex flex-col" style={{ height: "calc(100vh - 56px)" }}>
       {/* Header */}
@@ -850,7 +851,7 @@ const PhysioPage: React.FC = () => {
             if (!eForm.start_time || !eForm.end_time) { toast({ title: "Set times", variant: "destructive" }); return; }
             const { data: u } = await supabase.auth.getUser();
             await supabase.from("physio_equipment_bookings").insert({
-              hospital_id: HOSPITAL_ID,
+              hospital_id: hospitalId,
               equipment_type: eForm.equipment_type,
               booked_for: u.user?.id,
               start_time: new Date(eForm.start_time).toISOString(),
