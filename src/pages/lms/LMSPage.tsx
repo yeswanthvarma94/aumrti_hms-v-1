@@ -303,7 +303,7 @@ export default function LMSPage() {
 
       const staffUser = staffUsers.find(u => u.id === quizEnrollment.user_id);
       logNABHEvidence(HOSPITAL_ID, "HRM.6",
-        `Training completed: ${staffUser?.full_name || "Staff"}, Course: ${quizCourse.title}, Score: ${scorePercent}%, Certificate: ${certNum}`);
+        `Training completed: ${staffUser?.full_name || "Staff"}, Course: ${quizCourse.course_name}, Score: ${scorePercent}%, Certificate: ${certNum}`);
     } else if (quizEnrollment.attempts + 1 >= 3) {
       updates.status = 'failed';
     } else {
