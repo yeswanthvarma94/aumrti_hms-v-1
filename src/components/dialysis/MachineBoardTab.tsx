@@ -236,6 +236,11 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
       disinfection_due_at: disinfectUntil,
     }).eq("id", endMachine.id);
 
+    // Auto-bill dialysis session
+    if (user) {
+      await createDialysisBill(session, user.hospital_id);
+    }
+
     if (ktv !== null && ktv < 1.2 && user) {
       await supabase.from("clinical_alerts").insert({
         hospital_id: user.hospital_id,
