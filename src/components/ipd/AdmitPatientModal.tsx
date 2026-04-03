@@ -176,6 +176,46 @@ const AdmitPatientModal: React.FC<Props> = ({ open, onClose, hospitalId, presele
         visit_id: newAdm.id,
         status: "pending",
       }, { onConflict: "hospital_id,visit_type,visit_id" }).then(() => {});
+
+      // Auto-create insurance pre-auth if insurance patient
+      if (insuranceType !== "self_pay") {
+        const isGovtScheme = ["pmjay", "cghs", "echs"].includes(insuranceType);
+
+        if (isGovtScheme) {
+          const { data: scheme } = await supabase
+            .from("govt_schemes")
+            .select("id")
+            .eq("hospital_id", hospitalId)
+            .ilike("scheme_code", `%${insuranceType}%`)
+            .maybeSingle();
+
+          if (scheme) {
+            await (supabase as any).from("pre_auth_requests").insert({
+              hospital_id: hospitalId,
+              patient_id: selectedPatient.id,
+              admission_id: newAdm.id,
+              scheme_id: scheme.id,
+              package_code: "PENDING",
+              package_name: `Pre-auth pending — ${diagnosis || "diagnosis pending"}`,
+              requested_amount: 0,
+              submission_method: "manual",
+              status: "draft",
+            });
+            toast({ title: "Govt scheme pre-auth created", description: "Visit /pmjay to complete" });
+          }
+        } else {
+          await (supabase as any).from("insurance_pre_auth").insert({
+            hospital_id: hospitalId,
+            patient_id: selectedPatient.id,
+            admission_id: newAdm.id,
+            insurance_id: insuranceId || null,
+            status: "draft",
+            insurance_type: insuranceType,
+            estimated_amount: 0,
+          });
+          toast({ title: "Insurance pre-auth created", description: "Visit /insurance to complete" });
+        }
+      }
     }
 
     setSubmitting(false);
