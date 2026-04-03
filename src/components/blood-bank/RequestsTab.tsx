@@ -233,8 +233,8 @@ const RequestsTab: React.FC<Props> = ({ showModal, onCloseModal, onRefresh }) =>
                         <span>{componentLabel(u.component)}</span>
                         <span>{u.volume_ml}ml</span>
                         <span>{u.storage_location}</span>
-                        {!isExact && <Badge className="bg-amber-100 text-amber-700 text-[9px]">Compatible</Badge>}
-                        <Button size="sm" variant="outline" className="h-6 text-[10px]" onClick={() => reserveUnit(u.id)}>Reserve</Button>
+                        {u.status === "available" && <Button size="sm" variant="outline" className="h-6 text-[10px]" onClick={() => reserveUnit(u.id)}>Reserve</Button>}
+                        {u.status === "reserved" && <Button size="sm" className="h-6 text-[10px] bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => issueUnit(u)}>✓ Issue</Button>}
                       </div>
                     );
                   })}
