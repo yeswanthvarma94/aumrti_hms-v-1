@@ -10,8 +10,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { CheckCircle2, Circle, PlayCircle, Stethoscope, FlaskConical, Activity } from "lucide-react";
+import { useHospitalId } from '@/hooks/useHospitalId';
 
-const HOSPITAL_ID = "8f3d08b3-8835-42a7-920e-fdf5a78260bc";
 const STATIONS = ["Reception", "Vitals", "Lab", "ECG", "X-Ray", "USG", "Doctor", "Report"];
 
 interface Props { onRefreshKPIs: () => void; }
@@ -22,6 +22,7 @@ interface VitalsForm {
 }
 
 export default function TodaysCheckupsTab({ onRefreshKPIs }: Props) {
+  const { hospitalId } = useHospitalId();
   const [bookings, setBookings] = useState<any[]>([]);
   const [vitalsModal, setVitalsModal] = useState<any | null>(null);
   const [stationModal, setStationModal] = useState<{ booking: any; station: string } | null>(null);
@@ -35,7 +36,7 @@ export default function TodaysCheckupsTab({ onRefreshKPIs }: Props) {
     const { data } = await supabase
       .from("package_bookings")
       .select("*, health_packages(package_name, components, total_components), patients(full_name, uhid, dob, gender)")
-      .eq("hospital_id", HOSPITAL_ID)
+      .eq("hospital_id", hospitalId)
       .eq("scheduled_date", today)
       .order("created_at");
     setBookings(data || []);
@@ -111,16 +112,16 @@ export default function TodaysCheckupsTab({ onRefreshKPIs }: Props) {
         const { data: test } = await supabase
           .from("lab_test_master")
           .select("id")
-          .eq("hospital_id", HOSPITAL_ID)
+          .eq("hospital_id", hospitalId)
           .ilike("test_name", `%${testName}%`)
           .limit(1)
           .single();
         
         if (test) {
           await supabase.from("lab_orders").insert({
-            hospital_id: HOSPITAL_ID,
+            hospital_id: hospitalId,
             patient_id: booking.patient_id,
-            ordered_by: HOSPITAL_ID,
+            ordered_by: hospitalId,
             status: "ordered",
             priority: "routine",
             clinical_notes: `Health package: ${booking.health_packages?.package_name} — ${testName}`,

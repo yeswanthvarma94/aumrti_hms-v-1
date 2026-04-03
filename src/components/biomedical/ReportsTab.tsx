@@ -2,10 +2,11 @@ import React, { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
+import { useHospitalId } from '@/hooks/useHospitalId';
 
-const HOSPITAL_ID = "8f3d08b3-8835-42a7-920e-fdf5a78260bc";
 
 const ReportsTab: React.FC = () => {
+  const { hospitalId } = useHospitalId();
   const [downtimeReport, setDowntimeReport] = useState<any[]>([]);
   const [aerbReport, setAerbReport] = useState<any[]>([]);
 
@@ -14,7 +15,7 @@ const ReportsTab: React.FC = () => {
       // Downtime report
       const { data: bdData } = await supabase.from("breakdown_logs")
         .select("equipment_id, downtime_hrs, repair_cost, equipment_master(equipment_name, equipment_code)")
-        .eq("hospital_id", HOSPITAL_ID).eq("status", "resolved");
+        .eq("hospital_id", hospitalId).eq("status", "resolved");
 
       const grouped: Record<string, { name: string; code: string; totalBreakdowns: number; totalDowntime: number; totalCost: number }> = {};
       (bdData || []).forEach((b: any) => {
@@ -29,7 +30,7 @@ const ReportsTab: React.FC = () => {
       // AERB report
       const { data: aerbData } = await supabase.from("equipment_master")
         .select("equipment_name, equipment_code, aerb_license_no, aerb_expiry, status")
-        .eq("hospital_id", HOSPITAL_ID).eq("category", "radiation").eq("is_active", true);
+        .eq("hospital_id", hospitalId).eq("category", "radiation").eq("is_active", true);
       setAerbReport(aerbData || []);
     };
     load();

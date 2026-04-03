@@ -7,8 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { format, differenceInHours } from "date-fns";
+import { useHospitalId } from '@/hooks/useHospitalId';
 
-const HOSPITAL_ID = "8f3d08b3-8835-42a7-920e-fdf5a78260bc";
 const REVENUE_PER_HOUR = 15000;
 
 const SEV_STYLES: Record<string, string> = {
@@ -21,6 +21,7 @@ const SEV_STYLES: Record<string, string> = {
 interface Props { onRefresh: () => void; }
 
 const BreakdownTab: React.FC<Props> = ({ onRefresh }) => {
+  const { hospitalId } = useHospitalId();
   const [logs, setLogs] = useState<any[]>([]);
   const [updating, setUpdating] = useState<any>(null);
   const [saving, setSaving] = useState(false);
@@ -32,7 +33,7 @@ const BreakdownTab: React.FC<Props> = ({ onRefresh }) => {
   const load = async () => {
     const { data } = await supabase.from("breakdown_logs")
       .select("*, equipment_master(equipment_name, equipment_code, category)")
-      .eq("hospital_id", HOSPITAL_ID).order("reported_at", { ascending: false });
+      .eq("hospital_id", hospitalId).order("reported_at", { ascending: false });
     setLogs(data || []);
   };
 

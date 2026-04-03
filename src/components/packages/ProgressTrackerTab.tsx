@@ -6,10 +6,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { callAI } from "@/lib/aiProvider";
 import { FileText, Download, MessageSquare, Loader2 } from "lucide-react";
+import { useHospitalId } from '@/hooks/useHospitalId';
 
-const HOSPITAL_ID = "8f3d08b3-8835-42a7-920e-fdf5a78260bc";
 
 export default function ProgressTrackerTab() {
+  const { hospitalId } = useHospitalId();
   const [bookings, setBookings] = useState<any[]>([]);
   const [generating, setGenerating] = useState<string | null>(null);
   const [reports, setReports] = useState<Record<string, string>>({});
@@ -17,7 +18,7 @@ export default function ProgressTrackerTab() {
   useEffect(() => {
     supabase.from("package_bookings")
       .select("*, health_packages(package_name), patients(full_name, uhid, dob, gender)")
-      .eq("hospital_id", HOSPITAL_ID)
+      .eq("hospital_id", hospitalId)
       .in("status", ["awaiting_report", "completed"])
       .order("created_at", { ascending: false })
       .limit(50)
@@ -34,7 +35,7 @@ export default function ProgressTrackerTab() {
 
       const response = await callAI({
         featureKey: "ai_digest",
-        hospitalId: HOSPITAL_ID,
+        hospitalId: hospitalId,
         prompt: `Generate a professional health report summary for a preventive health checkup patient.
 
 Patient: ${patient?.full_name}, Age: ${age}, Gender: ${patient?.gender || "N/A"}

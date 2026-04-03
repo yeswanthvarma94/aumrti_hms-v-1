@@ -7,12 +7,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import PatientSearchPicker from "@/components/shared/PatientSearchPicker";
+import { useHospitalId } from '@/hooks/useHospitalId';
 
-const HOSPITAL_ID = "8f3d08b3-8835-42a7-920e-fdf5a78260bc";
 
 interface Props { open: boolean; onClose: () => void; }
 
 export default function BookPackageModal({ open, onClose }: Props) {
+  const { hospitalId } = useHospitalId();
   const [packages, setPackages] = useState<any[]>([]);
   const [patientId, setPatientId] = useState("");
   const [packageId, setPackageId] = useState("");
@@ -22,7 +23,7 @@ export default function BookPackageModal({ open, onClose }: Props) {
 
   useEffect(() => {
     supabase.from("health_packages").select("id, package_name, price, package_type")
-      .eq("hospital_id", HOSPITAL_ID).eq("is_active", true).order("display_order")
+      .eq("hospital_id", hospitalId).eq("is_active", true).order("display_order")
       .then(({ data }) => setPackages(data || []));
   }, []);
 
@@ -30,7 +31,7 @@ export default function BookPackageModal({ open, onClose }: Props) {
     if (!patientId || !packageId || !scheduledDate) { toast.error("Please fill all required fields"); return; }
     setSaving(true);
     const { error } = await supabase.from("package_bookings").insert({
-      hospital_id: HOSPITAL_ID,
+      hospital_id: hospitalId,
       patient_id: patientId,
       package_id: packageId,
       booking_date: new Date().toISOString().split("T")[0],
@@ -51,7 +52,7 @@ export default function BookPackageModal({ open, onClose }: Props) {
         <div className="space-y-4">
           <div>
             <Label>Patient *</Label>
-            <PatientSearchPicker hospitalId={HOSPITAL_ID} value={patientId} onChange={(id) => setPatientId(id)} />
+            <PatientSearchPicker hospitalId={hospitalId} value={patientId} onChange={(id) => setPatientId(id)} />
           </div>
           <div>
             <Label>Package *</Label>

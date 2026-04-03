@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, Target, TrendingUp, AlertTriangle, Rocket } from "lucide-react";
+import { useHospitalId } from '@/hooks/useHospitalId';
 
-const HOSPITAL_ID = "8f3d08b3-8835-42a7-920e-fdf5a78260bc";
 
 interface Props {
   referralId: string;
@@ -15,6 +15,7 @@ interface Props {
 }
 
 const OutcomeTrajectoryPredictor: React.FC<Props> = ({ referralId, diagnosis, scores }) => {
+  const { hospitalId } = useHospitalId();
   const [prediction, setPrediction] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
@@ -24,7 +25,7 @@ const OutcomeTrajectoryPredictor: React.FC<Props> = ({ referralId, diagnosis, sc
     try {
       const response = await callAI({
         featureKey: "voice_scribe",
-        hospitalId: HOSPITAL_ID,
+        hospitalId: hospitalId,
         prompt: `Predict physiotherapy outcome trajectory.
     
 Diagnosis: ${diagnosis}
@@ -53,7 +54,7 @@ Return ONLY JSON:
       setPrediction(parsed);
 
       await supabase.from("ai_feature_logs").insert({
-        hospital_id: HOSPITAL_ID,
+        hospital_id: hospitalId,
         feature_key: "physio_trajectory",
         module: "physio",
         success: true,

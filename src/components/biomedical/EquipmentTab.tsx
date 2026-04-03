@@ -6,8 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { format, differenceInDays } from "date-fns";
+import { useHospitalId } from '@/hooks/useHospitalId';
 
-const HOSPITAL_ID = "8f3d08b3-8835-42a7-920e-fdf5a78260bc";
 const STATUS_STYLES: Record<string, string> = {
   operational: "bg-emerald-50 text-emerald-700 border-emerald-200",
   under_maintenance: "bg-amber-50 text-amber-700 border-amber-200",
@@ -20,6 +20,7 @@ const STATUS_STYLES: Record<string, string> = {
 interface Props { onRefresh: () => void; }
 
 const EquipmentTab: React.FC<Props> = ({ onRefresh }) => {
+  const { hospitalId } = useHospitalId();
   const [equipment, setEquipment] = useState<any[]>([]);
   const [departments, setDepartments] = useState<any[]>([]);
   const [search, setSearch] = useState("");
@@ -34,8 +35,8 @@ const EquipmentTab: React.FC<Props> = ({ onRefresh }) => {
   useEffect(() => {
     const load = async () => {
       const [eqRes, deptRes] = await Promise.all([
-        supabase.from("equipment_master").select("*").eq("hospital_id", HOSPITAL_ID).eq("is_active", true).order("equipment_code"),
-        supabase.from("departments").select("id, name").eq("hospital_id", HOSPITAL_ID),
+        supabase.from("equipment_master").select("*").eq("hospital_id", hospitalId).eq("is_active", true).order("equipment_code"),
+        supabase.from("departments").select("id, name").eq("hospital_id", hospitalId),
       ]);
       setEquipment(eqRes.data || []);
       setDepartments(deptRes.data || []);

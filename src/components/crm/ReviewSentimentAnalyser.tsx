@@ -6,8 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, AlertTriangle, Brain } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useHospitalId } from '@/hooks/useHospitalId';
 
-const HOSPITAL_ID = "8f3d08b3-8835-42a7-920e-fdf5a78260bc";
 
 interface Props {
   review: any;
@@ -25,6 +25,7 @@ const TOPIC_COLORS: Record<string, string> = {
 };
 
 const ReviewSentimentAnalyser: React.FC<Props> = ({ review, onUpdated }) => {
+  const { hospitalId } = useHospitalId();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [analysis, setAnalysis] = useState<any>(review.ai_analysis || null);
@@ -34,7 +35,7 @@ const ReviewSentimentAnalyser: React.FC<Props> = ({ review, onUpdated }) => {
     try {
       const response = await callAI({
         featureKey: "voice_scribe",
-        hospitalId: HOSPITAL_ID,
+        hospitalId: hospitalId,
         prompt: `Analyse this hospital review for actionable insights.
     
 Rating: ${review.rating}/5
@@ -66,7 +67,7 @@ Return ONLY JSON:
       // If requires escalation, create grievance
       if (parsed.requires_escalation) {
         await supabase.from("grievances").insert({
-          hospital_id: HOSPITAL_ID,
+          hospital_id: hospitalId,
           patient_name: review.reviewer_name || "Online Reviewer",
           category: parsed.department_implicated === "OPD" ? "waiting_time" : "clinical_care",
           severity: parsed.urgency === "high" ? "high" : "medium",
@@ -79,7 +80,7 @@ Return ONLY JSON:
 
       // Log to ai_feature_logs
       await supabase.from("ai_feature_logs").insert({
-        hospital_id: HOSPITAL_ID,
+        hospital_id: hospitalId,
         feature_key: "review_sentiment",
         module: "crm",
         success: true,

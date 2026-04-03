@@ -7,8 +7,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Target, MessageCircle, RefreshCw, Send, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useHospitalId } from '@/hooks/useHospitalId';
 
-const HOSPITAL_ID = "8f3d08b3-8835-42a7-920e-fdf5a78260bc";
 
 interface ScoredPatient {
   id: string;
@@ -22,6 +22,7 @@ interface ScoredPatient {
 }
 
 const PatientPropensitySection: React.FC = () => {
+  const { hospitalId } = useHospitalId();
   const { toast } = useToast();
   const [patients, setPatients] = useState<ScoredPatient[]>([]);
   const [loading, setLoading] = useState(false);
@@ -34,7 +35,7 @@ const PatientPropensitySection: React.FC = () => {
       const { data, error } = await supabase
         .from("patients")
         .select("id, full_name, phone, last_visit_date, total_visits, total_spend")
-        .eq("hospital_id", HOSPITAL_ID)
+        .eq("hospital_id", hospitalId)
         .lt("last_visit_date", cutoff)
         .order("last_visit_date", { ascending: false })
         .limit(50);

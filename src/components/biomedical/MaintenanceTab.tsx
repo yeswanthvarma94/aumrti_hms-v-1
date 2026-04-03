@@ -10,8 +10,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Plus } from "lucide-react";
 import { format, differenceInDays, addDays, addMonths, addWeeks } from "date-fns";
+import { useHospitalId } from '@/hooks/useHospitalId';
 
-const HOSPITAL_ID = "8f3d08b3-8835-42a7-920e-fdf5a78260bc";
 
 const DEFAULT_CHECKLISTS: Record<string, string[]> = {
   therapeutic: ["Filter check", "Circuit check", "Alarm test", "Calibration verify"],
@@ -24,6 +24,7 @@ const DEFAULT_CHECKLISTS: Record<string, string[]> = {
 interface Props { onRefresh: () => void; }
 
 const MaintenanceTab: React.FC<Props> = ({ onRefresh }) => {
+  const { hospitalId } = useHospitalId();
   const [schedules, setSchedules] = useState<any[]>([]);
   const [equipment, setEquipment] = useState<any[]>([]);
   const [filter, setFilter] = useState("all");
@@ -36,8 +37,8 @@ const MaintenanceTab: React.FC<Props> = ({ onRefresh }) => {
 
   const load = async () => {
     const [sRes, eRes] = await Promise.all([
-      supabase.from("pm_schedules").select("*, equipment_master(equipment_name, equipment_code, category)").eq("hospital_id", HOSPITAL_ID).order("next_due_at"),
-      supabase.from("equipment_master").select("id, equipment_name, equipment_code, category").eq("hospital_id", HOSPITAL_ID).eq("is_active", true),
+      supabase.from("pm_schedules").select("*, equipment_master(equipment_name, equipment_code, category)").eq("hospital_id", hospitalId).order("next_due_at"),
+      supabase.from("equipment_master").select("id, equipment_name, equipment_code, category").eq("hospital_id", hospitalId).eq("is_active", true),
     ]);
     setSchedules(sRes.data || []);
     setEquipment(eRes.data || []);
@@ -95,7 +96,7 @@ const MaintenanceTab: React.FC<Props> = ({ onRefresh }) => {
     else if (freq === "annual") nextDue = addMonths(base, 12);
 
     await supabase.from("pm_schedules").insert({
-      hospital_id: HOSPITAL_ID, equipment_id: showComplete.equipment_id, frequency: freq,
+      hospital_id: hospitalId, equipment_id: showComplete.equipment_id, frequency: freq,
       next_due_at: nextDue.toISOString().split("T")[0], last_done_at: new Date().toISOString().split("T")[0],
       checklist: Object.keys(completionChecks).map((item) => ({ item, done: false })),
     });
@@ -115,7 +116,7 @@ const MaintenanceTab: React.FC<Props> = ({ onRefresh }) => {
     const checklist = (customChecks.length > 0 ? customChecks : defaultChecks).map((item) => ({ item, done: false }));
 
     await supabase.from("pm_schedules").insert({
-      hospital_id: HOSPITAL_ID, equipment_id: schedForm.equipment_id,
+      hospital_id: hospitalId, equipment_id: schedForm.equipment_id,
       frequency: schedForm.frequency, next_due_at: schedForm.next_due_at, checklist,
     });
     setShowSchedule(false);
