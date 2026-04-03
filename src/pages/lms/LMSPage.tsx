@@ -154,8 +154,8 @@ export default function LMSPage() {
 
     const [coursesRes, usersRes, deptsRes] = await Promise.all([
       supabase.from('lms_courses').select('*').eq('is_active', true),
-      supabase.from('users').select('id, full_name, role, department_id').eq('hospital_id', HOSPITAL_ID),
-      supabase.from('departments').select('id, name').eq('hospital_id', HOSPITAL_ID),
+      supabase.from('users').select('id, full_name, role, department_id').eq('hospital_id', hospitalId),
+      supabase.from('departments').select('id, name').eq('hospital_id', hospitalId),
     ]);
 
     setCourses((coursesRes.data || []) as Course[]);
@@ -171,8 +171,8 @@ export default function LMSPage() {
     }
 
     const [enrollRes, certRes] = await Promise.all([
-      supabase.from('lms_enrollments').select('*').eq('hospital_id', HOSPITAL_ID),
-      supabase.from('lms_certificates').select('*').eq('hospital_id', HOSPITAL_ID),
+      supabase.from('lms_enrollments').select('*').eq('hospital_id', hospitalId),
+      supabase.from('lms_certificates').select('*').eq('hospital_id', hospitalId),
     ]);
 
     setEnrollments(enrollRes.data || []);
@@ -296,7 +296,7 @@ export default function LMSPage() {
         : null;
 
       await supabase.from('lms_certificates').insert({
-        hospital_id: HOSPITAL_ID,
+        hospital_id: hospitalId,
         user_id: quizEnrollment.user_id,
         course_id: quizCourse.id,
         enrollment_id: quizEnrollment.id,
@@ -305,7 +305,7 @@ export default function LMSPage() {
       });
 
       const staffUser = staffUsers.find(u => u.id === quizEnrollment.user_id);
-      logNABHEvidence(HOSPITAL_ID, "HRM.6",
+      logNABHEvidence(hospitalId, "HRM.6",
         `Training completed: ${staffUser?.full_name || "Staff"}, Course: ${quizCourse.course_name}, Score: ${scorePercent}%, Certificate: ${certNum}`);
     } else if (quizEnrollment.attempts + 1 >= 3) {
       updates.status = 'failed';
@@ -376,7 +376,7 @@ export default function LMSPage() {
     if (toEnrol.length === 0) { toast.info('All staff already enrolled'); return; }
 
     const rows = toEnrol.map(s => ({
-      hospital_id: HOSPITAL_ID,
+      hospital_id: hospitalId,
       user_id: s.id,
       course_id: bulkCourseId,
       due_date: bulkDueDate || null,
@@ -395,7 +395,7 @@ export default function LMSPage() {
     if (!newCourse.course_name) { toast.error('Course name required'); return; }
     const code = `CUST-${Date.now().toString(36).toUpperCase()}`;
     const { error } = await supabase.from('lms_courses').insert({
-      hospital_id: HOSPITAL_ID,
+      hospital_id: hospitalId,
       course_name: newCourse.course_name,
       course_code: code,
       category: newCourse.category,

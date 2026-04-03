@@ -36,13 +36,13 @@ const VaccinationPage: React.FC = () => {
 
     const [givenRes, overdueRes, weekRes, coldRes] = await Promise.all([
       supabase.from("vaccination_records").select("id", { count: "exact", head: true })
-        .eq("hospital_id", HOSPITAL_ID).gte("administered_at", today).lte("administered_at", today),
+        .eq("hospital_id", hospitalId).gte("administered_at", today).lte("administered_at", today),
       supabase.from("vaccination_due").select("id", { count: "exact", head: true })
-        .eq("hospital_id", HOSPITAL_ID).in("status", ["overdue"]).lt("due_date", today),
+        .eq("hospital_id", hospitalId).in("status", ["overdue"]).lt("due_date", today),
       supabase.from("vaccination_due").select("id", { count: "exact", head: true })
-        .eq("hospital_id", HOSPITAL_ID).eq("status", "due").lte("due_date", weekLater),
+        .eq("hospital_id", hospitalId).eq("status", "due").lte("due_date", weekLater),
       supabase.from("cold_chain_log").select("temperature_c, alert_triggered")
-        .eq("hospital_id", HOSPITAL_ID).order("recorded_at", { ascending: false }).limit(1),
+        .eq("hospital_id", hospitalId).order("recorded_at", { ascending: false }).limit(1),
     ]);
 
     setGivenToday(givenRes.count || 0);
@@ -129,22 +129,22 @@ const VaccinationPage: React.FC = () => {
         </TabsList>
 
         <TabsContent value="patient-card" className="flex-1 overflow-auto mt-0">
-          <PatientCardTab hospitalId={HOSPITAL_ID} />
+          <PatientCardTab hospitalId={hospitalId} />
         </TabsContent>
         <TabsContent value="due-list" className="flex-1 overflow-auto mt-0">
-          <DueListTab hospitalId={HOSPITAL_ID} />
+          <DueListTab hospitalId={hospitalId} />
         </TabsContent>
         <TabsContent value="record" className="flex-1 overflow-auto mt-0">
-          <RecordVaccineTab hospitalId={HOSPITAL_ID} onRecorded={loadKPIs} />
+          <RecordVaccineTab hospitalId={hospitalId} onRecorded={loadKPIs} />
         </TabsContent>
         <TabsContent value="cold-chain" className="flex-1 overflow-auto mt-0">
-          <ColdChainTab hospitalId={HOSPITAL_ID} onLogged={loadKPIs} />
+          <ColdChainTab hospitalId={hospitalId} onLogged={loadKPIs} />
         </TabsContent>
         <TabsContent value="camps" className="flex-1 overflow-auto mt-0">
-          <CampsTab hospitalId={HOSPITAL_ID} />
+          <CampsTab hospitalId={hospitalId} />
         </TabsContent>
         <TabsContent value="stock" className="flex-1 overflow-auto mt-0">
-          <StockTab hospitalId={HOSPITAL_ID} />
+          <StockTab hospitalId={hospitalId} />
         </TabsContent>
       </Tabs>
     </div>

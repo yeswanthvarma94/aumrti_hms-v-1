@@ -28,11 +28,11 @@ export default function PackagesPage() {
     const today = new Date().toISOString().split("T")[0];
     const [booked, inProgress, completed] = await Promise.all([
       supabase.from("package_bookings").select("id", { count: "exact", head: true })
-        .eq("hospital_id", HOSPITAL_ID).eq("scheduled_date", today),
+        .eq("hospital_id", hospitalId).eq("scheduled_date", today),
       supabase.from("package_bookings").select("id", { count: "exact", head: true })
-        .eq("hospital_id", HOSPITAL_ID).eq("status", "in_progress"),
+        .eq("hospital_id", hospitalId).eq("status", "in_progress"),
       supabase.from("package_bookings").select("id", { count: "exact", head: true })
-        .eq("hospital_id", HOSPITAL_ID).eq("status", "completed").gte("completed_at", today + "T00:00:00"),
+        .eq("hospital_id", hospitalId).eq("status", "completed").gte("completed_at", today + "T00:00:00"),
     ]);
     setKpis({
       booked: booked.count || 0,

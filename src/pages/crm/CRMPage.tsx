@@ -52,7 +52,7 @@ const NewCampaignModal: React.FC<{ open: boolean; onClose: () => void; onSaved: 
   const save = async () => {
     if (!form.campaign_name) { toast({ title: "Campaign name required", variant: "destructive" }); return; }
     const { error } = await supabase.from("marketing_campaigns").insert({
-      hospital_id: HOSPITAL_ID, campaign_name: form.campaign_name, campaign_type: form.campaign_type,
+      hospital_id: hospitalId, campaign_name: form.campaign_name, campaign_type: form.campaign_type,
       target_segment: form.target_segment || null, start_date: form.start_date || null,
       end_date: form.end_date || null, budget_inr: form.budget_inr ? Number(form.budget_inr) : null,
       message_template: form.message_template || null, status: "draft",
@@ -121,7 +121,7 @@ const AddReviewModal: React.FC<{ open: boolean; onClose: () => void; onSaved: ()
   const save = async () => {
     const sentiment = classifySentiment(form.review_text);
     const { error } = await supabase.from("online_reviews").insert({
-      hospital_id: HOSPITAL_ID, platform: form.platform, reviewer_name: form.reviewer_name || null,
+      hospital_id: hospitalId, platform: form.platform, reviewer_name: form.reviewer_name || null,
       rating: Number(form.rating), review_text: form.review_text || null,
       review_date: form.review_date || null, sentiment,
     });
@@ -194,11 +194,11 @@ const CRMPage: React.FC = () => {
 
   const loadAll = async () => {
     const [d, c, r, s, a] = await Promise.all([
-      supabase.from("referral_doctors").select("*").eq("hospital_id", HOSPITAL_ID).order("total_referrals", { ascending: false }),
-      supabase.from("marketing_campaigns").select("*").eq("hospital_id", HOSPITAL_ID).order("created_at", { ascending: false }),
-      supabase.from("online_reviews").select("*").eq("hospital_id", HOSPITAL_ID).order("created_at", { ascending: false }),
-      supabase.from("patient_segments").select("*").eq("hospital_id", HOSPITAL_ID),
-      supabase.from("patient_acquisition").select("*").eq("hospital_id", HOSPITAL_ID),
+      supabase.from("referral_doctors").select("*").eq("hospital_id", hospitalId).order("total_referrals", { ascending: false }),
+      supabase.from("marketing_campaigns").select("*").eq("hospital_id", hospitalId).order("created_at", { ascending: false }),
+      supabase.from("online_reviews").select("*").eq("hospital_id", hospitalId).order("created_at", { ascending: false }),
+      supabase.from("patient_segments").select("*").eq("hospital_id", hospitalId),
+      supabase.from("patient_acquisition").select("*").eq("hospital_id", hospitalId),
     ]);
     if (d.data) setDoctors(d.data);
     if (c.data) setCampaigns(c.data);
@@ -215,7 +215,7 @@ const CRMPage: React.FC = () => {
         { segment_name: "Inactive Patients (6+ months)", segment_type: "inactive", criteria: { no_visit_months: 6 } },
       ];
       const { data: inserted } = await supabase.from("patient_segments").insert(
-        defaults.map(d => ({ ...d, hospital_id: HOSPITAL_ID }))
+        defaults.map(d => ({ ...d, hospital_id: hospitalId }))
       ).select();
       setSegments(inserted || []);
     } else {
@@ -249,7 +249,7 @@ const CRMPage: React.FC = () => {
       const hospitalName = "Aumrti Hospital";
       const result = await callAI({
         featureKey: "voice_scribe",
-        hospitalId: HOSPITAL_ID,
+        hospitalId: hospitalId,
         prompt: `You are the patient relations officer of an Indian hospital.
 Write a professional, empathetic response to this ${review.platform} review.
 Rating: ${review.rating}/5
@@ -696,7 +696,7 @@ Guidelines:
       </Tabs>
 
       {/* MODALS */}
-      <AddReferralDoctorModal open={showAddDoctor} onClose={() => setShowAddDoctor(false)} onSaved={() => loadAll()} hospitalId={HOSPITAL_ID} editDoc={editDoctor} />
+      <AddReferralDoctorModal open={showAddDoctor} onClose={() => setShowAddDoctor(false)} onSaved={() => loadAll()} hospitalId={hospitalId} editDoc={editDoctor} />
       <NewCampaignModal open={showNewCampaign} onClose={() => setShowNewCampaign(false)} onSaved={loadAll} segments={segments} />
       <AddReviewModal open={showAddReview} onClose={() => setShowAddReview(false)} onSaved={loadAll} />
     </div>

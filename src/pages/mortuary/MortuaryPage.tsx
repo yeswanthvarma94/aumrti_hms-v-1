@@ -159,12 +159,12 @@ export default function MortuaryPage() {
 
   const loadAll = async () => {
     const [a, m, mc, r, d, doc] = await Promise.all([
-      supabase.from("mortuary_admissions").select("*").eq("hospital_id", HOSPITAL_ID).order("admitted_at", { ascending: false }),
-      supabase.from("mlc_records").select("*").eq("hospital_id", HOSPITAL_ID).order("created_at", { ascending: false }),
-      supabase.from("mccd_certificates").select("*").eq("hospital_id", HOSPITAL_ID).order("created_at", { ascending: false }),
-      supabase.from("body_releases").select("*").eq("hospital_id", HOSPITAL_ID).order("released_at", { ascending: false }),
-      supabase.from("organ_donations").select("*").eq("hospital_id", HOSPITAL_ID).order("created_at", { ascending: false }),
-      supabase.from("users").select("id, full_name, role").eq("hospital_id", HOSPITAL_ID),
+      supabase.from("mortuary_admissions").select("*").eq("hospital_id", hospitalId).order("admitted_at", { ascending: false }),
+      supabase.from("mlc_records").select("*").eq("hospital_id", hospitalId).order("created_at", { ascending: false }),
+      supabase.from("mccd_certificates").select("*").eq("hospital_id", hospitalId).order("created_at", { ascending: false }),
+      supabase.from("body_releases").select("*").eq("hospital_id", hospitalId).order("released_at", { ascending: false }),
+      supabase.from("organ_donations").select("*").eq("hospital_id", hospitalId).order("created_at", { ascending: false }),
+      supabase.from("users").select("id, full_name, role").eq("hospital_id", hospitalId),
     ]);
     if (a.error) { console.error("mortuary_admissions load error:", a.error.message); toast.error("Failed to load mortuary records"); }
     if (m.error) console.error("mlc_records load error:", m.error.message);
@@ -214,7 +214,7 @@ export default function MortuaryPage() {
     const seq = admissions.length + 1;
     const body_number = `BODY-${year}-${String(seq).padStart(3, "0")}`;
     const { error } = await supabase.from("mortuary_admissions").insert({
-      hospital_id: HOSPITAL_ID, patient_id: admitForm.patient_id,
+      hospital_id: hospitalId, patient_id: admitForm.patient_id,
       body_number, time_of_death: admitForm.time_of_death,
       pronounced_by: admitForm.pronounced_by, cause_of_death: admitForm.cause_of_death,
       manner_of_death: admitForm.manner_of_death, is_mlc: admitForm.is_mlc,
@@ -241,7 +241,7 @@ export default function MortuaryPage() {
         if (adm?.admitting_diagnosis) diagInfo = adm.admitting_diagnosis;
       }
       const response = await callAI({
-        featureKey: "appeal_letter", hospitalId: HOSPITAL_ID,
+        featureKey: "appeal_letter", hospitalId: hospitalId,
         prompt: `You are a medical officer at an Indian hospital. Draft a cause of death for MCCD (Medical Certificate of Cause of Death) Form 4.\n\nPatient clinical summary:\nDiagnosis: ${diagInfo}\nRecorded cause: ${mort.cause_of_death}\n\nReturn JSON:\n{"cause_1a":"immediate cause","interval_1a":"duration","cause_1b":"antecedent cause or null","interval_1b":"duration or null","cause_1c":"underlying cause or null","interval_1c":"duration or null","cause_part2":"other contributing conditions or null","icd_code":"ICD-10 code for underlying cause"}\n\nBe medically accurate. Standard terminology only.`,
         maxTokens: 300
       });
@@ -268,7 +268,7 @@ export default function MortuaryPage() {
     const seq = mccdCerts.length + 1;
     const mccd_number = `MCCD-${new Date().getFullYear()}-${String(seq).padStart(4, "0")}`;
     const { error } = await supabase.from("mccd_certificates").insert({
-      hospital_id: HOSPITAL_ID, mortuary_id: mccdForm, patient_id: mort?.patient_id || "",
+      hospital_id: hospitalId, mortuary_id: mccdForm, patient_id: mort?.patient_id || "",
       cause_1a: mccdDraft.cause_1a, cause_1b: mccdDraft.cause_1b || null,
       cause_1c: mccdDraft.cause_1c || null, cause_part2: mccdDraft.cause_part2 || null,
       approximate_interval_1a: mccdDraft.interval_1a || null,
@@ -296,7 +296,7 @@ export default function MortuaryPage() {
     const seq = mlcRecords.length + 1;
     const mlc_number = `MLC-${new Date().getFullYear()}-${String(seq).padStart(3, "0")}`;
     const { error } = await supabase.from("mlc_records").insert({
-      hospital_id: HOSPITAL_ID, patient_id: mlcForm.patient_id,
+      hospital_id: hospitalId, patient_id: mlcForm.patient_id,
       mortuary_id: mlcForm.mortuary_id || null, mlc_number,
       incident_type: mlcForm.incident_type,
       incident_date: mlcForm.incident_date || null,
@@ -334,7 +334,7 @@ export default function MortuaryPage() {
     }
     setLoading(true);
     const { error: e1 } = await supabase.from("body_releases").insert({
-      hospital_id: HOSPITAL_ID, mortuary_id: releaseForm.mortuary_id,
+      hospital_id: hospitalId, mortuary_id: releaseForm.mortuary_id,
       released_to: releaseForm.released_to, relation: releaseForm.relation,
       id_proof_type: releaseForm.id_proof_type, id_proof_number: releaseForm.id_proof_number || null,
       released_by: doctors[0]?.id || "", police_clearance: releaseForm.police_clearance,
@@ -357,7 +357,7 @@ export default function MortuaryPage() {
     }
     setLoading(true);
     const { error } = await supabase.from("organ_donations").insert({
-      hospital_id: HOSPITAL_ID, mortuary_id: organForm.mortuary_id,
+      hospital_id: hospitalId, mortuary_id: organForm.mortuary_id,
       patient_id: organForm.patient_id, notto_ref: organForm.notto_ref || null,
       brain_death_certified: organForm.brain_death_certified,
       brain_death_date: organForm.brain_death_date || null,
@@ -695,7 +695,7 @@ export default function MortuaryPage() {
           <div className="space-y-3">
             <div><Label>Patient *</Label>
               <PatientSearchPicker
-                hospitalId={HOSPITAL_ID}
+                hospitalId={hospitalId}
                 value={admitForm.patient_id}
                 onChange={v => setAdmitForm(f => ({ ...f, patient_id: v }))}
                 onRegisterNew={() => setShowPatientReg("admit")}
@@ -731,7 +731,7 @@ export default function MortuaryPage() {
           <div className="space-y-3">
             <div><Label>Patient *</Label>
               <PatientSearchPicker
-                hospitalId={HOSPITAL_ID}
+                hospitalId={hospitalId}
                 value={mlcForm.patient_id}
                 onChange={v => setMlcForm(f => ({ ...f, patient_id: v }))}
                 onRegisterNew={() => setShowPatientReg("mlc")}
@@ -889,7 +889,7 @@ export default function MortuaryPage() {
               const { data } = await supabase
                 .from("patients")
                 .select("id, full_name, uhid")
-                .eq("hospital_id", HOSPITAL_ID)
+                .eq("hospital_id", hospitalId)
                 .order("created_at", { ascending: false })
                 .limit(1)
                 .maybeSingle();

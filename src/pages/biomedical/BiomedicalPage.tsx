@@ -29,9 +29,9 @@ const BiomedicalPage: React.FC = () => {
   useEffect(() => {
     const load = async () => {
       const [eqRes, pmRes, amcRes] = await Promise.all([
-        supabase.from("equipment_master").select("id, status", { count: "exact" }).eq("hospital_id", HOSPITAL_ID).eq("is_active", true),
-        supabase.from("pm_schedules").select("id", { count: "exact" }).eq("hospital_id", HOSPITAL_ID).eq("status", "overdue"),
-        supabase.from("amc_contracts").select("id", { count: "exact" }).eq("hospital_id", HOSPITAL_ID).eq("is_active", true).lte("end_date", new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0]),
+        supabase.from("equipment_master").select("id, status", { count: "exact" }).eq("hospital_id", hospitalId).eq("is_active", true),
+        supabase.from("pm_schedules").select("id", { count: "exact" }).eq("hospital_id", hospitalId).eq("status", "overdue"),
+        supabase.from("amc_contracts").select("id", { count: "exact" }).eq("hospital_id", hospitalId).eq("is_active", true).lte("end_date", new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0]),
       ]);
       const eqData = eqRes.data || [];
       setKpis({

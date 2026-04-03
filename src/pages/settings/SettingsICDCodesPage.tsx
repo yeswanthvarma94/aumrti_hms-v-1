@@ -101,7 +101,7 @@ const SettingsICDCodesPage: React.FC = () => {
     const { data } = await supabase
       .from("hospital_icd_settings")
       .select("*")
-      .eq("hospital_id", HOSPITAL_ID)
+      .eq("hospital_id", hospitalId)
       .maybeSingle();
     if (data) {
       setSettings(data as IcdSettings);
@@ -114,7 +114,7 @@ const SettingsICDCodesPage: React.FC = () => {
     const { data } = await supabase
       .from("icd10_code_sets")
       .select("*")
-      .eq("hospital_id", HOSPITAL_ID)
+      .eq("hospital_id", hospitalId)
       .order("created_at", { ascending: true });
     if (data) setCodeSets(data as CodeSet[]);
   };
@@ -124,7 +124,7 @@ const SettingsICDCodesPage: React.FC = () => {
     const { data } = await supabase
       .from("icd10_codes")
       .select("*")
-      .or(`hospital_id.is.null,hospital_id.eq.${HOSPITAL_ID}`)
+      .or(`hospital_id.is.null,hospital_id.eq.${hospitalId}`)
       .order("use_count", { ascending: false })
       .limit(1000);
     if (data) setCodes(data as ICDCode[]);
@@ -141,7 +141,7 @@ const SettingsICDCodesPage: React.FC = () => {
     } else {
       await supabase
         .from("hospital_icd_settings")
-        .insert({ hospital_id: HOSPITAL_ID, active_set: activeSet, show_common_first: showCommonFirst });
+        .insert({ hospital_id: hospitalId, active_set: activeSet, show_common_first: showCommonFirst });
     }
     toast({ title: "Preference saved" });
     setSaving(false);
@@ -235,7 +235,7 @@ const SettingsICDCodesPage: React.FC = () => {
     const { data: cs, error: csErr } = await supabase
       .from("icd10_code_sets")
       .insert({
-        hospital_id: HOSPITAL_ID,
+        hospital_id: hospitalId,
         set_name: setName,
         set_type: "hospital_uploaded",
         version: setVersion,
@@ -258,7 +258,7 @@ const SettingsICDCodesPage: React.FC = () => {
     const batchSize = 50;
     for (let i = 0; i < validRows.length; i += batchSize) {
       const batch = validRows.slice(i, i + batchSize).map((r) => ({
-        hospital_id: HOSPITAL_ID,
+        hospital_id: hospitalId,
         code_set_id: cs.id,
         code: r.code,
         description: r.description,
@@ -302,7 +302,7 @@ const SettingsICDCodesPage: React.FC = () => {
   const addCustomCode = async () => {
     if (!newCode.code || !newCode.description) return;
     await supabase.from("icd10_codes").insert({
-      hospital_id: HOSPITAL_ID,
+      hospital_id: hospitalId,
       code: newCode.code.trim(),
       description: newCode.description.trim(),
       category: newCode.category.trim() || null,
