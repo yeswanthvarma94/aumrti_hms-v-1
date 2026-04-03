@@ -254,6 +254,75 @@ const PayrollTab: React.FC = () => {
           hospitalId: userData.hospital_id,
           postedBy: userData.id,
         });
+
+        // Post detailed payroll journal entry
+        const totalGross = Number(run.total_gross || 0);
+        const totalDeductions = Number(run.total_deductions || 0);
+        const totalNet = Number(run.total_net || 0);
+
+        if (totalGross > 0) {
+          const { data: nextNum } = await supabase.rpc("get_next_journal_number", {
+            p_hospital_id: userData.hospital_id,
+          });
+
+          const journalNum = nextNum || `JV-${Date.now()}`;
+          const payrollDate = new Date().toISOString().split("T")[0];
+
+          const { data: journal } = await (supabase as any)
+            .from("journal_entries")
+            .insert({
+              hospital_id: userData.hospital_id,
+              journal_number: journalNum,
+              entry_date: payrollDate,
+              description: `Payroll: ${run.run_month || "Monthly"}`,
+              total_debit: totalGross,
+              total_credit: totalGross,
+              status: "posted",
+              reference_type: "payroll",
+              reference_id: runId,
+              created_by: userData.id,
+            })
+            .select("id")
+            .single();
+
+          if (journal) {
+            const lines: any[] = [
+              {
+                journal_id: journal.id,
+                hospital_id: userData.hospital_id,
+                account_code: "5001",
+                account_name: "Salaries & Wages",
+                debit_amount: totalGross,
+                credit_amount: 0,
+                description: `Gross salary for ${run.run_month || "month"}`,
+              },
+              {
+                journal_id: journal.id,
+                hospital_id: userData.hospital_id,
+                account_code: "2101",
+                account_name: "Salaries Payable",
+                debit_amount: 0,
+                credit_amount: totalNet,
+                description: "Net salary payable",
+              },
+            ];
+
+            if (totalDeductions > 0) {
+              lines.push({
+                journal_id: journal.id,
+                hospital_id: userData.hospital_id,
+                account_code: "2102",
+                account_name: "TDS / PF Payable",
+                debit_amount: 0,
+                credit_amount: totalDeductions,
+                description: "Statutory deductions payable",
+              });
+            }
+
+            await (supabase as any).from("journal_entry_lines").insert(lines);
+            toast({ title: "Payroll journal entry posted to accounts" });
+          }
+        }
       }
     }
 
