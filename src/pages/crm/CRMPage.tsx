@@ -104,7 +104,7 @@ const NewCampaignModal: React.FC<{ open: boolean; onClose: () => void; onSaved: 
 };
 
 // ─────────── Add Review Modal ───────────
-const AddReviewModal: React.FC<{ open: boolean; onClose: () => void; onSaved: () => void }> = ({ open, onClose, onSaved }) => {
+const AddReviewModal: React.FC<{ open: boolean; onClose: () => void; onSaved: () => void; hospitalId: string }> = ({ open, onClose, onSaved, hospitalId }) => {
   const { toast } = useToast();
   const [form, setForm] = useState({ platform: "google", reviewer_name: "", rating: "5", review_text: "", review_date: "" });
 
