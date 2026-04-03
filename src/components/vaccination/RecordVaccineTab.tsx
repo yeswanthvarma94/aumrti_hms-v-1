@@ -175,6 +175,39 @@ const RecordVaccineTab: React.FC<Props> = ({ hospitalId, onRecorded }) => {
       }
     }
 
+    // Auto-bill vaccination
+    if (successCount > 0) {
+      const { data: vaccRate } = await (supabase as any)
+        .from("service_master")
+        .select("fee, gst_percent, gst_applicable")
+        .eq("hospital_id", hospitalId)
+        .ilike("name", "%vaccination%")
+        .maybeSingle();
+
+      const fee = vaccRate?.fee ? Number(vaccRate.fee) : 150;
+      const gstPct = vaccRate?.gst_applicable ? (Number(vaccRate.gst_percent) || 0) : 0;
+      const gst = Math.round(fee * gstPct / 100 * 100) / 100;
+      const totalFee = (fee + gst) * successCount;
+
+      const today = new Date().toISOString().split("T")[0];
+      const { count } = await supabase.from("bills").select("id", { count: "exact", head: true }).eq("hospital_id", hospitalId);
+      const billNum = `VACC-${today.replace(/-/g, "")}-${String((count || 0) + 1).padStart(4, "0")}`;
+
+      await supabase.from("bills").insert({
+        hospital_id: hospitalId,
+        patient_id: patientId,
+        bill_number: billNum,
+        bill_type: "opd",
+        bill_date: today,
+        bill_status: "final",
+        payment_status: "unpaid",
+        total_amount: totalFee,
+        balance_due: totalFee,
+        subtotal: fee * successCount, gst_amount: gst * successCount,
+        taxable_amount: fee * successCount, patient_payable: totalFee,
+      });
+    }
+
     if (successCount > 0) toast.success(`${successCount} vaccination${successCount > 1 ? "s" : ""} recorded`);
     if (failCount > 0) toast.error(`${failCount} failed to record`);
 

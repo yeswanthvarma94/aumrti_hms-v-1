@@ -148,6 +148,51 @@ export default function PanchakarmaTab({ showNew, onShowNewDone }: Props) {
         billed: true,
       }).eq("id", selectedSchedule.id);
       if (error) throw error;
+
+      // Auto-bill panchakarma session
+      const { data: session } = await (supabase as any)
+        .from("panchakarma_schedules")
+        .select("*, patient_id")
+        .eq("id", selectedSchedule.id)
+        .single();
+
+      if (session) {
+        const { data: userData } = await supabase.auth.getUser();
+        const { data: userRow } = await supabase.from("users").select("hospital_id").eq("auth_user_id", userData?.user?.id).single();
+        const hospitalId = userRow?.hospital_id;
+
+        if (hospitalId) {
+          const { data: rate } = await (supabase as any)
+            .from("service_master")
+            .select("fee, gst_percent, gst_applicable")
+            .eq("hospital_id", hospitalId)
+            .ilike("name", `%${session.procedure_type?.replace("_", " ") || "panchakarma"}%`)
+            .maybeSingle();
+
+          const fee = rate?.fee ? Number(rate.fee) : 800;
+          const gstPct = rate?.gst_applicable ? (Number(rate.gst_percent) || 0) : 5;
+          const gst = Math.round(fee * gstPct / 100 * 100) / 100;
+
+          const today = new Date().toISOString().split("T")[0];
+          const { count } = await supabase.from("bills").select("id", { count: "exact", head: true }).eq("hospital_id", hospitalId);
+          const billNum = `AYSH-${today.replace(/-/g, "")}-${String((count || 0) + 1).padStart(4, "0")}`;
+
+          await supabase.from("bills").insert({
+            hospital_id: hospitalId,
+            patient_id: session.patient_id,
+            bill_number: billNum,
+            bill_type: "opd",
+            bill_date: today,
+            bill_status: "final",
+            payment_status: "unpaid",
+            total_amount: fee + gst,
+            balance_due: fee + gst,
+            subtotal: fee, gst_amount: gst,
+            taxable_amount: fee, patient_payable: fee + gst,
+          });
+        }
+      }
+
       toast.success("Session completed & billed");
       setShowCompleteModal(false);
       setFeedback(""); setObservations("");

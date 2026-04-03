@@ -70,11 +70,52 @@ const TreatmentPlanTab: React.FC<TreatmentPlanTabProps> = ({ patientId, hospital
     setShowAdd(false);
   };
 
-  const updateItemStatus = (idx: number, status: TreatmentItem["status"]) => {
+  const updateItemStatus = async (idx: number, status: TreatmentItem["status"]) => {
     setItems(prev => prev.map((item, i) => i === idx ? { ...item, status } : item));
     if (status === "completed") {
       const item = items[idx];
       toast({ title: `₹${item.cost.toLocaleString("en-IN")} billed to patient account` });
+
+      // Auto-create dental bill
+      if (item.cost > 0) {
+        const { data: currentPlan } = await supabase
+          .from("dental_treatment_plans")
+          .select("patient_id, chart_id")
+          .eq("id", planId!)
+          .single();
+
+        const today = new Date().toISOString().split("T")[0];
+        const { count } = await supabase.from("bills").select("id", { count: "exact", head: true }).eq("hospital_id", hospitalId);
+        const billNum = `DENT-${today.replace(/-/g, "")}-${String((count || 0) + 1).padStart(4, "0")}`;
+
+        const gst = Math.round(Number(item.cost) * 0.18 * 100) / 100;
+
+        const { data: newBill } = await supabase.from("bills").insert({
+          hospital_id: hospitalId,
+          patient_id: currentPlan?.patient_id,
+          bill_number: billNum,
+          bill_type: "opd",
+          bill_date: today,
+          bill_status: "final",
+          payment_status: "unpaid",
+          total_amount: Number(item.cost) + gst,
+          balance_due: Number(item.cost) + gst,
+          subtotal: Number(item.cost), gst_amount: gst,
+          taxable_amount: Number(item.cost), patient_payable: Number(item.cost) + gst,
+        }).select("id").single();
+
+        if (newBill) {
+          await (supabase as any).from("bill_line_items").insert({
+            hospital_id: hospitalId, bill_id: newBill.id,
+            item_type: "dental",
+            description: `Dental: ${item.procedure} — Tooth ${item.tooth_number}`,
+            quantity: 1, unit_rate: Number(item.cost),
+            taxable_amount: Number(item.cost), gst_percent: 18,
+            gst_amount: gst, total_amount: Number(item.cost) + gst,
+            source_module: "dental",
+          });
+        }
+      }
     }
   };
 
