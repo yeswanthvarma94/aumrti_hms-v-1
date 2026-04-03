@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { logNABHEvidence } from "@/lib/nabh-evidence";
 import { Clock, User, Play, CheckCircle2, Star } from "lucide-react";
 
 interface Props { hospitalId: string | null; }
