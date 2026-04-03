@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { logNABHEvidence } from "@/lib/nabh-evidence";
 import { Clock, User, Play, CheckCircle2, Star } from "lucide-react";
 
 interface Props { hospitalId: string | null; }
@@ -91,6 +92,10 @@ const TasksTab: React.FC<Props> = ({ hospitalId }) => {
     if (completing.task_type === "bed_turnover" && completing.bed_id) {
       await supabase.from("beds").update({ status: "available" as any }).eq("id", completing.bed_id);
       toast.success(`Bed ${completing.beds?.bed_number || ''} now available`);
+      if (hospitalId) {
+        logNABHEvidence(hospitalId, "FMS.5",
+          `Bed turnover: ${completing.wards?.name || "Ward"} Bed ${completing.beds?.bed_number || ""}, TAT: ${tat} min (target: <30 min)`);
+      }
     } else {
       toast.success("Task completed");
     }

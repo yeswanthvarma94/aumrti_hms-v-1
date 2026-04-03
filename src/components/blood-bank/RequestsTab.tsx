@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { logNABHEvidence } from "@/lib/nabh-evidence";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -97,6 +98,9 @@ const RequestsTab: React.FC<Props> = ({ showModal, onCloseModal, onRefresh }) =>
     }).eq("id", selectedReq.id);
 
     toast({ title: "Blood unit issued", description: `${unit.unit_number} issued to ${selectedReq.patients?.full_name}` });
+
+    logNABHEvidence(hospitalId, "TMS.3",
+      `Blood transfusion issued: Unit ${unit.unit_number}, ${unit.blood_group}${unit.rh_factor === "positive" ? "+" : "-"}, Patient ${selectedReq.patients?.full_name}. Cross-match: Compatible.`);
 
     // Auto-bill if IPD admission
     if (issueRecord?.admission_id) {

@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { logNABHEvidence } from "@/lib/nabh-evidence";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer, ReferenceArea } from "recharts";
 import { Thermometer } from "lucide-react";
 
@@ -55,6 +56,8 @@ const ColdChainTab: React.FC<Props> = ({ hospitalId, onLogged }) => {
       });
     } else {
       toast.success(`Temperature logged: ${temp}°C ✅`);
+      logNABHEvidence(hospitalId, "FMS.8",
+        `Cold chain check: ${unitName}, Temp: ${temp}°C (within 2-8°C range)`);
     }
 
     setTemperature("");

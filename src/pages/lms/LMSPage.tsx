@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { logNABHEvidence } from '@/lib/nabh-evidence';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -299,6 +300,10 @@ export default function LMSPage() {
         certificate_number: certNum,
         expires_at: expiresAt,
       });
+
+      const staffUser = staffUsers.find(u => u.id === quizEnrollment.user_id);
+      logNABHEvidence(HOSPITAL_ID, "HRM.6",
+        `Training completed: ${staffUser?.full_name || "Staff"}, Course: ${quizCourse.course_name}, Score: ${scorePercent}%, Certificate: ${certNum}`);
     } else if (quizEnrollment.attempts + 1 >= 3) {
       updates.status = 'failed';
     } else {

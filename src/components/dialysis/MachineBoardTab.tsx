@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { logNABHEvidence } from "@/lib/nabh-evidence";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -346,6 +347,11 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
       toast({ title: `⚠️ Inadequate Dialysis: Kt/V = ${ktv}`, description: "Clinical alert raised", variant: "destructive" });
     } else {
       toast({ title: `Session completed${ktv ? ` — Kt/V: ${ktv}` : ""}` });
+    }
+
+    if (user?.hospital_id) {
+      logNABHEvidence(user.hospital_id, "DIC.1",
+        `Dialysis session completed: Patient ${session.dialysis_patients?.patients?.full_name}, Machine ${endMachine?.machine_type || "N/A"}, Kt/V: ${ktv || "pending"}`);
     }
 
     setEndMachine(null);

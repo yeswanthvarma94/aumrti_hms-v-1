@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { logNABHEvidence } from "@/lib/nabh-evidence";
 import { supabase } from "@/integrations/supabase/client";
 import { callAI } from "@/lib/aiProvider";
 import { Button } from "@/components/ui/button";
@@ -203,6 +204,9 @@ const DietPage: React.FC = () => {
     } as any);
 
     if (error) { toast.error(error.message); setSaving(false); return; }
+
+    logNABHEvidence(hospitalId, "NFS.1",
+      `Nutritional screening completed: ${selectedPatient.patient_name || "Patient"}, Tool: NRS-2002, Risk: ${riskLevel}, NRS: ${nrsTotal}`);
 
     if (needsReferral) {
       await supabase.from("clinical_alerts").insert({

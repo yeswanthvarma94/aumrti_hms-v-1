@@ -5,6 +5,7 @@ import { Bot, Loader2, FileText, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { callAI } from "@/lib/aiProvider";
 import { toast } from "sonner";
+import { logNABHEvidence } from "@/lib/nabh-evidence";
 
 interface Props {
   admissionId: string;
@@ -207,6 +208,10 @@ Use formal medical language. Keep factual. Do not invent details not provided. M
 
     setSigned(true);
     setSigning(false);
+
+    logNABHEvidence(hospitalId, "COP.10",
+      `Discharge summary completed: Patient ${admissionId}, AI-assisted: ${summary ? "Yes" : "No"}`);
+
     onSummaryDone();
   };
 

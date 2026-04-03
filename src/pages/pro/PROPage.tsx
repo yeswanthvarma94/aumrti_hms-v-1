@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { logNABHEvidence } from "@/lib/nabh-evidence";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -258,6 +259,8 @@ const PROPage: React.FC = () => {
     }).eq("id", selectedGrievance.id);
     if (error) { toast({ title: "Failed", variant: "destructive" }); return; }
     toast({ title: "Grievance resolved" });
+    logNABHEvidence(HOSPITAL_ID, "PCC.6",
+      `Grievance resolved: ${selectedGrievance.category}, TAT: ${tat} hrs, Patient satisfied: pending`);
     // WhatsApp
     if (selectedGrievance.patient_phone) {
       const msg = `Dear ${selectedGrievance.patient_name}, your grievance regarding ${selectedGrievance.category.replace(/_/g, " ")} has been resolved. Resolution: ${resolution}. If not satisfied, please contact us. — Patient Relations Team`;
@@ -381,6 +384,8 @@ const PROPage: React.FC = () => {
     });
     if (error) { toast({ title: "Failed", description: error.message, variant: "destructive" }); return; }
     toast({ title: "Patient rights acknowledged — NABH PCC.1 ✓" });
+    logNABHEvidence(HOSPITAL_ID, "PCC.1",
+      `Patient rights acknowledged: ${rightsPatient.patient_name || "Patient"}, Language: ${rightsLang}, Signature captured.`);
     setRightsModal(false);
     setGuardianName("");
     setWitnessName("");
