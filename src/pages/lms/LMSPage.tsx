@@ -79,8 +79,12 @@ const categoryColors: Record<string, string> = {
 };
 
 export default function LMSPage() {
+  const { hospitalId, loading: hospitalLoading } = useHospitalId();
   const [searchParams, setSearchParams] = useSearchParams();
   const isAdmin = searchParams.get('admin') === 'true';
+
+  if (hospitalLoading) return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+  if (!hospitalId) return null;
 
   const [courses, setCourses] = useState<Course[]>([]);
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);

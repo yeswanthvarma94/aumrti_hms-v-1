@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
+import { useHospitalId } from "@/hooks/useHospitalId";
 import { toast } from "sonner";
 import PatientCardTab from "@/components/vaccination/PatientCardTab";
 import DueListTab from "@/components/vaccination/DueListTab";
@@ -11,12 +12,13 @@ import RecordVaccineTab from "@/components/vaccination/RecordVaccineTab";
 import ColdChainTab from "@/components/vaccination/ColdChainTab";
 import CampsTab from "@/components/vaccination/CampsTab";
 import StockTab from "@/components/vaccination/StockTab";
-import { Syringe, AlertTriangle, CalendarClock, Thermometer } from "lucide-react";
-
-const HOSPITAL_ID = "8f3d08b3-8835-42a7-920e-fdf5a78260bc";
+import { Syringe, AlertTriangle, CalendarClock, Thermometer, Loader2 } from "lucide-react";
 
 const VaccinationPage: React.FC = () => {
+  const { hospitalId, loading: hospitalLoading } = useHospitalId();
   const [tab, setTab] = useState("patient-card");
+  if (hospitalLoading) return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+  if (!hospitalId) return null;
   const [givenToday, setGivenToday] = useState(0);
   const [overdueCount, setOverdueCount] = useState(0);
   const [dueWeek, setDueWeek] = useState(0);

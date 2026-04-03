@@ -49,7 +49,10 @@ interface IcdSettings {
 }
 
 const SettingsICDCodesPage: React.FC = () => {
+  const { hospitalId, loading: hospitalLoading } = useHospitalId();
   const [tab, setTab] = useState("sets");
+  if (hospitalLoading) return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+  if (!hospitalId) return null;
   const [settings, setSettings] = useState<IcdSettings | null>(null);
   const [codeSets, setCodeSets] = useState<CodeSet[]>([]);
   const [codes, setCodes] = useState<ICDCode[]>([]);

@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useHospitalId } from "@/hooks/useHospitalId";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, AlertTriangle } from "lucide-react";
+import { Plus, AlertTriangle, Loader2 } from "lucide-react";
 import EquipmentTab from "@/components/biomedical/EquipmentTab";
 import MaintenanceTab from "@/components/biomedical/MaintenanceTab";
 import CalibrationTab from "@/components/biomedical/CalibrationTab";
@@ -13,10 +14,11 @@ import ReportsTab from "@/components/biomedical/ReportsTab";
 import AddEquipmentModal from "@/components/biomedical/AddEquipmentModal";
 import ReportBreakdownModal from "@/components/biomedical/ReportBreakdownModal";
 
-const HOSPITAL_ID = "8f3d08b3-8835-42a7-920e-fdf5a78260bc";
-
 const BiomedicalPage: React.FC = () => {
+  const { hospitalId, loading: hospitalLoading } = useHospitalId();
   const [tab, setTab] = useState("equipment");
+  if (hospitalLoading) return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+  if (!hospitalId) return null;
   const [showAddEquipment, setShowAddEquipment] = useState(false);
   const [showBreakdown, setShowBreakdown] = useState(false);
   const [kpis, setKpis] = useState({ total: 0, operational: 0, maintenance: 0, pmOverdue: 0, amcExpiring: 0 });

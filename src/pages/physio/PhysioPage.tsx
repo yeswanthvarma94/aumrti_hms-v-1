@@ -44,8 +44,11 @@ const OUTCOME_TOOLS = [
 const EQUIPMENT_TYPES = ["ust", "ift", "tens", "swt", "traction", "hydrotherapy", "parallel_bars", "treadmill", "other"];
 
 const PhysioPage: React.FC = () => {
+  const { hospitalId, loading: hospitalLoading } = useHospitalId();
   const { toast } = useToast();
   const [tab, setTab] = useState("referrals");
+  if (hospitalLoading) return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+  if (!hospitalId) return null;
 
   // KPIs
   const [activeReferrals, setActiveReferrals] = useState(0);

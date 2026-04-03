@@ -162,8 +162,11 @@ const AddReviewModal: React.FC<{ open: boolean; onClose: () => void; onSaved: ()
 
 // ═══════════════ MAIN PAGE ═══════════════
 const CRMPage: React.FC = () => {
+  const { hospitalId, loading: hospitalLoading } = useHospitalId();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("referrals");
+  if (hospitalLoading) return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+  if (!hospitalId) return null;
 
   // Data
   const [doctors, setDoctors] = useState<any[]>([]);
