@@ -180,6 +180,43 @@ const DaycareBoardTab: React.FC<DaycareBoardTabProps> = ({ showNewOrder, onClose
     await (supabase as any).from("daycare_chairs").update({ status: "cleaning", current_patient: null, occupied_since: null, estimated_end: null }).eq("id", chairId);
     if (orderId) {
       await (supabase as any).from("chemo_orders").update({ status: "completed" }).eq("id", orderId);
+
+      // Auto-bill chemo on completion
+      const { data: order } = await (supabase as any)
+        .from("chemo_orders")
+        .select("*, chemo_order_drugs(*)")
+        .eq("id", orderId)
+        .single();
+
+      if (order?.patient_id) {
+        const { data: user } = await supabase.from("users").select("hospital_id").limit(1).single();
+        const hospitalId = user?.hospital_id || order.hospital_id;
+        if (hospitalId) {
+          const totalDrugCost = (order.chemo_order_drugs || [])
+            .reduce((s: number, d: any) => s + (Number(d.planned_dose_mg || 0) * 50), 0);
+
+          const billDate = new Date().toISOString().split("T")[0];
+          const { count } = await supabase.from("bills").select("id", { count: "exact", head: true }).eq("hospital_id", hospitalId);
+          const billNum = `CHEMO-${billDate.replace(/-/g, "")}-${String((count || 0) + 1).padStart(4, "0")}`;
+
+          await supabase.from("bills").insert({
+            hospital_id: hospitalId,
+            patient_id: order.patient_id,
+            admission_id: order.admission_id || null,
+            bill_number: billNum,
+            bill_type: "pharmacy",
+            bill_date: billDate,
+            bill_status: "final",
+            payment_status: "unpaid",
+            total_amount: totalDrugCost,
+            balance_due: totalDrugCost,
+            subtotal: totalDrugCost,
+            taxable_amount: totalDrugCost,
+            patient_payable: totalDrugCost,
+            notes: `Chemotherapy: ${order.cycle_number ? "Cycle " + order.cycle_number : ""}`,
+          });
+        }
+      }
     }
     toast({ title: "Infusion completed" });
     loadData();
