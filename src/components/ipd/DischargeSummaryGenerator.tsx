@@ -5,6 +5,7 @@ import { Bot, Loader2, FileText, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { callAI } from "@/lib/aiProvider";
 import { toast } from "sonner";
+import { logNABHEvidence } from "@/lib/nabh-evidence";
 
 interface Props {
   admissionId: string;
