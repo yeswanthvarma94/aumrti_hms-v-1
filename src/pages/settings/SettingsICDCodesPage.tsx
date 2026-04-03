@@ -12,11 +12,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Progress } from "@/components/ui/progress";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { supabase } from "@/integrations/supabase/client";
+import { useHospitalId } from "@/hooks/useHospitalId";
 import { toast } from "@/hooks/use-toast";
-import { Search, Upload, Download, Plus, Trash2, Eye, Package, FileText, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Search, Upload, Download, Plus, Trash2, Eye, Package, FileText, CheckCircle2, AlertTriangle, Loader2 } from "lucide-react";
 import * as XLSX from "xlsx";
-
-const HOSPITAL_ID = "8f3d08b3-8835-42a7-920e-fdf5a78260bc";
 
 interface CodeSet {
   id: string;
