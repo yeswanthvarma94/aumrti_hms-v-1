@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useHospitalId } from "@/hooks/useHospitalId";
 import { useToast } from "@/hooks/use-toast";
 import { callAI } from "@/lib/aiProvider";
 import PatientPropensitySection from "@/components/crm/PatientPropensitySection";
@@ -18,12 +19,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import {
   Users, Megaphone, Star, UserCheck, BarChart3, Plus, Phone, Mail, MapPin,
-  MessageCircle, TrendingUp, Send, Search, Filter, RefreshCw, Eye
+  MessageCircle, TrendingUp, Send, Search, Filter, RefreshCw, Eye, Loader2
 } from "lucide-react";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts";
 import { format } from "date-fns";
-
-const HOSPITAL_ID = "8f3d08b3-8835-42a7-920e-fdf5a78260bc";
 
 const TIER_COLORS: Record<string, string> = {
   platinum: "bg-purple-100 text-purple-800",
