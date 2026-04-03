@@ -9,12 +9,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Plus } from "lucide-react";
 import { format, differenceInDays, addYears } from "date-fns";
+import { useHospitalId } from '@/hooks/useHospitalId';
 
-const HOSPITAL_ID = "8f3d08b3-8835-42a7-920e-fdf5a78260bc";
 
 interface Props { onRefresh: () => void; }
 
 const CalibrationTab: React.FC<Props> = ({ onRefresh }) => {
+  const { hospitalId } = useHospitalId();
   const [records, setRecords] = useState<any[]>([]);
   const [equipment, setEquipment] = useState<any[]>([]);
   const [showAdd, setShowAdd] = useState(false);
@@ -26,8 +27,8 @@ const CalibrationTab: React.FC<Props> = ({ onRefresh }) => {
 
   const load = async () => {
     const [rRes, eRes] = await Promise.all([
-      supabase.from("calibration_records").select("*, equipment_master(equipment_name, equipment_code)").eq("hospital_id", HOSPITAL_ID).order("next_due"),
-      supabase.from("equipment_master").select("id, equipment_name, equipment_code").eq("hospital_id", HOSPITAL_ID).eq("is_active", true),
+      supabase.from("calibration_records").select("*, equipment_master(equipment_name, equipment_code)").eq("hospital_id", hospitalId).order("next_due"),
+      supabase.from("equipment_master").select("id, equipment_name, equipment_code").eq("hospital_id", hospitalId).eq("is_active", true),
     ]);
     setRecords(rRes.data || []);
     setEquipment(eRes.data || []);
@@ -46,7 +47,7 @@ const CalibrationTab: React.FC<Props> = ({ onRefresh }) => {
     if (!form.equipment_id || !form.calibrated_by || !form.next_due) return;
     setSaving(true);
     const { error } = await supabase.from("calibration_records").insert({
-      hospital_id: HOSPITAL_ID, equipment_id: form.equipment_id,
+      hospital_id: hospitalId, equipment_id: form.equipment_id,
       calibrated_at: form.calibrated_at, calibrated_by: form.calibrated_by,
       next_due: form.next_due, certificate_no: form.certificate_no || null,
       result: form.result, observations: form.observations || null,
@@ -56,7 +57,7 @@ const CalibrationTab: React.FC<Props> = ({ onRefresh }) => {
       await supabase.from("equipment_master").update({ status: "calibration" }).eq("id", form.equipment_id);
       const eq = equipment.find((e) => e.id === form.equipment_id);
       await supabase.from("clinical_alerts").insert({
-        hospital_id: HOSPITAL_ID, alert_type: "calibration_failed", severity: "high",
+        hospital_id: hospitalId, alert_type: "calibration_failed", severity: "high",
         alert_message: `Equipment calibration ${form.result.replace(/_/g, " ")}: ${eq?.equipment_name || "Unknown"}`,
       });
     }

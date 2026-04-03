@@ -10,14 +10,15 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Plus, Upload, Users, Loader2 } from "lucide-react";
+import { useHospitalId } from '@/hooks/useHospitalId';
 
-const HOSPITAL_ID = "8f3d08b3-8835-42a7-920e-fdf5a78260bc";
 
 interface CsvEmployee {
   name: string; phone: string; dob: string; gender: string; employee_id: string;
 }
 
 export default function CorporateTab() {
+  const { hospitalId } = useHospitalId();
   const [accounts, setAccounts] = useState<any[]>([]);
   const [packages, setPackages] = useState<any[]>([]);
   const [showAdd, setShowAdd] = useState(false);
@@ -31,12 +32,12 @@ export default function CorporateTab() {
   const [form, setForm] = useState({ company_name: "", contact_person: "", contact_phone: "", contact_email: "", gstin: "", credit_days: 30, negotiated_rate_percent: 0 });
 
   const load = async () => {
-    const { data } = await supabase.from("corporate_accounts").select("*").eq("hospital_id", HOSPITAL_ID).eq("is_active", true).order("company_name");
+    const { data } = await supabase.from("corporate_accounts").select("*").eq("hospital_id", hospitalId).eq("is_active", true).order("company_name");
     setAccounts(data || []);
   };
 
   const loadPackages = async () => {
-    const { data } = await supabase.from("health_packages").select("id, package_name, price").eq("hospital_id", HOSPITAL_ID).eq("is_active", true).order("package_name");
+    const { data } = await supabase.from("health_packages").select("id, package_name, price").eq("hospital_id", hospitalId).eq("is_active", true).order("package_name");
     setPackages(data || []);
   };
 
@@ -45,7 +46,7 @@ export default function CorporateTab() {
   const save = async () => {
     if (!form.company_name.trim()) { toast.error("Company name required"); return; }
     const { error } = await supabase.from("corporate_accounts").insert({
-      hospital_id: HOSPITAL_ID, ...form,
+      hospital_id: hospitalId, ...form,
     });
     if (error) { console.error("Corporate account insert error:", error); toast.error(error.message || "Failed to add account"); return; }
     toast.success("Corporate account added");
@@ -104,7 +105,7 @@ export default function CorporateTab() {
           const { data: existing } = await supabase
             .from("patients")
             .select("id")
-            .eq("hospital_id", HOSPITAL_ID)
+            .eq("hospital_id", hospitalId)
             .eq("phone", emp.phone)
             .limit(1)
             .single();
@@ -118,7 +119,7 @@ export default function CorporateTab() {
           const { data: newPatient, error: pErr } = await supabase
             .from("patients")
             .insert({
-              hospital_id: HOSPITAL_ID,
+              hospital_id: hospitalId,
               full_name: emp.name,
               phone: emp.phone || null,
               dob: emp.dob || null,
@@ -136,7 +137,7 @@ export default function CorporateTab() {
 
         // Create booking
         const { error: bErr } = await supabase.from("package_bookings").insert({
-          hospital_id: HOSPITAL_ID,
+          hospital_id: hospitalId,
           patient_id: patientId,
           package_id: bulkPackageId,
           scheduled_date: bulkDate,

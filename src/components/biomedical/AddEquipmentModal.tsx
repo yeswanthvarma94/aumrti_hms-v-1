@@ -7,13 +7,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useHospitalId } from '@/hooks/useHospitalId';
 
-const HOSPITAL_ID = "8f3d08b3-8835-42a7-920e-fdf5a78260bc";
 const CATEGORIES = ["diagnostic","therapeutic","monitoring","laboratory","surgical","ot_equipment","it_equipment","utility","radiation","other"];
 
 interface Props { open: boolean; onClose: () => void; onSaved: () => void; }
 
 const AddEquipmentModal: React.FC<Props> = ({ open, onClose, onSaved }) => {
+  const { hospitalId } = useHospitalId();
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
   const [departments, setDepartments] = useState<any[]>([]);
@@ -26,12 +27,12 @@ const AddEquipmentModal: React.FC<Props> = ({ open, onClose, onSaved }) => {
 
   useEffect(() => {
     const genCode = async () => {
-      const { count } = await supabase.from("equipment_master").select("id", { count: "exact", head: true }).eq("hospital_id", HOSPITAL_ID);
+      const { count } = await supabase.from("equipment_master").select("id", { count: "exact", head: true }).eq("hospital_id", hospitalId);
       const seq = String((count || 0) + 1).padStart(3, "0");
       setForm((f) => ({ ...f, equipment_code: `EQ-${new Date().getFullYear()}-${seq}` }));
     };
     const loadDepts = async () => {
-      const { data } = await supabase.from("departments").select("id, name").eq("hospital_id", HOSPITAL_ID).eq("is_active", true);
+      const { data } = await supabase.from("departments").select("id, name").eq("hospital_id", hospitalId).eq("is_active", true);
       setDepartments(data || []);
     };
     if (open) { genCode(); loadDepts(); }
@@ -45,7 +46,7 @@ const AddEquipmentModal: React.FC<Props> = ({ open, onClose, onSaved }) => {
     }
     setSaving(true);
     const row: any = {
-      hospital_id: HOSPITAL_ID, equipment_name: form.equipment_name, equipment_code: form.equipment_code,
+      hospital_id: hospitalId, equipment_name: form.equipment_name, equipment_code: form.equipment_code,
       category: form.category, make: form.make, model: form.model,
       serial_number: form.serial_number || null, department_id: form.department_id || null,
       location: form.location || null, purchase_date: form.purchase_date || null,

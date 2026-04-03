@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Brain, Loader2, Wrench } from "lucide-react";
+import { useHospitalId } from '@/hooks/useHospitalId';
 
-const HOSPITAL_ID = "8f3d08b3-8835-42a7-920e-fdf5a78260bc";
 
 interface Prediction {
   equipmentId: string;
@@ -20,6 +20,7 @@ interface Prediction {
 }
 
 const PredictiveMaintenanceSection: React.FC = () => {
+  const { hospitalId } = useHospitalId();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [predictions, setPredictions] = useState<Prediction[]>([]);
@@ -30,7 +31,7 @@ const PredictiveMaintenanceSection: React.FC = () => {
       const { data: equipment } = await supabase
         .from("equipment_master")
         .select("id, equipment_name, equipment_code, make, model, purchase_date, amc_type, status")
-        .eq("hospital_id", HOSPITAL_ID)
+        .eq("hospital_id", hospitalId)
         .in("status", ["operational", "under_maintenance"]);
 
       const results: Prediction[] = [];
@@ -45,7 +46,7 @@ const PredictiveMaintenanceSection: React.FC = () => {
 
         const response = await callAI({
           featureKey: "ai_digest",
-          hospitalId: HOSPITAL_ID,
+          hospitalId: hospitalId,
           prompt: `Predict maintenance needs for hospital equipment.
 
 Equipment: ${eq.equipment_name} (${eq.make || ""} ${eq.model || ""})
@@ -90,7 +91,7 @@ Return ONLY JSON:
   const schedulePM = async (pred: Prediction) => {
     const nextDue = new Date(Date.now() + pred.urgency_days * 86400000).toISOString().split("T")[0];
     await supabase.from("pm_schedules").insert({
-      hospital_id: HOSPITAL_ID,
+      hospital_id: hospitalId,
       equipment_id: pred.equipmentId,
       frequency: "monthly",
       next_due_at: nextDue,

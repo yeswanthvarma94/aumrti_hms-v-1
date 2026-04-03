@@ -8,14 +8,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Plus, Trash2 } from "lucide-react";
+import { useHospitalId } from '@/hooks/useHospitalId';
 
-const HOSPITAL_ID = "8f3d08b3-8835-42a7-920e-fdf5a78260bc";
 
 interface Props { open: boolean; onClose: () => void; }
 
 interface Component { name: string; type: string; estimated_mins: number; sequence: number; }
 
 export default function CreatePackageModal({ open, onClose }: Props) {
+  const { hospitalId } = useHospitalId();
   const [form, setForm] = useState({
     package_name: "", package_code: "", package_type: "basic",
     description: "", target_gender: "both", min_age: "",
@@ -44,7 +45,7 @@ export default function CreatePackageModal({ open, onClose }: Props) {
     setSaving(true);
     const totalMins = components.reduce((s, c) => s + (c.estimated_mins || 0), 0);
     const { error } = await supabase.from("health_packages").insert([{
-      hospital_id: HOSPITAL_ID,
+      hospital_id: hospitalId,
       package_name: form.package_name,
       package_code: form.package_code,
       package_type: form.package_type,

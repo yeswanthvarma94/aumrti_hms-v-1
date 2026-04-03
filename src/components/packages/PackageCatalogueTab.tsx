@@ -4,17 +4,18 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { Clock, Users, ChevronDown, ChevronUp } from "lucide-react";
+import { useHospitalId } from '@/hooks/useHospitalId';
 
-const HOSPITAL_ID = "8f3d08b3-8835-42a7-920e-fdf5a78260bc";
 
 interface Props { onBook: () => void; onCreate: () => void; }
 
 export default function PackageCatalogueTab({ onBook, onCreate }: Props) {
+  const { hospitalId } = useHospitalId();
   const [packages, setPackages] = useState<any[]>([]);
   const [expanded, setExpanded] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase.from("health_packages").select("*").eq("hospital_id", HOSPITAL_ID)
+    supabase.from("health_packages").select("*").eq("hospital_id", hospitalId)
       .eq("is_active", true).order("display_order")
       .then(({ data }) => setPackages(data || []));
   }, []);

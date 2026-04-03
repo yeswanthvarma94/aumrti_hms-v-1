@@ -1,17 +1,18 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
+import { useHospitalId } from '@/hooks/useHospitalId';
 
-const HOSPITAL_ID = "8f3d08b3-8835-42a7-920e-fdf5a78260bc";
 
 export default function PackageAnalyticsTab() {
+  const { hospitalId } = useHospitalId();
   const [stats, setStats] = useState({ total: 0, completed: 0, cancelled: 0, topPackage: "—" });
 
   useEffect(() => {
     const load = async () => {
-      const { count: total } = await supabase.from("package_bookings").select("id", { count: "exact", head: true }).eq("hospital_id", HOSPITAL_ID);
-      const { count: completed } = await supabase.from("package_bookings").select("id", { count: "exact", head: true }).eq("hospital_id", HOSPITAL_ID).eq("status", "completed");
-      const { count: cancelled } = await supabase.from("package_bookings").select("id", { count: "exact", head: true }).eq("hospital_id", HOSPITAL_ID).eq("status", "cancelled");
+      const { count: total } = await supabase.from("package_bookings").select("id", { count: "exact", head: true }).eq("hospital_id", hospitalId);
+      const { count: completed } = await supabase.from("package_bookings").select("id", { count: "exact", head: true }).eq("hospital_id", hospitalId).eq("status", "completed");
+      const { count: cancelled } = await supabase.from("package_bookings").select("id", { count: "exact", head: true }).eq("hospital_id", hospitalId).eq("status", "cancelled");
       setStats({ total: total || 0, completed: completed || 0, cancelled: cancelled || 0, topPackage: "—" });
     };
     load();

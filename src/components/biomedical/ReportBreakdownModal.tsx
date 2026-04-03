@@ -7,13 +7,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useHospitalId } from '@/hooks/useHospitalId';
 
-const HOSPITAL_ID = "8f3d08b3-8835-42a7-920e-fdf5a78260bc";
 const DUMMY_USER = "00000000-0000-0000-0000-000000000000";
 
 interface Props { open: boolean; onClose: () => void; onSaved: () => void; }
 
 const ReportBreakdownModal: React.FC<Props> = ({ open, onClose, onSaved }) => {
+  const { hospitalId } = useHospitalId();
   const { toast } = useToast();
   const [equipment, setEquipment] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
@@ -21,7 +22,7 @@ const ReportBreakdownModal: React.FC<Props> = ({ open, onClose, onSaved }) => {
 
   useEffect(() => {
     if (!open) return;
-    supabase.from("equipment_master").select("id, equipment_name, equipment_code, category, department_id").eq("hospital_id", HOSPITAL_ID).eq("is_active", true).then(({ data }) => setEquipment(data || []));
+    supabase.from("equipment_master").select("id, equipment_name, equipment_code, category, department_id").eq("hospital_id", hospitalId).eq("is_active", true).then(({ data }) => setEquipment(data || []));
   }, [open]);
 
   const handleSubmit = async () => {
@@ -30,11 +31,11 @@ const ReportBreakdownModal: React.FC<Props> = ({ open, onClose, onSaved }) => {
     }
     setSaving(true);
 
-    const { data: userData } = await supabase.from("users").select("id").eq("hospital_id", HOSPITAL_ID).limit(1).single();
+    const { data: userData } = await supabase.from("users").select("id").eq("hospital_id", hospitalId).limit(1).single();
     const userId = userData?.id || DUMMY_USER;
 
     const { error } = await supabase.from("breakdown_logs").insert({
-      hospital_id: HOSPITAL_ID, equipment_id: form.equipment_id,
+      hospital_id: hospitalId, equipment_id: form.equipment_id,
       description: form.description, severity: form.severity, reported_by: userId,
     });
     if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); setSaving(false); return; }
@@ -44,7 +45,7 @@ const ReportBreakdownModal: React.FC<Props> = ({ open, onClose, onSaved }) => {
     if (form.severity === "critical") {
       const eq = equipment.find((e) => e.id === form.equipment_id);
       await supabase.from("clinical_alerts").insert({
-        hospital_id: HOSPITAL_ID, alert_type: "equipment_breakdown",
+        hospital_id: hospitalId, alert_type: "equipment_breakdown",
         severity: "high", alert_message: `Critical equipment breakdown: ${eq?.equipment_name || "Unknown"} (${eq?.equipment_code || ""})`,
       });
     }

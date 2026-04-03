@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { format, differenceInDays } from "date-fns";
 import PredictiveMaintenanceSection from "./PredictiveMaintenanceSection";
+import { useHospitalId } from '@/hooks/useHospitalId';
 
-const HOSPITAL_ID = "8f3d08b3-8835-42a7-920e-fdf5a78260bc";
 
 interface Props { onNavigate: (tab: string) => void; }
 
@@ -20,6 +20,7 @@ interface Alert {
 }
 
 const AlertsTab: React.FC<Props> = ({ onNavigate }) => {
+  const { hospitalId } = useHospitalId();
   const [alerts, setAlerts] = useState<Alert[]>([]);
 
   useEffect(() => {
@@ -30,7 +31,7 @@ const AlertsTab: React.FC<Props> = ({ onNavigate }) => {
       // PM Overdue
       const { data: pmData } = await supabase.from("pm_schedules")
         .select("*, equipment_master(equipment_name, equipment_code)")
-        .eq("hospital_id", HOSPITAL_ID).eq("status", "overdue");
+        .eq("hospital_id", hospitalId).eq("status", "overdue");
       (pmData || []).forEach((p: any) => allAlerts.push({
         type: "PM Overdue", equipmentName: p.equipment_master?.equipment_name || "",
         equipmentCode: p.equipment_master?.equipment_code || "", dueDate: p.next_due_at,
@@ -40,7 +41,7 @@ const AlertsTab: React.FC<Props> = ({ onNavigate }) => {
       // PM due within 7 days
       const { data: pmSoon } = await supabase.from("pm_schedules")
         .select("*, equipment_master(equipment_name, equipment_code)")
-        .eq("hospital_id", HOSPITAL_ID).eq("status", "upcoming")
+        .eq("hospital_id", hospitalId).eq("status", "upcoming")
         .lte("next_due_at", new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0]);
       (pmSoon || []).forEach((p: any) => allAlerts.push({
         type: "PM Due Soon", equipmentName: p.equipment_master?.equipment_name || "",
@@ -51,7 +52,7 @@ const AlertsTab: React.FC<Props> = ({ onNavigate }) => {
       // Calibration due within 90 days
       const { data: calData } = await supabase.from("calibration_records")
         .select("*, equipment_master(equipment_name, equipment_code)")
-        .eq("hospital_id", HOSPITAL_ID)
+        .eq("hospital_id", hospitalId)
         .lte("next_due", new Date(Date.now() + 90 * 86400000).toISOString().split("T")[0]);
       (calData || []).forEach((c: any) => {
         const days = differenceInDays(new Date(c.next_due), now);
@@ -65,7 +66,7 @@ const AlertsTab: React.FC<Props> = ({ onNavigate }) => {
       // AMC Expiring within 60 days
       const { data: amcData } = await supabase.from("amc_contracts")
         .select("*, equipment_master(equipment_name, equipment_code)")
-        .eq("hospital_id", HOSPITAL_ID).eq("is_active", true)
+        .eq("hospital_id", hospitalId).eq("is_active", true)
         .lte("end_date", new Date(Date.now() + 60 * 86400000).toISOString().split("T")[0]);
       (amcData || []).forEach((a: any) => {
         const days = differenceInDays(new Date(a.end_date), now);
@@ -79,7 +80,7 @@ const AlertsTab: React.FC<Props> = ({ onNavigate }) => {
       // AERB License Expiring (radiation equipment)
       const { data: aerbData } = await supabase.from("equipment_master")
         .select("equipment_name, equipment_code, aerb_license_no, aerb_expiry")
-        .eq("hospital_id", HOSPITAL_ID).eq("category", "radiation").not("aerb_expiry", "is", null);
+        .eq("hospital_id", hospitalId).eq("category", "radiation").not("aerb_expiry", "is", null);
       (aerbData || []).forEach((e: any) => {
         const days = differenceInDays(new Date(e.aerb_expiry), now);
         if (days <= 90) allAlerts.push({
@@ -92,7 +93,7 @@ const AlertsTab: React.FC<Props> = ({ onNavigate }) => {
       // Warranty expiring within 30 days
       const { data: warData } = await supabase.from("equipment_master")
         .select("equipment_name, equipment_code, warranty_expiry")
-        .eq("hospital_id", HOSPITAL_ID).not("warranty_expiry", "is", null);
+        .eq("hospital_id", hospitalId).not("warranty_expiry", "is", null);
       (warData || []).forEach((e: any) => {
         const days = differenceInDays(new Date(e.warranty_expiry), now);
         if (days <= 30 && days >= 0) allAlerts.push({

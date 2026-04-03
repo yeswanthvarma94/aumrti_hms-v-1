@@ -7,10 +7,11 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageCircle, TrendingDown, Award, Loader2 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { useToast } from "@/hooks/use-toast";
+import { useHospitalId } from '@/hooks/useHospitalId';
 
-const HOSPITAL_ID = "8f3d08b3-8835-42a7-920e-fdf5a78260bc";
 
 const ReferralPatternAnalyser: React.FC = () => {
+  const { hospitalId } = useHospitalId();
   const { toast } = useToast();
   const [topDoctors, setTopDoctors] = useState<any[]>([]);
   const [inactiveReferrers, setInactiveReferrers] = useState<any[]>([]);
@@ -25,7 +26,7 @@ const ReferralPatternAnalyser: React.FC = () => {
     const { data: acquisitions } = await supabase
       .from("patient_acquisition")
       .select("source, created_at, first_visit_revenue, referral_doctor_id")
-      .eq("hospital_id", HOSPITAL_ID)
+      .eq("hospital_id", hospitalId)
       .eq("source", "referral_doctor")
       .gte("created_at", new Date(Date.now() - 90 * 86400000).toISOString());
 
@@ -33,7 +34,7 @@ const ReferralPatternAnalyser: React.FC = () => {
     const { data: doctors } = await supabase
       .from("referral_doctors")
       .select("*")
-      .eq("hospital_id", HOSPITAL_ID)
+      .eq("hospital_id", hospitalId)
       .eq("is_active", true)
       .order("total_referrals", { ascending: false });
 
@@ -50,7 +51,7 @@ const ReferralPatternAnalyser: React.FC = () => {
     const { data: inactive } = await supabase
       .from("referral_doctors")
       .select("*")
-      .eq("hospital_id", HOSPITAL_ID)
+      .eq("hospital_id", hospitalId)
       .eq("is_active", true)
       .gt("total_referrals", 3)
       .lt("last_referral_at", new Date(Date.now() - 60 * 86400000).toISOString().split("T")[0]);
