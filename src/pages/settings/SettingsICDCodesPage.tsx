@@ -328,6 +328,7 @@ const SettingsICDCodesPage: React.FC = () => {
   const systemSet = codeSets.find((s) => s.set_type === "system_default");
   const uploadedSets = codeSets.filter((s) => s.set_type !== "system_default");
 
+  if (hospitalLoading || !hospitalId) return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   return (
     <SettingsPageWrapper title="ICD-10 Code Master" hideSave>
       <Tabs value={tab} onValueChange={setTab} className="w-full">

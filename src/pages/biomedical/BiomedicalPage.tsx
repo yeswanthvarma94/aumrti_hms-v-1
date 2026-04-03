@@ -51,6 +51,7 @@ const BiomedicalPage: React.FC = () => {
     { label: "AMC Expiring (30d)", value: kpis.amcExpiring, color: "text-amber-600", bg: "bg-amber-50" },
   ];
 
+  if (hospitalLoading || !hospitalId) return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   return (
     <div className="flex flex-col" style={{ height: "calc(100vh - 56px)" }}>
       {/* Header */}

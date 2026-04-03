@@ -389,6 +389,7 @@ export default function MortuaryPage() {
   const ORGANS = ["Kidney", "Liver", "Heart", "Lung", "Cornea", "Pancreas", "Skin", "Bone"];
   const RELEASE_DOCS = ["MCCD", "Death Summary", "Belongings", "Post-mortem Report"];
 
+  if (hospitalLoading || !hospitalId) return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   return (
     <div className="flex flex-col" style={{ height: "calc(100vh - 56px)" }}>
       {/* Header */}
