@@ -17,8 +17,6 @@ import { Syringe, AlertTriangle, CalendarClock, Thermometer, Loader2 } from "luc
 const VaccinationPage: React.FC = () => {
   const { hospitalId, loading: hospitalLoading } = useHospitalId();
   const [tab, setTab] = useState("patient-card");
-  if (hospitalLoading) return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
-  if (!hospitalId) return null;
   const [givenToday, setGivenToday] = useState(0);
   const [overdueCount, setOverdueCount] = useState(0);
   const [dueWeek, setDueWeek] = useState(0);

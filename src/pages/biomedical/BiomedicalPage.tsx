@@ -17,8 +17,6 @@ import ReportBreakdownModal from "@/components/biomedical/ReportBreakdownModal";
 const BiomedicalPage: React.FC = () => {
   const { hospitalId, loading: hospitalLoading } = useHospitalId();
   const [tab, setTab] = useState("equipment");
-  if (hospitalLoading) return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
-  if (!hospitalId) return null;
   const [showAddEquipment, setShowAddEquipment] = useState(false);
   const [showBreakdown, setShowBreakdown] = useState(false);
   const [kpis, setKpis] = useState({ total: 0, operational: 0, maintenance: 0, pmOverdue: 0, amcExpiring: 0 });

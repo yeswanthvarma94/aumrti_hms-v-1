@@ -54,8 +54,6 @@ const PROPage: React.FC = () => {
   const { hospitalId, loading: hospitalLoading } = useHospitalId();
   const { toast } = useToast();
   const [tab, setTab] = useState("grievances");
-  if (hospitalLoading) return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
-  if (!hospitalId) return null;
 
   // KPI
   const [openGrievances, setOpenGrievances] = useState(0);

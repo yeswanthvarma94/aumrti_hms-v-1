@@ -108,8 +108,6 @@ interface OrganDonation {
 export default function MortuaryPage() {
   const { hospitalId, loading: hospitalLoading } = useHospitalId();
   const [tab, setTab] = useState("register");
-  if (hospitalLoading) return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
-  if (!hospitalId) return null;
   const [admissions, setAdmissions] = useState<MortuaryAdmission[]>([]);
   const [mlcRecords, setMlcRecords] = useState<MLCRecord[]>([]);
   const [mccdCerts, setMccdCerts] = useState<MCCDCert[]>([]);

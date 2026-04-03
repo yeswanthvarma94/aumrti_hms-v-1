@@ -18,8 +18,6 @@ import CreatePackageModal from "@/components/packages/CreatePackageModal";
 export default function PackagesPage() {
   const { hospitalId, loading: hospitalLoading } = useHospitalId();
   const [tab, setTab] = useState("checkups");
-  if (hospitalLoading) return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
-  if (!hospitalId) return null;
   const [showBook, setShowBook] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [kpis, setKpis] = useState({ booked: 0, inProgress: 0, completed: 0, revenue: 0 });
