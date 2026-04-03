@@ -696,8 +696,8 @@ Guidelines:
 
       {/* MODALS */}
       <AddReferralDoctorModal open={showAddDoctor} onClose={() => setShowAddDoctor(false)} onSaved={() => loadAll()} hospitalId={hospitalId} editDoc={editDoctor} />
-      <NewCampaignModal open={showNewCampaign} onClose={() => setShowNewCampaign(false)} onSaved={loadAll} segments={segments} />
-      <AddReviewModal open={showAddReview} onClose={() => setShowAddReview(false)} onSaved={loadAll} />
+      <NewCampaignModal open={showNewCampaign} onClose={() => setShowNewCampaign(false)} onSaved={loadAll} segments={segments} hospitalId={hospitalId!} />
+      <AddReviewModal open={showAddReview} onClose={() => setShowAddReview(false)} onSaved={loadAll} hospitalId={hospitalId!} />
     </div>
   );
 };
