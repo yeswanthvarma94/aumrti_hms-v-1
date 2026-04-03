@@ -201,6 +201,91 @@ const PhysioPage: React.FC = () => {
     loadSessions(); loadKPIs();
   };
 
+  // Physio billing
+  const createPhysioBill = async (session: any) => {
+    const hospitalId = HOSPITAL_ID;
+
+    const { data: rate } = await (supabase as any)
+      .from("service_master")
+      .select("fee, gst_percent, gst_applicable")
+      .eq("hospital_id", hospitalId)
+      .ilike("name", "%physio%")
+      .maybeSingle();
+
+    const fee = rate?.fee ? Number(rate.fee) : 500;
+    const gstPct = rate?.gst_applicable ? (Number(rate.gst_percent) || 0) : 0;
+    const gst = Math.round(fee * gstPct / 100 * 100) / 100;
+
+    const { data: referral } = await (supabase as any)
+      .from("physio_referrals")
+      .select("admission_id, patient_id")
+      .eq("id", session.referral_id)
+      .maybeSingle();
+
+    if (referral?.admission_id) {
+      const { data: ipdBill } = await supabase
+        .from("bills")
+        .select("id")
+        .eq("hospital_id", hospitalId)
+        .eq("admission_id", referral.admission_id)
+        .maybeSingle();
+
+      if (ipdBill) {
+        await (supabase as any).from("bill_line_items").insert({
+          hospital_id: hospitalId,
+          bill_id: ipdBill.id,
+          item_type: "physio",
+          description: `Physiotherapy: ${session.modalities_used?.join(", ") || "Session"} — ${session.session_date}`,
+          quantity: 1, unit_rate: fee,
+          taxable_amount: fee, gst_percent: gstPct,
+          gst_amount: gst, total_amount: fee + gst,
+          source_module: "physio",
+        });
+        return;
+      }
+    }
+
+    // OPD physio — create standalone bill
+    const { count } = await supabase
+      .from("bills")
+      .select("id", { count: "exact", head: true })
+      .eq("hospital_id", hospitalId);
+
+    const billNum = `PHYS-${session.session_date?.replace(/-/g, "") || ""}-${String((count || 0) + 1).padStart(4, "0")}`;
+
+    const { data: newBill } = await supabase
+      .from("bills")
+      .insert({
+        hospital_id: hospitalId,
+        patient_id: session.patient_id || referral?.patient_id,
+        admission_id: referral?.admission_id || null,
+        bill_number: billNum,
+        bill_type: "physio",
+        bill_date: session.session_date || new Date().toISOString().split("T")[0],
+        bill_status: "final",
+        payment_status: "unpaid",
+        total_amount: fee + gst,
+        balance_due: fee + gst,
+        subtotal: fee, gst_amount: gst,
+        taxable_amount: fee, patient_payable: fee + gst,
+      })
+      .select("id")
+      .single();
+
+    if (newBill) {
+      await (supabase as any).from("bill_line_items").insert({
+        hospital_id: hospitalId, bill_id: newBill.id,
+        item_type: "physio",
+        description: `Physiotherapy Session — ${session.session_date}`,
+        quantity: 1, unit_rate: fee,
+        taxable_amount: fee, gst_percent: gstPct,
+        gst_amount: gst, total_amount: fee + gst,
+        source_module: "physio",
+      });
+      toast({ title: `Physio billed: ₹${(fee + gst).toLocaleString("en-IN")}` });
+    }
+  };
+
   // Complete session
   const completeSessionAction = async () => {
     if (!completeSession) return;
@@ -212,6 +297,10 @@ const PhysioPage: React.FC = () => {
       attended: true,
       billed: true,
     }).eq("id", completeSession.id);
+
+    // Auto-bill physio session
+    await createPhysioBill(completeSession);
+
     // Increment sessions done
     await supabase.rpc("increment_icd_use_count", { p_code: "" }).then(() => {}); // no-op, manual increment below
     const { data: ref } = await supabase.from("physio_referrals").select("total_sessions_done").eq("id", completeSession.referral_id).single();
