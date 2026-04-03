@@ -203,7 +203,7 @@ const PhysioPage: React.FC = () => {
 
   // Physio billing
   const createPhysioBill = async (session: any) => {
-    const hospitalId = hospitalId;
+    // hospitalId comes from useHospitalId hook
 
     const { data: rate } = await (supabase as any)
       .from("service_master")
