@@ -205,6 +205,9 @@ const DietPage: React.FC = () => {
 
     if (error) { toast.error(error.message); setSaving(false); return; }
 
+    logNABHEvidence(hospitalId, "NFS.1",
+      `Nutritional screening completed: ${selectedPatient.patient_name || "Patient"}, Tool: NRS-2002, Risk: ${riskLevel}, NRS: ${nrsTotal}`);
+
     if (needsReferral) {
       await supabase.from("clinical_alerts").insert({
         hospital_id: hospitalId,

@@ -208,6 +208,10 @@ Use formal medical language. Keep factual. Do not invent details not provided. M
 
     setSigned(true);
     setSigning(false);
+
+    logNABHEvidence(hospitalId, "COP.10",
+      `Discharge summary completed: Patient ${admissionId}, AI-assisted: ${summary ? "Yes" : "No"}`);
+
     onSummaryDone();
   };
 

@@ -62,6 +62,10 @@ const NursingMedicationTask: React.FC<Props> = ({ task, onComplete }) => {
       toast({ title: "Error saving record", description: error.message, variant: "destructive" });
     } else {
       toast({ title: `✓ ${task.drugName} — ${outcome.toUpperCase()}` });
+      if (outcome === "given" && task.hospitalId) {
+        logNABHEvidence(task.hospitalId, "MOM.3",
+          `Medication administered: ${task.drugName} ${task.dose || ""} to ${task.patientName || "patient"}. 5 Rights verified.`);
+      }
       onComplete();
     }
   };

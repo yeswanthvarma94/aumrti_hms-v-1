@@ -36,6 +36,9 @@ const BMWEntryModal: React.FC<Props> = ({ hospitalId, onClose }) => {
     } as any);
     if (error) { toast.error(error.message); return; }
     toast.success("BMW record saved");
+    const recordDate = new Date().toLocaleDateString("en-IN");
+    logNABHEvidence(hospitalId, "HIC.8",
+      `BMW log: ${recordDate}, Yellow: ${parseFloat(yellow) || 0}kg, Red: ${parseFloat(red) || 0}kg, White: ${parseFloat(white) || 0}kg, Agency: ${agency || "N/A"}`);
     onClose();
   };
 

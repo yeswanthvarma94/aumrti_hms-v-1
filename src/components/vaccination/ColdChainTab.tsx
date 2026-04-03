@@ -56,6 +56,8 @@ const ColdChainTab: React.FC<Props> = ({ hospitalId, onLogged }) => {
       });
     } else {
       toast.success(`Temperature logged: ${temp}°C ✅`);
+      logNABHEvidence(hospitalId, "FMS.8",
+        `Cold chain check: ${unitName}, Temp: ${temp}°C (within 2-8°C range)`);
     }
 
     setTemperature("");

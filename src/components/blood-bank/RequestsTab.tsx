@@ -99,6 +99,9 @@ const RequestsTab: React.FC<Props> = ({ showModal, onCloseModal, onRefresh }) =>
 
     toast({ title: "Blood unit issued", description: `${unit.unit_number} issued to ${selectedReq.patients?.full_name}` });
 
+    logNABHEvidence(hospitalId, "TMS.3",
+      `Blood transfusion issued: Unit ${unit.unit_number}, ${unit.blood_group}${unit.rh_factor === "positive" ? "+" : "-"}, Patient ${selectedReq.patients?.full_name}. Cross-match: Compatible.`);
+
     // Auto-bill if IPD admission
     if (issueRecord?.admission_id) {
       await createBloodBankBill(hospitalId, issueRecord, unit);

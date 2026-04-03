@@ -349,6 +349,11 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
       toast({ title: `Session completed${ktv ? ` — Kt/V: ${ktv}` : ""}` });
     }
 
+    if (user?.hospital_id) {
+      logNABHEvidence(user.hospital_id, "DIC.1",
+        `Dialysis session completed: Patient ${session.dialysis_patients?.patients?.full_name}, Machine ${endMachine?.machine_type || "N/A"}, Kt/V: ${ktv || "pending"}`);
+    }
+
     setEndMachine(null);
     resetEndForm();
     fetchData();

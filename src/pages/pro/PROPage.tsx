@@ -259,6 +259,8 @@ const PROPage: React.FC = () => {
     }).eq("id", selectedGrievance.id);
     if (error) { toast({ title: "Failed", variant: "destructive" }); return; }
     toast({ title: "Grievance resolved" });
+    logNABHEvidence(HOSPITAL_ID, "PCC.6",
+      `Grievance resolved: ${selectedGrievance.category}, TAT: ${tat} hrs, Patient satisfied: pending`);
     // WhatsApp
     if (selectedGrievance.patient_phone) {
       const msg = `Dear ${selectedGrievance.patient_name}, your grievance regarding ${selectedGrievance.category.replace(/_/g, " ")} has been resolved. Resolution: ${resolution}. If not satisfied, please contact us. — Patient Relations Team`;
