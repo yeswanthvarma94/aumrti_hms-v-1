@@ -61,7 +61,7 @@ const NewCampaignModal: React.FC<{ open: boolean; onClose: () => void; onSaved: 
     toast({ title: "Campaign created" }); onSaved(); onClose();
   };
 
-  if (hospitalLoading || !hospitalId) return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+  
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-md">
