@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { logNABHEvidence } from '@/lib/nabh-evidence';
+import { useHospitalId } from '@/hooks/useHospitalId';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -12,10 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
-import { GraduationCap, CheckCircle2, AlertTriangle, XCircle, Clock, Download, Printer, Send, Users, Plus, BookOpen } from 'lucide-react';
+import { GraduationCap, CheckCircle2, AlertTriangle, XCircle, Clock, Download, Printer, Send, Users, Plus, BookOpen, Loader2 } from 'lucide-react';
 import { format, addMonths, differenceInDays, isPast, isBefore, addDays } from 'date-fns';
-
-const HOSPITAL_ID = '8f3d08b3-8835-42a7-920e-fdf5a78260bc';
 
 interface Course {
   id: string;
