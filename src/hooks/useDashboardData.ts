@@ -134,7 +134,7 @@ export function useDashboardData() {
       // Get hospital_id for realtime filters
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const { data } = await supabase.from("users").select("hospital_id").eq("auth_user_id", user.id).single();
+        const { data } = await supabase.from("users").select("hospital_id").eq("id", user.id).single();
         if (data) hospitalIdRef.current = data.hospital_id;
       }
       await fetchAll();

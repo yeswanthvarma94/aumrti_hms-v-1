@@ -37,7 +37,7 @@ const EmergencyPage: React.FC = () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return; }
     setUserId(user.id);
-    const { data: ud, error: udErr } = await supabase.from("users").select("hospital_id").eq("auth_user_id", user.id).single();
+    const { data: ud, error: udErr } = await supabase.from("users").select("hospital_id").eq("id", user.id).single();
     if (udErr || !ud) { console.error("ED user fetch error:", udErr?.message); setLoading(false); return; }
     setHospitalId(ud.hospital_id);
 
