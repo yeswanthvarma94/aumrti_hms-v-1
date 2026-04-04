@@ -17,14 +17,16 @@ interface KPIs {
 }
 
 const CSSDPage: React.FC = () => {
+  const { hospitalId } = useHospitalId();
   const [tab, setTab] = useState("sterilize");
   const [kpis, setKpis] = useState<KPIs>({ sterile: 0, dirty: 0, quarantine: 0, pendingBi: 0 });
   const [showNewCycle, setShowNewCycle] = useState(false);
   const [showIssue, setShowIssue] = useState(false);
 
   const fetchKpis = async () => {
-    const { data: sets } = await supabase.from("instrument_sets").select("status");
-    const { data: cycles } = await supabase.from("sterilization_cycles").select("bi_result, status").eq("biological_indicator_used", true);
+    if (!hospitalId) return;
+    const { data: sets } = await supabase.from("instrument_sets").select("status").eq("hospital_id", hospitalId);
+    const { data: cycles } = await supabase.from("sterilization_cycles").select("bi_result, status").eq("hospital_id", hospitalId).eq("biological_indicator_used", true);
     if (sets) {
       setKpis({
         sterile: sets.filter((s: any) => s.status === "sterile").length,
