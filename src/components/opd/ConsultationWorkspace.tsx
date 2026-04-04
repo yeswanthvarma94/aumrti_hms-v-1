@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Stethoscope, Mic, Save, CheckCircle, FlaskConical, Building2, Smartphone, ArrowUpRight } from "lucide-react";
+import AdmitPatientModal from "@/components/ipd/AdmitPatientModal";
 import type { OpdToken } from "@/pages/opd/OPDPage";
 import VoiceDictationButton from "@/components/voice/VoiceDictationButton";
 import { useVoiceScribe } from "@/contexts/VoiceScribeContext";

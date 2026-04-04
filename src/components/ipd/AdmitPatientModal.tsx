@@ -86,6 +86,22 @@ const AdmitPatientModal: React.FC<Props> = ({ open, onClose, hospitalId, presele
     if (preselectedBedId) { setBedId(preselectedBedId); setWardId(preselectedWardId || ""); setBedLabel(preselectedBedNumber || ""); }
   }, [preselectedBedId, preselectedWardId, preselectedBedNumber]);
 
+  // Auto-select patient when coming from OPD
+  useEffect(() => {
+    if (!open || !preselectedPatientId || !hospitalId) return;
+    supabase.from("patients")
+      .select("id, full_name, uhid, phone, dob, gender, blood_group, chronic_conditions")
+      .eq("id", preselectedPatientId)
+      .eq("hospital_id", hospitalId)
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          setSelectedPatient(data as unknown as PatientResult);
+          setStep(2);
+        }
+      });
+  }, [open, preselectedPatientId, hospitalId]);
+
   const resetForm = () => {
     setStep(1); setSearch(""); setResults([]); setSelectedPatient(null);
     setAdmissionType("elective"); setDeptId(""); setDoctorId(""); setDiagnosis("");
