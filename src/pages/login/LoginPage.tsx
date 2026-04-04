@@ -236,47 +236,19 @@ const LoginPage: React.FC = () => {
           <h2 className="text-2xl font-bold text-foreground mt-1">Sign in to continue</h2>
 
           <div className="mt-8 flex flex-col gap-5">
-            {/* Mode toggle */}
-            <div className="flex gap-2">
-              <button
-                onClick={() => { setMode("mobile"); setCredential(""); setErrorMsg(""); }}
-                className={`px-4 py-1.5 rounded-full text-[13px] font-medium transition-colors active:scale-95 ${
-                  mode === "mobile"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground"
-                }`}
-              >
-                Mobile Number
-              </button>
-              <button
-                onClick={() => { setMode("email"); setCredential(""); setErrorMsg(""); }}
-                className={`px-4 py-1.5 rounded-full text-[13px] font-medium transition-colors active:scale-95 ${
-                  mode === "email"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground"
-                }`}
-              >
-                Email Address
-              </button>
-            </div>
-
-            {/* Credential input */}
+            {/* Email input */}
             <div>
               <label className="text-[13px] font-medium text-foreground">
-                {mode === "email" ? "Email Address" : "Mobile Number"}
+                Email Address
               </label>
               <div className="relative mt-1.5">
-                {mode === "email" ? (
-                  <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                ) : (
-                  <Phone size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                )}
+                <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <input
-                  type={mode === "email" ? "email" : "tel"}
+                  type="email"
                   value={credential}
                   onChange={(e) => setCredential(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleSignIn()}
-                  placeholder={mode === "email" ? "Enter your email" : "Enter your mobile number"}
+                  placeholder="Enter your email"
                   className="w-full h-12 pl-11 pr-4 text-[15px] bg-card border-[1.5px] border-border rounded-lg focus:outline-none focus:border-primary focus:ring-[3px] focus:ring-primary/10 text-foreground placeholder:text-muted-foreground"
                 />
               </div>
