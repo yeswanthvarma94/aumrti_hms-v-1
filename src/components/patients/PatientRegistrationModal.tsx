@@ -78,7 +78,9 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess }) => {
     }
     setSaving(true);
 
-    const { data: userData } = await supabase.from("users").select("hospital_id").limit(1).single();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { toast({ title: "Not authenticated", variant: "destructive" }); setSaving(false); return; }
+    const { data: userData } = await supabase.from("users").select("hospital_id").eq("auth_user_id", user.id).single();
     if (!userData) {
       toast({ title: "Could not determine hospital", variant: "destructive" });
       setSaving(false);
