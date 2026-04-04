@@ -41,10 +41,11 @@ const BookOTModal: React.FC<Props> = ({ rooms, selectedRoomId, selectedDate, pre
   const [conflict, setConflict] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!hospitalId) return;
     const fetchData = async () => {
       const [{ data: pts }, { data: docs }] = await Promise.all([
-        supabase.from("patients").select("id, full_name, uhid, blood_group").order("full_name").limit(100),
-        supabase.from("users").select("id, full_name, role").eq("role", "doctor").eq("is_active", true).order("full_name"),
+        supabase.from("patients").select("id, full_name, uhid, blood_group").eq("hospital_id", hospitalId).order("full_name").limit(100),
+        supabase.from("users").select("id, full_name, role").eq("hospital_id", hospitalId).eq("role", "doctor").eq("is_active", true).order("full_name"),
       ]);
       setPatients(pts || []);
       setDoctors(docs || []);

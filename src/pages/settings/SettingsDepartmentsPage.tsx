@@ -36,12 +36,16 @@ const SettingsDepartmentsPage: React.FC = () => {
     },
   });
 
+  const { hospitalId } = useHospitalId();
+
   const { data: doctors } = useQuery({
-    queryKey: ["settings-doctors-list"],
+    queryKey: ["settings-doctors-list", hospitalId],
     queryFn: async () => {
-      const { data } = await supabase.from("users").select("id, full_name").eq("role", "doctor").eq("is_active", true).order("full_name");
+      if (!hospitalId) return [];
+      const { data } = await supabase.from("users").select("id, full_name").eq("hospital_id", hospitalId).eq("role", "doctor").eq("is_active", true).order("full_name");
       return data ?? [];
     },
+    enabled: !!hospitalId,
   });
 
   const getHospitalId = async () => {
