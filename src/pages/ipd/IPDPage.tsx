@@ -51,7 +51,7 @@ const IPDPage: React.FC = () => {
   const fetchData = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return; }
-    const { data: ud, error: udErr } = await supabase.from("users").select("hospital_id").eq("id", user.id).single();
+    const { data: ud, error: udErr } = await supabase.from("users").select("hospital_id").eq("auth_user_id", user.id).single();
     if (udErr || !ud) { console.error("IPD user fetch error:", udErr?.message); setLoading(false); return; }
     setHospitalId(ud.hospital_id);
 
