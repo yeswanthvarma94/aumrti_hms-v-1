@@ -300,6 +300,7 @@ const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onT
         if (newEnc) setEncounterId(newEnc.id);
       }
       setSaved(true);
+      isDirtyRef.current = false;
       setTimeout(() => setSaved(false), 2000);
     } catch (err) {
       console.error("Auto-save error:", err);
