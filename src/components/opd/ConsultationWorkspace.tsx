@@ -103,6 +103,7 @@ const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onT
   const saveTimer = useRef<ReturnType<typeof setTimeout>>();
   const prevTokenId = useRef<string | null>(null);
   const [deptName, setDeptName] = useState<string | null>(null);
+  const [showAdmitModal, setShowAdmitModal] = useState(false);
 
   // Fetch department name for specialty detection
   useEffect(() => {
