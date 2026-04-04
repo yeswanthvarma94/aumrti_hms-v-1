@@ -92,6 +92,7 @@ import AyushPage from "./pages/ayush/AyushPage";
 import PackagesPage from "./pages/packages/PackagesPage";
 import IVFPage from "./pages/ivf/IVFPage";
 import NotFound from "./pages/NotFound";
+import AuthGuard from "@/components/auth/AuthGuard";
 
 const queryClient = new QueryClient();
 
@@ -108,13 +109,13 @@ const App = () => (
           <Route path="/portal/*" element={<PatientPortal />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<Register />} />
-          <Route path="/setup/onboarding" element={<OnboardingWizard />} />
+          <Route path="/setup/onboarding" element={<AuthGuard><OnboardingWizard /></AuthGuard>} />
           <Route path="/design-system" element={<DesignSystem />} />
           <Route path="/tv-display" element={<TVDisplayPage />} />
-          <Route path="/hod-dashboard" element={<HODDashboardPage />} />
+          <Route path="/hod-dashboard" element={<AuthGuard><HODDashboardPage /></AuthGuard>} />
 
           {/* App shell routes */}
-          <Route element={<AppShell />}>
+          <Route element={<AuthGuard><AppShell /></AuthGuard>}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/modules" element={<ModulesPage />} />
             <Route path="/patients" element={<PatientsPage />} />
