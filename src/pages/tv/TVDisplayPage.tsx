@@ -33,6 +33,7 @@ interface DeptStatus {
 const TVDisplayPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const deptId = searchParams.get("dept");
+  const { hospitalId } = useHospitalId();
 
   const [now, setNow] = useState(new Date());
   const [tipIndex, setTipIndex] = useState(0);
