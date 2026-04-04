@@ -96,7 +96,20 @@ const AyushPage = lazy(() => import("./pages/ayush/AyushPage"));
 const PackagesPage = lazy(() => import("./pages/packages/PackagesPage"));
 const IVFPage = lazy(() => import("./pages/ivf/IVFPage"));
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 2 * 60 * 1000,
+      gcTime: 10 * 60 * 1000,
+      retry: 1,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: true,
+    },
+    mutations: {
+      retry: 0,
+    },
+  },
+});
 
 const SuspenseWrap = ({ children }: { children: React.ReactNode }) => (
   <Suspense fallback={<div />}>{children}</Suspense>
