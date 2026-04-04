@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { useHospitalId } from "@/hooks/useHospitalId";
 import { RefreshCw, Package, ArrowUpDown, ClipboardList, Plus } from "lucide-react";
 import SterilizeTab from "@/components/cssd/SterilizeTab";
 import SetsInstrumentsTab from "@/components/cssd/SetsInstrumentsTab";
@@ -16,14 +17,16 @@ interface KPIs {
 }
 
 const CSSDPage: React.FC = () => {
+  const { hospitalId } = useHospitalId();
   const [tab, setTab] = useState("sterilize");
   const [kpis, setKpis] = useState<KPIs>({ sterile: 0, dirty: 0, quarantine: 0, pendingBi: 0 });
   const [showNewCycle, setShowNewCycle] = useState(false);
   const [showIssue, setShowIssue] = useState(false);
 
   const fetchKpis = async () => {
-    const { data: sets } = await supabase.from("instrument_sets").select("status");
-    const { data: cycles } = await supabase.from("sterilization_cycles").select("bi_result, status").eq("biological_indicator_used", true);
+    if (!hospitalId) return;
+    const { data: sets } = await supabase.from("instrument_sets").select("status").eq("hospital_id", hospitalId);
+    const { data: cycles } = await supabase.from("sterilization_cycles").select("bi_result, status").eq("hospital_id", hospitalId).eq("biological_indicator_used", true);
     if (sets) {
       setKpis({
         sterile: sets.filter((s: any) => s.status === "sterile").length,
@@ -34,7 +37,7 @@ const CSSDPage: React.FC = () => {
     }
   };
 
-  useEffect(() => { fetchKpis(); }, []);
+  useEffect(() => { fetchKpis(); }, [hospitalId]);
 
   return (
     <div className="flex flex-col" style={{ height: "calc(100vh - 56px)" }}>

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
+import { useHospitalId } from "@/hooks/useHospitalId";
 
 const REFRESH_MS = 30_000;
 const TIP_ROTATE_MS = 8_000;
@@ -32,6 +33,7 @@ interface DeptStatus {
 const TVDisplayPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const deptId = searchParams.get("dept");
+  const { hospitalId } = useHospitalId();
 
   const [now, setNow] = useState(new Date());
   const [tipIndex, setTipIndex] = useState(0);
@@ -61,17 +63,20 @@ const TVDisplayPage: React.FC = () => {
     return () => clearInterval(t);
   }, []);
 
-  // Fetch hospital info (use anon key, reads via public policy)
+  // Fetch hospital info
   useEffect(() => {
-    supabase.from("hospitals").select("name, address, logo_url, announcement_text, phone:razorpay_key_id").eq("is_active", true).limit(1).maybeSingle().then(({ data }) => {
+    if (!hospitalId) return;
+    supabase.from("hospitals").select("name, address, logo_url, announcement_text, phone:razorpay_key_id").eq("id", hospitalId).maybeSingle().then(({ data }) => {
       setHospital(data);
     });
-  }, []);
+  }, [hospitalId]);
 
   const fetchTokens = useCallback(async () => {
+    if (!hospitalId) return;
     let query = supabase
       .from("opd_tokens")
       .select("id, token_number, token_prefix, status, patients(full_name), users:doctor_id(full_name)")
+      .eq("hospital_id", hospitalId)
       .eq("visit_date", today)
       .order("token_number", { ascending: true });
 
@@ -96,11 +101,11 @@ const TVDisplayPage: React.FC = () => {
     setNextTokens(waiting);
 
     // Dept statuses
-    const { data: depts } = await supabase.from("departments").select("id, name").eq("is_active", true).eq("type", "clinical");
+    const { data: depts } = await supabase.from("departments").select("id, name").eq("hospital_id", hospitalId).eq("is_active", true).eq("type", "clinical");
     if (depts) {
       const statuses: DeptStatus[] = [];
       for (const dept of depts.slice(0, 6)) {
-        const { data: tok } = await supabase.from("opd_tokens").select("token_number, token_prefix").eq("visit_date", today).eq("department_id", dept.id).in("status", ["in_consultation", "called"]).limit(1).maybeSingle();
+        const { data: tok } = await supabase.from("opd_tokens").select("token_number, token_prefix").eq("hospital_id", hospitalId).eq("visit_date", today).eq("department_id", dept.id).in("status", ["in_consultation", "called"]).limit(1).maybeSingle();
         statuses.push({
           name: dept.name,
           currentToken: tok ? `${tok.token_prefix || ""}${tok.token_number}` : "—",
@@ -108,7 +113,7 @@ const TVDisplayPage: React.FC = () => {
       }
       setDeptStatuses(statuses);
     }
-  }, [today, deptId]);
+  }, [today, deptId, hospitalId]);
 
   useEffect(() => {
     fetchTokens();

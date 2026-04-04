@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useHospitalId } from "@/hooks/useHospitalId";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -27,6 +28,7 @@ const statusColors: Record<string, string> = {
 
 const TelemedicinePage: React.FC = () => {
   const { toast } = useToast();
+  const { hospitalId } = useHospitalId();
   const [sessions, setSessions] = useState<any[]>([]);
   const [tab, setTab] = useState("waiting");
   const [activeSession, setActiveSession] = useState<any>(null);
@@ -40,6 +42,7 @@ const TelemedicinePage: React.FC = () => {
   const [rxDays, setRxDays] = useState("");
 
   const fetchSessions = useCallback(async () => {
+    if (!hospitalId) return;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
@@ -48,11 +51,12 @@ const TelemedicinePage: React.FC = () => {
     const { data } = await supabase
       .from("teleconsult_sessions")
       .select("*, patients(full_name, uhid, phone, gender)")
+      .eq("hospital_id", hospitalId)
       .gte("scheduled_at", today.toISOString())
       .lt("scheduled_at", tomorrow.toISOString())
       .order("scheduled_at", { ascending: true });
     setSessions(data || []);
-  }, []);
+  }, [hospitalId]);
 
   useEffect(() => { fetchSessions(); }, [fetchSessions]);
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
+import { useHospitalId } from "@/hooks/useHospitalId";
 import {
   BarChart, Bar, ResponsiveContainer, PieChart, Pie, Cell,
 } from "recharts";
@@ -15,6 +16,7 @@ const DONUT_COLORS = ["hsl(var(--primary))", "#10B981", "#F59E0B"];
 
 const HODDashboardPage: React.FC = () => {
   const navigate = useNavigate();
+  const { hospitalId } = useHospitalId();
   const [now, setNow] = useState(new Date());
   const [opdCount, setOpdCount] = useState(0);
   const [opdYesterday, setOpdYesterday] = useState(0);
@@ -39,15 +41,16 @@ const HODDashboardPage: React.FC = () => {
   const today = format(new Date(), "yyyy-MM-dd");
 
   const fetchAll = useCallback(async () => {
+    if (!hospitalId) return;
     const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
     const yesterdayStart = new Date(todayStart); yesterdayStart.setDate(yesterdayStart.getDate() - 1);
 
     // OPD today
-    const { count: opdC } = await supabase.from("opd_tokens").select("id", { count: "exact", head: true }).eq("visit_date", today);
+    const { count: opdC } = await supabase.from("opd_tokens").select("id", { count: "exact", head: true }).eq("hospital_id", hospitalId).eq("visit_date", today);
     setOpdCount(opdC || 0);
 
     // OPD yesterday
-    const { count: opdY } = await supabase.from("opd_tokens").select("id", { count: "exact", head: true }).eq("visit_date", format(yesterdayStart, "yyyy-MM-dd"));
+    const { count: opdY } = await supabase.from("opd_tokens").select("id", { count: "exact", head: true }).eq("hospital_id", hospitalId).eq("visit_date", format(yesterdayStart, "yyyy-MM-dd"));
     setOpdYesterday(opdY || 0);
 
     // OPD last 7 days
@@ -55,13 +58,13 @@ const HODDashboardPage: React.FC = () => {
     for (let i = 6; i >= 0; i--) {
       const d = new Date(); d.setDate(d.getDate() - i);
       const ds = format(d, "yyyy-MM-dd");
-      const { count: c } = await supabase.from("opd_tokens").select("id", { count: "exact", head: true }).eq("visit_date", ds);
+      const { count: c } = await supabase.from("opd_tokens").select("id", { count: "exact", head: true }).eq("hospital_id", hospitalId).eq("visit_date", ds);
       weekData.push({ day: format(d, "EEE"), count: c || 0 });
     }
     setOpdWeek(weekData);
 
     // Beds
-    const { data: bedData } = await supabase.from("beds").select("status").eq("is_active", true);
+    const { data: bedData } = await supabase.from("beds").select("status").eq("hospital_id", hospitalId).eq("is_active", true);
     if (bedData) {
       const occ = bedData.filter(b => b.status === "occupied").length;
       const avail = bedData.filter(b => b.status === "available").length;
@@ -69,7 +72,7 @@ const HODDashboardPage: React.FC = () => {
     }
 
     // Revenue
-    const { data: billData } = await supabase.from("bills").select("paid_amount, balance_due").eq("bill_date", today).limit(500);
+    const { data: billData } = await supabase.from("bills").select("paid_amount, balance_due").eq("hospital_id", hospitalId).eq("bill_date", today).limit(500);
     if (billData) {
       setRevenue({
         collected: billData.reduce((s, b) => s + (b.paid_amount || 0), 0),
@@ -78,16 +81,16 @@ const HODDashboardPage: React.FC = () => {
     }
 
     // Alerts
-    const { data: alertData, count: aC } = await supabase.from("clinical_alerts").select("id, alert_type, alert_message, severity, created_at, is_acknowledged, patient_id, ward_name, bed_number", { count: "exact" }).eq("is_acknowledged", false).order("created_at", { ascending: false }).limit(10);
+    const { data: alertData, count: aC } = await supabase.from("clinical_alerts").select("id, alert_type, alert_message, severity, created_at, is_acknowledged, patient_id, ward_name, bed_number", { count: "exact" }).eq("hospital_id", hospitalId).eq("is_acknowledged", false).order("created_at", { ascending: false }).limit(10);
     setAlerts(alertData || []);
     setAlertCount(aC || 0);
 
     // Pending lab
-    const { count: labC } = await supabase.from("lab_order_items").select("id", { count: "exact", head: true }).eq("status", "ordered");
+    const { count: labC } = await supabase.from("lab_order_items").select("id", { count: "exact", head: true }).eq("hospital_id", hospitalId).eq("status", "ordered");
     setPendingLab(labC || 0);
 
     // Staff attendance
-    const { data: attData } = await supabase.from("staff_attendance").select("status, users(role)").eq("attendance_date", today);
+    const { data: attData } = await supabase.from("staff_attendance").select("status, users(role)").eq("hospital_id", hospitalId).eq("attendance_date", today);
     if (attData) {
       const present = attData.filter(a => a.status === "present");
       setStaffPresent(present.length);
@@ -97,7 +100,7 @@ const HODDashboardPage: React.FC = () => {
     }
 
     // Discharge TAT (avg hours for today's discharges)
-    const { data: discharges } = await supabase.from("admissions").select("admitted_at, discharged_at").eq("status", "discharged").not("discharged_at", "is", null).gte("discharged_at", todayStart.toISOString());
+    const { data: discharges } = await supabase.from("admissions").select("admitted_at, discharged_at").eq("hospital_id", hospitalId).eq("status", "discharged").not("discharged_at", "is", null).gte("discharged_at", todayStart.toISOString());
     if (discharges && discharges.length > 0) {
       const totalHrs = discharges.reduce((s, d) => {
         const hrs = (new Date(d.discharged_at!).getTime() - new Date(d.admitted_at!).getTime()) / 3600000;
@@ -105,7 +108,7 @@ const HODDashboardPage: React.FC = () => {
       }, 0);
       setDischargeTat(totalHrs / discharges.length);
     }
-  }, [today]);
+  }, [today, hospitalId]);
 
   useEffect(() => {
     fetchAll();

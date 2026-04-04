@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useHospitalId } from "@/hooks/useHospitalId";
 import { Building2, ClipboardList, Send, BarChart3, CalendarClock, Settings2, Layers } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ActiveAdmissions from "@/components/insurance/ActiveAdmissions";
@@ -33,19 +34,24 @@ const InsurancePage: React.FC = () => {
   const [kpis, setKpis] = useState({ pendingPreAuth: 0, outstandingClaims: 0, deniedThisMonth: 0 });
   const [pendingAdmission, setPendingAdmission] = useState<AdmissionContext | null>(null);
   const { toast } = useToast();
+  const { hospitalId } = useHospitalId();
 
   useEffect(() => {
     loadKPIs();
-  }, []);
+  }, [hospitalId]);
 
   const loadKPIs = async () => {
+    if (!hospitalId) return;
     try {
       const [preAuthRes, claimsRes, deniedRes] = await Promise.all([
         supabase.from("insurance_pre_auth").select("id", { count: "exact", head: true })
+          .eq("hospital_id", hospitalId)
           .in("status", ["pending", "submitted", "under_review"]),
         supabase.from("insurance_claims").select("claimed_amount")
+          .eq("hospital_id", hospitalId)
           .in("status", ["submitted", "under_review", "approved"]),
         supabase.from("insurance_claims").select("id", { count: "exact", head: true })
+          .eq("hospital_id", hospitalId)
           .eq("status", "rejected")
           .gte("created_at", new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()),
       ]);

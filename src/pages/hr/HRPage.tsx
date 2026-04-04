@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useHospitalId } from "@/hooks/useHospitalId";
 import { Calendar, CheckSquare, Palmtree, DollarSign, Users, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,19 +22,22 @@ const navTabs = [
 
 const HRPage: React.FC = () => {
   const navigate = useNavigate();
+  const { hospitalId } = useHospitalId();
   const [activeTab, setActiveTab] = useState("roster");
   const [kpis, setKpis] = useState({ total: 0, present: 0, onLeave: 0, licenseAlerts: 0 });
 
   useEffect(() => {
     const loadKpis = async () => {
-      const { data: userData } = await supabase.from("users").select("id").eq("is_active", true);
+      if (!hospitalId) return;
+      const { data: userData } = await supabase.from("users").select("id").eq("is_active", true).eq("hospital_id", hospitalId);
       const total = userData?.length || 0;
 
       const today = new Date().toISOString().split("T")[0];
       const { data: attendance } = await supabase
         .from("staff_attendance")
         .select("status")
-        .eq("attendance_date", today);
+        .eq("attendance_date", today)
+        .eq("hospital_id", hospitalId);
 
       const present = attendance?.filter((a) => a.status === "present" || a.status === "late").length || 0;
       const onLeave = attendance?.filter((a) => a.status === "on_leave").length || 0;
@@ -41,13 +45,14 @@ const HRPage: React.FC = () => {
       const { count: licenseAlerts } = await (supabase as any)
         .from("staff_profiles")
         .select("id", { count: "exact", head: true })
+        .eq("hospital_id", hospitalId)
         .not("license_expiry_date", "is", null)
         .lte("license_expiry_date", new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]);
 
       setKpis({ total, present, onLeave, licenseAlerts: licenseAlerts || 0 });
     };
     loadKpis();
-  }, [activeTab]);
+  }, [activeTab, hospitalId]);
 
   const renderContent = () => {
     switch (activeTab) {
