@@ -341,6 +341,7 @@ const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onT
   const updateEncounter = useCallback((partial: Partial<EncounterData>) => {
     setEncounter((prev) => {
       const next = { ...prev, ...partial };
+      isDirtyRef.current = true;
       if (saveTimer.current) clearTimeout(saveTimer.current);
       saveTimer.current = setTimeout(() => autoSaveEncounter(next), 2000);
       return next;
