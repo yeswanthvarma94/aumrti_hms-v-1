@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Suspense } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { SidebarProvider, useSidebar } from "./SidebarContext";
