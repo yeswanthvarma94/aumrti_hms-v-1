@@ -115,7 +115,7 @@ const App = () => (
           <Route path="/hod-dashboard" element={<AuthGuard><HODDashboardPage /></AuthGuard>} />
 
           {/* App shell routes */}
-          <Route element={<AppShell />}>
+          <Route element={<AuthGuard><AppShell /></AuthGuard>}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/modules" element={<ModulesPage />} />
             <Route path="/patients" element={<PatientsPage />} />
