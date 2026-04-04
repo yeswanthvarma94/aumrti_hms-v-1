@@ -20,23 +20,29 @@ interface KPIs {
 }
 
 const IVFPage = () => {
+  const { hospitalId } = useHospitalId();
   const [tab, setTab] = useState("couples");
   const [kpis, setKpis] = useState<KPIs>({ activeCycles: 0, monitoringToday: 0, embryosStored: 0, consentExpiring: 0 });
   const [showRegister, setShowRegister] = useState(false);
   const [showStartCycle, setShowStartCycle] = useState(false);
 
   const loadKPIs = async () => {
+    if (!hospitalId) return;
     const today = new Date().toISOString().split("T")[0];
     const in30 = new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0];
 
     const [cycles, monitoring, stored, expiring] = await Promise.all([
       supabase.from("ivf_cycles").select("id", { count: "exact", head: true })
+        .eq("hospital_id", hospitalId)
         .not("status", "in", '("positive","negative","cancelled")'),
       supabase.from("stimulation_monitoring").select("id", { count: "exact", head: true })
+        .eq("hospital_id", hospitalId)
         .eq("scan_date", today),
       supabase.from("embryo_bank").select("id", { count: "exact", head: true })
+        .eq("hospital_id", hospitalId)
         .eq("disposition", "stored"),
       supabase.from("embryo_bank").select("id", { count: "exact", head: true })
+        .eq("hospital_id", hospitalId)
         .eq("disposition", "stored").lte("consent_expiry", in30),
     ]);
 
