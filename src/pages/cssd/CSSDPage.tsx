@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { useHospitalId } from "@/hooks/useHospitalId";
 import { RefreshCw, Package, ArrowUpDown, ClipboardList, Plus } from "lucide-react";
 import SterilizeTab from "@/components/cssd/SterilizeTab";
 import SetsInstrumentsTab from "@/components/cssd/SetsInstrumentsTab";
