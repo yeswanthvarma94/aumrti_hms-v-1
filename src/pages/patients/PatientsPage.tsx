@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useHospitalId } from "@/hooks/useHospitalId";
+import { Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -48,6 +50,7 @@ function getAge(dob: string | null): string {
 
 const PatientsPage: React.FC = () => {
   const { toast } = useToast();
+  const { hospitalId, loading: hidLoading } = useHospitalId();
   const [searchParams, setSearchParams] = useSearchParams();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -60,20 +63,21 @@ const PatientsPage: React.FC = () => {
   // Deep-link: auto-open patient by ?id= param
   useEffect(() => {
     const patientId = searchParams.get("id");
-    if (!patientId) return;
-    supabase.from("patients").select("*").eq("id", patientId).maybeSingle()
+    if (!patientId || !hospitalId) return;
+    supabase.from("patients").select("*").eq("id", patientId).eq("hospital_id", hospitalId).maybeSingle()
       .then(({ data }) => {
         if (data) setSelectedPatient(data as Patient);
-        // Clear param so it doesn't re-trigger
         setSearchParams({}, { replace: true });
       });
-  }, []); // run once on mount
+  }, [hospitalId]);
 
   const fetchPatients = useCallback(async () => {
+    if (!hospitalId) return;
     setLoading(true);
     let query = supabase
       .from("patients")
       .select("*", { count: "exact" })
+      .eq("hospital_id", hospitalId)
       .order("created_at", { ascending: false });
 
     if (search.trim()) {
@@ -104,12 +108,15 @@ const PatientsPage: React.FC = () => {
       setTotalCount(count ?? 0);
     }
     setLoading(false);
-  }, [search, filter, toast]);
+  }, [search, filter, toast, hospitalId]);
 
   useEffect(() => {
     const t = setTimeout(fetchPatients, 300);
     return () => clearTimeout(t);
   }, [fetchPatients]);
+
+  if (hidLoading) return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+  if (!hospitalId) return null;
 
   return (
     <div className="h-full flex flex-col overflow-hidden bg-background">
