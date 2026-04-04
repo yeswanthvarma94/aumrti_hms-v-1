@@ -157,7 +157,7 @@ const AppHeader: React.FC = () => {
               <button className="p-1 rounded-full hover:ring-2 hover:ring-ring/20 transition-shadow">
                 <Avatar className="h-8 w-8">
                   <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
-                    DR
+                    {userInitials}
                   </AvatarFallback>
                 </Avatar>
               </button>

@@ -136,13 +136,13 @@ const AppSidebar: React.FC = () => {
       <div className="border-t border-sidebar-border px-3 py-3 flex items-center gap-3">
         <Avatar className="h-8 w-8">
           <AvatarFallback className="bg-sidebar-accent text-white text-xs font-semibold">
-            DR
+            {userInitials}
           </AvatarFallback>
         </Avatar>
         {!collapsed && (
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-sidebar-foreground truncate">Dr. Ramesh</p>
-            <p className="text-[11px] text-sidebar-foreground/60 truncate">Admin</p>
+            <p className="text-sm font-medium text-sidebar-foreground truncate">{userName}</p>
+            <p className="text-[11px] text-sidebar-foreground/60 truncate">{userRole.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}</p>
           </div>
         )}
         <button
