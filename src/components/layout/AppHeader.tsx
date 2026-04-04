@@ -48,6 +48,7 @@ const AppHeader: React.FC = () => {
   const { toast } = useToast();
   const [online, setOnline] = useState(navigator.onLine);
   const [hospitalId, setHospitalId] = useState<string | null>(null);
+  const [userInitials, setUserInitials] = useState("U");
 
   // Get hospital ID for notification centre
   useEffect(() => {
