@@ -92,6 +92,7 @@ import AyushPage from "./pages/ayush/AyushPage";
 import PackagesPage from "./pages/packages/PackagesPage";
 import IVFPage from "./pages/ivf/IVFPage";
 import NotFound from "./pages/NotFound";
+import AuthGuard from "@/components/auth/AuthGuard";
 
 const queryClient = new QueryClient();
 
