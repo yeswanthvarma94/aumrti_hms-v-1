@@ -13,6 +13,8 @@ interface Props {
   preselectedBedId?: string | null;
   preselectedWardId?: string | null;
   preselectedBedNumber?: string | null;
+  preselectedPatientId?: string;
+  preselectedPatientName?: string;
   onAdmitted: () => void;
 }
 
@@ -30,7 +32,7 @@ interface PatientResult {
 const admissionTypes = ["elective", "emergency", "transfer", "daycare"] as const;
 const insuranceTypes = ["self_pay", "insurance", "pmjay", "cghs", "echs"] as const;
 
-const AdmitPatientModal: React.FC<Props> = ({ open, onClose, hospitalId, preselectedBedId, preselectedWardId, preselectedBedNumber, onAdmitted }) => {
+const AdmitPatientModal: React.FC<Props> = ({ open, onClose, hospitalId, preselectedBedId, preselectedWardId, preselectedBedNumber, preselectedPatientId, preselectedPatientName, onAdmitted }) => {
   const [step, setStep] = useState(1);
   const [search, setSearch] = useState("");
   const [results, setResults] = useState<PatientResult[]>([]);
@@ -83,6 +85,22 @@ const AdmitPatientModal: React.FC<Props> = ({ open, onClose, hospitalId, presele
   useEffect(() => {
     if (preselectedBedId) { setBedId(preselectedBedId); setWardId(preselectedWardId || ""); setBedLabel(preselectedBedNumber || ""); }
   }, [preselectedBedId, preselectedWardId, preselectedBedNumber]);
+
+  // Auto-select patient when coming from OPD
+  useEffect(() => {
+    if (!open || !preselectedPatientId || !hospitalId) return;
+    supabase.from("patients")
+      .select("id, full_name, uhid, phone, dob, gender, blood_group, chronic_conditions")
+      .eq("id", preselectedPatientId)
+      .eq("hospital_id", hospitalId)
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          setSelectedPatient(data as unknown as PatientResult);
+          setStep(2);
+        }
+      });
+  }, [open, preselectedPatientId, hospitalId]);
 
   const resetForm = () => {
     setStep(1); setSearch(""); setResults([]); setSelectedPatient(null);

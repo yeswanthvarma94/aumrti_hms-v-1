@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Stethoscope, Mic, Save, CheckCircle, FlaskConical, Building2, Smartphone, ArrowUpRight } from "lucide-react";
+import AdmitPatientModal from "@/components/ipd/AdmitPatientModal";
 import type { OpdToken } from "@/pages/opd/OPDPage";
 import VoiceDictationButton from "@/components/voice/VoiceDictationButton";
 import { useVoiceScribe } from "@/contexts/VoiceScribeContext";
@@ -102,6 +103,7 @@ const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onT
   const saveTimer = useRef<ReturnType<typeof setTimeout>>();
   const prevTokenId = useRef<string | null>(null);
   const [deptName, setDeptName] = useState<string | null>(null);
+  const [showAdmitModal, setShowAdmitModal] = useState(false);
 
   // Fetch department name for specialty detection
   useEffect(() => {
@@ -523,7 +525,10 @@ const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onT
         <button onClick={() => setActiveTab(3)} className="text-xs text-slate-600 border border-slate-200 px-3 py-1.5 rounded-md hover:bg-slate-50 flex items-center gap-1.5 active:scale-[0.97] transition-all">
           <FlaskConical className="h-3.5 w-3.5" /> Order Lab
         </button>
-        <button onClick={() => toast({ title: "IPD admission available after Phase 3 IPD build" })} className="text-xs text-slate-600 border border-slate-200 px-3 py-1.5 rounded-md hover:bg-slate-50 flex items-center gap-1.5 active:scale-[0.97] transition-all">
+        <button onClick={() => {
+          if (!token?.patient_id) { toast({ title: "Select a patient first", variant: "destructive" }); return; }
+          setShowAdmitModal(true);
+        }} className="text-xs text-slate-600 border border-slate-200 px-3 py-1.5 rounded-md hover:bg-slate-50 flex items-center gap-1.5 active:scale-[0.97] transition-all">
           <Building2 className="h-3.5 w-3.5" /> Admit
         </button>
         <button onClick={async () => {
@@ -546,6 +551,20 @@ const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onT
           <Smartphone className="h-3.5 w-3.5" /> Send Rx
         </button>
       </div>
+      {showAdmitModal && token && hospitalId && (
+        <AdmitPatientModal
+          open={showAdmitModal}
+          onClose={() => setShowAdmitModal(false)}
+          hospitalId={hospitalId}
+          preselectedPatientId={token.patient_id}
+          preselectedPatientName={token.patient?.full_name || ""}
+          onAdmitted={() => {
+            setShowAdmitModal(false);
+            toast({ title: "Patient admitted to IPD successfully" });
+            onTokenUpdate();
+          }}
+        />
+      )}
     </div>
   );
 };
