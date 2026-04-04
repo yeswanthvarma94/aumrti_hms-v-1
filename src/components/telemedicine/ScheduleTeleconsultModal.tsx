@@ -20,6 +20,7 @@ const DURATIONS = [15, 30, 45];
 
 const ScheduleTeleconsultModal: React.FC<Props> = ({ open, onOpenChange, onCreated }) => {
   const { toast } = useToast();
+  const { hospitalId } = useHospitalId();
   const [patientSearch, setPatientSearch] = useState("");
   const [patients, setPatients] = useState<any[]>([]);
   const [selectedPatient, setSelectedPatient] = useState<any>(null);
@@ -32,8 +33,8 @@ const ScheduleTeleconsultModal: React.FC<Props> = ({ open, onOpenChange, onCreat
   const [saving, setSaving] = useState(false);
 
   React.useEffect(() => {
-    if (!open) return;
-    supabase.from("users").select("id, full_name").eq("role", "doctor").then(({ data }) => {
+    if (!open || !hospitalId) return;
+    supabase.from("users").select("id, full_name").eq("hospital_id", hospitalId).eq("role", "doctor").then(({ data }) => {
       setDoctors(data || []);
     });
   }, [open]);
