@@ -1,64 +1,75 @@
 
+## Fix OPD crash caused by unsupported route-blocking hook
 
-## Fix: New Hospital Data Not Loading — `auth_user_id` Never Set
+### Root cause
+The OPD page is crashing inside `src/components/opd/ConsultationWorkspace.tsx`, not in the token query anymore.
 
-### Root Cause
+The issue is this line of work:
+- `ConsultationWorkspace` imports and uses `useBlocker` from `react-router-dom`
+- The app is mounted with `BrowserRouter` in `src/App.tsx`
+- `useBlocker` only works with a React Router data router, not with `BrowserRouter`
 
-The `register-hospital` edge function creates a user record with `id: authUserId` but **never sets `auth_user_id`**. Every query in the app — and every RLS policy — looks up the user via `auth_user_id`. Since it is always NULL, no data is returned for any user.
+That means the component throws as soon as OPD renders, which matches the full-page ErrorBoundary screen in your screenshot.
 
-Database proof: all 10+ user rows have `auth_user_id = NULL`.
+### Files reviewed
+- `src/pages/opd/OPDPage.tsx`
+- `src/components/opd/ConsultationWorkspace.tsx`
+- `src/components/opd/TokenQueue.tsx`
+- `src/components/opd/PatientSummary.tsx`
+- `src/App.tsx`
+- `src/components/ErrorBoundary.tsx`
 
-### Changes
+### Implementation plan
 
-**1. Fix the edge function: `supabase/functions/register-hospital/index.ts`**
+1. Remove the in-app navigation blocker that uses `useBlocker`
+- Delete the `useBlocker` import from `ConsultationWorkspace.tsx`
+- Remove the `const blocker = useBlocker(...)` logic
+- Remove the effect that reacts to `blocker.state === "blocked"`
 
-Add `auth_user_id: userId` to the users INSERT (line 109-117):
+2. Keep the browser-close / refresh protection
+- Retain the existing `beforeunload` listener based on `isDirtyRef`
+- This still protects against accidental tab close, refresh, and browser navigation away
 
-```typescript
-.insert({
-  hospital_id: hospitalData.id,
-  full_name: admin.full_name,
-  email: admin.email,
-  phone: admin.phone || null,
-  role: "hospital_admin",
-  is_active: true,
-  auth_user_id: userId,   // <-- ADD THIS
-})
+3. Preserve dirty-state tracking and autosave behavior
+- Keep `isDirtyRef`
+- Keep the existing dirty flag updates in encounter/prescription changes
+- Keep resetting dirty state after successful autosave / completion
+
+4. Add a safer fallback for in-app route changes
+- If you still want in-app protection without migrating the whole app router, replace `useBlocker` with a lightweight manual pattern compatible with `BrowserRouter`
+- Scope it narrowly to this file only, so no router architecture change is required
+- If that feels too risky, remove only the crashing hook now and keep `beforeunload` as the safe fix
+
+### Recommended approach
+Use the minimal fix first:
+- remove `useBlocker`
+- keep `beforeunload`
+- do not change router architecture in `App.tsx`
+
+This resolves the crash immediately with the least risk to 75+ protected routes and the existing lazy-loaded app shell.
+
+### Why this is the right fix
+- The OPD crash is caused by routing API mismatch, not by Supabase data loading
+- The OPD data-fetch code now correctly uses `auth_user_id`
+- `TokenQueue` and `PatientSummary` do not show a matching fatal issue from the code reviewed
+- Changing the whole app from `BrowserRouter` to a data router would be much larger and riskier than needed for this bug
+
+### Technical details
+```text
+Current:
+App.tsx -> BrowserRouter
+ConsultationWorkspace.tsx -> useBlocker(...)  ❌ requires data router
+
+Safe fix:
+App.tsx -> BrowserRouter
+ConsultationWorkspace.tsx -> beforeunload only  ✅ compatible
 ```
 
-Remove `id: userId` — let the `id` column use its default `gen_random_uuid()`. The `id` column is the table's primary key and should not be overridden with the auth UUID (that is what `auth_user_id` is for).
+### Expected result after fix
+- `/opd` loads again instead of falling into the global ErrorBoundary
+- Unsaved consultation warning still appears on browser refresh/close
+- Consultation autosave continues to work as before
 
-**2. Fix existing broken users via migration**
-
-Run a SQL migration to backfill `auth_user_id` for all existing users where `id` was set to the auth UUID:
-
-```sql
-UPDATE public.users
-SET auth_user_id = id
-WHERE auth_user_id IS NULL
-  AND id IN (SELECT id FROM auth.users);
-```
-
-This one-time migration matches users whose `id` column happens to equal their auth UUID (set by the old registration code) and populates the correct column.
-
-**3. Add `can_login: true` to registration (optional but recommended)**
-
-The `can_login` column defaults to `false`. The admin user created during registration should be able to log in. Add `can_login: true` to the INSERT in the edge function.
-
-### What This Fixes
-
-- Dashboard loads real data for the logged-in user's hospital
-- Sidebar shows correct user name and role instead of "User"
-- All hospital-scoped queries return the correct data
-- RLS policies correctly scope data per hospital
-- Login page role-based routing works (currently falls back to "receptionist")
-
-### Files Changed
-
-1. `supabase/functions/register-hospital/index.ts` — add `auth_user_id` and `can_login`
-2. One SQL migration — backfill existing users
-
-### No Other Files Changed
-
-All app-side queries already use `auth_user_id` correctly. The bug is entirely in the registration flow and existing data.
-
+### Scope
+Only modify:
+- `src/components/opd/ConsultationWorkspace.tsx`
