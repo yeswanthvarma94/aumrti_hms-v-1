@@ -35,25 +35,38 @@ export function useDashboardData() {
 
   const fetchAll = useCallback(async () => {
     try {
+      // Resolve hospital_id before any queries
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setLoading(false); return; }
+      if (!hospitalIdRef.current) {
+        const { data } = await supabase.from("users").select("hospital_id").eq("auth_user_id", user.id).single();
+        if (data) hospitalIdRef.current = data.hospital_id;
+      }
+      const hid = hospitalIdRef.current;
+      if (!hid) { setLoading(false); return; }
+
       // 1. Total patients
       const { count: totalPatients } = await supabase
-        .from("patients").select("*", { count: "exact", head: true });
+        .from("patients").select("*", { count: "exact", head: true })
+        .eq("hospital_id", hid);
 
       // 2. Patients created today
       const today = new Date().toISOString().split("T")[0];
       const { count: patientsToday } = await supabase
         .from("patients").select("*", { count: "exact", head: true })
+        .eq("hospital_id", hid)
         .gte("created_at", today + "T00:00:00")
         .lt("created_at", today + "T23:59:59.999Z");
 
       // 3. Beds
-      const { data: bedsData } = await supabase.from("beds").select("status");
+      const { data: bedsData } = await supabase.from("beds").select("status").eq("hospital_id", hid);
       const bedsTotal = bedsData?.length || 0;
       const bedsOccupied = bedsData?.filter(b => b.status === "occupied").length || 0;
 
       // 4. OPD visits today
       const { data: opdData } = await supabase
         .from("opd_visits").select("status")
+        .eq("hospital_id", hid)
         .eq("visit_date", today);
       const opdFiltered = opdData?.filter(v => v.status !== "cancelled") || [];
       const opdActive = opdFiltered.length;
@@ -65,6 +78,7 @@ export function useDashboardData() {
       const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
       const { data: billsThisMonth } = await supabase
         .from("bills").select("paid_amount")
+        .eq("hospital_id", hid)
         .gte("bill_date", monthStart);
       const revenueMTD = billsThisMonth?.reduce((s, b) => s + Number(b.paid_amount), 0) || 0;
 
@@ -73,6 +87,7 @@ export function useDashboardData() {
       const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
       const { data: billsLastMonth } = await supabase
         .from("bills").select("paid_amount")
+        .eq("hospital_id", hid)
         .gte("bill_date", lastMonth.toISOString().split("T")[0])
         .lte("bill_date", lastMonthEnd.toISOString().split("T")[0]);
       const revenueLastMonth = billsLastMonth?.reduce((s, b) => s + Number(b.paid_amount), 0) || 0;
@@ -80,21 +95,22 @@ export function useDashboardData() {
       // 6. Doctors
       const { count: totalDoctors } = await supabase
         .from("users").select("*", { count: "exact", head: true })
+        .eq("hospital_id", hid)
         .eq("role", "doctor").eq("is_active", true);
 
       const { count: onLeave } = await supabase
         .from("staff_attendance").select("*", { count: "exact", head: true })
+        .eq("hospital_id", hid)
         .eq("attendance_date", today).eq("status", "leave");
 
       const doctorsOnLeave = onLeave || 0;
       const doctorsOnDuty = (totalDoctors || 0) - doctorsOnLeave;
 
       // 7. Critical alerts
-      const alertQuery = supabase
+      const { count: criticalAlerts } = await supabase
         .from("clinical_alerts").select("id", { count: "exact", head: true })
+        .eq("hospital_id", hid)
         .eq("is_acknowledged", false);
-      if (hospitalIdRef.current) alertQuery.eq("hospital_id", hospitalIdRef.current);
-      const { count: criticalAlerts } = await alertQuery;
 
       setKpis({
         totalPatients: totalPatients || 0,
@@ -130,16 +146,7 @@ export function useDashboardData() {
   }, [fetchAll, toast]);
 
   useEffect(() => {
-    const init = async () => {
-      // Get hospital_id for realtime filters
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data } = await supabase.from("users").select("hospital_id").eq("id", user.id).single();
-        if (data) hospitalIdRef.current = data.hospital_id;
-      }
-      await fetchAll();
-    };
-    init();
+    fetchAll();
   }, [fetchAll]);
 
   // Realtime subscriptions
