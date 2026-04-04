@@ -50,6 +50,7 @@ function getAge(dob: string | null): string {
 
 const PatientsPage: React.FC = () => {
   const { toast } = useToast();
+  const { hospitalId, loading: hidLoading } = useHospitalId();
   const [searchParams, setSearchParams] = useSearchParams();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -62,14 +63,13 @@ const PatientsPage: React.FC = () => {
   // Deep-link: auto-open patient by ?id= param
   useEffect(() => {
     const patientId = searchParams.get("id");
-    if (!patientId) return;
-    supabase.from("patients").select("*").eq("id", patientId).maybeSingle()
+    if (!patientId || !hospitalId) return;
+    supabase.from("patients").select("*").eq("id", patientId).eq("hospital_id", hospitalId).maybeSingle()
       .then(({ data }) => {
         if (data) setSelectedPatient(data as Patient);
-        // Clear param so it doesn't re-trigger
         setSearchParams({}, { replace: true });
       });
-  }, []); // run once on mount
+  }, [hospitalId]);
 
   const fetchPatients = useCallback(async () => {
     setLoading(true);
