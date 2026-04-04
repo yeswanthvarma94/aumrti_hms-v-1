@@ -34,7 +34,7 @@ const DesignSystem = () => {
           </Link>
           <div>
             <h1 className="text-foreground">HMS Design System</h1>
-            <p className="text-muted-foreground">Component reference for HMS Platform v9.0</p>
+            <p className="text-muted-foreground">Component reference for Aumrti v9.0</p>
           </div>
         </div>
 
@@ -237,7 +237,7 @@ const DesignSystem = () => {
           </Card>
         </section>
 
-        <p className="text-center text-xs text-muted-foreground pb-8">HMS Platform v9.0 — Design System Reference</p>
+        <p className="text-center text-xs text-muted-foreground pb-8">Aumrti v9.0 — Design System Reference</p>
       </div>
     </div>
   );

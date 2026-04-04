@@ -228,7 +228,7 @@ const LoginModal: React.FC<Props> = ({ open, onOpenChange }) => {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-xl">Sign in to HMS Platform</DialogTitle>
+          <DialogTitle className="text-xl">Sign in to Aumrti</DialogTitle>
           <DialogDescription>Choose your preferred sign-in method</DialogDescription>
         </DialogHeader>
 
