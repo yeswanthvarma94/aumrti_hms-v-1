@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   Home,
@@ -59,6 +59,24 @@ const AppSidebar: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [userName, setUserName] = useState("User");
+  const [userRole, setUserRole] = useState("");
+  const [userInitials, setUserInitials] = useState("U");
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      supabase.from("users").select("full_name, role").eq("auth_user_id", user.id).maybeSingle()
+        .then(({ data }) => {
+          if (data) {
+            setUserName(data.full_name || "User");
+            setUserRole(data.role || "");
+            const parts = (data.full_name || "U").split(" ");
+            setUserInitials(parts.map((p: string) => p[0]).join("").toUpperCase().slice(0, 2));
+          }
+        });
+    });
+  }, []);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -136,13 +154,13 @@ const AppSidebar: React.FC = () => {
       <div className="border-t border-sidebar-border px-3 py-3 flex items-center gap-3">
         <Avatar className="h-8 w-8">
           <AvatarFallback className="bg-sidebar-accent text-white text-xs font-semibold">
-            DR
+            {userInitials}
           </AvatarFallback>
         </Avatar>
         {!collapsed && (
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-sidebar-foreground truncate">Dr. Ramesh</p>
-            <p className="text-[11px] text-sidebar-foreground/60 truncate">Admin</p>
+            <p className="text-sm font-medium text-sidebar-foreground truncate">{userName}</p>
+            <p className="text-[11px] text-sidebar-foreground/60 truncate">{userRole.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}</p>
           </div>
         )}
         <button

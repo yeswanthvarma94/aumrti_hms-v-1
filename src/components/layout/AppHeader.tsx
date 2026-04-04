@@ -48,13 +48,20 @@ const AppHeader: React.FC = () => {
   const { toast } = useToast();
   const [online, setOnline] = useState(navigator.onLine);
   const [hospitalId, setHospitalId] = useState<string | null>(null);
+  const [userInitials, setUserInitials] = useState("U");
 
   // Get hospital ID for notification centre
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) return;
-      supabase.from("users").select("hospital_id").eq("auth_user_id", user.id).maybeSingle()
-        .then(({ data }) => { if (data) setHospitalId(data.hospital_id); });
+      supabase.from("users").select("hospital_id, full_name").eq("auth_user_id", user.id).maybeSingle()
+        .then(({ data }) => {
+          if (data) {
+            setHospitalId(data.hospital_id);
+            const parts = (data.full_name || "U").split(" ");
+            setUserInitials(parts.map((p: string) => p[0]).join("").toUpperCase().slice(0, 2));
+          }
+        });
     });
   }, []);
 
@@ -150,7 +157,7 @@ const AppHeader: React.FC = () => {
               <button className="p-1 rounded-full hover:ring-2 hover:ring-ring/20 transition-shadow">
                 <Avatar className="h-8 w-8">
                   <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
-                    DR
+                    {userInitials}
                   </AvatarFallback>
                 </Avatar>
               </button>
