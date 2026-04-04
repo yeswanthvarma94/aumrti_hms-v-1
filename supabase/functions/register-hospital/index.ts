@@ -107,13 +107,14 @@ serve(async (req) => {
     const { error: userError } = await supabaseAdmin
       .from("users")
       .insert({
-        id: userId,
+        auth_user_id: userId,
         hospital_id: hospitalData.id,
         full_name: admin.full_name,
         email: admin.email,
         phone: admin.phone || null,
         role: "hospital_admin",
         is_active: true,
+        can_login: true,
       });
 
     if (userError) {
