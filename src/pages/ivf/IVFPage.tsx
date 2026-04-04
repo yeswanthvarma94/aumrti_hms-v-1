@@ -54,7 +54,7 @@ const IVFPage = () => {
     });
   };
 
-  useEffect(() => { loadKPIs(); }, []);
+  useEffect(() => { loadKPIs(); }, [hospitalId]);
 
   const kpiCards = [
     { label: "Active Cycles", value: kpis.activeCycles, color: "text-primary" },

@@ -42,6 +42,7 @@ const TelemedicinePage: React.FC = () => {
   const [rxDays, setRxDays] = useState("");
 
   const fetchSessions = useCallback(async () => {
+    if (!hospitalId) return;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
@@ -50,11 +51,12 @@ const TelemedicinePage: React.FC = () => {
     const { data } = await supabase
       .from("teleconsult_sessions")
       .select("*, patients(full_name, uhid, phone, gender)")
+      .eq("hospital_id", hospitalId)
       .gte("scheduled_at", today.toISOString())
       .lt("scheduled_at", tomorrow.toISOString())
       .order("scheduled_at", { ascending: true });
     setSessions(data || []);
-  }, []);
+  }, [hospitalId]);
 
   useEffect(() => { fetchSessions(); }, [fetchSessions]);
 

@@ -37,7 +37,7 @@ const CSSDPage: React.FC = () => {
     }
   };
 
-  useEffect(() => { fetchKpis(); }, []);
+  useEffect(() => { fetchKpis(); }, [hospitalId]);
 
   return (
     <div className="flex flex-col" style={{ height: "calc(100vh - 56px)" }}>

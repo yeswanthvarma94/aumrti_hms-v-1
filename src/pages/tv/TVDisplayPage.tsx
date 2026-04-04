@@ -113,7 +113,7 @@ const TVDisplayPage: React.FC = () => {
       }
       setDeptStatuses(statuses);
     }
-  }, [today, deptId]);
+  }, [today, deptId, hospitalId]);
 
   useEffect(() => {
     fetchTokens();
