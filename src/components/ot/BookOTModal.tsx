@@ -19,6 +19,7 @@ const ANAESTHESIA = ["general", "spinal", "epidural", "regional", "local", "seda
 const DURATIONS = [30, 45, 60, 90, 120, 150, 180, 240];
 
 const BookOTModal: React.FC<Props> = ({ rooms, selectedRoomId, selectedDate, prefillTime, onClose, onBooked }) => {
+  const { hospitalId } = useHospitalId();
   const { toast } = useToast();
   const [patients, setPatients] = useState<any[]>([]);
   const [doctors, setDoctors] = useState<any[]>([]);
