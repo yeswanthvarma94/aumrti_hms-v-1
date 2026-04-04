@@ -22,6 +22,7 @@ const navTabs = [
 
 const HRPage: React.FC = () => {
   const navigate = useNavigate();
+  const { hospitalId } = useHospitalId();
   const [activeTab, setActiveTab] = useState("roster");
   const [kpis, setKpis] = useState({ total: 0, present: 0, onLeave: 0, licenseAlerts: 0 });
 
