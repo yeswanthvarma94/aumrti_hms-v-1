@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
+import { useHospitalId } from "@/hooks/useHospitalId";
 import {
   BarChart, Bar, ResponsiveContainer, PieChart, Pie, Cell,
 } from "recharts";
