@@ -13,6 +13,8 @@ interface Props {
   preselectedBedId?: string | null;
   preselectedWardId?: string | null;
   preselectedBedNumber?: string | null;
+  preselectedPatientId?: string;
+  preselectedPatientName?: string;
   onAdmitted: () => void;
 }
 
