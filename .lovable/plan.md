@@ -1,36 +1,53 @@
 
 
-## Replace OPD "Admit" Stub with Working IPD Admission
+## Lazy-Load All Page Components
 
 ### Problem
-The "Admit" button in ConsultationWorkspace shows a toast stub instead of opening the admission modal.
-
-### Approach
-The AdmitPatientModal already has its own patient search (Step 1) and bed selection. Rather than adding new props like `patientId`/`patientName`/`encounterId` (which would change the modal's interface used by IPDPage), we'll open the modal as-is and let the user confirm the patient in the modal's existing flow. This avoids modifying AdmitPatientModal.
-
-However, to improve UX, we'll add optional `preselectedPatientId` and `preselectedPatientName` props to AdmitPatientModal so it can skip the search step when coming from OPD. This is a small, additive change.
+90+ page components are eagerly imported in App.tsx, creating a massive initial JS bundle. Users download all module code even if they only visit the dashboard.
 
 ### Changes
 
-**File 1: `src/components/ipd/AdmitPatientModal.tsx`**
-- Add two optional props to the Props interface: `preselectedPatientId?: string`, `preselectedPatientName?: string`
-- In the component, accept these props
-- Add a `useEffect`: if `preselectedPatientId` is provided on open, auto-fetch that patient from `patients` table and set as `selectedPatient`, then skip to step 2
+**File 1: `src/App.tsx`**
 
-**File 2: `src/components/opd/ConsultationWorkspace.tsx`**
-- Import `AdmitPatientModal` from `@/components/ipd/AdmitPatientModal`
-- Add state: `const [showAdmitModal, setShowAdmitModal] = useState(false)`
-- Replace the stub toast on line 526 with: `onClick` that guards for `token?.patient_id`, then sets `setShowAdmitModal(true)`
-- Render `AdmitPatientModal` before the closing `</div>` (line 549), passing:
-  - `open={showAdmitModal}`
-  - `onClose={() => setShowAdmitModal(false)}`
-  - `hospitalId={hospitalId}`
-  - `preselectedPatientId={token.patient_id}`
-  - `preselectedPatientName={token.patient?.full_name}`
-  - `onAdmitted` callback that closes modal, shows success toast, calls `onTokenUpdate()`
+Keep these 5 imports static (needed immediately or tiny):
+- `AppShell`, `AuthGuard`, `LandingPage`, `LoginPage`, `NotFound`
+
+Convert all other ~85 page imports to `React.lazy()`:
+```typescript
+import { lazy, Suspense } from "react";
+
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Register = lazy(() => import("./pages/register"));
+const OnboardingWizard = lazy(() => import("./pages/setup/OnboardingWizard"));
+const ComingSoon = lazy(() => import("./pages/ComingSoon"));
+// ... all other pages
+```
+
+Wrap public lazy routes with inline Suspense:
+```tsx
+<Route path="/register" element={<Suspense fallback={<div />}><Register /></Suspense>} />
+<Route path="/design-system" element={<Suspense fallback={<div />}><DesignSystem /></Suspense>} />
+// etc for: /pay/:token, /portal/*, /tv-display, /setup/onboarding, /hod-dashboard
+```
+
+AppShell routes don't need individual Suspense — handled by File 2.
+
+**File 2: `src/components/layout/AppShell.tsx`**
+
+Import `Suspense` from React. Wrap `<Outlet />` with a Suspense boundary:
+```tsx
+<Suspense fallback={
+  <div className="h-full w-full flex items-center justify-center">
+    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+  </div>
+}>
+  <Outlet />
+</Suspense>
+```
 
 ### Technical Details
-- The `encounterId` linking (OPD encounter → IPD admission) is not currently supported by the admissions table schema, so we skip it for now rather than adding a prop that has no DB column to store it
-- No existing logic in either file is changed — only the stub toast is replaced and optional props are added to the modal
-- The existing IPDPage usage of AdmitPatientModal is unaffected (new props are optional)
+- ~85 page imports become dynamic chunks, loaded on navigation
+- Initial bundle drops to only: landing page, login, app shell, auth guard, 404
+- Vite automatically code-splits each `lazy()` import into a separate chunk
+- No changes to routing logic, auth guards, or component behavior
 
