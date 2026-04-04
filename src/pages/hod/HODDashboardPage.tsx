@@ -16,6 +16,7 @@ const DONUT_COLORS = ["hsl(var(--primary))", "#10B981", "#F59E0B"];
 
 const HODDashboardPage: React.FC = () => {
   const navigate = useNavigate();
+  const { hospitalId } = useHospitalId();
   const [now, setNow] = useState(new Date());
   const [opdCount, setOpdCount] = useState(0);
   const [opdYesterday, setOpdYesterday] = useState(0);
