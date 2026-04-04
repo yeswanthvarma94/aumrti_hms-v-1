@@ -63,12 +63,13 @@ const TVDisplayPage: React.FC = () => {
     return () => clearInterval(t);
   }, []);
 
-  // Fetch hospital info (use anon key, reads via public policy)
+  // Fetch hospital info
   useEffect(() => {
-    supabase.from("hospitals").select("name, address, logo_url, announcement_text, phone:razorpay_key_id").eq("is_active", true).limit(1).maybeSingle().then(({ data }) => {
+    if (!hospitalId) return;
+    supabase.from("hospitals").select("name, address, logo_url, announcement_text, phone:razorpay_key_id").eq("id", hospitalId).maybeSingle().then(({ data }) => {
       setHospital(data);
     });
-  }, []);
+  }, [hospitalId]);
 
   const fetchTokens = useCallback(async () => {
     let query = supabase
