@@ -525,7 +525,10 @@ const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onT
         <button onClick={() => setActiveTab(3)} className="text-xs text-slate-600 border border-slate-200 px-3 py-1.5 rounded-md hover:bg-slate-50 flex items-center gap-1.5 active:scale-[0.97] transition-all">
           <FlaskConical className="h-3.5 w-3.5" /> Order Lab
         </button>
-        <button onClick={() => toast({ title: "IPD admission available after Phase 3 IPD build" })} className="text-xs text-slate-600 border border-slate-200 px-3 py-1.5 rounded-md hover:bg-slate-50 flex items-center gap-1.5 active:scale-[0.97] transition-all">
+        <button onClick={() => {
+          if (!token?.patient_id) { toast({ title: "Select a patient first", variant: "destructive" }); return; }
+          setShowAdmitModal(true);
+        }} className="text-xs text-slate-600 border border-slate-200 px-3 py-1.5 rounded-md hover:bg-slate-50 flex items-center gap-1.5 active:scale-[0.97] transition-all">
           <Building2 className="h-3.5 w-3.5" /> Admit
         </button>
         <button onClick={async () => {
