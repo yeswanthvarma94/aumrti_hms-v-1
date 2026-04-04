@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { useHospitalId } from "@/hooks/useHospitalId";
 import { ArrowLeft, Plus, X, Building2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -35,12 +36,16 @@ const SettingsDepartmentsPage: React.FC = () => {
     },
   });
 
+  const { hospitalId } = useHospitalId();
+
   const { data: doctors } = useQuery({
-    queryKey: ["settings-doctors-list"],
+    queryKey: ["settings-doctors-list", hospitalId],
     queryFn: async () => {
-      const { data } = await supabase.from("users").select("id, full_name").eq("role", "doctor").eq("is_active", true).order("full_name");
+      if (!hospitalId) return [];
+      const { data } = await supabase.from("users").select("id, full_name").eq("hospital_id", hospitalId).eq("role", "doctor").eq("is_active", true).order("full_name");
       return data ?? [];
     },
+    enabled: !!hospitalId,
   });
 
   const getHospitalId = async () => {
