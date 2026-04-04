@@ -91,7 +91,7 @@ const Dashboard: React.FC = () => {
     const getHospitalId = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const { data } = await supabase.from("users").select("hospital_id").eq("id", user.id).single();
+        const { data } = await supabase.from("users").select("hospital_id")const { data } = await supabase.from("users").select("hospital_id").eq("auth_user_id", user.id).single();
         if (data) setHospitalId(data.hospital_id);
       }
     };
