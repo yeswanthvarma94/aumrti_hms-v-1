@@ -109,7 +109,7 @@ const App = () => (
           <Route path="/portal/*" element={<PatientPortal />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<Register />} />
-          <Route path="/setup/onboarding" element={<OnboardingWizard />} />
+          <Route path="/setup/onboarding" element={<AuthGuard><OnboardingWizard /></AuthGuard>} />
           <Route path="/design-system" element={<DesignSystem />} />
           <Route path="/tv-display" element={<TVDisplayPage />} />
           <Route path="/hod-dashboard" element={<HODDashboardPage />} />
