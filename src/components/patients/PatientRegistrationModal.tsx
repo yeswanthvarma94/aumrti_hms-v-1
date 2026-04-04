@@ -41,14 +41,17 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess }) => {
   });
 
   useEffect(() => {
-    supabase.from("users").select("hospital_id").limit(1).single().then(({ data }) => {
+    const fetchHospital = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase.from("users").select("hospital_id").eq("auth_user_id", user.id).single();
       if (data?.hospital_id) {
         setHospitalIdState(data.hospital_id);
-        supabase.from("hospitals").select("name").eq("id", data.hospital_id).maybeSingle().then(({ data: h }) => {
-          if (h?.name) setHospitalName(h.name);
-        });
+        const { data: h } = await supabase.from("hospitals").select("name").eq("id", data.hospital_id).maybeSingle();
+        if (h?.name) setHospitalName(h.name);
       }
-    });
+    };
+    fetchHospital();
   }, []);
 
   const set = (field: string, value: string) => setForm((f) => ({ ...f, [field]: value }));
@@ -75,7 +78,9 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess }) => {
     }
     setSaving(true);
 
-    const { data: userData } = await supabase.from("users").select("hospital_id").limit(1).single();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { toast({ title: "Not authenticated", variant: "destructive" }); setSaving(false); return; }
+    const { data: userData } = await supabase.from("users").select("hospital_id").eq("auth_user_id", user.id).single();
     if (!userData) {
       toast({ title: "Could not determine hospital", variant: "destructive" });
       setSaving(false);
