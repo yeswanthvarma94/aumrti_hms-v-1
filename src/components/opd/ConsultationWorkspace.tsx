@@ -103,8 +103,37 @@ const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onT
   const [saved, setSaved] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout>>();
   const prevTokenId = useRef<string | null>(null);
+  const isDirtyRef = useRef(false);
   const [deptName, setDeptName] = useState<string | null>(null);
   const [showAdmitModal, setShowAdmitModal] = useState(false);
+
+  // Warn on browser close/refresh when dirty
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (isDirtyRef.current) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, []);
+
+  // Block in-app navigation when dirty
+  const blocker = useBlocker(({ currentLocation, nextLocation }) => {
+    return isDirtyRef.current && currentLocation.pathname !== nextLocation.pathname;
+  });
+
+  useEffect(() => {
+    if (blocker.state === "blocked") {
+      const leave = window.confirm("You have unsaved consultation data. Leave anyway?");
+      if (leave) {
+        blocker.proceed();
+      } else {
+        blocker.reset();
+      }
+    }
+  }, [blocker]);
 
   // Fetch department name for specialty detection
   useEffect(() => {
