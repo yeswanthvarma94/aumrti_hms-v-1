@@ -28,6 +28,7 @@ const statusColors: Record<string, string> = {
 
 const TelemedicinePage: React.FC = () => {
   const { toast } = useToast();
+  const { hospitalId } = useHospitalId();
   const [sessions, setSessions] = useState<any[]>([]);
   const [tab, setTab] = useState("waiting");
   const [activeSession, setActiveSession] = useState<any>(null);
