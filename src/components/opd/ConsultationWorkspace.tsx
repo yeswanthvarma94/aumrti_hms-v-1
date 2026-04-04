@@ -551,6 +551,20 @@ const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onT
           <Smartphone className="h-3.5 w-3.5" /> Send Rx
         </button>
       </div>
+      {showAdmitModal && token && hospitalId && (
+        <AdmitPatientModal
+          open={showAdmitModal}
+          onClose={() => setShowAdmitModal(false)}
+          hospitalId={hospitalId}
+          preselectedPatientId={token.patient_id}
+          preselectedPatientName={token.patient?.full_name || ""}
+          onAdmitted={() => {
+            setShowAdmitModal(false);
+            toast({ title: "Patient admitted to IPD successfully" });
+            onTokenUpdate();
+          }}
+        />
+      )}
     </div>
   );
 };
