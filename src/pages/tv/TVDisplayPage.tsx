@@ -72,9 +72,11 @@ const TVDisplayPage: React.FC = () => {
   }, [hospitalId]);
 
   const fetchTokens = useCallback(async () => {
+    if (!hospitalId) return;
     let query = supabase
       .from("opd_tokens")
       .select("id, token_number, token_prefix, status, patients(full_name), users:doctor_id(full_name)")
+      .eq("hospital_id", hospitalId)
       .eq("visit_date", today)
       .order("token_number", { ascending: true });
 
