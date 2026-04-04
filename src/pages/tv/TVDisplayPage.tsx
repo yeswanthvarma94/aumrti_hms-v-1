@@ -101,11 +101,11 @@ const TVDisplayPage: React.FC = () => {
     setNextTokens(waiting);
 
     // Dept statuses
-    const { data: depts } = await supabase.from("departments").select("id, name").eq("is_active", true).eq("type", "clinical");
+    const { data: depts } = await supabase.from("departments").select("id, name").eq("hospital_id", hospitalId).eq("is_active", true).eq("type", "clinical");
     if (depts) {
       const statuses: DeptStatus[] = [];
       for (const dept of depts.slice(0, 6)) {
-        const { data: tok } = await supabase.from("opd_tokens").select("token_number, token_prefix").eq("visit_date", today).eq("department_id", dept.id).in("status", ["in_consultation", "called"]).limit(1).maybeSingle();
+        const { data: tok } = await supabase.from("opd_tokens").select("token_number, token_prefix").eq("hospital_id", hospitalId).eq("visit_date", today).eq("department_id", dept.id).in("status", ["in_consultation", "called"]).limit(1).maybeSingle();
         statuses.push({
           name: dept.name,
           currentToken: tok ? `${tok.token_prefix || ""}${tok.token_number}` : "—",
