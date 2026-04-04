@@ -54,8 +54,14 @@ const AppHeader: React.FC = () => {
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) return;
-      supabase.from("users").select("hospital_id").eq("auth_user_id", user.id).maybeSingle()
-        .then(({ data }) => { if (data) setHospitalId(data.hospital_id); });
+      supabase.from("users").select("hospital_id, full_name").eq("auth_user_id", user.id).maybeSingle()
+        .then(({ data }) => {
+          if (data) {
+            setHospitalId(data.hospital_id);
+            const parts = (data.full_name || "U").split(" ");
+            setUserInitials(parts.map((p: string) => p[0]).join("").toUpperCase().slice(0, 2));
+          }
+        });
     });
   }, []);
 
