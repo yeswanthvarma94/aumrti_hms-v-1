@@ -1,53 +1,40 @@
 
 
-## Lazy-Load All Page Components
+## UX Fix — Unsaved Consultation Data Navigation Guard
 
 ### Problem
-90+ page components are eagerly imported in App.tsx, creating a massive initial JS bundle. Users download all module code even if they only visit the dashboard.
+Doctors lose unsaved consultation data when accidentally navigating away or closing the browser tab mid-consultation.
 
 ### Changes
 
-**File 1: `src/App.tsx`**
+**File: `src/components/opd/ConsultationWorkspace.tsx`**
 
-Keep these 5 imports static (needed immediately or tiny):
-- `AppShell`, `AuthGuard`, `LandingPage`, `LoginPage`, `NotFound`
+1. Add `isDirtyRef = useRef(false)` alongside existing refs (line ~103)
 
-Convert all other ~85 page imports to `React.lazy()`:
+2. Set `isDirtyRef.current = true` inside `updateEncounter` (line 309) and `updatePrescription` (line 318) — these are the debounced update functions called whenever data changes
+
+3. Set `isDirtyRef.current = false` after successful auto-save in `autoSaveEncounter` (line 271, after `setSaved(true)`) and `autoSavePrescription` (after successful upsert, line ~302)
+
+4. Reset `isDirtyRef.current = false` when token changes and data is loaded fresh (line ~176, inside the token change useEffect)
+
+5. Add `beforeunload` event listener useEffect — warns on browser close/refresh when dirty
+
+6. Add `useBlocker` from react-router-dom v6.30 to block in-app navigation when dirty. React Router 6.30 supports `useBlocker` (stable). The blocker shows `window.confirm()` dialog:
+
 ```typescript
-import { lazy, Suspense } from "react";
+import { useBlocker } from "react-router-dom";
 
-const Dashboard = lazy(() => import("./pages/Dashboard"));
-const Register = lazy(() => import("./pages/register"));
-const OnboardingWizard = lazy(() => import("./pages/setup/OnboardingWizard"));
-const ComingSoon = lazy(() => import("./pages/ComingSoon"));
-// ... all other pages
+useBlocker(({ currentLocation, nextLocation }) => {
+  return isDirtyRef.current && currentLocation.pathname !== nextLocation.pathname;
+});
 ```
 
-Wrap public lazy routes with inline Suspense:
-```tsx
-<Route path="/register" element={<Suspense fallback={<div />}><Register /></Suspense>} />
-<Route path="/design-system" element={<Suspense fallback={<div />}><DesignSystem /></Suspense>} />
-// etc for: /pay/:token, /portal/*, /tv-display, /setup/onboarding, /hod-dashboard
-```
-
-AppShell routes don't need individual Suspense — handled by File 2.
-
-**File 2: `src/components/layout/AppShell.tsx`**
-
-Import `Suspense` from React. Wrap `<Outlet />` with a Suspense boundary:
-```tsx
-<Suspense fallback={
-  <div className="h-full w-full flex items-center justify-center">
-    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-  </div>
-}>
-  <Outlet />
-</Suspense>
-```
+When blocked, show a `window.confirm` prompt. If confirmed, allow navigation; if cancelled, stay.
 
 ### Technical Details
-- ~85 page imports become dynamic chunks, loaded on navigation
-- Initial bundle drops to only: landing page, login, app shell, auth guard, 404
-- Vite automatically code-splits each `lazy()` import into a separate chunk
-- No changes to routing logic, auth guards, or component behavior
+- `isDirtyRef` is a ref (not state) to avoid re-renders on every keystroke
+- The existing auto-save debounce is 2 seconds — dirty flag clears after save completes
+- `useBlocker` is stable in react-router-dom v6.4+ (this project uses v6.30)
+- Only this one file is modified
+- No changes to existing save logic, tab structure, or component behavior
 
