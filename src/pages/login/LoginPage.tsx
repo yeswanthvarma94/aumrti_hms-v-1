@@ -127,7 +127,7 @@ const LoginPage: React.FC = () => {
       const { data: userRow } = await supabase
         .from("users")
         .select("full_name, role")
-        .eq("id", data.user.id)
+        .eq("auth_user_id", data.user.id)
         .maybeSingle();
 
       const fullName = userRow?.full_name || "there";
