@@ -72,10 +72,12 @@ const PatientsPage: React.FC = () => {
   }, [hospitalId]);
 
   const fetchPatients = useCallback(async () => {
+    if (!hospitalId) return;
     setLoading(true);
     let query = supabase
       .from("patients")
       .select("*", { count: "exact" })
+      .eq("hospital_id", hospitalId)
       .order("created_at", { ascending: false });
 
     if (search.trim()) {
@@ -106,7 +108,7 @@ const PatientsPage: React.FC = () => {
       setTotalCount(count ?? 0);
     }
     setLoading(false);
-  }, [search, filter, toast]);
+  }, [search, filter, toast, hospitalId]);
 
   useEffect(() => {
     const t = setTimeout(fetchPatients, 300);
