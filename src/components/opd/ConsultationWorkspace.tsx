@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useBlocker } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -102,8 +103,37 @@ const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onT
   const [saved, setSaved] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout>>();
   const prevTokenId = useRef<string | null>(null);
+  const isDirtyRef = useRef(false);
   const [deptName, setDeptName] = useState<string | null>(null);
   const [showAdmitModal, setShowAdmitModal] = useState(false);
+
+  // Warn on browser close/refresh when dirty
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (isDirtyRef.current) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, []);
+
+  // Block in-app navigation when dirty
+  const blocker = useBlocker(({ currentLocation, nextLocation }) => {
+    return isDirtyRef.current && currentLocation.pathname !== nextLocation.pathname;
+  });
+
+  useEffect(() => {
+    if (blocker.state === "blocked") {
+      const leave = window.confirm("You have unsaved consultation data. Leave anyway?");
+      if (leave) {
+        blocker.proceed();
+      } else {
+        blocker.reset();
+      }
+    }
+  }, [blocker]);
 
   // Fetch department name for specialty detection
   useEffect(() => {
@@ -180,6 +210,7 @@ const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onT
     }
     if (token.id === prevTokenId.current) return;
     prevTokenId.current = token.id;
+    isDirtyRef.current = false;
 
     (async () => {
       // Fetch existing encounter for this token
@@ -269,6 +300,7 @@ const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onT
         if (newEnc) setEncounterId(newEnc.id);
       }
       setSaved(true);
+      isDirtyRef.current = false;
       setTimeout(() => setSaved(false), 2000);
     } catch (err) {
       console.error("Auto-save error:", err);
@@ -309,6 +341,7 @@ const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onT
   const updateEncounter = useCallback((partial: Partial<EncounterData>) => {
     setEncounter((prev) => {
       const next = { ...prev, ...partial };
+      isDirtyRef.current = true;
       if (saveTimer.current) clearTimeout(saveTimer.current);
       saveTimer.current = setTimeout(() => autoSaveEncounter(next), 2000);
       return next;
@@ -318,6 +351,7 @@ const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onT
   const updatePrescription = useCallback((partial: Partial<PrescriptionData>) => {
     setPrescription((prev) => {
       const next = { ...prev, ...partial };
+      isDirtyRef.current = true;
       if (saveTimer.current) clearTimeout(saveTimer.current);
       saveTimer.current = setTimeout(() => {
         autoSaveEncounter(encounter);
@@ -345,6 +379,7 @@ const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onT
     }
     await autoSaveEncounter(encounter);
     if (encounterId) await autoSavePrescription(prescription);
+    isDirtyRef.current = false;
     await supabase.from("opd_tokens").update({
       status: "completed",
       consultation_end_at: new Date().toISOString(),
