@@ -351,6 +351,7 @@ const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onT
   const updatePrescription = useCallback((partial: Partial<PrescriptionData>) => {
     setPrescription((prev) => {
       const next = { ...prev, ...partial };
+      isDirtyRef.current = true;
       if (saveTimer.current) clearTimeout(saveTimer.current);
       saveTimer.current = setTimeout(() => {
         autoSaveEncounter(encounter);
