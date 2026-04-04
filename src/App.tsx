@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -6,95 +7,100 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import AppShell from "@/components/layout/AppShell";
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/login/LoginPage";
-import Register from "./pages/register";
-import OnboardingWizard from "./pages/setup/OnboardingWizard";
-import Dashboard from "./pages/Dashboard";
-import ComingSoon from "./pages/ComingSoon";
-import QualityPage from "./pages/quality/QualityPage";
-import BillingPage from "./pages/billing/BillingPage";
-import PaymentsPage from "./pages/billing/PaymentsPage";
-import PharmacyPage from "./pages/pharmacy/PharmacyPage";
-import OPDPage from "./pages/opd/OPDPage";
-import OTPage from "./pages/ot/OTPage";
-import LabPage from "./pages/lab/LabPage";
-import RadiologyPage from "./pages/radiology/RadiologyPage";
-import IPDPage from "./pages/ipd/IPDPage";
-import EmergencyPage from "./pages/emergency/EmergencyPage";
-import InsurancePage from "./pages/insurance/InsurancePage";
-import PatientsPage from "./pages/patients/PatientsPage";
-import NursingPage from "./pages/nursing/NursingPage";
-import HRPage from "./pages/hr/HRPage";
-import InventoryPage from "./pages/inventory/InventoryPage";
-import SettingsPage from "./pages/settings/SettingsPage";
-import SettingsBankAccountsPage from "./pages/settings/SettingsBankAccountsPage";
-import SettingsStaffPage from "./pages/settings/SettingsStaffPage";
-import SettingsDepartmentsPage from "./pages/settings/SettingsDepartmentsPage";
-import SettingsWardsPage from "./pages/settings/SettingsWardsPage";
-import SettingsServicesPage from "./pages/settings/SettingsServicesPage";
-import SettingsDrugsPage from "./pages/settings/SettingsDrugsPage";
-import SettingsProfilePage from "./pages/settings/SettingsProfilePage";
-import SettingsRolesPage from "./pages/settings/SettingsRolesPage";
-import SettingsBrandingPage from "./pages/settings/SettingsBrandingPage";
-import SettingsWhatsAppPage from "./pages/settings/SettingsWhatsAppPage";
-import SettingsLanguagePage from "./pages/settings/SettingsLanguagePage";
-import SettingsPlanPage from "./pages/settings/SettingsPlanPage";
-import SettingsShiftsPage from "./pages/settings/SettingsShiftsPage";
-import SettingsModulesPage from "./pages/settings/SettingsModulesPage";
-import SettingsDoctorSchedulesPage from "./pages/settings/SettingsDoctorSchedulesPage";
-import SettingsLabTestsPage from "./pages/settings/SettingsLabTestsPage";
-import SettingsConsentFormsPage from "./pages/settings/SettingsConsentFormsPage";
-import SettingsOTChecklistPage from "./pages/settings/SettingsOTChecklistPage";
-import SettingsProtocolsPage from "./pages/settings/SettingsProtocolsPage";
-import SettingsThresholdsPage from "./pages/settings/SettingsThresholdsPage";
-import SettingsDischargeWorkflowPage from "./pages/settings/SettingsDischargeWorkflowPage";
-import SettingsApprovalsPage from "./pages/settings/SettingsApprovalsPage";
-import SettingsOPDWorkflowPage from "./pages/settings/SettingsOPDWorkflowPage";
-import SettingsNotificationsPage from "./pages/settings/SettingsNotificationsPage";
-import SettingsReportSchedulesPage from "./pages/settings/SettingsReportSchedulesPage";
-import SettingsRazorpayPage from "./pages/settings/SettingsRazorpayPage";
-import SettingsGSTPage from "./pages/settings/SettingsGSTPage";
-import SettingsABDMPage from "./pages/settings/SettingsABDMPage";
-import SettingsBackupPage from "./pages/settings/SettingsBackupPage";
-import SettingsAPIKeysPage from "./pages/settings/SettingsAPIKeysPage";
-import APIConfigHubPage from "./pages/settings/APIConfigHubPage";
-import SettingsICDCodesPage from "./pages/settings/SettingsICDCodesPage";
-import AnalyticsPage from "./pages/analytics/AnalyticsPage";
-import InboxPage from "./pages/inbox/InboxPage";
-import TelemedicinePage from "./pages/telemedicine/TelemedicinePage";
-import HODDashboardPage from "./pages/hod/HODDashboardPage";
-import TVDisplayPage from "./pages/tv/TVDisplayPage";
-import DesignSystem from "./pages/DesignSystem";
-import PatientPortal from "./pages/portal/PatientPortal";
-import GoLiveChecklistPage from "./pages/admin/GoLiveChecklistPage";
-import DataMigrationPage from "./pages/admin/DataMigrationPage";
-import AccountsPage from "./pages/accounts/AccountsPage";
-import OpeningBalancesPage from "./pages/accounts/OpeningBalancesPage";
-import BloodBankPage from "./pages/blood-bank/BloodBankPage";
-import CSSDPage from "./pages/cssd/CSSDPage";
-import DialysisPage from "./pages/dialysis/DialysisPage";
-import OncologyPage from "./pages/oncology/OncologyPage";
-import ModulesPage from "./pages/modules/ModulesPage";
-import MRDPage from "./pages/mrd/MRDPage";
-import PmjayPage from "./pages/pmjay/PmjayPage";
-import BiomedicalPage from "./pages/biomedical/BiomedicalPage";
-import HousekeepingPage from "./pages/housekeeping/HousekeepingPage";
-import HMISPage from "./pages/hmis/HMISPage";
-import DietPage from "./pages/dietetics/DietPage";
-import PaymentLandingPage from "./pages/pay/PaymentLandingPage";
-import LMSPage from "./pages/lms/LMSPage";
-import CRMPage from "./pages/crm/CRMPage";
-import PROPage from "./pages/pro/PROPage";
-import PhysioPage from "./pages/physio/PhysioPage";
-import MortuaryPage from "./pages/mortuary/MortuaryPage";
-import VaccinationPage from "./pages/vaccination/VaccinationPage";
-import DentalPage from "./pages/dental/DentalPage";
-import AyushPage from "./pages/ayush/AyushPage";
-import PackagesPage from "./pages/packages/PackagesPage";
-import IVFPage from "./pages/ivf/IVFPage";
 import NotFound from "./pages/NotFound";
 import AuthGuard from "@/components/auth/AuthGuard";
 
+const Register = lazy(() => import("./pages/register"));
+const OnboardingWizard = lazy(() => import("./pages/setup/OnboardingWizard"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const ComingSoon = lazy(() => import("./pages/ComingSoon"));
+const QualityPage = lazy(() => import("./pages/quality/QualityPage"));
+const BillingPage = lazy(() => import("./pages/billing/BillingPage"));
+const PaymentsPage = lazy(() => import("./pages/billing/PaymentsPage"));
+const PharmacyPage = lazy(() => import("./pages/pharmacy/PharmacyPage"));
+const OPDPage = lazy(() => import("./pages/opd/OPDPage"));
+const OTPage = lazy(() => import("./pages/ot/OTPage"));
+const LabPage = lazy(() => import("./pages/lab/LabPage"));
+const RadiologyPage = lazy(() => import("./pages/radiology/RadiologyPage"));
+const IPDPage = lazy(() => import("./pages/ipd/IPDPage"));
+const EmergencyPage = lazy(() => import("./pages/emergency/EmergencyPage"));
+const InsurancePage = lazy(() => import("./pages/insurance/InsurancePage"));
+const PatientsPage = lazy(() => import("./pages/patients/PatientsPage"));
+const NursingPage = lazy(() => import("./pages/nursing/NursingPage"));
+const HRPage = lazy(() => import("./pages/hr/HRPage"));
+const InventoryPage = lazy(() => import("./pages/inventory/InventoryPage"));
+const SettingsPage = lazy(() => import("./pages/settings/SettingsPage"));
+const SettingsBankAccountsPage = lazy(() => import("./pages/settings/SettingsBankAccountsPage"));
+const SettingsStaffPage = lazy(() => import("./pages/settings/SettingsStaffPage"));
+const SettingsDepartmentsPage = lazy(() => import("./pages/settings/SettingsDepartmentsPage"));
+const SettingsWardsPage = lazy(() => import("./pages/settings/SettingsWardsPage"));
+const SettingsServicesPage = lazy(() => import("./pages/settings/SettingsServicesPage"));
+const SettingsDrugsPage = lazy(() => import("./pages/settings/SettingsDrugsPage"));
+const SettingsProfilePage = lazy(() => import("./pages/settings/SettingsProfilePage"));
+const SettingsRolesPage = lazy(() => import("./pages/settings/SettingsRolesPage"));
+const SettingsBrandingPage = lazy(() => import("./pages/settings/SettingsBrandingPage"));
+const SettingsWhatsAppPage = lazy(() => import("./pages/settings/SettingsWhatsAppPage"));
+const SettingsLanguagePage = lazy(() => import("./pages/settings/SettingsLanguagePage"));
+const SettingsPlanPage = lazy(() => import("./pages/settings/SettingsPlanPage"));
+const SettingsShiftsPage = lazy(() => import("./pages/settings/SettingsShiftsPage"));
+const SettingsModulesPage = lazy(() => import("./pages/settings/SettingsModulesPage"));
+const SettingsDoctorSchedulesPage = lazy(() => import("./pages/settings/SettingsDoctorSchedulesPage"));
+const SettingsLabTestsPage = lazy(() => import("./pages/settings/SettingsLabTestsPage"));
+const SettingsConsentFormsPage = lazy(() => import("./pages/settings/SettingsConsentFormsPage"));
+const SettingsOTChecklistPage = lazy(() => import("./pages/settings/SettingsOTChecklistPage"));
+const SettingsProtocolsPage = lazy(() => import("./pages/settings/SettingsProtocolsPage"));
+const SettingsThresholdsPage = lazy(() => import("./pages/settings/SettingsThresholdsPage"));
+const SettingsDischargeWorkflowPage = lazy(() => import("./pages/settings/SettingsDischargeWorkflowPage"));
+const SettingsApprovalsPage = lazy(() => import("./pages/settings/SettingsApprovalsPage"));
+const SettingsOPDWorkflowPage = lazy(() => import("./pages/settings/SettingsOPDWorkflowPage"));
+const SettingsNotificationsPage = lazy(() => import("./pages/settings/SettingsNotificationsPage"));
+const SettingsReportSchedulesPage = lazy(() => import("./pages/settings/SettingsReportSchedulesPage"));
+const SettingsRazorpayPage = lazy(() => import("./pages/settings/SettingsRazorpayPage"));
+const SettingsGSTPage = lazy(() => import("./pages/settings/SettingsGSTPage"));
+const SettingsABDMPage = lazy(() => import("./pages/settings/SettingsABDMPage"));
+const SettingsBackupPage = lazy(() => import("./pages/settings/SettingsBackupPage"));
+const SettingsAPIKeysPage = lazy(() => import("./pages/settings/SettingsAPIKeysPage"));
+const APIConfigHubPage = lazy(() => import("./pages/settings/APIConfigHubPage"));
+const SettingsICDCodesPage = lazy(() => import("./pages/settings/SettingsICDCodesPage"));
+const AnalyticsPage = lazy(() => import("./pages/analytics/AnalyticsPage"));
+const InboxPage = lazy(() => import("./pages/inbox/InboxPage"));
+const TelemedicinePage = lazy(() => import("./pages/telemedicine/TelemedicinePage"));
+const HODDashboardPage = lazy(() => import("./pages/hod/HODDashboardPage"));
+const TVDisplayPage = lazy(() => import("./pages/tv/TVDisplayPage"));
+const DesignSystem = lazy(() => import("./pages/DesignSystem"));
+const PatientPortal = lazy(() => import("./pages/portal/PatientPortal"));
+const GoLiveChecklistPage = lazy(() => import("./pages/admin/GoLiveChecklistPage"));
+const DataMigrationPage = lazy(() => import("./pages/admin/DataMigrationPage"));
+const AccountsPage = lazy(() => import("./pages/accounts/AccountsPage"));
+const OpeningBalancesPage = lazy(() => import("./pages/accounts/OpeningBalancesPage"));
+const BloodBankPage = lazy(() => import("./pages/blood-bank/BloodBankPage"));
+const CSSDPage = lazy(() => import("./pages/cssd/CSSDPage"));
+const DialysisPage = lazy(() => import("./pages/dialysis/DialysisPage"));
+const OncologyPage = lazy(() => import("./pages/oncology/OncologyPage"));
+const ModulesPage = lazy(() => import("./pages/modules/ModulesPage"));
+const MRDPage = lazy(() => import("./pages/mrd/MRDPage"));
+const PmjayPage = lazy(() => import("./pages/pmjay/PmjayPage"));
+const BiomedicalPage = lazy(() => import("./pages/biomedical/BiomedicalPage"));
+const HousekeepingPage = lazy(() => import("./pages/housekeeping/HousekeepingPage"));
+const HMISPage = lazy(() => import("./pages/hmis/HMISPage"));
+const DietPage = lazy(() => import("./pages/dietetics/DietPage"));
+const PaymentLandingPage = lazy(() => import("./pages/pay/PaymentLandingPage"));
+const LMSPage = lazy(() => import("./pages/lms/LMSPage"));
+const CRMPage = lazy(() => import("./pages/crm/CRMPage"));
+const PROPage = lazy(() => import("./pages/pro/PROPage"));
+const PhysioPage = lazy(() => import("./pages/physio/PhysioPage"));
+const MortuaryPage = lazy(() => import("./pages/mortuary/MortuaryPage"));
+const VaccinationPage = lazy(() => import("./pages/vaccination/VaccinationPage"));
+const DentalPage = lazy(() => import("./pages/dental/DentalPage"));
+const AyushPage = lazy(() => import("./pages/ayush/AyushPage"));
+const PackagesPage = lazy(() => import("./pages/packages/PackagesPage"));
+const IVFPage = lazy(() => import("./pages/ivf/IVFPage"));
+
 const queryClient = new QueryClient();
+
+const SuspenseWrap = ({ children }: { children: React.ReactNode }) => (
+  <Suspense fallback={<div />}>{children}</Suspense>
+);
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -105,14 +111,14 @@ const App = () => (
         <Routes>
           {/* Public routes */}
           <Route path="/" element={<LandingPage />} />
-          <Route path="/pay/:token" element={<PaymentLandingPage />} />
-          <Route path="/portal/*" element={<PatientPortal />} />
+          <Route path="/pay/:token" element={<SuspenseWrap><PaymentLandingPage /></SuspenseWrap>} />
+          <Route path="/portal/*" element={<SuspenseWrap><PatientPortal /></SuspenseWrap>} />
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/setup/onboarding" element={<AuthGuard><OnboardingWizard /></AuthGuard>} />
-          <Route path="/design-system" element={<DesignSystem />} />
-          <Route path="/tv-display" element={<TVDisplayPage />} />
-          <Route path="/hod-dashboard" element={<AuthGuard><HODDashboardPage /></AuthGuard>} />
+          <Route path="/register" element={<SuspenseWrap><Register /></SuspenseWrap>} />
+          <Route path="/setup/onboarding" element={<AuthGuard><SuspenseWrap><OnboardingWizard /></SuspenseWrap></AuthGuard>} />
+          <Route path="/design-system" element={<SuspenseWrap><DesignSystem /></SuspenseWrap>} />
+          <Route path="/tv-display" element={<SuspenseWrap><TVDisplayPage /></SuspenseWrap>} />
+          <Route path="/hod-dashboard" element={<AuthGuard><SuspenseWrap><HODDashboardPage /></SuspenseWrap></AuthGuard>} />
 
           {/* App shell routes */}
           <Route element={<AuthGuard><AppShell /></AuthGuard>}>
