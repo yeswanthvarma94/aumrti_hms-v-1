@@ -112,7 +112,7 @@ const App = () => (
           <Route path="/setup/onboarding" element={<AuthGuard><OnboardingWizard /></AuthGuard>} />
           <Route path="/design-system" element={<DesignSystem />} />
           <Route path="/tv-display" element={<TVDisplayPage />} />
-          <Route path="/hod-dashboard" element={<HODDashboardPage />} />
+          <Route path="/hod-dashboard" element={<AuthGuard><HODDashboardPage /></AuthGuard>} />
 
           {/* App shell routes */}
           <Route element={<AppShell />}>
