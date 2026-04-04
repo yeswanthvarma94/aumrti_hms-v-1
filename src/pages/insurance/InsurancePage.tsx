@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useHospitalId } from "@/hooks/useHospitalId";
 import { Building2, ClipboardList, Send, BarChart3, CalendarClock, Settings2, Layers } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ActiveAdmissions from "@/components/insurance/ActiveAdmissions";
