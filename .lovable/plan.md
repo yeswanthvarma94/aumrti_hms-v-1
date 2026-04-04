@@ -1,58 +1,36 @@
 
 
-## Add hospital_id Filters to 7 Page Files
+## Replace OPD "Admit" Stub with Working IPD Admission
 
 ### Problem
-Seven pages query Supabase without `hospital_id` filters, leaking data across hospitals despite RLS.
+The "Admit" button in ConsultationWorkspace shows a toast stub instead of opening the admission modal.
 
-### Changes per file
+### Approach
+The AdmitPatientModal already has its own patient search (Step 1) and bed selection. Rather than adding new props like `patientId`/`patientName`/`encounterId` (which would change the modal's interface used by IPDPage), we'll open the modal as-is and let the user confirm the patient in the modal's existing flow. This avoids modifying AdmitPatientModal.
 
-**1. `src/pages/cssd/CSSDPage.tsx`**
-- Import `useHospitalId`, add `const { hospitalId } = useHospitalId()` in component
-- `fetchKpis`: guard with `if (!hospitalId) return`, add `.eq("hospital_id", hospitalId)` to `instrument_sets` and `sterilization_cycles` queries
-- Add `hospitalId` to `useEffect` dependency
+However, to improve UX, we'll add optional `preselectedPatientId` and `preselectedPatientName` props to AdmitPatientModal so it can skip the search step when coming from OPD. This is a small, additive change.
 
-**2. `src/pages/hr/HRPage.tsx`**
-- Import `useHospitalId`, add hook call
-- `loadKpis`: guard, add `.eq("hospital_id", hospitalId)` to `users`, `staff_attendance`, `staff_profiles` queries
-- Add `hospitalId` to `useEffect` dependency
+### Changes
 
-**3. `src/pages/insurance/InsurancePage.tsx`**
-- Import `useHospitalId`, add hook call
-- `loadKPIs`: guard, add `.eq("hospital_id", hospitalId)` to `insurance_pre_auth` and `insurance_claims` queries
-- Add `hospitalId` to `useEffect` dependency
+**File 1: `src/components/ipd/AdmitPatientModal.tsx`**
+- Add two optional props to the Props interface: `preselectedPatientId?: string`, `preselectedPatientName?: string`
+- In the component, accept these props
+- Add a `useEffect`: if `preselectedPatientId` is provided on open, auto-fetch that patient from `patients` table and set as `selectedPatient`, then skip to step 2
 
-**4. `src/pages/ivf/IVFPage.tsx`**
-- Import `useHospitalId`, add hook call
-- `loadKPIs`: guard, add `.eq("hospital_id", hospitalId)` to `ivf_cycles`, `stimulation_monitoring`, `embryo_bank` queries
-- Add `hospitalId` to `useEffect` dependency
+**File 2: `src/components/opd/ConsultationWorkspace.tsx`**
+- Import `AdmitPatientModal` from `@/components/ipd/AdmitPatientModal`
+- Add state: `const [showAdmitModal, setShowAdmitModal] = useState(false)`
+- Replace the stub toast on line 526 with: `onClick` that guards for `token?.patient_id`, then sets `setShowAdmitModal(true)`
+- Render `AdmitPatientModal` before the closing `</div>` (line 549), passing:
+  - `open={showAdmitModal}`
+  - `onClose={() => setShowAdmitModal(false)}`
+  - `hospitalId={hospitalId}`
+  - `preselectedPatientId={token.patient_id}`
+  - `preselectedPatientName={token.patient?.full_name}`
+  - `onAdmitted` callback that closes modal, shows success toast, calls `onTokenUpdate()`
 
-**5. `src/pages/telemedicine/TelemedicinePage.tsx`**
-- Import `useHospitalId`, add hook call
-- `fetchSessions`: guard, add `.eq("hospital_id", hospitalId)` to `teleconsult_sessions` query
-- Add `hospitalId` to `useCallback` dependency
-
-**6. `src/pages/tv/TVDisplayPage.tsx`**
-- Import `useHospitalId`, add hook call
-- Replace line 66 `hospitals` query with: use `hospitalId` to fetch specific hospital via `.eq("id", hospitalId)`
-- Add `.eq("hospital_id", hospitalId)` to `opd_tokens` and `departments` queries
-- Guard `fetchTokens` with `if (!hospitalId) return`
-
-**7. `src/pages/hod/HODDashboardPage.tsx`**
-- Import `useHospitalId`, add hook call
-- `fetchAll`: guard, add `.eq("hospital_id", hospitalId)` to all queries: `opd_tokens` (×8 in week loop + today + yesterday), `beds`, `bills`, `clinical_alerts`, `lab_order_items`, `staff_attendance`, `admissions`
-- Add `hospitalId` to `useCallback` dependency
-
-### Pattern applied uniformly
-```typescript
-import { useHospitalId } from "@/hooks/useHospitalId";
-// inside component:
-const { hospitalId } = useHospitalId();
-// inside fetch function:
-if (!hospitalId) return;
-// on each query:
-.eq("hospital_id", hospitalId)
-```
-
-No UI, structure, or business logic changes in any file.
+### Technical Details
+- The `encounterId` linking (OPD encounter → IPD admission) is not currently supported by the admissions table schema, so we skip it for now rather than adding a prop that has no DB column to store it
+- No existing logic in either file is changed — only the stub toast is replaced and optional props are added to the modal
+- The existing IPDPage usage of AdmitPatientModal is unaffected (new props are optional)
 
