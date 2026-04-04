@@ -379,6 +379,7 @@ const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onT
     }
     await autoSaveEncounter(encounter);
     if (encounterId) await autoSavePrescription(prescription);
+    isDirtyRef.current = false;
     await supabase.from("opd_tokens").update({
       status: "completed",
       consultation_end_at: new Date().toISOString(),
