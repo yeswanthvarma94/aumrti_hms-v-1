@@ -210,6 +210,7 @@ const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onT
     }
     if (token.id === prevTokenId.current) return;
     prevTokenId.current = token.id;
+    isDirtyRef.current = false;
 
     (async () => {
       // Fetch existing encounter for this token
