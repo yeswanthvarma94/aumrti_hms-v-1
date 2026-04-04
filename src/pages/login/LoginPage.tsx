@@ -48,7 +48,7 @@ const LoginPage: React.FC = () => {
   const [brand, setBrand] = useState<HospitalBrand | null>(null);
 
   // Form
-  const [mode, setMode] = useState<"mobile" | "email">("email");
+  const mode = "email";
   const [credential, setCredential] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
