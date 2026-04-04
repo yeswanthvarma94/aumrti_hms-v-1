@@ -32,7 +32,7 @@ interface PatientResult {
 const admissionTypes = ["elective", "emergency", "transfer", "daycare"] as const;
 const insuranceTypes = ["self_pay", "insurance", "pmjay", "cghs", "echs"] as const;
 
-const AdmitPatientModal: React.FC<Props> = ({ open, onClose, hospitalId, preselectedBedId, preselectedWardId, preselectedBedNumber, onAdmitted }) => {
+const AdmitPatientModal: React.FC<Props> = ({ open, onClose, hospitalId, preselectedBedId, preselectedWardId, preselectedBedNumber, preselectedPatientId, preselectedPatientName, onAdmitted }) => {
   const [step, setStep] = useState(1);
   const [search, setSearch] = useState("");
   const [results, setResults] = useState<PatientResult[]>([]);
