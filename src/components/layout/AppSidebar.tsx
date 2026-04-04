@@ -59,6 +59,24 @@ const AppSidebar: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [userName, setUserName] = useState("User");
+  const [userRole, setUserRole] = useState("");
+  const [userInitials, setUserInitials] = useState("U");
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      supabase.from("users").select("full_name, role").eq("auth_user_id", user.id).maybeSingle()
+        .then(({ data }) => {
+          if (data) {
+            setUserName(data.full_name || "User");
+            setUserRole(data.role || "");
+            const parts = (data.full_name || "U").split(" ");
+            setUserInitials(parts.map((p: string) => p[0]).join("").toUpperCase().slice(0, 2));
+          }
+        });
+    });
+  }, []);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
