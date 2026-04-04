@@ -62,7 +62,7 @@ const LandingPage: React.FC = () => {
             <path d="M14 9h4v14h-4z" fill="white" />
             <path d="M9 14h14v4H9z" fill="white" />
           </svg>
-          <span className="font-bold text-lg text-primary">HMS Platform</span>
+          <span className="font-bold text-lg text-primary">Aumrti</span>
           <span className="hidden sm:inline text-[13px] text-muted-foreground">AI-First Hospital Management</span>
         </div>
         <div className="flex items-center gap-3">

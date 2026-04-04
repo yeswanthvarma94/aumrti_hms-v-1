@@ -168,7 +168,7 @@ const LoginPage: React.FC = () => {
               <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5">
                 <path d="M3 21h18M9 8h1M9 12h1M9 16h1M14 8h1M14 12h1M14 16h1M5 21V5a2 2 0 012-2h10a2 2 0 012 2v16" />
               </svg>
-              <span className="text-white text-xl font-bold">HMS Platform</span>
+              <span className="text-white text-xl font-bold">Aumrti</span>
             </div>
           )}
         </div>
@@ -176,7 +176,7 @@ const LoginPage: React.FC = () => {
         {/* Middle — name, clock, shift */}
         <div className="flex-1 flex flex-col justify-center">
           <h1 className="text-[32px] font-bold text-white leading-tight">
-            {brand?.name || "HMS Platform"}
+            {brand?.name || "Aumrti"}
           </h1>
           <p className="text-[15px] mt-2" style={{ color: "rgba(255,255,255,0.65)" }}>
             {dateStr}
@@ -205,7 +205,7 @@ const LoginPage: React.FC = () => {
 
         {/* Bottom */}
         <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.3)" }}>
-          Powered by HMS Platform
+          Powered by Aumrti
         </p>
       </div>
 
@@ -222,7 +222,7 @@ const LoginPage: React.FC = () => {
           </svg>
         )}
         <h2 className="text-white font-bold text-lg">
-          {brand?.name || "HMS Platform"}
+          {brand?.name || "Aumrti"}
         </h2>
         <p className="text-[13px] mt-0.5" style={{ color: "rgba(255,255,255,0.65)" }}>
           {dateStr}

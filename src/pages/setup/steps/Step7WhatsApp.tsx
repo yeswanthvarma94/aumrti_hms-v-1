@@ -73,7 +73,7 @@ const Step7WhatsApp: React.FC<Props> = ({ hospitalId, hospitalName, onComplete }
           <div className="bg-white rounded-lg p-3 shadow-sm text-[13px] leading-relaxed">
             <p>🏥 <strong>{hospitalName}</strong></p>
             <p className="mt-1">Dear Mrs. Priya, your OPD token A-23 is now being called. Please proceed to Room 2.</p>
-            <p className="text-muted-foreground text-[11px] mt-1">— HMS Platform</p>
+            <p className="text-muted-foreground text-[11px] mt-1">— Aumrti</p>
           </div>
           <p className="text-[12px] text-center mt-3 text-[#4A4A4A]">Enable WhatsApp to send these messages automatically</p>
         </div>

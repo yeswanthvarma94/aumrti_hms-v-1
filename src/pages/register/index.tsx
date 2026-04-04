@@ -131,7 +131,7 @@ const Register: React.FC = () => {
             <path d="M14 9h4v14h-4z" fill="white" />
             <path d="M9 14h14v4H9z" fill="white" />
           </svg>
-          <span className="font-bold text-lg">HMS Platform</span>
+          <span className="font-bold text-lg">Aumrti</span>
         </div>
 
         <div className="flex-1 flex flex-col justify-center">
@@ -141,7 +141,7 @@ const Register: React.FC = () => {
             Your system.
           </h2>
           <p className="text-sm text-[hsl(215,20%,65%)] mt-3 leading-relaxed">
-            Join 200+ hospitals already running on HMS Platform.
+            Join 200+ hospitals already running on Aumrti.
             <br />
             Get live in under 30 minutes.
           </p>
