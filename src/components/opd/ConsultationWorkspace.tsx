@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { useBlocker } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -119,21 +118,6 @@ const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onT
     return () => window.removeEventListener("beforeunload", handler);
   }, []);
 
-  // Block in-app navigation when dirty
-  const blocker = useBlocker(({ currentLocation, nextLocation }) => {
-    return isDirtyRef.current && currentLocation.pathname !== nextLocation.pathname;
-  });
-
-  useEffect(() => {
-    if (blocker.state === "blocked") {
-      const leave = window.confirm("You have unsaved consultation data. Leave anyway?");
-      if (leave) {
-        blocker.proceed();
-      } else {
-        blocker.reset();
-      }
-    }
-  }, [blocker]);
 
   // Fetch department name for specialty detection
   useEffect(() => {
