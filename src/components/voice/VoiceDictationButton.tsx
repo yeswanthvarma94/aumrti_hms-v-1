@@ -118,7 +118,7 @@ const VoiceDictationButton: React.FC<Props> = ({ sessionType, className, size = 
         body: {
           audio_base64: base64,
           language_code: selectedLanguage,
-          model: "saaras:v2",
+          model: "saaras:v3",
         },
       });
 

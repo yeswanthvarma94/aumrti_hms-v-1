@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { decode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -29,27 +30,30 @@ serve(async (req) => {
       );
     }
 
+    // Decode base64 to binary
+    const audioBytes = decode(audio_base64);
+    const audioFile = new File([audioBytes], "audio.wav", { type: "audio/wav" });
+
+    // Sarvam v3 API requires multipart/form-data
+    const formData = new FormData();
+    formData.append("file", audioFile);
+    formData.append("model", model || "saaras:v3");
+    formData.append("language_code", language_code);
+    formData.append("with_timestamps", "false");
+
     const response = await fetch("https://api.sarvam.ai/speech-to-text", {
       method: "POST",
       headers: {
-        "API-Subscription-Key": sarvamApiKey,
-        "Content-Type": "application/json",
+        "api-subscription-key": sarvamApiKey,
       },
-      body: JSON.stringify({
-        model: model || "saaras:v2",
-        language_code,
-        audio: audio_base64,
-        with_timestamps: false,
-        with_disfluencies: false,
-        debug_mode: false,
-      }),
+      body: formData,
     });
 
     if (!response.ok) {
       const errText = await response.text();
       console.error("Sarvam API error:", response.status, errText);
       return new Response(
-        JSON.stringify({ error: `Sarvam API error: ${response.status}` }),
+        JSON.stringify({ error: `Sarvam API error: ${response.status}`, details: errText }),
         { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
