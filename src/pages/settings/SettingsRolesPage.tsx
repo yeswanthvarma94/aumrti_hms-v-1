@@ -142,6 +142,11 @@ const SettingsRolesPage: React.FC = () => {
   });
 
   /* ── Fetch staff counts per role ── */
+  const ROLE_LABEL_MAP: Record<string, string> = {
+    hospital_admin: "admin",
+    super_admin: "super admin",
+    lab_tech: "lab technician",
+  };
   const { data: staffCounts = {} } = useQuery({
     queryKey: ["staff-role-counts", hospitalId],
     queryFn: async () => {
@@ -150,7 +155,9 @@ const SettingsRolesPage: React.FC = () => {
       if (error) throw error;
       const counts: Record<string, number> = {};
       for (const u of data ?? []) {
-        counts[u.role] = (counts[u.role] || 0) + 1;
+        // Map users.role to a normalized label that matches role_permissions.role_label
+        const normalizedLabel = (ROLE_LABEL_MAP[u.role] || u.role).toLowerCase();
+        counts[normalizedLabel] = (counts[normalizedLabel] || 0) + 1;
       }
       return counts;
     },
@@ -392,7 +399,7 @@ const SettingsRolesPage: React.FC = () => {
                 </Badge>
               </div>
               <p className="text-[11px] text-muted-foreground mt-0.5 pl-5">
-                {staffCounts[role.role_name] || 0} staff members
+                {staffCounts[role.role_label.toLowerCase()] || 0} staff members
               </p>
             </button>
           ))}
