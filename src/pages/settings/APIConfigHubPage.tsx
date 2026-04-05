@@ -330,7 +330,7 @@ const APIConfigHubPage: React.FC = () => {
                 <Select
                   value={globalConfig?.provider || "claude"}
                   onValueChange={v => {
-                    const models = PROVIDER_MODELS[v];
+                    const models = getMergedModels(v);
                     const serviceKey = PROVIDER_TO_SERVICE_KEY[v] || null;
                     updateAIConfig("global_default", { provider: v, model_name: models?.[0]?.value || "", api_key_ref: serviceKey });
                   }}
@@ -349,8 +349,8 @@ const APIConfigHubPage: React.FC = () => {
                 >
                   <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {(PROVIDER_MODELS[globalConfig?.provider || "claude"] || []).map(m => (
-                      <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                    {getMergedModels(globalConfig?.provider || "claude").map(m => (
+                      <SelectItem key={m.value} value={m.value}>{m.label}{m.isCustom ? " ★" : ""}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -418,7 +418,7 @@ const APIConfigHubPage: React.FC = () => {
                         <Select
                           value={config?.provider || globalConfig?.provider || "claude"}
                           onValueChange={v => {
-                            const models = PROVIDER_MODELS[v];
+                            const models = getMergedModels(v);
                             const serviceKey = PROVIDER_TO_SERVICE_KEY[v] || null;
                             updateAIConfig(key, { provider: v, model_name: models?.[0]?.value || "", is_active: true, api_key_ref: serviceKey });
                           }}
@@ -436,8 +436,8 @@ const APIConfigHubPage: React.FC = () => {
                         >
                           <SelectTrigger className="h-8 text-xs w-[200px]"><SelectValue /></SelectTrigger>
                           <SelectContent>
-                            {(PROVIDER_MODELS[config?.provider || globalConfig?.provider || "claude"] || []).map(m => (
-                              <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                            {getMergedModels(config?.provider || globalConfig?.provider || "claude").map(m => (
+                              <SelectItem key={m.value} value={m.value}>{m.label}{m.isCustom ? " ★" : ""}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
