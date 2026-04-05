@@ -193,7 +193,6 @@ const SettingsRolesPage: React.FC = () => {
   /* ── Create role ── */
   const createMutation = useMutation({
     mutationFn: async () => {
-      const hospitalId = (roles[0] as any)?.hospital_id;
       if (!hospitalId) throw new Error("No hospital");
       const name = `custom_${Date.now()}`;
       const { data, error } = await supabase
