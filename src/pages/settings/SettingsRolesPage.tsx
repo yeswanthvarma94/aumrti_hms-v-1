@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { useHospitalId } from "@/hooks/useHospitalId";
 import {
   ArrowLeft,
   Plus,
@@ -116,6 +117,7 @@ const SettingsRolesPage: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { hospitalId } = useHospitalId();
 
   const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null);
   const [matrix, setMatrix] = useState<Record<ModuleKey, Record<Action, boolean>> | null>(null);
@@ -124,23 +126,27 @@ const SettingsRolesPage: React.FC = () => {
 
   /* ── Fetch roles ── */
   const { data: roles = [] } = useQuery({
-    queryKey: ["role-permissions"],
+    queryKey: ["role-permissions", hospitalId],
     queryFn: async () => {
+      if (!hospitalId) return [];
       const { data, error } = await supabase
         .from("role_permissions")
         .select("*")
+        .eq("hospital_id", hospitalId)
         .order("is_system_role", { ascending: false })
         .order("role_label");
       if (error) throw error;
       return (data ?? []) as unknown as RolePermission[];
     },
+    enabled: !!hospitalId,
   });
 
   /* ── Fetch staff counts per role ── */
   const { data: staffCounts = {} } = useQuery({
-    queryKey: ["staff-role-counts"],
+    queryKey: ["staff-role-counts", hospitalId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("users").select("role");
+      if (!hospitalId) return {};
+      const { data, error } = await supabase.from("users").select("role").eq("hospital_id", hospitalId);
       if (error) throw error;
       const counts: Record<string, number> = {};
       for (const u of data ?? []) {
@@ -148,6 +154,7 @@ const SettingsRolesPage: React.FC = () => {
       }
       return counts;
     },
+    enabled: !!hospitalId,
   });
 
   const selectedRole = roles.find((r) => r.id === selectedRoleId) ?? null;
@@ -186,7 +193,6 @@ const SettingsRolesPage: React.FC = () => {
   /* ── Create role ── */
   const createMutation = useMutation({
     mutationFn: async () => {
-      const hospitalId = (roles[0] as any)?.hospital_id;
       if (!hospitalId) throw new Error("No hospital");
       const name = `custom_${Date.now()}`;
       const { data, error } = await supabase
