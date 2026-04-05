@@ -1,37 +1,31 @@
 
 
-## Add "Enable Login" to Settings Staff Page
+## Fix: Roles Page — Cannot Create or Load Roles
 
-### What
-Add the ability for admins to create login credentials for staff members directly from the Staff settings page, using the `create-staff-login` edge function.
+### Root Cause
 
-### Changes (single file: `src/pages/settings/SettingsStaffPage.tsx`)
+Two issues in `src/pages/settings/SettingsRolesPage.tsx`:
 
-**1. Update staff query (line 102)**
-Add `auth_user_id, can_login` to the select string so the table knows each user's login status.
+1. **Empty roles list for new hospitals**: The `role_permissions` query has no `hospital_id` filter. RLS likely blocks results, returning an empty list — which is what the screenshot shows (empty left panel).
 
-**2. Add state variables (after line 94)**
-- `loginModal` — tracks which staff member's login modal is open (userId, userName, email)
-- `loginEmail`, `loginPassword`, `creatingLogin` — form state for the modal
+2. **"+ Create" button fails silently**: The create mutation gets `hospitalId` from `roles[0]?.hospital_id`. When the roles list is empty (new hospital, no seeded roles), this is `undefined`, causing the mutation to throw `"No hospital"` and fail silently.
 
-**3. Add `handleCreateLogin` handler**
-Calls `supabase.functions.invoke("create-staff-login", { body: { user_id, email, password, full_name } })`. On success: toast, invalidate query, close modal. On error: show error toast.
+### Fix
 
-**4. Add "Enable Login" button in table actions (line 400-408)**
-- If `!u.auth_user_id && u.is_active` → show "Enable Login" button that opens the modal
-- If `u.auth_user_id` → show "✓ Can Login" badge
+**File: `src/pages/settings/SettingsRolesPage.tsx`**
 
-**5. Add login status in Status column (after line 396)**
-Show `• Login enabled` text next to Active badge when `u.can_login` is true.
+1. Import `useHospitalId` hook
+2. Add `const { hospitalId } = useHospitalId()` in the component
+3. Add `.eq("hospital_id", hospitalId)` to the roles query + guard with `if (!hospitalId) return []`
+4. Add `.eq("hospital_id", hospitalId)` to the staff counts query + same guard
+5. In `createMutation`, replace `const hospitalId = (roles[0] as any)?.hospital_id` with the hook's `hospitalId`. Guard with `if (!hospitalId) throw new Error("No hospital")`
+6. Add `hospitalId` to the `queryKey` arrays so queries refetch when hospital changes
 
-**6. Add Login Credentials Modal (before closing `</div>` at line 645)**
-A fixed overlay modal with:
-- Staff member name display
-- Email input (pre-filled from staff record)
-- Password input with 8-char validation
-- Cancel / Create Login buttons
-- Loading state during creation
+### Technical Details
+- The query currently returns empty because RLS scopes by hospital_id but the query fetches `*` without filtering — depending on RLS policy, this either returns nothing or cross-hospital data
+- The create button's `onClick={() => createMutation.mutate()}` catches the error internally but shows no toast, so it fails silently
+- After fix: roles load for the current hospital, and "Create" works even when no roles exist yet
 
-### No other files changed
-The `create-staff-login` edge function already exists and handles all server-side logic.
+### Files Changed
+1. `src/pages/settings/SettingsRolesPage.tsx` — add hospital_id filtering and use `useHospitalId` hook
 
