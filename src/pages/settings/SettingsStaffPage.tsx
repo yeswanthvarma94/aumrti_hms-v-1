@@ -267,6 +267,38 @@ const SettingsStaffPage: React.FC = () => {
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
+  /* ─── Login handler ─── */
+  const handleCreateLogin = async () => {
+    if (!loginModal) return;
+    if (!loginEmail || loginPassword.length < 8) {
+      toast({ title: "Password must be at least 8 characters", variant: "destructive" });
+      return;
+    }
+    setCreatingLogin(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("create-staff-login", {
+        body: {
+          user_id: loginModal.userId,
+          email: loginEmail,
+          password: loginPassword,
+          full_name: loginModal.userName,
+        },
+      });
+      if (error || data?.error) {
+        throw new Error(data?.error || error?.message || "Failed to create login");
+      }
+      toast({ title: `Login created for ${loginModal.userName}`, description: "They can now sign in with their email and password." });
+      qc.invalidateQueries({ queryKey: ["settings-staff"] });
+      setLoginModal(null);
+      setLoginPassword("");
+      setLoginEmail("");
+    } catch (err: any) {
+      toast({ title: "Failed to create login", description: err.message, variant: "destructive" });
+    } finally {
+      setCreatingLogin(false);
+    }
+  };
+
   /* ─── Helpers ─── */
   const openDrawer = async (user?: any) => {
     if (user) {
