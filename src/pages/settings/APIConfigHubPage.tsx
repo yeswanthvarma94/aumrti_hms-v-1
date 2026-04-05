@@ -17,6 +17,7 @@ import {
   FEATURE_LABELS,
   PROVIDER_MODELS,
   KNOWN_SERVICES,
+  PROVIDER_TO_SERVICE_KEY,
   getProviderLabel,
   callAI,
 } from "@/lib/aiProvider";
