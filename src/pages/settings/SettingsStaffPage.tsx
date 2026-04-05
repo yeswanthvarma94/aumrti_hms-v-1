@@ -93,6 +93,11 @@ const SettingsStaffPage: React.FC = () => {
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkRows, setBulkRows] = useState<BulkRow[]>([{ ...EMPTY_BULK }]);
 
+  const [loginModal, setLoginModal] = useState<{ open: boolean; userId: string; userName: string; email: string } | null>(null);
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [creatingLogin, setCreatingLogin] = useState(false);
+
   /* ─── Queries ─── */
   const { data: users, isLoading } = useQuery({
     queryKey: ["settings-staff"],
