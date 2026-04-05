@@ -435,14 +435,28 @@ const SettingsStaffPage: React.FC = () => {
                     </td>
                     <td className="px-4 py-2.5 text-right">
                       <div className="flex items-center justify-end gap-1">
-                        <button onClick={() => openDrawer(u)} className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-muted">Edit</button>
-                        <button
-                          onClick={() => toggleActive.mutate({ id: u.id, active: u.is_active })}
-                          className="text-xs text-muted-foreground hover:text-destructive px-2 py-1 rounded hover:bg-muted"
-                        >
-                          {u.is_active ? "Deactivate" : "Activate"}
-                        </button>
-                      </div>
+                         <button onClick={() => openDrawer(u)} className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-muted">Edit</button>
+                         <button
+                           onClick={() => toggleActive.mutate({ id: u.id, active: u.is_active })}
+                           className="text-xs text-muted-foreground hover:text-destructive px-2 py-1 rounded hover:bg-muted"
+                         >
+                           {u.is_active ? "Deactivate" : "Activate"}
+                         </button>
+                         {!(u as any).auth_user_id && u.is_active && (
+                           <button
+                             onClick={() => {
+                               setLoginModal({ open: true, userId: u.id, userName: u.full_name, email: u.email });
+                               setLoginEmail(u.email);
+                               setLoginPassword("");
+                             }}
+                             className="text-xs text-primary hover:text-primary/80 px-2 py-1 rounded hover:bg-primary/10 font-medium"
+                           >
+                             Enable Login
+                           </button>
+                         )}
+                         {(u as any).auth_user_id && (
+                           <span className="text-[11px] text-emerald-600 px-2 py-1 font-medium">✓ Can Login</span>
+                         )}
                     </td>
                   </tr>
                 );
