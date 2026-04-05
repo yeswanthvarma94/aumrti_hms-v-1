@@ -33,6 +33,21 @@ const PROVIDER_LABELS: Record<string, string> = {
   ollama: "Ollama (Local)",
 };
 
+export const getProviderLabel = (provider: string) =>
+  PROVIDER_LABELS[provider] || provider;
+
+export const FEATURE_LABELS: Record<string, string> = {
+  global_default: "Global Default",
+  voice_scribe: "Voice Scribe (SOAP)",
+  radiology_impression: "Radiology AI Impression",
+  ai_digest: "AI Executive Digest",
+  appeal_letter: "Appeal Letter Writer",
+  discharge_summary: "Discharge Summary",
+  icd_coding: "ICD-10 Code Suggester",
+  document_ocr: "Document OCR (Vision)",
+  discharge_instructions: "Discharge Instructions",
+};
+
 export const PROVIDER_TO_SERVICE_KEY: Record<string, string> = {
   claude: "anthropic",
   openai: "openai",
