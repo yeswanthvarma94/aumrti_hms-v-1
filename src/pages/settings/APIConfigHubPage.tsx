@@ -81,6 +81,13 @@ const APIConfigHubPage: React.FC = () => {
     loadData();
   }, []);
 
+  useEffect(() => {
+    if (pendingAutoRun.current && !playRunning) {
+      pendingAutoRun.current = false;
+      setTimeout(() => runPlayground(), 200);
+    }
+  }, [playFeature]);
+
   const loadData = async () => {
     setLoading(true);
     // Get hospital ID
@@ -565,7 +572,7 @@ const APIConfigHubPage: React.FC = () => {
         <Separator />
 
         {/* ── SECTION 4: DEVELOPER TOOLS ── */}
-        <section>
+        <section ref={playgroundRef}>
           <h2 className="text-sm font-bold text-foreground mb-3">Developer Tools — AI Playground</h2>
           <div className="grid grid-cols-2 gap-3 mb-3">
             <div>
