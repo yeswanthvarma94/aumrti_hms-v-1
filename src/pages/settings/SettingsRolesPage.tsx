@@ -399,7 +399,7 @@ const SettingsRolesPage: React.FC = () => {
                 </Badge>
               </div>
               <p className="text-[11px] text-muted-foreground mt-0.5 pl-5">
-                {staffCounts[role.role_name] || 0} staff members
+                {staffCounts[role.role_label.toLowerCase()] || 0} staff members
               </p>
             </button>
           ))}
