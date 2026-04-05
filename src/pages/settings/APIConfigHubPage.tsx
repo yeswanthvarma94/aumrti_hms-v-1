@@ -20,9 +20,12 @@ import {
   PROVIDER_TO_SERVICE_KEY,
   getProviderLabel,
   callAI,
+  getMergedModels,
+  getCustomModels,
+  saveCustomModels,
 } from "@/lib/aiProvider";
 import {
-  Loader2, Check, X, Play, Eye, EyeOff, ExternalLink, FlaskConical, Save, Plus,
+  Loader2, Check, X, Play, Eye, EyeOff, ExternalLink, FlaskConical, Save, Plus, Trash2,
 } from "lucide-react";
 
 const PROVIDERS = [
@@ -70,6 +73,8 @@ const APIConfigHubPage: React.FC = () => {
   const [editingKey, setEditingKey] = useState<typeof KNOWN_SERVICES[0] | null>(null);
   const [keyForm, setKeyForm] = useState({ api_key: "", endpoint: "", mode: "production" });
   const [showSecret, setShowSecret] = useState(false);
+  const [customModelInput, setCustomModelInput] = useState("");
+  const [modelRefreshKey, setModelRefreshKey] = useState(0);
 
   // Playground
   const [playFeature, setPlayFeature] = useState("voice_scribe");
@@ -325,7 +330,7 @@ const APIConfigHubPage: React.FC = () => {
                 <Select
                   value={globalConfig?.provider || "claude"}
                   onValueChange={v => {
-                    const models = PROVIDER_MODELS[v];
+                    const models = getMergedModels(v);
                     const serviceKey = PROVIDER_TO_SERVICE_KEY[v] || null;
                     updateAIConfig("global_default", { provider: v, model_name: models?.[0]?.value || "", api_key_ref: serviceKey });
                   }}
@@ -344,8 +349,8 @@ const APIConfigHubPage: React.FC = () => {
                 >
                   <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {(PROVIDER_MODELS[globalConfig?.provider || "claude"] || []).map(m => (
-                      <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                    {getMergedModels(globalConfig?.provider || "claude").map(m => (
+                      <SelectItem key={m.value} value={m.value}>{m.label}{m.isCustom ? " ★" : ""}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -413,7 +418,7 @@ const APIConfigHubPage: React.FC = () => {
                         <Select
                           value={config?.provider || globalConfig?.provider || "claude"}
                           onValueChange={v => {
-                            const models = PROVIDER_MODELS[v];
+                            const models = getMergedModels(v);
                             const serviceKey = PROVIDER_TO_SERVICE_KEY[v] || null;
                             updateAIConfig(key, { provider: v, model_name: models?.[0]?.value || "", is_active: true, api_key_ref: serviceKey });
                           }}
@@ -431,8 +436,8 @@ const APIConfigHubPage: React.FC = () => {
                         >
                           <SelectTrigger className="h-8 text-xs w-[200px]"><SelectValue /></SelectTrigger>
                           <SelectContent>
-                            {(PROVIDER_MODELS[config?.provider || globalConfig?.provider || "claude"] || []).map(m => (
-                              <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                            {getMergedModels(config?.provider || globalConfig?.provider || "claude").map(m => (
+                              <SelectItem key={m.value} value={m.value}>{m.label}{m.isCustom ? " ★" : ""}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
@@ -703,6 +708,86 @@ const APIConfigHubPage: React.FC = () => {
                 <div><Label>Password</Label><Input className="mt-1" type="password" placeholder="NIC IRP password" /></div>
               </>
             )}
+
+            {/* Custom Model Management — only for LLM providers */}
+            {editingKey && ["anthropic", "openai", "gemini", "perplexity"].includes(editingKey.service_key) && (() => {
+              const providerKey = Object.entries(PROVIDER_TO_SERVICE_KEY).find(([, sk]) => sk === editingKey.service_key)?.[0] || editingKey.service_key;
+              const allModels = getMergedModels(providerKey);
+              const customModels = getCustomModels(providerKey);
+              return (
+                <div className="space-y-2">
+                  <Separator />
+                  <Label className="text-xs font-bold uppercase text-muted-foreground">Models</Label>
+                  <div className="space-y-1 max-h-[180px] overflow-y-auto">
+                    {allModels.map(m => (
+                      <div key={m.value} className="flex items-center justify-between bg-muted/50 rounded px-2.5 py-1.5 text-xs">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <code className="font-mono text-foreground truncate">{m.value}</code>
+                          {m.isCustom && <Badge variant="outline" className="text-[9px] px-1 py-0">Custom</Badge>}
+                        </div>
+                        {m.isCustom && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                            onClick={() => {
+                              const updated = customModels.filter(cm => cm.value !== m.value);
+                              saveCustomModels(providerKey, updated);
+                              setModelRefreshKey(k => k + 1);
+                              toast({ title: `Removed model: ${m.value}` });
+                            }}
+                          >
+                            <Trash2 size={12} />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <Input
+                      className="text-xs font-mono h-8 flex-1"
+                      placeholder="e.g. gemini-3-flash-preview"
+                      value={customModelInput}
+                      onChange={e => setCustomModelInput(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === "Enter" && customModelInput.trim()) {
+                          const val = customModelInput.trim();
+                          if (allModels.some(m => m.value === val)) {
+                            toast({ title: "Model already exists", variant: "destructive" });
+                            return;
+                          }
+                          saveCustomModels(providerKey, [...customModels, { label: val, value: val }]);
+                          setCustomModelInput("");
+                          setModelRefreshKey(k => k + 1);
+                          toast({ title: `Added model: ${val}` });
+                        }
+                      }}
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 gap-1 text-xs"
+                      disabled={!customModelInput.trim()}
+                      onClick={() => {
+                        const val = customModelInput.trim();
+                        if (!val) return;
+                        if (allModels.some(m => m.value === val)) {
+                          toast({ title: "Model already exists", variant: "destructive" });
+                          return;
+                        }
+                        saveCustomModels(providerKey, [...customModels, { label: val, value: val }]);
+                        setCustomModelInput("");
+                        setModelRefreshKey(k => k + 1);
+                        toast({ title: `Added model: ${val}` });
+                      }}
+                    >
+                      <Plus size={12} /> Add
+                    </Button>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">Add custom model codes. They'll appear in model dropdowns marked with ★</p>
+                </div>
+              );
+            })()}
 
             <div className="flex gap-2 pt-2">
               <Button
