@@ -248,14 +248,15 @@ export const callAI = async (request: AIRequest): Promise<AIResponse> => {
 
     const { provider, model_name, temperature, max_tokens } = activeConfig;
 
-    // Step 2: Resolve API key — DB first, then env fallback
+    // Step 2: Resolve API key — DB first (api_key_ref or provider mapping), then env fallback
     let apiKey: string | undefined;
-    if (activeConfig.api_key_ref) {
+    const effectiveServiceKey = activeConfig.api_key_ref || PROVIDER_TO_SERVICE_KEY[provider];
+    if (effectiveServiceKey) {
       const { data: apiConf } = await supabase
         .from("api_configurations")
         .select("config")
         .eq("hospital_id", request.hospitalId)
-        .eq("service_key", activeConfig.api_key_ref)
+        .eq("service_key", effectiveServiceKey)
         .eq("is_active", true)
         .maybeSingle();
       apiKey = (apiConf?.config as Record<string, string>)?.api_key;
