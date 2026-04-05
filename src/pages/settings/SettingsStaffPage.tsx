@@ -104,7 +104,7 @@ const SettingsStaffPage: React.FC = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("users")
-        .select("id, full_name, email, phone, role, is_active, registration_number, department_id")
+        .select("id, full_name, email, phone, role, is_active, registration_number, department_id, auth_user_id, can_login")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
