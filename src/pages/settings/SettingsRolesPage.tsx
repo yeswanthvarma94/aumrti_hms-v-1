@@ -143,9 +143,10 @@ const SettingsRolesPage: React.FC = () => {
 
   /* ── Fetch staff counts per role ── */
   const { data: staffCounts = {} } = useQuery({
-    queryKey: ["staff-role-counts"],
+    queryKey: ["staff-role-counts", hospitalId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("users").select("role");
+      if (!hospitalId) return {};
+      const { data, error } = await supabase.from("users").select("role").eq("hospital_id", hospitalId);
       if (error) throw error;
       const counts: Record<string, number> = {};
       for (const u of data ?? []) {
@@ -153,6 +154,7 @@ const SettingsRolesPage: React.FC = () => {
       }
       return counts;
     },
+    enabled: !!hospitalId,
   });
 
   const selectedRole = roles.find((r) => r.id === selectedRoleId) ?? null;
