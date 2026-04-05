@@ -126,16 +126,19 @@ const SettingsRolesPage: React.FC = () => {
 
   /* ── Fetch roles ── */
   const { data: roles = [] } = useQuery({
-    queryKey: ["role-permissions"],
+    queryKey: ["role-permissions", hospitalId],
     queryFn: async () => {
+      if (!hospitalId) return [];
       const { data, error } = await supabase
         .from("role_permissions")
         .select("*")
+        .eq("hospital_id", hospitalId)
         .order("is_system_role", { ascending: false })
         .order("role_label");
       if (error) throw error;
       return (data ?? []) as unknown as RolePermission[];
     },
+    enabled: !!hospitalId,
   });
 
   /* ── Fetch staff counts per role ── */
