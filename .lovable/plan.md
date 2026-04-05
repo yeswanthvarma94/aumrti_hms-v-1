@@ -1,31 +1,31 @@
 
 
-## Fix: Roles Page — Cannot Create or Load Roles
+## Fix: AI Provider — API Key Lookup, Models, and Test Button
 
-### Root Cause
+### Problems
 
-Two issues in `src/pages/settings/SettingsRolesPage.tsx`:
+1. **API key not found for Gemini**: The `api_key_ref` in `ai_provider_config` stores the service_key of the API Key Source dropdown (e.g., "anthropic"). But in the screenshots, the Global Default is set to provider "gemini" with API Key Source showing "Anthropic" — meaning `api_key_ref = "anthropic"`. The `callAI` function then queries `api_configurations WHERE service_key = "anthropic"`, which has no key configured. The real key is stored under `service_key = "gemini"`. **Fix**: Auto-set `api_key_ref` to match the selected provider when provider changes, and add a provider-to-service_key mapping.
 
-1. **Empty roles list for new hospitals**: The `role_permissions` query has no `hospital_id` filter. RLS likely blocks results, returning an empty list — which is what the screenshot shows (empty left panel).
+2. **Models are hardcoded**: `PROVIDER_MODELS` in `aiProvider.ts` has outdated models. Users can't add custom models. **Fix**: Update the model lists to current versions and add an "Other" option allowing custom model entry.
 
-2. **"+ Create" button fails silently**: The create mutation gets `hospitalId` from `roles[0]?.hospital_id`. When the roles list is empty (new hospital, no seeded roles), this is `undefined`, causing the mutation to throw `"No hospital"` and fail silently.
+3. **Feature "Test" button doesn't test**: Clicking "Test" on a feature row only sets `playFeature` and `playPrompt` — it doesn't scroll to the playground or auto-run. **Fix**: After setting feature/prompt, auto-scroll to playground and auto-run the test.
 
-### Fix
+4. **API Key "Test Connection" is fake**: `testApiKey()` uses `Math.random()` instead of actually testing the API. **Fix**: Make a real lightweight API call to verify the key works.
 
-**File: `src/pages/settings/SettingsRolesPage.tsx`**
+### Changes
 
-1. Import `useHospitalId` hook
-2. Add `const { hospitalId } = useHospitalId()` in the component
-3. Add `.eq("hospital_id", hospitalId)` to the roles query + guard with `if (!hospitalId) return []`
-4. Add `.eq("hospital_id", hospitalId)` to the staff counts query + same guard
-5. In `createMutation`, replace `const hospitalId = (roles[0] as any)?.hospital_id` with the hook's `hospitalId`. Guard with `if (!hospitalId) throw new Error("No hospital")`
-6. Add `hospitalId` to the `queryKey` arrays so queries refetch when hospital changes
+**File 1: `src/lib/aiProvider.ts`**
+- Add `PROVIDER_TO_SERVICE_KEY` mapping: `{ claude: "anthropic", openai: "openai", gemini: "gemini", perplexity: "perplexity" }`
+- Update `PROVIDER_MODELS` with current model names (Gemini 2.5 Pro/Flash, Claude 4 Sonnet, GPT-4o, etc.)
+- In `callAI`: if `api_key_ref` is not set, auto-resolve using `PROVIDER_TO_SERVICE_KEY[provider]` before falling back to env vars
+
+**File 2: `src/pages/settings/APIConfigHubPage.tsx`**
+- When provider changes in Global Default or feature rows, auto-set `api_key_ref` to the matching service_key via the mapping
+- Feature "Test" button: after setting `playFeature`/`playPrompt`, scroll to playground section and trigger `runPlayground()` automatically
+- Replace fake `testApiKey()` with real API calls per provider (e.g., Gemini: call `generateContent` with a tiny prompt; OpenAI: call `chat/completions` with `max_tokens: 1`)
 
 ### Technical Details
-- The query currently returns empty because RLS scopes by hospital_id but the query fetches `*` without filtering — depending on RLS policy, this either returns nothing or cross-hospital data
-- The create button's `onClick={() => createMutation.mutate()}` catches the error internally but shows no toast, so it fails silently
-- After fix: roles load for the current hospital, and "Create" works even when no roles exist yet
-
-### Files Changed
-1. `src/pages/settings/SettingsRolesPage.tsx` — add hospital_id filtering and use `useHospitalId` hook
+- The core bug is that `api_key_ref` determines where to look up the API key, but changing the provider doesn't update `api_key_ref`. A user selects Gemini as provider but `api_key_ref` still points to "anthropic" (from a previous selection or default)
+- The fix in `callAI` adds a fallback: if `api_key_ref` is null/missing, derive it from the provider name using the mapping, so even misconfigured records still find the right key
+- Real API key testing uses minimal token calls to verify connectivity without incurring significant cost
 
