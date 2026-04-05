@@ -432,6 +432,7 @@ const SettingsStaffPage: React.FC = () => {
                         <span className={cn("h-2 w-2 rounded-full", u.is_active ? "bg-emerald-500" : "bg-muted-foreground/40")} />
                          <span className="text-[12px] text-muted-foreground">{u.is_active ? "Active" : "Inactive"}</span>
                          {u.can_login && <span className="text-[10px] text-emerald-600 ml-2">• Login enabled</span>}
+                       </div>
                     </td>
                     <td className="px-4 py-2.5 text-right">
                       <div className="flex items-center justify-end gap-1">
