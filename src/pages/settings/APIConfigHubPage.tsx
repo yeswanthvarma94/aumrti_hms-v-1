@@ -73,6 +73,8 @@ const APIConfigHubPage: React.FC = () => {
   const [editingKey, setEditingKey] = useState<typeof KNOWN_SERVICES[0] | null>(null);
   const [keyForm, setKeyForm] = useState({ api_key: "", endpoint: "", mode: "production" });
   const [showSecret, setShowSecret] = useState(false);
+  const [customModelInput, setCustomModelInput] = useState("");
+  const [modelRefreshKey, setModelRefreshKey] = useState(0);
 
   // Playground
   const [playFeature, setPlayFeature] = useState("voice_scribe");
