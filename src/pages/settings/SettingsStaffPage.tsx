@@ -458,6 +458,7 @@ const SettingsStaffPage: React.FC = () => {
                          {(u as any).auth_user_id && (
                            <span className="text-[11px] text-emerald-600 px-2 py-1 font-medium">✓ Can Login</span>
                          )}
+                       </div>
                     </td>
                   </tr>
                 );
