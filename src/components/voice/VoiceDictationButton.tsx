@@ -1,4 +1,4 @@
-import React, { useRef, useCallback, useState } from "react";
+import React, { useRef, useCallback, useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { Mic, MicOff, Loader2, ChevronDown, Zap, Bot } from "lucide-react";
 import { useVoiceScribe, SessionType, SUPPORTED_LANGUAGES } from "@/contexts/VoiceScribeContext";
@@ -23,6 +23,8 @@ interface Props {
   size?: "sm" | "md";
 }
 
+const SARVAM_CHUNK_SECONDS = 25; // keep under 30s API limit
+
 const VoiceDictationButton: React.FC<Props> = ({ sessionType, className, size = "md" }) => {
   const {
     isRecording, setIsRecording,
@@ -35,7 +37,13 @@ const VoiceDictationButton: React.FC<Props> = ({ sessionType, className, size = 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const fullTranscriptRef = useRef("");
+  const chunkTranscriptsRef = useRef<string[]>([]);
+  const chunkTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const isStoppingRef = useRef(false);
   const [langOpen, setLangOpen] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const secondsTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const isWebSpeechSupported = typeof window !== "undefined" && !!(
     (window as unknown as Record<string, unknown>).SpeechRecognition ||
@@ -44,6 +52,14 @@ const VoiceDictationButton: React.FC<Props> = ({ sessionType, className, size = 
 
   const currentLang = SUPPORTED_LANGUAGES.find(l => l.code === selectedLanguage) || SUPPORTED_LANGUAGES[0];
   const useSarvam = currentLang.engine === "sarvam";
+
+  // cleanup timers on unmount
+  useEffect(() => {
+    return () => {
+      if (chunkTimerRef.current) clearInterval(chunkTimerRef.current);
+      if (secondsTimerRef.current) clearInterval(secondsTimerRef.current);
+    };
+  }, []);
 
   const processTranscript = useCallback(async (rawText: string) => {
     if (!rawText.trim()) return;
@@ -65,10 +81,53 @@ const VoiceDictationButton: React.FC<Props> = ({ sessionType, className, size = 
     }
   }, [sessionType, setPanelState, setIsPanelOpen, setStructuredOutput]);
 
-  // --- Sarvam (MediaRecorder) flow ---
+  const sendChunkToSarvam = useCallback(async (audioBlob: Blob): Promise<string> => {
+    const base64 = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const result = reader.result as string;
+        resolve(result.split(",")[1]);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(audioBlob);
+    });
+
+    const { data, error } = await supabase.functions.invoke("sarvam-transcribe", {
+      body: {
+        audio_base64: base64,
+        language_code: selectedLanguage,
+        model: "saaras:v3",
+      },
+    });
+
+    if (error || data?.error) throw new Error(data?.error || error?.message);
+    return data.transcript || "";
+  }, [selectedLanguage]);
+
+  // Flush current audio chunks as a single chunk to Sarvam (runs every 25s)
+  const flushChunk = useCallback(async () => {
+    if (audioChunksRef.current.length === 0) return;
+    const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+    audioChunksRef.current = [];
+
+    try {
+      const text = await sendChunkToSarvam(blob);
+      if (text.trim()) {
+        chunkTranscriptsRef.current.push(text.trim());
+        const combined = chunkTranscriptsRef.current.join(" ");
+        setRawTranscript(combined);
+        fullTranscriptRef.current = combined;
+      }
+    } catch (err) {
+      console.error("Chunk transcription failed:", err);
+    }
+  }, [sendChunkToSarvam, setRawTranscript]);
+
+  // --- Sarvam (MediaRecorder) flow with auto-chunking ---
   const startSarvamRecording = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
       const mediaRecorder = new MediaRecorder(stream, {
         mimeType: MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
           ? "audio/webm;codecs=opus"
@@ -76,19 +135,93 @@ const VoiceDictationButton: React.FC<Props> = ({ sessionType, className, size = 
       });
 
       audioChunksRef.current = [];
+      chunkTranscriptsRef.current = [];
+      fullTranscriptRef.current = "";
+      isStoppingRef.current = false;
 
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) audioChunksRef.current.push(event.data);
       };
 
       mediaRecorder.onstop = async () => {
-        stream.getTracks().forEach(t => t.stop());
-        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
-        await sendToSarvam(audioBlob);
+        // If user stopped, flush remaining and process
+        if (isStoppingRef.current) {
+          stream.getTracks().forEach(t => t.stop());
+          streamRef.current = null;
+
+          if (audioChunksRef.current.length > 0) {
+            setPanelState("transcribing");
+            const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+            audioChunksRef.current = [];
+            try {
+              const text = await sendChunkToSarvam(blob);
+              if (text.trim()) chunkTranscriptsRef.current.push(text.trim());
+            } catch (err) {
+              console.error("Final chunk transcription failed:", err);
+            }
+          }
+
+          const finalTranscript = chunkTranscriptsRef.current.join(" ");
+          setRawTranscript(finalTranscript);
+          fullTranscriptRef.current = finalTranscript;
+
+          if (finalTranscript.trim()) {
+            await processTranscript(finalTranscript.trim());
+          } else {
+            toast({ title: "No speech detected", description: "Try speaking louder or closer to the mic", variant: "destructive" });
+            setPanelState("ready");
+          }
+        } else {
+          // Auto-chunk stop: flush this chunk then restart
+          const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+          audioChunksRef.current = [];
+
+          // Restart recorder immediately
+          try {
+            const newRecorder = new MediaRecorder(stream, {
+              mimeType: MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+                ? "audio/webm;codecs=opus"
+                : "audio/webm",
+            });
+            newRecorder.ondataavailable = mediaRecorder.ondataavailable;
+            newRecorder.onstop = mediaRecorder.onstop;
+            newRecorder.start(1000);
+            mediaRecorderRef.current = newRecorder;
+          } catch {
+            // stream may have ended
+          }
+
+          // Transcribe the chunk in background
+          try {
+            const text = await sendChunkToSarvam(blob);
+            if (text.trim()) {
+              chunkTranscriptsRef.current.push(text.trim());
+              const combined = chunkTranscriptsRef.current.join(" ");
+              setRawTranscript(combined);
+              fullTranscriptRef.current = combined;
+            }
+          } catch (err) {
+            console.error("Chunk transcription failed:", err);
+          }
+        }
       };
 
       mediaRecorder.start(1000);
       mediaRecorderRef.current = mediaRecorder;
+
+      // Auto-chunk every 25 seconds
+      chunkTimerRef.current = setInterval(() => {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording" && !isStoppingRef.current) {
+          mediaRecorderRef.current.stop(); // triggers onstop → flush + restart
+        }
+      }, SARVAM_CHUNK_SECONDS * 1000);
+
+      // Seconds counter for UI
+      setRecordingSeconds(0);
+      secondsTimerRef.current = setInterval(() => {
+        setRecordingSeconds(s => s + 1);
+      }, 1000);
+
       setCurrentSessionType(sessionType);
       setIsRecording(true);
       setIsPanelOpen(true);
@@ -98,53 +231,7 @@ const VoiceDictationButton: React.FC<Props> = ({ sessionType, className, size = 
       console.error("Microphone access failed:", err);
       toast({ title: "Microphone access denied", variant: "destructive" });
     }
-  }, [sessionType, setIsRecording, setIsPanelOpen, setPanelState, setRawTranscript, setCurrentSessionType, toast]);
-
-  const sendToSarvam = useCallback(async (audioBlob: Blob) => {
-    setPanelState("transcribing");
-
-    try {
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const result = reader.result as string;
-          resolve(result.split(",")[1]);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(audioBlob);
-      });
-
-      const { data, error } = await supabase.functions.invoke("sarvam-transcribe", {
-        body: {
-          audio_base64: base64,
-          language_code: selectedLanguage,
-          model: "saaras:v3",
-        },
-      });
-
-      if (error || data?.error) throw new Error(data?.error || error?.message);
-
-      const transcript = data.transcript || "";
-      setRawTranscript(transcript);
-      fullTranscriptRef.current = transcript;
-
-      if (transcript.trim()) {
-        await processTranscript(transcript.trim());
-      } else {
-        toast({ title: "No speech detected", description: "Try speaking louder or closer to the mic", variant: "destructive" });
-        setPanelState("ready");
-      }
-    } catch (err) {
-      console.error("Sarvam transcription failed:", err);
-      toast({
-        title: "Sarvam unavailable",
-        description: "Switching to English voice input",
-        variant: "destructive",
-      });
-      setSelectedLanguage("en-IN");
-      setPanelState("fallback");
-    }
-  }, [selectedLanguage, processTranscript, setPanelState, setRawTranscript, setSelectedLanguage, toast]);
+  }, [sessionType, setIsRecording, setIsPanelOpen, setPanelState, setRawTranscript, setCurrentSessionType, toast, sendChunkToSarvam, processTranscript]);
 
   // --- Web Speech API flow ---
   const startWebSpeechRecording = useCallback(() => {
@@ -163,6 +250,12 @@ const VoiceDictationButton: React.FC<Props> = ({ sessionType, className, size = 
     fullTranscriptRef.current = "";
     setRawTranscript("");
     setCurrentSessionType(sessionType);
+
+    // Seconds counter
+    setRecordingSeconds(0);
+    secondsTimerRef.current = setInterval(() => {
+      setRecordingSeconds(s => s + 1);
+    }, 1000);
 
     recognition.onresult = (e) => {
       let interim = "";
@@ -184,10 +277,12 @@ const VoiceDictationButton: React.FC<Props> = ({ sessionType, className, size = 
         toast({ title: `Speech error: ${e.error}`, variant: "destructive" });
       }
       setIsRecording(false);
+      if (secondsTimerRef.current) { clearInterval(secondsTimerRef.current); secondsTimerRef.current = null; }
     };
 
     recognition.onend = () => {
       setIsRecording(false);
+      if (secondsTimerRef.current) { clearInterval(secondsTimerRef.current); secondsTimerRef.current = null; }
       if (fullTranscriptRef.current.trim()) {
         processTranscript(fullTranscriptRef.current.trim());
       }
@@ -209,8 +304,15 @@ const VoiceDictationButton: React.FC<Props> = ({ sessionType, className, size = 
   }, [useSarvam, startSarvamRecording, startWebSpeechRecording]);
 
   const stopRecording = useCallback(() => {
+    // Clear timers
+    if (chunkTimerRef.current) { clearInterval(chunkTimerRef.current); chunkTimerRef.current = null; }
+    if (secondsTimerRef.current) { clearInterval(secondsTimerRef.current); secondsTimerRef.current = null; }
+
     if (useSarvam && mediaRecorderRef.current) {
-      mediaRecorderRef.current.stop();
+      isStoppingRef.current = true;
+      if (mediaRecorderRef.current.state === "recording") {
+        mediaRecorderRef.current.stop();
+      }
       mediaRecorderRef.current = null;
       setIsRecording(false);
     } else {
@@ -223,6 +325,8 @@ const VoiceDictationButton: React.FC<Props> = ({ sessionType, className, size = 
 
   const iconSize = size === "sm" ? "h-3.5 w-3.5" : "h-4 w-4";
   const btnSize = size === "sm" ? "h-7 px-2 text-[11px]" : "h-8 px-3 text-xs";
+
+  const formatTime = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, "0")}`;
 
   return (
     <div className={cn("relative inline-flex items-center gap-1", className)}>
@@ -282,7 +386,7 @@ const VoiceDictationButton: React.FC<Props> = ({ sessionType, className, size = 
         )}
       >
         {isRecording ? (
-          <><MicOff className={iconSize} /> Stop{useSarvam ? "" : " & Process"}</>
+          <><MicOff className={iconSize} /> Stop {formatTime(recordingSeconds)}</>
         ) : (
           <><Mic className={iconSize} /> {currentLang.flag} Voice</>
         )}
