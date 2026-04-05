@@ -17,6 +17,7 @@ import {
   FEATURE_LABELS,
   PROVIDER_MODELS,
   KNOWN_SERVICES,
+  PROVIDER_TO_SERVICE_KEY,
   getProviderLabel,
   callAI,
 } from "@/lib/aiProvider";
@@ -79,6 +80,13 @@ const APIConfigHubPage: React.FC = () => {
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    if (pendingAutoRun.current && !playRunning) {
+      pendingAutoRun.current = false;
+      setTimeout(() => runPlayground(), 200);
+    }
+  }, [playFeature]);
 
   const loadData = async () => {
     setLoading(true);
@@ -173,24 +181,74 @@ const APIConfigHubPage: React.FC = () => {
     setSaving(null);
   };
 
+  const playgroundRef = React.useRef<HTMLDivElement>(null);
+  const pendingAutoRun = React.useRef(false);
+
   const testApiKey = async (serviceKey: string) => {
     setTesting(serviceKey);
-    // Simulate a test — in production this would call the actual API
-    await new Promise(r => setTimeout(r, 1500));
-    const success = Math.random() > 0.3;
-    const now = new Date().toISOString();
     const existing = getApiKeyForService(serviceKey);
-    if (existing) {
-      await supabase.from("api_configurations").update({
-        last_tested_at: now,
-        test_status: success ? "success" : "failed",
-        test_message: success ? `Connected — response in ${Math.floor(Math.random() * 400 + 100)}ms` : "Connection refused or invalid key",
-      }).eq("id", existing.id);
-      await loadData();
+    if (!existing) { setTesting(null); return; }
+    const apiKey = (existing.config as Record<string, string>)?.api_key;
+    if (!apiKey) { setTesting(null); return; }
+
+    let success = false;
+    let message = "";
+    const start = Date.now();
+
+    try {
+      if (serviceKey === "gemini") {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contents: [{ parts: [{ text: "Hi" }] }], generationConfig: { maxOutputTokens: 1 } }),
+        });
+        success = res.ok;
+        if (!success) { const d = await res.json(); message = d.error?.message || `HTTP ${res.status}`; }
+      } else if (serviceKey === "openai") {
+        const res = await fetch("https://api.openai.com/v1/models", {
+          headers: { Authorization: `Bearer ${apiKey}` },
+        });
+        success = res.ok;
+        if (!success) { const d = await res.json(); message = d.error?.message || `HTTP ${res.status}`; }
+      } else if (serviceKey === "anthropic") {
+        const res = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+          body: JSON.stringify({ model: "claude-3-5-haiku-20241022", max_tokens: 1, messages: [{ role: "user", content: "Hi" }] }),
+        });
+        success = res.ok;
+        if (!success) { const d = await res.json(); message = d.error?.message || `HTTP ${res.status}`; }
+      } else if (serviceKey === "perplexity") {
+        const res = await fetch("https://api.perplexity.ai/chat/completions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+          body: JSON.stringify({ model: "llama-3.1-sonar-small-128k-online", max_tokens: 1, messages: [{ role: "user", content: "Hi" }] }),
+        });
+        success = res.ok;
+        if (!success) { const d = await res.json(); message = d.error?.message || `HTTP ${res.status}`; }
+      } else {
+        // Non-AI services: just mark configured
+        success = !!apiKey;
+        message = success ? "Key is set" : "No key";
+      }
+    } catch (err) {
+      success = false;
+      message = err instanceof Error ? err.message : "Connection failed";
     }
+
+    const ms = Date.now() - start;
+    const now = new Date().toISOString();
+    await supabase.from("api_configurations").update({
+      last_tested_at: now,
+      test_status: success ? "success" : "failed",
+      test_message: success ? `Connected — response in ${ms}ms` : message,
+    }).eq("id", existing.id);
+    await loadData();
+
     setTesting(null);
     toast({
       title: success ? "✓ Connection successful" : "✗ Connection failed",
+      description: success ? `Verified in ${ms}ms` : message,
       variant: success ? "default" : "destructive",
     });
   };
@@ -268,7 +326,8 @@ const APIConfigHubPage: React.FC = () => {
                   value={globalConfig?.provider || "claude"}
                   onValueChange={v => {
                     const models = PROVIDER_MODELS[v];
-                    updateAIConfig("global_default", { provider: v, model_name: models?.[0]?.value || "" });
+                    const serviceKey = PROVIDER_TO_SERVICE_KEY[v] || null;
+                    updateAIConfig("global_default", { provider: v, model_name: models?.[0]?.value || "", api_key_ref: serviceKey });
                   }}
                 >
                   <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
@@ -355,7 +414,8 @@ const APIConfigHubPage: React.FC = () => {
                           value={config?.provider || globalConfig?.provider || "claude"}
                           onValueChange={v => {
                             const models = PROVIDER_MODELS[v];
-                            updateAIConfig(key, { provider: v, model_name: models?.[0]?.value || "", is_active: true });
+                            const serviceKey = PROVIDER_TO_SERVICE_KEY[v] || null;
+                            updateAIConfig(key, { provider: v, model_name: models?.[0]?.value || "", is_active: true, api_key_ref: serviceKey });
                           }}
                         >
                           <SelectTrigger className="h-8 text-xs w-[160px]"><SelectValue /></SelectTrigger>
@@ -399,6 +459,10 @@ const APIConfigHubPage: React.FC = () => {
                           onClick={() => {
                             setPlayFeature(key);
                             setPlayPrompt("Hello, this is a test message. Respond with: Test successful.");
+                            pendingAutoRun.current = true;
+                            setTimeout(() => {
+                              playgroundRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+                            }, 100);
                           }}
                         >
                           <FlaskConical size={12} /> Test
@@ -508,7 +572,7 @@ const APIConfigHubPage: React.FC = () => {
         <Separator />
 
         {/* ── SECTION 4: DEVELOPER TOOLS ── */}
-        <section>
+        <section ref={playgroundRef}>
           <h2 className="text-sm font-bold text-foreground mb-3">Developer Tools — AI Playground</h2>
           <div className="grid grid-cols-2 gap-3 mb-3">
             <div>
