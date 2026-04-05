@@ -709,6 +709,86 @@ const APIConfigHubPage: React.FC = () => {
               </>
             )}
 
+            {/* Custom Model Management — only for LLM providers */}
+            {editingKey && ["anthropic", "openai", "gemini", "perplexity"].includes(editingKey.service_key) && (() => {
+              const providerKey = Object.entries(PROVIDER_TO_SERVICE_KEY).find(([, sk]) => sk === editingKey.service_key)?.[0] || editingKey.service_key;
+              const allModels = getMergedModels(providerKey);
+              const customModels = getCustomModels(providerKey);
+              return (
+                <div className="space-y-2">
+                  <Separator />
+                  <Label className="text-xs font-bold uppercase text-muted-foreground">Models</Label>
+                  <div className="space-y-1 max-h-[180px] overflow-y-auto">
+                    {allModels.map(m => (
+                      <div key={m.value} className="flex items-center justify-between bg-muted/50 rounded px-2.5 py-1.5 text-xs">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <code className="font-mono text-foreground truncate">{m.value}</code>
+                          {m.isCustom && <Badge variant="outline" className="text-[9px] px-1 py-0">Custom</Badge>}
+                        </div>
+                        {m.isCustom && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                            onClick={() => {
+                              const updated = customModels.filter(cm => cm.value !== m.value);
+                              saveCustomModels(providerKey, updated);
+                              setModelRefreshKey(k => k + 1);
+                              toast({ title: `Removed model: ${m.value}` });
+                            }}
+                          >
+                            <Trash2 size={12} />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <Input
+                      className="text-xs font-mono h-8 flex-1"
+                      placeholder="e.g. gemini-3-flash-preview"
+                      value={customModelInput}
+                      onChange={e => setCustomModelInput(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === "Enter" && customModelInput.trim()) {
+                          const val = customModelInput.trim();
+                          if (allModels.some(m => m.value === val)) {
+                            toast({ title: "Model already exists", variant: "destructive" });
+                            return;
+                          }
+                          saveCustomModels(providerKey, [...customModels, { label: val, value: val }]);
+                          setCustomModelInput("");
+                          setModelRefreshKey(k => k + 1);
+                          toast({ title: `Added model: ${val}` });
+                        }
+                      }}
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 gap-1 text-xs"
+                      disabled={!customModelInput.trim()}
+                      onClick={() => {
+                        const val = customModelInput.trim();
+                        if (!val) return;
+                        if (allModels.some(m => m.value === val)) {
+                          toast({ title: "Model already exists", variant: "destructive" });
+                          return;
+                        }
+                        saveCustomModels(providerKey, [...customModels, { label: val, value: val }]);
+                        setCustomModelInput("");
+                        setModelRefreshKey(k => k + 1);
+                        toast({ title: `Added model: ${val}` });
+                      }}
+                    >
+                      <Plus size={12} /> Add
+                    </Button>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">Add custom model codes. They'll appear in model dropdowns marked with ★</p>
+                </div>
+              );
+            })()}
+
             <div className="flex gap-2 pt-2">
               <Button
                 variant="outline"
