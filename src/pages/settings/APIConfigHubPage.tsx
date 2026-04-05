@@ -20,9 +20,12 @@ import {
   PROVIDER_TO_SERVICE_KEY,
   getProviderLabel,
   callAI,
+  getMergedModels,
+  getCustomModels,
+  saveCustomModels,
 } from "@/lib/aiProvider";
 import {
-  Loader2, Check, X, Play, Eye, EyeOff, ExternalLink, FlaskConical, Save, Plus,
+  Loader2, Check, X, Play, Eye, EyeOff, ExternalLink, FlaskConical, Save, Plus, Trash2,
 } from "lucide-react";
 
 const PROVIDERS = [
