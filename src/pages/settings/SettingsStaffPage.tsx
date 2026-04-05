@@ -693,6 +693,62 @@ const SettingsStaffPage: React.FC = () => {
           </div>
         </>
       )}
+
+      {/* ─── LOGIN CREDENTIALS MODAL ─── */}
+      {loginModal && (
+        <>
+          <div className="fixed inset-0 bg-black/30 z-40" onClick={() => { setLoginModal(null); setLoginPassword(""); setLoginEmail(""); }} />
+          <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-card rounded-xl border border-border shadow-xl w-full max-w-[420px] p-6">
+            <h2 className="text-lg font-bold text-foreground mb-1">Create Login Credentials</h2>
+            <p className="text-sm text-muted-foreground mb-5">
+              {loginModal.userName} will be able to sign in at the login page with these credentials.
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Email</label>
+                <Input
+                  type="email"
+                  value={loginEmail}
+                  onChange={(e) => setLoginEmail(e.target.value)}
+                  placeholder="staff@hospital.com"
+                  className="h-10"
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">Must be a valid, unique email address</p>
+              </div>
+              <div>
+                <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Password</label>
+                <Input
+                  type="password"
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  placeholder="Minimum 8 characters"
+                  className="h-10"
+                />
+                {loginPassword.length > 0 && loginPassword.length < 8 && (
+                  <p className="text-[11px] text-destructive mt-1">Password must be at least 8 characters</p>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 mt-6">
+              <button
+                onClick={() => { setLoginModal(null); setLoginPassword(""); setLoginEmail(""); }}
+                className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateLogin}
+                disabled={creatingLogin || !loginEmail || loginPassword.length < 8}
+                className="px-5 py-2 rounded-lg bg-[hsl(222,55%,23%)] text-white text-sm font-semibold hover:opacity-90 active:scale-[0.97] disabled:opacity-40"
+              >
+                {creatingLogin ? "Creating..." : "Create Login"}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };
