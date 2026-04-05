@@ -93,13 +93,18 @@ const SettingsStaffPage: React.FC = () => {
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkRows, setBulkRows] = useState<BulkRow[]>([{ ...EMPTY_BULK }]);
 
+  const [loginModal, setLoginModal] = useState<{ open: boolean; userId: string; userName: string; email: string } | null>(null);
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [creatingLogin, setCreatingLogin] = useState(false);
+
   /* ─── Queries ─── */
   const { data: users, isLoading } = useQuery({
     queryKey: ["settings-staff"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("users")
-        .select("id, full_name, email, phone, role, is_active, registration_number, department_id")
+        .select("id, full_name, email, phone, role, is_active, registration_number, department_id, auth_user_id, can_login")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
@@ -262,6 +267,38 @@ const SettingsStaffPage: React.FC = () => {
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
+  /* ─── Login handler ─── */
+  const handleCreateLogin = async () => {
+    if (!loginModal) return;
+    if (!loginEmail || loginPassword.length < 8) {
+      toast({ title: "Password must be at least 8 characters", variant: "destructive" });
+      return;
+    }
+    setCreatingLogin(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("create-staff-login", {
+        body: {
+          user_id: loginModal.userId,
+          email: loginEmail,
+          password: loginPassword,
+          full_name: loginModal.userName,
+        },
+      });
+      if (error || data?.error) {
+        throw new Error(data?.error || error?.message || "Failed to create login");
+      }
+      toast({ title: `Login created for ${loginModal.userName}`, description: "They can now sign in with their email and password." });
+      qc.invalidateQueries({ queryKey: ["settings-staff"] });
+      setLoginModal(null);
+      setLoginPassword("");
+      setLoginEmail("");
+    } catch (err: any) {
+      toast({ title: "Failed to create login", description: err.message, variant: "destructive" });
+    } finally {
+      setCreatingLogin(false);
+    }
+  };
+
   /* ─── Helpers ─── */
   const openDrawer = async (user?: any) => {
     if (user) {
@@ -393,19 +430,35 @@ const SettingsStaffPage: React.FC = () => {
                     <td className="px-4 py-2.5">
                       <div className="flex items-center gap-1.5">
                         <span className={cn("h-2 w-2 rounded-full", u.is_active ? "bg-emerald-500" : "bg-muted-foreground/40")} />
-                        <span className="text-[12px] text-muted-foreground">{u.is_active ? "Active" : "Inactive"}</span>
-                      </div>
+                         <span className="text-[12px] text-muted-foreground">{u.is_active ? "Active" : "Inactive"}</span>
+                         {u.can_login && <span className="text-[10px] text-emerald-600 ml-2">• Login enabled</span>}
+                       </div>
                     </td>
                     <td className="px-4 py-2.5 text-right">
                       <div className="flex items-center justify-end gap-1">
-                        <button onClick={() => openDrawer(u)} className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-muted">Edit</button>
-                        <button
-                          onClick={() => toggleActive.mutate({ id: u.id, active: u.is_active })}
-                          className="text-xs text-muted-foreground hover:text-destructive px-2 py-1 rounded hover:bg-muted"
-                        >
-                          {u.is_active ? "Deactivate" : "Activate"}
-                        </button>
-                      </div>
+                         <button onClick={() => openDrawer(u)} className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-muted">Edit</button>
+                         <button
+                           onClick={() => toggleActive.mutate({ id: u.id, active: u.is_active })}
+                           className="text-xs text-muted-foreground hover:text-destructive px-2 py-1 rounded hover:bg-muted"
+                         >
+                           {u.is_active ? "Deactivate" : "Activate"}
+                         </button>
+                         {!(u as any).auth_user_id && u.is_active && (
+                           <button
+                             onClick={() => {
+                               setLoginModal({ open: true, userId: u.id, userName: u.full_name, email: u.email });
+                               setLoginEmail(u.email);
+                               setLoginPassword("");
+                             }}
+                             className="text-xs text-primary hover:text-primary/80 px-2 py-1 rounded hover:bg-primary/10 font-medium"
+                           >
+                             Enable Login
+                           </button>
+                         )}
+                         {(u as any).auth_user_id && (
+                           <span className="text-[11px] text-emerald-600 px-2 py-1 font-medium">✓ Can Login</span>
+                         )}
+                       </div>
                     </td>
                   </tr>
                 );
@@ -638,6 +691,62 @@ const SettingsStaffPage: React.FC = () => {
                   {bulkSave.isPending ? "Saving..." : `Save All Doctors (${bulkRows.filter((r) => r.name.trim()).length})`}
                 </button>
               </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ─── LOGIN CREDENTIALS MODAL ─── */}
+      {loginModal && (
+        <>
+          <div className="fixed inset-0 bg-black/30 z-40" onClick={() => { setLoginModal(null); setLoginPassword(""); setLoginEmail(""); }} />
+          <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-card rounded-xl border border-border shadow-xl w-full max-w-[420px] p-6">
+            <h2 className="text-lg font-bold text-foreground mb-1">Create Login Credentials</h2>
+            <p className="text-sm text-muted-foreground mb-5">
+              {loginModal.userName} will be able to sign in at the login page with these credentials.
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Email</label>
+                <Input
+                  type="email"
+                  value={loginEmail}
+                  onChange={(e) => setLoginEmail(e.target.value)}
+                  placeholder="staff@hospital.com"
+                  className="h-10"
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">Must be a valid, unique email address</p>
+              </div>
+              <div>
+                <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Password</label>
+                <Input
+                  type="password"
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  placeholder="Minimum 8 characters"
+                  className="h-10"
+                />
+                {loginPassword.length > 0 && loginPassword.length < 8 && (
+                  <p className="text-[11px] text-destructive mt-1">Password must be at least 8 characters</p>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 mt-6">
+              <button
+                onClick={() => { setLoginModal(null); setLoginPassword(""); setLoginEmail(""); }}
+                className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateLogin}
+                disabled={creatingLogin || !loginEmail || loginPassword.length < 8}
+                className="px-5 py-2 rounded-lg bg-[hsl(222,55%,23%)] text-white text-sm font-semibold hover:opacity-90 active:scale-[0.97] disabled:opacity-40"
+              >
+                {creatingLogin ? "Creating..." : "Create Login"}
+              </button>
             </div>
           </div>
         </>
