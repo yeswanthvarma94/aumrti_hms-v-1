@@ -452,6 +452,10 @@ const APIConfigHubPage: React.FC = () => {
                           onClick={() => {
                             setPlayFeature(key);
                             setPlayPrompt("Hello, this is a test message. Respond with: Test successful.");
+                            pendingAutoRun.current = true;
+                            setTimeout(() => {
+                              playgroundRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+                            }, 100);
                           }}
                         >
                           <FlaskConical size={12} /> Test
