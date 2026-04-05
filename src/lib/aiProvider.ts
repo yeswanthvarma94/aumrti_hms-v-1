@@ -33,38 +33,31 @@ const PROVIDER_LABELS: Record<string, string> = {
   ollama: "Ollama (Local)",
 };
 
-export const getProviderLabel = (provider: string) =>
-  PROVIDER_LABELS[provider] || provider;
-
-export const FEATURE_LABELS: Record<string, string> = {
-  global_default: "Global Default",
-  voice_scribe: "Voice Scribe (SOAP)",
-  radiology_impression: "Radiology AI Impression",
-  ai_digest: "AI Executive Digest",
-  appeal_letter: "Appeal Letter Writer",
-  discharge_summary: "Discharge Summary",
-  icd_coding: "ICD-10 Code Suggester",
-  document_ocr: "Document OCR (Vision)",
-  discharge_instructions: "Discharge Instructions",
+export const PROVIDER_TO_SERVICE_KEY: Record<string, string> = {
+  claude: "anthropic",
+  openai: "openai",
+  gemini: "gemini",
+  perplexity: "perplexity",
 };
 
 export const PROVIDER_MODELS: Record<string, { label: string; value: string }[]> = {
   claude: [
-    { label: "Claude Opus 4.5 (Most powerful)", value: "claude-opus-4-5-20251001" },
-    { label: "Claude Sonnet 4.6 (Recommended)", value: "claude-sonnet-4-6" },
-    { label: "Claude Sonnet 4 (Balanced)", value: "claude-sonnet-4-20250514" },
-    { label: "Claude Haiku 4.5 (Fastest)", value: "claude-haiku-4-5-20251001" },
+    { label: "Claude Sonnet 4 (Recommended)", value: "claude-sonnet-4-20250514" },
+    { label: "Claude Haiku 3.5 (Fastest)", value: "claude-3-5-haiku-20241022" },
+    { label: "Claude Sonnet 3.5 v2", value: "claude-3-5-sonnet-20241022" },
+    { label: "Claude Opus 3", value: "claude-3-opus-20240229" },
   ],
   openai: [
     { label: "GPT-4o (Recommended)", value: "gpt-4o" },
     { label: "GPT-4o Mini (Faster)", value: "gpt-4o-mini" },
     { label: "GPT-4 Turbo", value: "gpt-4-turbo" },
-    { label: "o1-preview (Reasoning)", value: "o1-preview" },
+    { label: "o1 (Reasoning)", value: "o1" },
   ],
   gemini: [
-    { label: "Gemini 1.5 Pro (Recommended)", value: "gemini-1.5-pro" },
-    { label: "Gemini 1.5 Flash (Faster)", value: "gemini-1.5-flash" },
-    { label: "Gemini 2.0 Flash Exp", value: "gemini-2.0-flash-exp" },
+    { label: "Gemini 2.5 Pro (Recommended)", value: "gemini-2.5-pro-preview-06-05" },
+    { label: "Gemini 2.5 Flash (Fast)", value: "gemini-2.5-flash-preview-05-20" },
+    { label: "Gemini 1.5 Pro", value: "gemini-1.5-pro" },
+    { label: "Gemini 1.5 Flash", value: "gemini-1.5-flash" },
   ],
   perplexity: [
     { label: "Sonar Large 128k Online", value: "llama-3.1-sonar-large-128k-online" },
