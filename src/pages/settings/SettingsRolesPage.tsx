@@ -117,6 +117,7 @@ const SettingsRolesPage: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { hospitalId } = useHospitalId();
 
   const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null);
   const [matrix, setMatrix] = useState<Record<ModuleKey, Record<Action, boolean>> | null>(null);
