@@ -87,6 +87,43 @@ export const PROVIDER_MODELS: Record<string, { label: string; value: string }[]>
   ],
 };
 
+const CUSTOM_MODELS_KEY = "aumrti_custom_models";
+
+export function getCustomModels(provider: string): { label: string; value: string }[] {
+  try {
+    const stored = localStorage.getItem(CUSTOM_MODELS_KEY);
+    if (!stored) return [];
+    const all = JSON.parse(stored) as Record<string, { label: string; value: string }[]>;
+    return all[provider] || [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveCustomModels(provider: string, models: { label: string; value: string }[]) {
+  try {
+    const stored = localStorage.getItem(CUSTOM_MODELS_KEY);
+    const all = stored ? JSON.parse(stored) as Record<string, { label: string; value: string }[]> : {};
+    all[provider] = models;
+    localStorage.setItem(CUSTOM_MODELS_KEY, JSON.stringify(all));
+  } catch { /* ignore */ }
+}
+
+export function getMergedModels(provider: string): { label: string; value: string; isCustom?: boolean }[] {
+  const builtIn = (PROVIDER_MODELS[provider] || []).map(m => ({ ...m, isCustom: false }));
+  const custom = getCustomModels(provider).map(m => ({ ...m, isCustom: true }));
+  // Deduplicate by value, custom overrides built-in
+  const seen = new Set<string>();
+  const merged: { label: string; value: string; isCustom?: boolean }[] = [];
+  for (const m of [...builtIn, ...custom]) {
+    if (!seen.has(m.value)) {
+      seen.add(m.value);
+      merged.push(m);
+    }
+  }
+  return merged;
+}
+
 export const KNOWN_SERVICES = [
   { service_key: "anthropic", service_name: "Anthropic (Claude)", emoji: "🤖", endpoint: "api.anthropic.com" },
   { service_key: "openai", service_name: "OpenAI", emoji: "💡", endpoint: "api.openai.com" },
