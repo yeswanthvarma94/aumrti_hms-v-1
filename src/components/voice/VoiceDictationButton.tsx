@@ -359,7 +359,11 @@ const VoiceDictationButton: React.FC<Props> = ({ sessionType, className, size = 
               >
                 <span className="text-sm">{lang.flag}</span>
                 <span className="flex-1 text-left">{lang.label}</span>
-                {lang.engine === "web_speech" ? (
+                {lang.code === "auto" ? (
+                  <span className="inline-flex items-center gap-0.5 text-[10px] text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">
+                    ✨ Recommended
+                  </span>
+                ) : lang.engine === "web_speech" ? (
                   <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
                     <Zap className="h-2.5 w-2.5" /> instant
                   </span>
