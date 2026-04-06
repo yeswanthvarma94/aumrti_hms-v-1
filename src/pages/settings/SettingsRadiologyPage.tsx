@@ -10,7 +10,7 @@ import { Plus, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import useHospitalId from "@/hooks/useHospitalId";
+import { useHospitalId } from "@/hooks/useHospitalId";
 
 const SettingsRadiologyPage: React.FC = () => {
   const { toast } = useToast();

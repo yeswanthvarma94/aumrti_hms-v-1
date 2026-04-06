@@ -95,6 +95,7 @@ const DentalPage = lazy(() => import("./pages/dental/DentalPage"));
 const AyushPage = lazy(() => import("./pages/ayush/AyushPage"));
 const PackagesPage = lazy(() => import("./pages/packages/PackagesPage"));
 const IVFPage = lazy(() => import("./pages/ivf/IVFPage"));
+const SettingsRadiologyPage = lazy(() => import("./pages/settings/SettingsRadiologyPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -188,6 +189,7 @@ const App = () => (
             <Route path="/settings/api-keys" element={<SettingsAPIKeysPage />} />
             <Route path="/settings/api-hub" element={<APIConfigHubPage />} />
             <Route path="/settings/icd-codes" element={<SettingsICDCodesPage />} />
+            <Route path="/settings/radiology" element={<SettingsRadiologyPage />} />
             <Route path="/accounts" element={<AccountsPage />} />
             <Route path="/accounts/setup" element={<OpeningBalancesPage />} />
             <Route path="/blood-bank" element={<BloodBankPage />} />

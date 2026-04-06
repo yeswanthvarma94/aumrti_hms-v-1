@@ -94,6 +94,7 @@ const settingsGroups: SettingsGroup[] = [
       { icon: BookOpen, title: "Clinical Protocols", desc: "Standard treatment protocols", route: "/settings/protocols" },
       { icon: BellIcon, title: "Alert Thresholds", desc: "Vitals and lab critical value alerts", route: "/settings/clinical-thresholds" },
       { icon: FileText, title: "ICD-10 Code Master", desc: "Manage diagnosis code sets for ICD coding", route: "/settings/icd-codes" },
+      { icon: Settings2, title: "Radiology Modalities", desc: "Manage modality types and pricing", route: "/settings/radiology" },
     ],
   },
   {
