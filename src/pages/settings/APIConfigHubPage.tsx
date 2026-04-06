@@ -483,7 +483,92 @@ const APIConfigHubPage: React.FC = () => {
 
         <Separator />
 
-        {/* ── SECTION 2: API KEYS ── */}
+        {/* ── SECTION 1.5: VOICE ASR ENGINE ── */}
+        <section>
+          <h2 className="text-lg font-bold text-foreground mb-1">Voice ASR Engine</h2>
+          <p className="text-sm text-muted-foreground mb-5">
+            Choose which speech-to-text engine powers Voice Scribe for Indian languages
+          </p>
+
+          <div className="grid grid-cols-3 gap-4">
+            {[
+              {
+                key: "sarvam",
+                name: "Sarvam Saaras",
+                emoji: "🎙️",
+                desc: "Best medical vocabulary accuracy. 8 Indian languages. Paid API.",
+                languages: "Hindi, Telugu, Tamil, Kannada, Malayalam, Marathi, Bengali, Gujarati",
+                requiresKey: true,
+                badge: "Recommended",
+                badgeColor: "bg-blue-100 text-blue-700",
+              },
+              {
+                key: "bhashini",
+                name: "Bhashini (MeitY)",
+                emoji: "🇮🇳",
+                desc: "Government of India free ASR. 22 scheduled languages. ULCA pipeline.",
+                languages: "All 22 scheduled languages including Odia, Punjabi, Assamese, Urdu, Sanskrit",
+                requiresKey: true,
+                badge: "Free",
+                badgeColor: "bg-emerald-100 text-emerald-700",
+              },
+              {
+                key: "web_speech",
+                name: "Web Speech API",
+                emoji: "🌐",
+                desc: "Browser built-in. English only. No API key needed. Works offline.",
+                languages: "English (en-IN)",
+                requiresKey: false,
+                badge: "Built-in",
+                badgeColor: "bg-muted text-muted-foreground",
+              },
+            ].map((engine) => {
+              const isSelected = (voiceEngine || "sarvam") === engine.key;
+              const hasKey = engine.key === "web_speech" || !!getApiKeyForService(engine.key);
+              return (
+                <div
+                  key={engine.key}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => {
+                    if (engine.requiresKey && !hasKey) {
+                      toast({ title: `Configure ${engine.name} API key first`, description: "Add the key in External API Keys below", variant: "destructive" });
+                      return;
+                    }
+                    saveVoiceEngine(engine.key);
+                  }}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") e.currentTarget.click(); }}
+                  className={cn(
+                    "relative border-2 rounded-xl p-5 cursor-pointer transition-all hover:shadow-md",
+                    isSelected ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"
+                  )}
+                >
+                  {isSelected && (
+                    <div className="absolute top-3 right-3">
+                      <div className="bg-primary text-primary-foreground rounded-full p-0.5">
+                        <Check size={12} />
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-lg">{engine.emoji}</span>
+                    <span className="font-bold text-sm text-foreground">{engine.name}</span>
+                    <Badge className={cn("text-[10px]", engine.badgeColor)}>{engine.badge}</Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground mb-2">{engine.desc}</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    <span className="font-medium">Languages:</span> {engine.languages}
+                  </p>
+                  {engine.requiresKey && !hasKey && (
+                    <p className="text-[10px] text-amber-600 mt-2">⚠ API key required — configure below</p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        <Separator />
         <section>
           <h2 className="text-lg font-bold text-foreground mb-1">External API Keys</h2>
           <p className="text-sm text-muted-foreground mb-5">All third-party integrations managed in one place</p>
