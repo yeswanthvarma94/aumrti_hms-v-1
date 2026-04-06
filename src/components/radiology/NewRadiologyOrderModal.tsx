@@ -124,10 +124,20 @@ const NewRadiologyOrderModal: React.FC<Props> = ({ hospitalId, modalities, onClo
       return;
     }
 
-    const matchedModality = modalities.find(m => m.modality_type === selectedModalityType);
+    let matchedModality = modalities.find(m => m.modality_type === selectedModalityType);
     if (!matchedModality) {
-      toast({ title: "Selected modality not available. Please add it in settings.", variant: "destructive" });
-      return;
+      // Auto-create the modality instead of blocking
+      const { data: newMod, error: modErr } = await supabase
+        .from("radiology_modalities")
+        .insert({ hospital_id: hospitalId, name: selectedModalityType.toUpperCase(), modality_type: selectedModalityType, is_active: true } as any)
+        .select("id, name, modality_type, is_active")
+        .single();
+      if (modErr || !newMod) {
+        toast({ title: "Failed to create modality", description: modErr?.message, variant: "destructive" });
+        setSubmitting(false);
+        return;
+      }
+      matchedModality = newMod;
     }
 
     setSubmitting(true);
