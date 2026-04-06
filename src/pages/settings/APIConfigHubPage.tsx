@@ -95,6 +95,44 @@ const APIConfigHubPage: React.FC = () => {
     }
   }, [playFeature]);
 
+  // Load voice engine preference
+  useEffect(() => {
+    if (hospitalId) {
+      supabase
+        .from("api_configurations")
+        .select("config")
+        .eq("hospital_id", hospitalId)
+        .eq("service_key", "voice_asr_engine")
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data?.config) {
+            setVoiceEngine((data.config as Record<string, string>).engine || "sarvam");
+          }
+        });
+    }
+  }, [hospitalId]);
+
+  const saveVoiceEngine = async (engine: string) => {
+    if (!hospitalId) return;
+    setVoiceEngine(engine);
+    const existing = apiKeys.find(k => k.service_key === "voice_asr_engine");
+    const payload = {
+      hospital_id: hospitalId,
+      service_name: "Voice ASR Engine",
+      service_key: "voice_asr_engine",
+      config: { engine },
+      is_active: true,
+    };
+    if (existing) {
+      await supabase.from("api_configurations").update(payload).eq("id", existing.id);
+    } else {
+      await supabase.from("api_configurations").insert(payload);
+    }
+    const engineLabel = engine === "sarvam" ? "Sarvam Saaras" : engine === "bhashini" ? "Bhashini (MeitY)" : "Web Speech API";
+    toast({ title: `✓ Voice engine set to ${engineLabel}` });
+    await loadData();
+  };
+
   const loadData = async () => {
     setLoading(true);
     // Get hospital ID
