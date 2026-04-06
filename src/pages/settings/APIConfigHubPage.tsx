@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { cn } from "@/lib/utils";
 import SettingsPageWrapper from "@/components/settings/SettingsPageWrapper";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -68,6 +69,7 @@ const APIConfigHubPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [testing, setTesting] = useState<string | null>(null);
+  const [voiceEngine, setVoiceEngine] = useState<string>("sarvam");
 
   // API Key drawer
   const [editingKey, setEditingKey] = useState<typeof KNOWN_SERVICES[0] | null>(null);
