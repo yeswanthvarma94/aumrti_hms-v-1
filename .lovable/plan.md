@@ -1,31 +1,50 @@
 
 
-## Fix: AI Provider — API Key Lookup, Models, and Test Button
+## Add Multi-Engine Voice ASR (Sarvam + Bhashini + Web Speech)
 
-### Problems
-
-1. **API key not found for Gemini**: The `api_key_ref` in `ai_provider_config` stores the service_key of the API Key Source dropdown (e.g., "anthropic"). But in the screenshots, the Global Default is set to provider "gemini" with API Key Source showing "Anthropic" — meaning `api_key_ref = "anthropic"`. The `callAI` function then queries `api_configurations WHERE service_key = "anthropic"`, which has no key configured. The real key is stored under `service_key = "gemini"`. **Fix**: Auto-set `api_key_ref` to match the selected provider when provider changes, and add a provider-to-service_key mapping.
-
-2. **Models are hardcoded**: `PROVIDER_MODELS` in `aiProvider.ts` has outdated models. Users can't add custom models. **Fix**: Update the model lists to current versions and add an "Other" option allowing custom model entry.
-
-3. **Feature "Test" button doesn't test**: Clicking "Test" on a feature row only sets `playFeature` and `playPrompt` — it doesn't scroll to the playground or auto-run. **Fix**: After setting feature/prompt, auto-scroll to playground and auto-run the test.
-
-4. **API Key "Test Connection" is fake**: `testApiKey()` uses `Math.random()` instead of actually testing the API. **Fix**: Make a real lightweight API call to verify the key works.
+### What
+Allow hospital admins to choose their preferred speech-to-text engine from the API Hub. Add Bhashini (free Government of India ASR supporting 22 languages) as a second engine alongside Sarvam and Web Speech API.
 
 ### Changes
 
 **File 1: `src/lib/aiProvider.ts`**
-- Add `PROVIDER_TO_SERVICE_KEY` mapping: `{ claude: "anthropic", openai: "openai", gemini: "gemini", perplexity: "perplexity" }`
-- Update `PROVIDER_MODELS` with current model names (Gemini 2.5 Pro/Flash, Claude 4 Sonnet, GPT-4o, etc.)
-- In `callAI`: if `api_key_ref` is not set, auto-resolve using `PROVIDER_TO_SERVICE_KEY[provider]` before falling back to env vars
+- Add Bhashini to `KNOWN_SERVICES` array: `{ service_key: "bhashini", service_name: "Bhashini (MeitY)", emoji: "🇮🇳", endpoint: "meity-auth.ulcacontrib.org" }`
+- Add `bhashini: "VITE_BHASHINI_KEY"` to `ENV_KEYS`
+- Add `voice_asr_engine: "Voice ASR Engine"` to `FEATURE_LABELS`
 
-**File 2: `src/pages/settings/APIConfigHubPage.tsx`**
-- When provider changes in Global Default or feature rows, auto-set `api_key_ref` to the matching service_key via the mapping
-- Feature "Test" button: after setting `playFeature`/`playPrompt`, scroll to playground section and trigger `runPlayground()` automatically
-- Replace fake `testApiKey()` with real API calls per provider (e.g., Gemini: call `generateContent` with a tiny prompt; OpenAI: call `chat/completions` with `max_tokens: 1`)
+**File 2: `supabase/functions/bhashini-transcribe/index.ts`** (NEW)
+- 2-step Bhashini ULCA pipeline: get ASR config → call inference endpoint
+- Maps our language codes (hi-IN, te-IN, etc.) to ISO-639 codes for Bhashini
+- Reads `BHASHINI_API_KEY` and `BHASHINI_USER_ID` from Deno env
+- Returns `{ transcript }` same as sarvam-transcribe
+
+**File 3: `src/contexts/VoiceScribeContext.tsx`**
+- Add `"bhashini"` to the `LanguageOption.engine` union type
+- Add 13 Bhashini-only languages (Odia, Punjabi, Assamese, Urdu, Sanskrit, etc.) to `SUPPORTED_LANGUAGES`
+
+**File 4: `src/pages/settings/APIConfigHubPage.tsx`**
+- Add "Voice ASR Engine" section between AI Providers and External API Keys
+- 3-card selector: Sarvam (Recommended), Bhashini (Free), Web Speech (Built-in)
+- Selection saved to `api_configurations` table with `service_key = "voice_asr_engine"`, `config = { engine: "sarvam"|"bhashini"|"web_speech" }`
+- Add Bhashini-specific fields (User ID) in the API key drawer
+- Load/save engine preference on mount
+
+**File 5: `src/components/voice/VoiceDictationButton.tsx`**
+- Fetch admin's engine preference from `api_configurations` on mount
+- Add `resolveEngine()` that respects: English → web_speech always; admin preference for Indian languages; default to sarvam
+- Add `sendToBhashini()` function (same pattern as `sendChunkToSarvam` but calls `bhashini-transcribe`)
+- Use `activeEngineRef` to capture engine at recording start for consistent routing in `onstop`
+- Filter language list: hide Bhashini-only languages when Bhashini isn't the active engine
+- Update language badges to show active engine name
+
+### Supabase Secrets Needed
+After deployment, two secrets must be added for Bhashini (free from bhashini.gov.in):
+- `BHASHINI_API_KEY`
+- `BHASHINI_USER_ID`
 
 ### Technical Details
-- The core bug is that `api_key_ref` determines where to look up the API key, but changing the provider doesn't update `api_key_ref`. A user selects Gemini as provider but `api_key_ref` still points to "anthropic" (from a previous selection or default)
-- The fix in `callAI` adds a fallback: if `api_key_ref` is null/missing, derive it from the provider name using the mapping, so even misconfigured records still find the right key
-- Real API key testing uses minimal token calls to verify connectivity without incurring significant cost
+- No DB migration needed — uses existing `api_configurations` table with a new `service_key = "voice_asr_engine"` row
+- Bhashini-only languages have `engine: "bhashini"` in the array, filtered out of the language selector when Bhashini isn't active
+- The `activeEngineRef` pattern prevents race conditions between recording start and stop
+- Auto-chunking (25s) applies to both Sarvam and Bhashini since both have duration limits
 
