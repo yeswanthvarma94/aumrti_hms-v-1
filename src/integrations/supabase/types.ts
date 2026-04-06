@@ -8015,6 +8015,7 @@ export type Database = {
           created_at: string | null
           critical_high: number | null
           critical_low: number | null
+          fee: number | null
           hospital_id: string
           id: string
           is_active: boolean | null
@@ -8032,6 +8033,7 @@ export type Database = {
           created_at?: string | null
           critical_high?: number | null
           critical_low?: number | null
+          fee?: number | null
           hospital_id: string
           id?: string
           is_active?: boolean | null
@@ -8049,6 +8051,7 @@ export type Database = {
           created_at?: string | null
           critical_high?: number | null
           critical_low?: number | null
+          fee?: number | null
           hospital_id?: string
           id?: string
           is_active?: boolean | null
@@ -13213,6 +13216,7 @@ export type Database = {
       radiology_modalities: {
         Row: {
           created_at: string | null
+          fee: number | null
           hospital_id: string
           id: string
           is_active: boolean | null
@@ -13221,6 +13225,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          fee?: number | null
           hospital_id: string
           id?: string
           is_active?: boolean | null
@@ -13229,6 +13234,7 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          fee?: number | null
           hospital_id?: string
           id?: string
           is_active?: boolean | null
