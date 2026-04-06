@@ -46,6 +46,7 @@ export const FEATURE_LABELS: Record<string, string> = {
   icd_coding: "ICD-10 Code Suggester",
   document_ocr: "Document OCR (Vision)",
   discharge_instructions: "Discharge Instructions",
+  voice_asr_engine: "Voice ASR Engine",
 };
 
 export const PROVIDER_TO_SERVICE_KEY: Record<string, string> = {
@@ -132,6 +133,7 @@ export const KNOWN_SERVICES = [
   { service_key: "razorpay", service_name: "Razorpay", emoji: "💳", endpoint: "api.razorpay.com" },
   { service_key: "wati", service_name: "WATI (WhatsApp)", emoji: "📱", endpoint: "live-mt-server.wati.io" },
   { service_key: "sarvam", service_name: "Sarvam (Voice)", emoji: "🎙️", endpoint: "api.sarvam.ai" },
+  { service_key: "bhashini", service_name: "Bhashini (MeitY)", emoji: "🇮🇳", endpoint: "meity-auth.ulcacontrib.org" },
   { service_key: "abdm", service_name: "ABDM / ABHA", emoji: "🏛️", endpoint: "abdm.gov.in" },
   { service_key: "nic_irp", service_name: "NIC IRP (GST e-Invoice)", emoji: "📄", endpoint: "einvoice1.gst.gov.in" },
 ];
@@ -245,6 +247,7 @@ const ENV_KEYS: Record<string, string> = {
   gemini: "VITE_GEMINI_KEY",
   perplexity: "VITE_PERPLEXITY_KEY",
   sarvam: "VITE_SARVAM_KEY",
+  bhashini: "VITE_BHASHINI_KEY",
 };
 
 const getEnvKey = (provider: string): string | undefined => {
