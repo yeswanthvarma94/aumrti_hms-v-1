@@ -12,6 +12,7 @@ export interface LanguageOption {
 }
 
 export const SUPPORTED_LANGUAGES: LanguageOption[] = [
+  { code: "auto", label: "Auto (Multilingual)", flag: "🌐", engine: "sarvam" },
   { code: "en-IN", label: "English", flag: "🇺🇸", engine: "web_speech" },
   { code: "hi-IN", label: "Hindi", flag: "🇮🇳", engine: "sarvam" },
   { code: "te-IN", label: "Telugu", flag: "🌟", engine: "sarvam" },
@@ -70,7 +71,7 @@ export const VoiceScribeProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const [structuredOutput, setStructuredOutput] = useState<Record<string, unknown> | null>(null);
   const [currentSessionType, setCurrentSessionType] = useState<SessionType>("opd_consultation");
   const [selectedLanguage, setSelectedLanguageState] = useState<string>(
-    () => localStorage.getItem("vscribe_preferred_language") || "en-IN"
+    () => localStorage.getItem("vscribe_preferred_language") || "auto"
   );
   const screenFillFns = useRef<Map<string, (data: Record<string, unknown>) => void>>(new Map());
 
