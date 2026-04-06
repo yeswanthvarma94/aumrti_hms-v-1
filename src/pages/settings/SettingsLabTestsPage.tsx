@@ -49,7 +49,7 @@ const SettingsLabTestsPage: React.FC = () => {
   const addMutation = useMutation({
     mutationFn: async () => {
       const { error } = await supabase.from("lab_test_master").insert({
-        hospital_id: hospitalId,
+        hospital_id: hospitalId!,
         test_name: form.test_name,
         test_code: form.test_code,
         category: form.category,
@@ -60,7 +60,7 @@ const SettingsLabTestsPage: React.FC = () => {
         tat_minutes: form.tat_minutes ? Number(form.tat_minutes) : null,
         fee: form.fee ? Number(form.fee) : 0,
         is_active: true,
-      });
+      } as any);
       if (error) throw error;
     },
     onSuccess: () => {

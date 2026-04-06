@@ -43,12 +43,12 @@ const SettingsRadiologyPage: React.FC = () => {
   const addMutation = useMutation({
     mutationFn: async () => {
       const { error } = await supabase.from("radiology_modalities").insert({
-        hospital_id: hospitalId,
+        hospital_id: hospitalId!,
         name: form.name,
         modality_type: form.modality_type.toLowerCase().replace(/\s+/g, "_"),
         fee: form.fee ? Number(form.fee) : 0,
         is_active: true,
-      });
+      } as any);
       if (error) throw error;
     },
     onSuccess: () => {
