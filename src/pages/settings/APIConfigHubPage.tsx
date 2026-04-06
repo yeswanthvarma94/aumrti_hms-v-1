@@ -827,6 +827,25 @@ const APIConfigHubPage: React.FC = () => {
                 <Input className="mt-1" placeholder="+91..." />
               </div>
             )}
+            {editingKey?.service_key === "bhashini" && (
+              <div className="space-y-3">
+                <div>
+                  <Label>User ID (from bhashini.gov.in)</Label>
+                  <Input
+                    className="mt-1"
+                    placeholder="Bhashini User ID"
+                    value={(keyForm as Record<string, string>).user_id || ""}
+                    onChange={e => setKeyForm(p => ({ ...p, user_id: e.target.value }))}
+                  />
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  Get free credentials at{" "}
+                  <a href="https://bhashini.gov.in" target="_blank" rel="noopener noreferrer" className="underline text-primary">
+                    bhashini.gov.in
+                  </a>
+                </p>
+              </div>
+            )}
             {editingKey?.service_key === "nic_irp" && (
               <>
                 <div><Label>Username</Label><Input className="mt-1" placeholder="NIC IRP username" /></div>
