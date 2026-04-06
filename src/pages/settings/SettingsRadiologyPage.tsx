@@ -14,7 +14,7 @@ import { useHospitalId } from "@/hooks/useHospitalId";
 
 const SettingsRadiologyPage: React.FC = () => {
   const { toast } = useToast();
-  const hospitalId = useHospitalId();
+  const { hospitalId } = useHospitalId();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [showAdd, setShowAdd] = useState(false);

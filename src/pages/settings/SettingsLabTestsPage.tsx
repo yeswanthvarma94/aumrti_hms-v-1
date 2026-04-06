@@ -17,7 +17,7 @@ const CATEGORIES = ["Haematology", "Biochemistry", "Pathology", "Microbiology", 
 
 const SettingsLabTestsPage: React.FC = () => {
   const { toast } = useToast();
-  const hospitalId = useHospitalId();
+  const { hospitalId } = useHospitalId();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
