@@ -8,7 +8,7 @@ export interface LanguageOption {
   code: string;
   label: string;
   flag: string;
-  engine: "web_speech" | "sarvam";
+  engine: "web_speech" | "sarvam" | "bhashini";
 }
 
 export const SUPPORTED_LANGUAGES: LanguageOption[] = [
@@ -22,6 +22,20 @@ export const SUPPORTED_LANGUAGES: LanguageOption[] = [
   { code: "mr-IN", label: "Marathi", flag: "🌟", engine: "sarvam" },
   { code: "bn-IN", label: "Bengali", flag: "🌟", engine: "sarvam" },
   { code: "gu-IN", label: "Gujarati", flag: "🌟", engine: "sarvam" },
+  // Bhashini-only languages (22 scheduled languages)
+  { code: "or-IN", label: "Odia", flag: "🌟", engine: "bhashini" },
+  { code: "pa-IN", label: "Punjabi", flag: "🌟", engine: "bhashini" },
+  { code: "as-IN", label: "Assamese", flag: "🌟", engine: "bhashini" },
+  { code: "ur-IN", label: "Urdu", flag: "🌟", engine: "bhashini" },
+  { code: "sa-IN", label: "Sanskrit", flag: "🌟", engine: "bhashini" },
+  { code: "ne-IN", label: "Nepali", flag: "🌟", engine: "bhashini" },
+  { code: "sd-IN", label: "Sindhi", flag: "🌟", engine: "bhashini" },
+  { code: "kok-IN", label: "Konkani", flag: "🌟", engine: "bhashini" },
+  { code: "doi-IN", label: "Dogri", flag: "🌟", engine: "bhashini" },
+  { code: "mai-IN", label: "Maithili", flag: "🌟", engine: "bhashini" },
+  { code: "mni-IN", label: "Manipuri", flag: "🌟", engine: "bhashini" },
+  { code: "sat-IN", label: "Santali", flag: "🌟", engine: "bhashini" },
+  { code: "bo-IN", label: "Bodo", flag: "🌟", engine: "bhashini" },
 ];
 
 interface VoiceScribeContextType {

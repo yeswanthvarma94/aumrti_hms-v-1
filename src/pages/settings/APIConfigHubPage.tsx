@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { cn } from "@/lib/utils";
 import SettingsPageWrapper from "@/components/settings/SettingsPageWrapper";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -68,6 +69,7 @@ const APIConfigHubPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [testing, setTesting] = useState<string | null>(null);
+  const [voiceEngine, setVoiceEngine] = useState<string>("sarvam");
 
   // API Key drawer
   const [editingKey, setEditingKey] = useState<typeof KNOWN_SERVICES[0] | null>(null);
@@ -92,6 +94,44 @@ const APIConfigHubPage: React.FC = () => {
       setTimeout(() => runPlayground(), 200);
     }
   }, [playFeature]);
+
+  // Load voice engine preference
+  useEffect(() => {
+    if (hospitalId) {
+      supabase
+        .from("api_configurations")
+        .select("config")
+        .eq("hospital_id", hospitalId)
+        .eq("service_key", "voice_asr_engine")
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data?.config) {
+            setVoiceEngine((data.config as Record<string, string>).engine || "sarvam");
+          }
+        });
+    }
+  }, [hospitalId]);
+
+  const saveVoiceEngine = async (engine: string) => {
+    if (!hospitalId) return;
+    setVoiceEngine(engine);
+    const existing = apiKeys.find(k => k.service_key === "voice_asr_engine");
+    const payload = {
+      hospital_id: hospitalId,
+      service_name: "Voice ASR Engine",
+      service_key: "voice_asr_engine",
+      config: { engine },
+      is_active: true,
+    };
+    if (existing) {
+      await supabase.from("api_configurations").update(payload).eq("id", existing.id);
+    } else {
+      await supabase.from("api_configurations").insert(payload);
+    }
+    const engineLabel = engine === "sarvam" ? "Sarvam Saaras" : engine === "bhashini" ? "Bhashini (MeitY)" : "Web Speech API";
+    toast({ title: `✓ Voice engine set to ${engineLabel}` });
+    await loadData();
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -483,7 +523,92 @@ const APIConfigHubPage: React.FC = () => {
 
         <Separator />
 
-        {/* ── SECTION 2: API KEYS ── */}
+        {/* ── SECTION 1.5: VOICE ASR ENGINE ── */}
+        <section>
+          <h2 className="text-lg font-bold text-foreground mb-1">Voice ASR Engine</h2>
+          <p className="text-sm text-muted-foreground mb-5">
+            Choose which speech-to-text engine powers Voice Scribe for Indian languages
+          </p>
+
+          <div className="grid grid-cols-3 gap-4">
+            {[
+              {
+                key: "sarvam",
+                name: "Sarvam Saaras",
+                emoji: "🎙️",
+                desc: "Best medical vocabulary accuracy. 8 Indian languages. Paid API.",
+                languages: "Hindi, Telugu, Tamil, Kannada, Malayalam, Marathi, Bengali, Gujarati",
+                requiresKey: true,
+                badge: "Recommended",
+                badgeColor: "bg-blue-100 text-blue-700",
+              },
+              {
+                key: "bhashini",
+                name: "Bhashini (MeitY)",
+                emoji: "🇮🇳",
+                desc: "Government of India free ASR. 22 scheduled languages. ULCA pipeline.",
+                languages: "All 22 scheduled languages including Odia, Punjabi, Assamese, Urdu, Sanskrit",
+                requiresKey: true,
+                badge: "Free",
+                badgeColor: "bg-emerald-100 text-emerald-700",
+              },
+              {
+                key: "web_speech",
+                name: "Web Speech API",
+                emoji: "🌐",
+                desc: "Browser built-in. English only. No API key needed. Works offline.",
+                languages: "English (en-IN)",
+                requiresKey: false,
+                badge: "Built-in",
+                badgeColor: "bg-muted text-muted-foreground",
+              },
+            ].map((engine) => {
+              const isSelected = (voiceEngine || "sarvam") === engine.key;
+              const hasKey = engine.key === "web_speech" || !!getApiKeyForService(engine.key);
+              return (
+                <div
+                  key={engine.key}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => {
+                    if (engine.requiresKey && !hasKey) {
+                      toast({ title: `Configure ${engine.name} API key first`, description: "Add the key in External API Keys below", variant: "destructive" });
+                      return;
+                    }
+                    saveVoiceEngine(engine.key);
+                  }}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") e.currentTarget.click(); }}
+                  className={cn(
+                    "relative border-2 rounded-xl p-5 cursor-pointer transition-all hover:shadow-md",
+                    isSelected ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"
+                  )}
+                >
+                  {isSelected && (
+                    <div className="absolute top-3 right-3">
+                      <div className="bg-primary text-primary-foreground rounded-full p-0.5">
+                        <Check size={12} />
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-lg">{engine.emoji}</span>
+                    <span className="font-bold text-sm text-foreground">{engine.name}</span>
+                    <Badge className={cn("text-[10px]", engine.badgeColor)}>{engine.badge}</Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground mb-2">{engine.desc}</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    <span className="font-medium">Languages:</span> {engine.languages}
+                  </p>
+                  {engine.requiresKey && !hasKey && (
+                    <p className="text-[10px] text-amber-600 mt-2">⚠ API key required — configure below</p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        <Separator />
         <section>
           <h2 className="text-lg font-bold text-foreground mb-1">External API Keys</h2>
           <p className="text-sm text-muted-foreground mb-5">All third-party integrations managed in one place</p>
@@ -700,6 +825,25 @@ const APIConfigHubPage: React.FC = () => {
               <div>
                 <Label>Phone Number</Label>
                 <Input className="mt-1" placeholder="+91..." />
+              </div>
+            )}
+            {editingKey?.service_key === "bhashini" && (
+              <div className="space-y-3">
+                <div>
+                  <Label>User ID (from bhashini.gov.in)</Label>
+                  <Input
+                    className="mt-1"
+                    placeholder="Bhashini User ID"
+                    value={(keyForm as Record<string, string>).user_id || ""}
+                    onChange={e => setKeyForm(p => ({ ...p, user_id: e.target.value }))}
+                  />
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  Get free credentials at{" "}
+                  <a href="https://bhashini.gov.in" target="_blank" rel="noopener noreferrer" className="underline text-primary">
+                    bhashini.gov.in
+                  </a>
+                </p>
               </div>
             )}
             {editingKey?.service_key === "nic_irp" && (
