@@ -35,7 +35,7 @@ const WhatsAppNotificationCard: React.FC<Props> = ({ patientName, notificationTy
   }, [countdown, onSkip]);
 
   const handleSend = () => {
-    window.open(waUrl, "_blank");
+    window.open(waUrl, "_blank", "noopener,noreferrer");
     onSend();
     setVisible(false);
   };

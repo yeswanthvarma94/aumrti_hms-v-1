@@ -63,7 +63,7 @@ const ReferralPatternAnalyser: React.FC = () => {
   const reEngage = (doc: any) => {
     if (!doc.phone) { toast({ title: "No phone number", variant: "destructive" }); return; }
     const msg = `Dear Dr. ${doc.doctor_name}, we greatly value your continued support. We wanted to share our latest clinical outcomes data and update you on our new capabilities. May we arrange a brief visit? — Aumrti Hospital`;
-    window.open(`https://wa.me/91${doc.phone.replace(/\D/g, "")}?text=${encodeURIComponent(msg)}`, "_blank");
+    window.open(`https://wa.me/91${doc.phone.replace(/\D/g, "")}?text=${encodeURIComponent(msg)}`, "_blank", "noopener,noreferrer");
   };
 
   if (loading) return <div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;

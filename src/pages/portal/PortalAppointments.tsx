@@ -195,7 +195,7 @@ const BookNewTab: React.FC<{ session: PortalSession }> = ({ session }) => {
         tokenNumber: tokenNum,
       });
       // Auto-open WhatsApp for patient-initiated booking
-      window.open(result.waUrl, "_blank");
+      window.open(result.waUrl, "_blank", "noopener,noreferrer");
       setSuccess(true);
     }
   };

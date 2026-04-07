@@ -844,7 +844,7 @@ const LabResultWorkspace: React.FC<Props> = ({ order, onRefresh }) => {
             return `<tr><td style="padding:6px 10px;border-bottom:1px solid #eee">${i.test_name}</td><td style="padding:6px 10px;border-bottom:1px solid #eee;font-weight:600;${i.result_flag === 'H' || i.result_flag === 'CH' ? 'color:#B45309' : i.result_flag === 'L' || i.result_flag === 'CL' ? 'color:#1D4ED8' : ''}">${i.result_value || "—"}${flagLabel}</td><td style="padding:6px 10px;border-bottom:1px solid #eee">${i.unit || ""}</td><td style="padding:6px 10px;border-bottom:1px solid #eee;color:#6B7280">${ref}</td></tr>`;
           }).join("");
           const printHtml = `<html><head><title>Lab Report - ${p?.full_name}</title><style>body{font-family:Arial,sans-serif;padding:40px}table{width:100%;border-collapse:collapse}th{background:#F3F4F6;padding:8px 10px;text-align:left;font-size:12px;text-transform:uppercase;color:#6B7280}td{font-size:13px}@media print{body{padding:20px}}</style></head><body><h2 style="margin:0 0 4px">Lab Report</h2><p style="color:#6B7280;margin:0 0 16px">Order: LAB-${order.id.slice(0, 8).toUpperCase()} | Date: ${new Date(order.order_date).toLocaleDateString("en-IN")}</p><p><strong>Patient:</strong> ${p?.full_name || "—"} | <strong>UHID:</strong> ${p?.uhid || "—"} | <strong>Age/Gender:</strong> ${getAge(p?.dob || null)} ${p?.gender || ""}</p><table style="margin-top:16px"><thead><tr><th>Test</th><th>Result</th><th>Unit</th><th>Reference Range</th></tr></thead><tbody>${testRows}</tbody></table><p style="margin-top:24px;font-size:11px;color:#9CA3AF">Report generated on ${new Date().toLocaleString()}</p></body></html>`;
-          const w = window.open("", "_blank");
+          const w = window.open("", "_blank", "noopener,noreferrer");
           if (w) { w.document.write(printHtml); w.document.close(); w.print(); }
         }}
           className="px-3 py-2 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-muted transition-colors flex items-center gap-1.5">
@@ -861,7 +861,7 @@ const LabResultWorkspace: React.FC<Props> = ({ order, onRefresh }) => {
             }).join("\n");
             const msg = `🏥 *Lab Report*\n*Patient:* ${p.full_name}\n\n📋 *Results:*\n${testLines}`;
             const phone = p.phone?.replace(/\D/g, "");
-            window.open(`https://wa.me/91${phone}?text=${encodeURIComponent(msg)}`, "_blank");
+            window.open(`https://wa.me/91${phone}?text=${encodeURIComponent(msg)}`, "_blank", "noopener,noreferrer");
           }}
           className="px-3 py-2 rounded-lg border border-emerald-300 text-xs font-medium text-emerald-700 hover:bg-emerald-50 transition-colors flex items-center gap-1.5">
           <MessageSquare size={13} /> WhatsApp

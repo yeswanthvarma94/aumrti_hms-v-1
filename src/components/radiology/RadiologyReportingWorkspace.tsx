@@ -439,7 +439,7 @@ const RadiologyReportingWorkspace: React.FC<Props> = ({ order, hospitalId, onSta
     const msg = encodeURIComponent(
       `🏥 *Radiology Report Ready*\nPatient: ${order.patients?.full_name} (${order.patients?.uhid})\nStudy: ${order.study_name}\nAccession: ${order.accession_number || "N/A"}\n\n*Impression:*\n${impression}\n${isCritical ? "\n⚠️ CRITICAL FINDING — Please review urgently" : ""}\n\nFull report available in HMS.`
     );
-    window.open(`https://wa.me/91${phone.replace(/\D/g, "")}?text=${msg}`, "_blank");
+    window.open(`https://wa.me/91${phone.replace(/\D/g, "")}?text=${msg}`, "_blank", "noopener,noreferrer");
     if (report) {
       supabase.from("radiology_reports").update({ whatsapp_sent: true }).eq("id", report.id);
     }
@@ -704,7 +704,7 @@ const RadiologyReportingWorkspace: React.FC<Props> = ({ order, hospitalId, onSta
           {order.dicom_pacs_url ? (
             <div className="space-y-4">
               <p className="text-[12px] text-slate-400">PACS URL configured</p>
-              <Button className="w-full bg-blue-600 hover:bg-blue-700 h-12" onClick={() => window.open(order.dicom_pacs_url!, "_blank")}>
+              <Button className="w-full bg-blue-600 hover:bg-blue-700 h-12" onClick={() => window.open(order.dicom_pacs_url!, "_blank", "noopener,noreferrer")}>
                 <ExternalLink size={16} /> Open in DICOM Viewer
               </Button>
             </div>

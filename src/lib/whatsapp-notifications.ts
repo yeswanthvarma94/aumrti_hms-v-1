@@ -383,7 +383,7 @@ ${opts.hospitalName}`;
 
 export function openWhatsApp(phone: string, message: string) {
   const url = makeWaUrl(phone, message);
-  window.open(url, "_blank");
+  window.open(url, "_blank", "noopener,noreferrer");
 }
 
 export async function sendCustomWhatsApp(opts: {

@@ -60,7 +60,7 @@ const ChronicFollowupAlert: React.FC<Props> = ({ hospitalId }) => {
     const tests = row.followup_tests?.join(", ") || "routine tests";
     const date = new Date(row.next_followup).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
     const msg = `Dear ${row.patient_name}, your ${row.condition_label} follow-up is due on ${date}. Please book an appointment. Tests required: ${tests}`;
-    window.open(`https://wa.me/91${phone}?text=${encodeURIComponent(msg)}`, "_blank");
+    window.open(`https://wa.me/91${phone}?text=${encodeURIComponent(msg)}`, "_blank", "noopener,noreferrer");
   };
 
   return (

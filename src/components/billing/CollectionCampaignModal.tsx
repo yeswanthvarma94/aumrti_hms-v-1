@@ -139,7 +139,7 @@ const CollectionCampaignModal: React.FC<Props> = ({ hospitalId, onClose, onCompl
 
       const cleanPhone = patient.phone.replace(/\D/g, "");
       const fullPhone = cleanPhone.startsWith("91") ? cleanPhone : `91${cleanPhone}`;
-      window.open(`https://wa.me/${fullPhone}?text=${encodeURIComponent(msg)}`, "_blank");
+      window.open(`https://wa.me/${fullPhone}?text=${encodeURIComponent(msg)}`, "_blank", "noopener,noreferrer");
 
       sentCount++;
       setSent(sentCount);

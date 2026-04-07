@@ -210,7 +210,7 @@ const RetailPayment: React.FC<Props> = ({
     if (!receipt || !customerPhone) return;
     const lines = receipt.items.map(i => `• ${i.drug_name} ×${i.qty} = ₹${(i.unit_price * i.qty).toFixed(0)}`);
     const msg = `🏥 *Pharmacy Receipt*\n*${receipt.dispensingNumber}*\nDate: ${receipt.date}\n\n💊 *Items:*\n${lines.join("\n")}\n\n💰 *Total: ₹${receipt.netTotal.toFixed(0)}*\n${receipt.paymentMode.toUpperCase()}\n${receipt.change > 0 ? `Change: ₹${receipt.change.toFixed(0)}` : ""}\n\nThank you! 🙏`;
-    window.open(`https://wa.me/91${customerPhone.replace(/\D/g, "")}?text=${encodeURIComponent(msg)}`);
+    window.open(`https://wa.me/91${customerPhone.replace(/\D/g, "")}?text=${encodeURIComponent(msg)}`, "_blank", "noopener,noreferrer");
   };
 
   const handlePrint = () => window.print();

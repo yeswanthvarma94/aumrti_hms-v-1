@@ -209,7 +209,7 @@ const CaseBundleModal: React.FC<Props> = ({ open, onClose, record, hospitalId })
       <div class="footer">Generated on ${new Date().toLocaleString("en-IN")} | Hospital ID: ${hospitalId}</div>
     </body></html>`;
 
-    const printWindow = window.open("", "_blank");
+    const printWindow = window.open("", "_blank", "noopener,noreferrer");
     if (printWindow) {
       printWindow.document.write(html);
       printWindow.document.close();
@@ -226,7 +226,7 @@ const CaseBundleModal: React.FC<Props> = ({ open, onClose, record, hospitalId })
     const message = encodeURIComponent(
       `Insurance Audit Bundle for ${patientName} (${record.patients?.uhid || ""}) is ready for download. Please contact the MRD department for access.`
     );
-    window.open(`https://wa.me/?text=${message}`, "_blank");
+    window.open(`https://wa.me/?text=${message}`, "_blank", "noopener,noreferrer");
   };
 
   return (

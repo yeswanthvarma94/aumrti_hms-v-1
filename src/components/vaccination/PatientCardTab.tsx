@@ -110,7 +110,7 @@ const PatientCardTab: React.FC<Props> = ({ hospitalId }) => {
 
   const printCard = () => {
     if (!printRef.current) return;
-    const win = window.open("", "_blank");
+    const win = window.open("", "_blank", "noopener,noreferrer");
     if (!win) { toast.error("Popup blocked — allow popups to print"); return; }
     win.document.write(`<html><head><title>Vaccination Card - ${selectedPatient?.full_name}</title>
       <style>body{font-family:Inter,sans-serif;padding:24px;font-size:13px}
@@ -149,7 +149,7 @@ const PatientCardTab: React.FC<Props> = ({ hospitalId }) => {
     }
     const msg = encodeURIComponent(lines.join("\n"));
     const phone = selectedPatient.phone?.replace(/\D/g, "") || "";
-    window.open(`https://wa.me/91${phone}?text=${msg}`, "_blank");
+    window.open(`https://wa.me/91${phone}?text=${msg}`, "_blank", "noopener,noreferrer");
   };
 
   return (

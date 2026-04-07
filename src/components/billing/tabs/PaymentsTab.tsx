@@ -110,7 +110,7 @@ const PaymentsTab: React.FC<Props> = ({ bill, hospitalId, payments, onRefresh })
         const receiptMsg = `✅ Payment Received\n\nPatient: ${patient.full_name}\nBill #: ${bill.bill_number}\nAmount Paid: ₹${totalCollecting.toLocaleString("en-IN")}\nMode: ${rows.map(r => r.mode).join(", ").toUpperCase()}\nDate: ${new Date().toLocaleDateString("en-IN")}\nBalance: ₹${newBalance.toLocaleString("en-IN")}\n\nThank you!`;
         const cleanPhone = patient.phone.replace(/\D/g, "");
         const fullPhone = cleanPhone.startsWith("91") ? cleanPhone : `91${cleanPhone}`;
-        window.open(`https://wa.me/${fullPhone}?text=${encodeURIComponent(receiptMsg)}`, "_blank");
+        window.open(`https://wa.me/${fullPhone}?text=${encodeURIComponent(receiptMsg)}`, "_blank", "noopener,noreferrer");
       }
     }
 

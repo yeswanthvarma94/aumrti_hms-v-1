@@ -161,7 +161,7 @@ const DonorsTab: React.FC<Props> = ({ showModal, onCloseModal }) => {
 
   const sendCampaignWhatsApp = (donor: any) => {
     const msg = encodeURIComponent(`Dear ${donor.full_name}, you are eligible to donate blood again. Your blood type ${formatBloodGroup(donor.blood_group, donor.rh_factor)} is needed. Please visit our Blood Bank. Thank you! 🩸`);
-    window.open(`https://wa.me/${donor.phone?.replace(/\D/g, "")}?text=${msg}`, "_blank");
+    window.open(`https://wa.me/${donor.phone?.replace(/\D/g, "")}?text=${msg}`, "_blank", "noopener,noreferrer");
   };
 
   const sendToAll = () => {

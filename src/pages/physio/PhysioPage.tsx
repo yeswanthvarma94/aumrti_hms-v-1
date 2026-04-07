@@ -381,7 +381,7 @@ const PhysioPage: React.FC = () => {
     if (!phone) { toast({ title: "Patient phone not available", variant: "destructive" }); return; }
     const exercises = (plan.exercises || []).map((e: any, i: number) => `${i + 1}. ${e.name} — ${e.sets}×${e.reps} reps, hold ${e.hold}s\n   ${e.instructions || ""}`).join("\n");
     const msg = `🏋️ *Home Exercise Plan*\n\nDo these exercises ${plan.frequency_per_day}× per day for ${plan.duration_weeks} weeks:\n\n${exercises}\n\n⚠️ Stop if pain increases. Contact us immediately.`;
-    window.open(`https://wa.me/91${phone}?text=${encodeURIComponent(msg)}`, "_blank");
+    window.open(`https://wa.me/91${phone}?text=${encodeURIComponent(msg)}`, "_blank", "noopener,noreferrer");
     supabase.from("hep_plans").update({ sent_via: ["whatsapp"] }).eq("id", plan.id);
   };
 
@@ -725,7 +725,7 @@ const PhysioPage: React.FC = () => {
                               <MessageSquare size={12} />
                             </Button>
                             <Button size="sm" variant="ghost" className="text-xs h-7 px-2" onClick={() => {
-                              const w = window.open("", "_blank");
+                              const w = window.open("", "_blank", "noopener,noreferrer");
                               if (!w) return;
                               const exList = (h.exercises || []).map((e: any, i: number) => `<li><strong>${e.name}</strong> — ${e.sets}×${e.reps} reps, hold ${e.hold}s<br/><em>${e.instructions || ""}</em></li>`).join("");
                               w.document.write(`<html><head><title>HEP</title></head><body style="font-family:sans-serif;padding:40px;max-width:700px;margin:auto"><h2>Home Exercise Plan</h2><p>Do these exercises ${h.frequency_per_day}× per day for ${h.duration_weeks} weeks</p><ol>${exList}</ol><p style="color:red;margin-top:20px">⚠️ Stop if pain increases. Contact hospital immediately.</p></body></html>`);

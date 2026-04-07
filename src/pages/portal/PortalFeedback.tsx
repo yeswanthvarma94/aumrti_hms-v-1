@@ -117,7 +117,7 @@ const PortalFeedback: React.FC<{ session: PortalSession }> = ({ session }) => {
               Happy with your experience? Share it online!
             </p>
             <button
-              onClick={() => window.open("https://g.page/review", "_blank")}
+              onClick={() => window.open("https://g.page/review", "_blank", "noopener,noreferrer")}
               className="flex items-center justify-center gap-2 mx-auto px-4 py-2 rounded-lg text-xs font-bold text-white"
               style={{ background: "#15803D" }}
             >

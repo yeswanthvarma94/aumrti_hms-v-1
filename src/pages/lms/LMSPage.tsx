@@ -337,7 +337,7 @@ export default function LMSPage() {
   const printCertificate = () => {
     const el = document.getElementById('certificate-content');
     if (!el) return;
-    const w = window.open('', '', 'width=1100,height=800');
+    const w = window.open('', '_blank', 'noopener,noreferrer,width=1100,height=800');
     if (!w) return;
     w.document.write(`<html><head><title>Certificate</title>
       <style>
@@ -463,7 +463,7 @@ export default function LMSPage() {
 
   const sendReminder = (staffName: string, courseName: string) => {
     const msg = encodeURIComponent(`Dear ${staffName}, your "${courseName}" training is overdue. Please log in to the HMS LMS and complete it. This is mandatory for NABH compliance.`);
-    window.open(`https://wa.me/?text=${msg}`, '_blank');
+    window.open(`https://wa.me/?text=${msg}`, '_blank', 'noopener,noreferrer');
     toast.success('Reminder opened in WhatsApp');
   };
 

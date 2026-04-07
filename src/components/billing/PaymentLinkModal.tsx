@@ -48,7 +48,7 @@ For queries: ${hospitalPhone || "Contact hospital"}`;
     setSending(true);
     const cleanPhone = phone.replace(/\D/g, "");
     const fullPhone = cleanPhone.startsWith("91") ? cleanPhone : `91${cleanPhone}`;
-    window.open(`https://wa.me/${fullPhone}?text=${encodeURIComponent(message)}`, "_blank");
+    window.open(`https://wa.me/${fullPhone}?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
 
     await supabase.from("bills").update({ payment_link_sent: true } as any).eq("id", bill.id);
     setSending(false);

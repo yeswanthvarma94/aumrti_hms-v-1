@@ -40,7 +40,7 @@ const PortalBills: React.FC<{ session: PortalSession }> = ({ session }) => {
   const activeBills = tab === "pending" ? pendingBills : paidBills;
 
   const handlePrintReceipt = (bill: any) => {
-    const w = window.open("", "_blank");
+    const w = window.open("", "_blank", "noopener,noreferrer");
     if (!w) return;
     w.document.write(`
       <html><head><title>Receipt - ${bill.bill_number}</title>
@@ -205,7 +205,7 @@ const PaymentSheet: React.FC<{
 
   const handleUPI = () => {
     const upiUrl = `upi://pay?pa=&pn=${encodeURIComponent(session.hospitalName)}&am=${balance}&cu=INR&tn=Bill-${bill.bill_number}`;
-    window.open(upiUrl, "_blank");
+    window.open(upiUrl, "_blank", "noopener,noreferrer");
   };
 
   const handlePaymentLink = () => {

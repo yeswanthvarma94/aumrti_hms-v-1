@@ -89,7 +89,7 @@ const PortalPrescriptions: React.FC<{ session: PortalSession }> = ({ session }) 
         </div>
       </body></html>`;
 
-    const w = window.open("", "_blank");
+    const w = window.open("", "_blank", "noopener,noreferrer");
     if (w) {
       w.document.write(html);
       w.document.close();

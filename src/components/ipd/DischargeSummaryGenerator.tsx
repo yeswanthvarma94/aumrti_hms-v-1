@@ -227,7 +227,7 @@ Use formal medical language. Keep factual. Do not invent details not provided. M
         const msg = `🏥 Discharge Summary\n\nPatient: ${patient.full_name} (${patient.uhid})\nDate: ${new Date().toLocaleDateString("en-IN")}\n\n${shortSummary}...\n\nPlease follow your doctor's instructions. For emergencies, contact the hospital.`;
         const clean = phone.replace(/\D/g, "");
         const intl = clean.startsWith("91") ? clean : `91${clean}`;
-        window.open(`https://wa.me/${intl}?text=${encodeURIComponent(msg)}`, "_blank");
+        window.open(`https://wa.me/${intl}?text=${encodeURIComponent(msg)}`, "_blank", "noopener,noreferrer");
         toast.success("Discharge summary sent via WhatsApp");
       }
     } catch (whatsErr) {
