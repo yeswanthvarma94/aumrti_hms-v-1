@@ -158,7 +158,10 @@ const PaymentsPage: React.FC = () => {
           <p className="text-xs text-muted-foreground">{new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={() => window.print()}>
+          <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={() => {
+            const { printDocument } = require("@/lib/printUtils");
+            printDocument("Outstanding Payments Summary", `<h2 style="color:#1A2F5A">Outstanding Payments Summary</h2><p class="label">Generated on ${new Date().toLocaleDateString("en-IN")}</p>`);
+          }}>
             <Printer size={14} /> Print Summary
           </Button>
         </div>
