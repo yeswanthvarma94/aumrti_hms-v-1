@@ -55,7 +55,7 @@ const RosterTab: React.FC = () => {
     const [shiftsRes, staffRes, rosterRes, deptRes] = await Promise.all([
       (supabase as any).from("shift_master").select("*").eq("is_active", true),
       supabase.from("users").select("id, full_name, role, department_id, departments(name)").eq("is_active", true).order("full_name"),
-      (supabase as any).from("duty_roster").select("*").gte("roster_date", dateFrom).lte("roster_date", dateTo),
+      (supabase as any).from("duty_roster").select("*").gte("roster_date", dateFrom).lte("roster_date", dateTo).neq("is_active", false),
       supabase.from("departments").select("id, name").eq("is_active", true),
     ]);
 
