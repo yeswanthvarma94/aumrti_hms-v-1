@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { AlertTriangle } from "lucide-react";
 
 interface Props {
   open: boolean;
@@ -55,6 +56,8 @@ const AdmitPatientModal: React.FC<Props> = ({ open, onClose, hospitalId, presele
   // Wards + beds for selection
   const [availableBeds, setAvailableBeds] = useState<{ id: string; bed_number: string; ward_id: string; ward_name: string }[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [allergyVerified, setAllergyVerified] = useState(false);
+  const [patientAllergies, setPatientAllergies] = useState<string | null>(null);
 
   // New patient fields
   const [showNewPatient, setShowNewPatient] = useState(false);
