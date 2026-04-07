@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { recalculateBillTotalsSafe } from "@/lib/billTotals";
 import { Plus, Save } from "lucide-react";
 
 const PROCEDURES = [
@@ -115,6 +116,8 @@ const TreatmentPlanTab: React.FC<TreatmentPlanTabProps> = ({ patientId, hospital
             gst_amount: gst, total_amount: Number(item.cost) + gst,
             source_module: "dental",
           });
+
+          await recalculateBillTotalsSafe(newBill.id);
 
           const { data: { user: authUser } } = await supabase.auth.getUser();
           await autoPostJournalEntry({

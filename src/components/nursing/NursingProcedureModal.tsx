@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import PatientSearchPicker from "@/components/shared/PatientSearchPicker";
 import { generateBillNumber } from "@/hooks/useBillNumber";
 import { autoPostJournalEntry } from "@/lib/accounting";
+import { recalculateBillTotalsSafe } from "@/lib/billTotals";
 
 const PROCEDURES = [
   "Dressing Change", "Wound Care", "IV Cannulation", "Catheterisation",
@@ -86,11 +87,10 @@ export default function NursingProcedureModal({ open, onClose, hospitalId, defau
             gst_percent: gstPct, gst_amount: gstAmt, total_amount: grandTotal,
             source_module: "nursing",
           });
-          // Server-side recalculation (trigger also handles this)
-          try {
-            await (supabase as any).rpc("recalculate_bill_totals", { p_bill_id: billId! });
-          } catch (e) {
-            console.error("recalculate_bill_totals RPC failed (trigger should handle):", e);
+          const result = await recalculateBillTotalsSafe(billId!);
+          if (!result.ok) {
+            console.error("Nursing bill recalculation failed:", result.error);
+            toast.error(result.error || "Bill totals could not be updated");
           }
         } else {
           // Create new IPD bill

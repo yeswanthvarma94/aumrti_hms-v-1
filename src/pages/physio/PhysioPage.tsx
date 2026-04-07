@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { generateBillNumber } from "@/hooks/useBillNumber";
 import { autoPostJournalEntry } from "@/lib/accounting";
+import { recalculateBillTotalsSafe } from "@/lib/billTotals";
 import { calcGST } from "@/lib/currency";
 import OutcomeTrajectoryPredictor from "@/components/physio/OutcomeTrajectoryPredictor";
 import { supabase } from "@/integrations/supabase/client";
@@ -244,6 +245,11 @@ const PhysioPage: React.FC = () => {
           gst_amount: gst, total_amount: fee + gst,
           source_module: "physio",
         });
+
+        const result = await recalculateBillTotalsSafe(ipdBill.id);
+        if (!result.ok) {
+          console.error("Physio IPD bill recalculation failed:", result.error);
+        }
         return;
       }
     }
@@ -280,6 +286,8 @@ const PhysioPage: React.FC = () => {
         gst_amount: gst, total_amount: fee + gst,
         source_module: "physio",
       });
+
+      await recalculateBillTotalsSafe(newBill.id);
 
       const { data: { user: authUser } } = await supabase.auth.getUser();
       await autoPostJournalEntry({

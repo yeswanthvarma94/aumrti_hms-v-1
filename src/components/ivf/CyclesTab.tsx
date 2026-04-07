@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { generateBillNumber } from "@/hooks/useBillNumber";
 import { autoPostJournalEntry } from "@/lib/accounting";
+import { recalculateBillTotalsSafe } from "@/lib/billTotals";
 
 const STATUS_COLS = [
   { key: "stimulation", label: "Stimulation", color: "bg-blue-50 border-blue-200" },
@@ -88,10 +89,13 @@ async function billIVFMilestone(opts: {
       item_type: milestoneType,
       unit_rate: fee,
       quantity: 1,
-      total_amount: fee,
+      taxable_amount: fee,
       gst_percent: gstPct,
       gst_amount: gstAmt,
+      total_amount: total,
     });
+
+    await recalculateBillTotalsSafe(bill.id);
 
     await autoPostJournalEntry({
       triggerEvent: "bill_finalized_opd",

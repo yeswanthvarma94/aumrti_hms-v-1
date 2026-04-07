@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { recalculateBillTotalsSafe } from "@/lib/billTotals";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
@@ -170,20 +171,23 @@ const IPDWardRoundTab: React.FC<Props> = ({ admissionId, hospitalId, userId, pat
             .eq("id", userId)
             .maybeSingle();
           await (supabase as any).from("bill_line_items").insert({
+            hospital_id: hospitalId,
             bill_id: ipdBill.id,
             item_type: "consultant_opinion",
             description: `Consultant Opinion: ${docInfo?.full_name || "Doctor"}`,
             quantity: 1,
-            unit_price: consultFee,
-            amount: consultFee,
+            unit_rate: consultFee,
+            taxable_amount: consultFee,
+            gst_percent: 0,
+            gst_amount: 0,
+            total_amount: consultFee,
+            source_module: "ipd",
           });
-          // Update bill total
-          const { data: items } = await (supabase as any)
-            .from("bill_line_items")
-            .select("amount")
-            .eq("bill_id", ipdBill.id);
-          const newTotal = (items || []).reduce((s: number, i: any) => s + (Number(i.amount) || 0), 0);
-          await (supabase as any).from("bills").update({ total_amount: newTotal, balance_due: newTotal }).eq("id", ipdBill.id);
+
+          const result = await recalculateBillTotalsSafe(ipdBill.id);
+          if (!result.ok) {
+            console.error("Consultant opinion bill recalculation failed:", result.error);
+          }
 
           toast({ title: `Consultant opinion fee auto-captured: ₹${consultFee.toLocaleString("en-IN")}` });
         }

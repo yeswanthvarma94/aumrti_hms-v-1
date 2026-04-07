@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useHospitalId } from "@/hooks/useHospitalId";
 import { generateBillNumber } from "@/hooks/useBillNumber";
 import { autoPostJournalEntry } from "@/lib/accounting";
+import { recalculateBillTotalsSafe } from "@/lib/billTotals";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -134,10 +135,12 @@ const TelemedicinePage: React.FC = () => {
             bill_type: "opd",
             bill_status: "final",
             payment_status: "unpaid",
+            subtotal: fee,
+            gst_amount: 0,
             total_amount: fee,
-            net_amount: fee,
-            discount_amount: 0,
-            tax_amount: 0,
+            patient_payable: fee,
+            paid_amount: 0,
+            balance_due: fee,
           })
           .select()
           .maybeSingle();
@@ -147,12 +150,18 @@ const TelemedicinePage: React.FC = () => {
           await (supabase as any).from("bill_line_items").insert({
             hospital_id: hospitalId,
             bill_id: bill.id,
-            item_type: "teleconsultation",
-            item_name: `Teleconsultation - ${patientName} - ${durationMin}min`,
+            item_type: "consultation",
+            description: `Teleconsultation - ${patientName} - ${durationMin}min`,
             quantity: 1,
-            unit_price: fee,
-            total_price: fee,
+            unit_rate: fee,
+            taxable_amount: fee,
+            gst_percent: 0,
+            gst_amount: 0,
+            total_amount: fee,
+            source_module: "telemedicine",
           });
+
+          await recalculateBillTotalsSafe(bill.id);
 
           // Link bill to session
           await supabase.from("teleconsult_sessions").update({
