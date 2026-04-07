@@ -1,69 +1,39 @@
 
 
-## Fix: Radiology Modality Creation Path + Lab/Radiology Pricing
+## Fix: Telemedicine Billing on Call End
 
-### Current State
+### What exists
+- `teleconsult_sessions` table already exists with columns: status, ended_at, actual_duration, bill_generated, notes
+- TelemedicinePage already updates the session on joinCall/endCall
+- Missing: `bill_id` column on `teleconsult_sessions`, and zero billing logic
 
-1. **Radiology modalities**: The `radiology_modalities` table only has 4 types (X-Ray, USG, ECG, Echo). CT, MRI, DEXA are missing. There is **no settings page** to manage modalities — they were seeded directly in the DB.
+### Changes
 
-2. **Lab test pricing**: The `lab_test_master` table has NO `fee` or `price` column. The `SettingsLabTestsPage` at `/settings/lab-tests` uses **mock data only** — not connected to Supabase at all.
-
-3. **Radiology pricing**: Same problem — no `fee` column on `radiology_modalities` or `radiology_orders`. The `service_master` table has a "radiology" category and a "lab" category tab in `/settings/services`, but these are separate from the actual test/modality masters.
-
-4. **Existing pricing path**: `/settings/services` (SettingsServicesPage) already has tabs for "Lab Tests" and "Radiology" in the `service_master` table, but these are disconnected from the actual `lab_test_master` and `radiology_modalities` tables used when creating orders.
-
-### Plan
-
-#### Part 1: Add `fee` columns to lab_test_master and radiology_modalities (Migration)
-
+**1. SQL Migration — Add bill_id column**
 ```sql
-ALTER TABLE lab_test_master ADD COLUMN IF NOT EXISTS fee numeric DEFAULT 0;
-ALTER TABLE radiology_modalities ADD COLUMN IF NOT EXISTS fee numeric DEFAULT 0;
+ALTER TABLE teleconsult_sessions ADD COLUMN IF NOT EXISTS bill_id UUID REFERENCES bills(id);
 ```
 
-#### Part 2: Seed missing radiology modalities (Data insert)
+**2. `src/pages/telemedicine/TelemedicinePage.tsx` — Add billing to endCall**
 
-Insert CT, MRI, DEXA, Mammography, Fluoroscopy into `radiology_modalities` for hospital `8f3d08b3-8835-42a7-920e-fdf5a78260bc`.
+Import `generateBillNumber` from `@/hooks/useBillNumber` and `autoPostJournalEntry` from `@/lib/accounting`.
 
-#### Part 3: Fix SettingsLabTestsPage — connect to Supabase
+Modify the `endCall` function to, after marking session completed:
+1. Look up teleconsultation fee from `service_master` WHERE `name ilike '%tele%'` AND `item_type = 'consultation'`, fallback to regular consultation fee, then fallback ₹300
+2. Call `generateBillNumber(hospitalId, 'TELE')` for atomic bill number
+3. Insert bill: `bill_type='opd'`, `bill_status='final'`, `payment_status='unpaid'`
+4. Insert `bill_line_item` with description "Teleconsultation - {patient name} - {duration}min"
+5. Update bill totals (net = fee + GST)
+6. Update `teleconsult_sessions` with `bill_generated=true`, `bill_id=bill.id`
+7. Call `autoPostJournalEntry` with `triggerEvent: 'bill_created'`
+8. Toast: "Teleconsultation billed: ₹X"
 
-**File: `src/pages/settings/SettingsLabTestsPage.tsx`**
-- Remove mock data entirely
-- Query `lab_test_master` from Supabase (with `hospital_id` filter)
-- Add `fee` (₹) column to the table and add form
-- Insert/update/toggle directly in Supabase
-- Show actual test count
+All billing wrapped in try/catch so call-end never fails.
 
-#### Part 4: Create SettingsRadiologyPage for modalities + pricing
+### Files changed
+1. SQL migration — add `bill_id` column
+2. `src/pages/telemedicine/TelemedicinePage.tsx` — billing logic in endCall
 
-**File: `src/pages/settings/SettingsRadiologyPage.tsx`** (NEW)
-- CRUD for `radiology_modalities` table
-- Fields: name, modality_type, fee, is_active
-- Same pattern as SettingsLabTestsPage
-
-**File: `src/App.tsx`** — Add route `/settings/radiology`
-
-**File: `src/pages/settings/SettingsPage.tsx`** — Add "Radiology Modalities" card in Clinical group linking to `/settings/radiology`
-
-#### Part 5: Auto-create modality on order (safety net)
-
-**File: `src/components/radiology/NewRadiologyOrderModal.tsx`**
-- When `modalities.find(m => m.modality_type === type)` returns null, auto-insert into `radiology_modalities` instead of blocking with error
-
-### Navigation Paths After Fix
-
-| What | Path |
-|------|------|
-| Manage radiology modalities + pricing | `/settings/radiology` (NEW) |
-| Manage lab tests + pricing | `/settings/lab-tests` (existing, will be fixed) |
-| Manage OPD/procedure fees | `/settings/services` (existing, unchanged) |
-
-### Files Changed
-1. **SQL migration** — Add `fee` column to `lab_test_master` and `radiology_modalities`
-2. **Data insert** — Seed CT, MRI, DEXA, Mammography, Fluoroscopy modalities
-3. `src/pages/settings/SettingsLabTestsPage.tsx` — Connect to Supabase, add fee column
-4. `src/pages/settings/SettingsRadiologyPage.tsx` — NEW settings page for modalities
-5. `src/App.tsx` — Add route for `/settings/radiology`
-6. `src/pages/settings/SettingsPage.tsx` — Add card linking to radiology settings
-7. `src/components/radiology/NewRadiologyOrderModal.tsx` — Auto-create missing modality
+### No new table needed
+The user's request mentioned creating `telemedicine_sessions` but `teleconsult_sessions` already serves this purpose with all required columns. We just add `bill_id` and the billing trigger.
 
