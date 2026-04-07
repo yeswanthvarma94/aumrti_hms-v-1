@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { AlertTriangle, Mic } from "lucide-react";
 import { useVoiceScribe } from "@/contexts/VoiceScribeContext";
 import VoiceDictationButton from "@/components/voice/VoiceDictationButton";
+import { checkVitalsThresholds, calculateNEWS2, vitalSeverityClass } from "@/lib/vitalsAlerts";
 import type { NursingTask } from "@/pages/nursing/NursingPage";
 
 interface Props {
@@ -15,22 +16,15 @@ interface Props {
   onComplete: () => void;
 }
 
-function calcNEWS2(v: Record<string, string>): number {
-  let score = 0;
-  const rr = Number(v.respiratory_rate);
-  if (rr) { if (rr <= 8) score += 3; else if (rr <= 11) score += 1; else if (rr <= 20) score += 0; else if (rr <= 24) score += 2; else score += 3; }
-  const spo2 = Number(v.spo2);
-  if (spo2) { if (spo2 <= 91) score += 3; else if (spo2 <= 93) score += 2; else if (spo2 <= 95) score += 1; }
-  const sys = Number(v.bp_systolic);
-  if (sys) { if (sys <= 90) score += 3; else if (sys <= 100) score += 2; else if (sys <= 110) score += 1; else if (sys <= 219) score += 0; else score += 3; }
-  const pulse = Number(v.pulse);
-  if (pulse) { if (pulse <= 40) score += 3; else if (pulse <= 50) score += 1; else if (pulse <= 90) score += 0; else if (pulse <= 110) score += 1; else if (pulse <= 130) score += 2; else score += 3; }
-  const temp = Number(v.temperature);
-  if (temp) {
-    const f = temp;
-    if (f <= 95) score += 3; else if (f <= 96.8) score += 1; else if (f <= 100.4) score += 0; else if (f <= 102.2) score += 1; else score += 2;
-  }
-  return score;
+// Use shared NEWS2 calculation from vitalsAlerts.ts
+function calcNEWS2Legacy(v: Record<string, string>): number {
+  return calculateNEWS2({
+    respiratory_rate: v.respiratory_rate ? Number(v.respiratory_rate) : undefined,
+    spo2: v.spo2 ? Number(v.spo2) : undefined,
+    bp_systolic: v.bp_systolic ? Number(v.bp_systolic) : undefined,
+    pulse: v.pulse ? Number(v.pulse) : undefined,
+    temperature: v.temperature ? Number(v.temperature) : undefined,
+  });
 }
 
 const NursingVitalsTask: React.FC<Props> = ({ task, onComplete }) => {
