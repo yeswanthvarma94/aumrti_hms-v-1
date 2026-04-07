@@ -1,8 +1,12 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useHospitalId } from "@/hooks/useHospitalId";
+import { Button } from "@/components/ui/button";
+import { ClipboardPlus } from "lucide-react";
 import NursingTaskList from "@/components/nursing/NursingTaskList";
 import NursingTaskExecution from "@/components/nursing/NursingTaskExecution";
+import NursingProcedureModal from "@/components/nursing/NursingProcedureModal";
 
 export interface NursingTask {
   id: string;
