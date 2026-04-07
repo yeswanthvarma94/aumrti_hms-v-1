@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client'
 
 export function useHospitalId() {
   const [hospitalId, setHospitalId] = useState<string | null>(null)
+  const [role, setRole] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   
   useEffect(() => {
@@ -13,11 +14,12 @@ export function useHospitalId() {
         
         const { data } = await supabase
           .from('users')
-          .select('hospital_id')
+          .select('hospital_id, role')
           .eq('auth_user_id', user.id)
           .single()
         
         setHospitalId(data?.hospital_id || null)
+        setRole(data?.role || null)
       } catch (e) {
         console.error('useHospitalId error:', e)
       } finally {
@@ -35,7 +37,7 @@ export function useHospitalId() {
     return () => subscription.unsubscribe()
   }, [])
   
-  return { hospitalId, loading }
+  return { hospitalId, role, loading }
 }
 
 // Also export a standalone async function for non-hook contexts:
