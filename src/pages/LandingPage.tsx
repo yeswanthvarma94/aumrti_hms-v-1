@@ -187,8 +187,27 @@ const LandingPage: React.FC = () => {
           <DialogHeader>
             <DialogTitle>Product Demo</DialogTitle>
           </DialogHeader>
-          <div className="aspect-video bg-muted rounded-lg flex items-center justify-center">
-            <p className="text-muted-foreground text-sm">Demo video coming soon</p>
+          <div className="aspect-video bg-muted rounded-lg flex flex-col items-center justify-center gap-4 p-6">
+            <div className="bg-card rounded-xl border border-border p-4 shadow-sm w-full max-w-sm">
+              <div className="flex items-center gap-2 mb-3">
+                <svg width="20" height="20" viewBox="0 0 32 32" fill="none"><rect x="2" y="2" width="28" height="28" rx="6" className="fill-primary" /><path d="M14 9h4v14h-4z" fill="white" /><path d="M9 14h14v4H9z" fill="white" /></svg>
+                <span className="text-xs font-bold text-primary">Aumrti HMS Dashboard</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-center">
+                {[{ l: "OPD", v: "38" }, { l: "IPD", v: "84" }, { l: "Revenue", v: "₹18L" }].map(k => (
+                  <div key={k.l} className="bg-muted rounded-lg p-2">
+                    <p className="text-[10px] text-muted-foreground">{k.l}</p>
+                    <p className="text-sm font-bold text-foreground">{k.v}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <a
+              href="mailto:demo@aumrti.com?subject=Request%20for%20Aumrti%20HMS%20Demo"
+              className="bg-primary text-primary-foreground px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-[hsl(220,54%,16%)] transition-colors active:scale-[0.97]"
+            >
+              Request a Live Demo →
+            </a>
           </div>
         </DialogContent>
       </Dialog>

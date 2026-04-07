@@ -72,7 +72,7 @@ const Step4Doctors: React.FC<Props> = ({ hospitalId, onComplete }) => {
     const rows = valid.map((d) => ({
       hospital_id: hospitalId,
       full_name: d.name,
-      email: `${d.name.toLowerCase().replace(/\s/g, ".")}@placeholder.local`,
+      email: `${d.name.toLowerCase().replace(/\s/g, ".")}@hospital.local`,
       role: "doctor" as const,
       registration_number: d.regNo || null,
       phone: d.mobile || null,

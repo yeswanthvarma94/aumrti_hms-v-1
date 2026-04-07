@@ -222,6 +222,20 @@ const AdmitPatientModal: React.FC<Props> = ({ open, onClose, hospitalId, presele
             toast({ title: "Govt scheme pre-auth created", description: "Visit /pmjay to complete" });
           }
         } else {
+          // Estimate amount from service_master based on diagnosis
+          let estimatedAmount = 0;
+          if (diagnosis) {
+            try {
+              const { data: svcMatch } = await (supabase as any)
+                .from("service_master")
+                .select("fee")
+                .eq("hospital_id", hospitalId)
+                .ilike("name", `%${diagnosis.split(" ").slice(0, 2).join("%")}%`)
+                .limit(1)
+                .maybeSingle();
+              if (svcMatch?.fee) estimatedAmount = Number(svcMatch.fee);
+            } catch {}
+          }
           await (supabase as any).from("insurance_pre_auth").insert({
             hospital_id: hospitalId,
             patient_id: selectedPatient.id,
@@ -229,9 +243,9 @@ const AdmitPatientModal: React.FC<Props> = ({ open, onClose, hospitalId, presele
             insurance_id: insuranceId || null,
             status: "draft",
             insurance_type: insuranceType,
-            estimated_amount: 0,
+            estimated_amount: estimatedAmount,
           });
-          toast({ title: "Insurance pre-auth created", description: "Visit /insurance to complete" });
+          toast({ title: "Insurance pre-auth created", description: `Est. ₹${estimatedAmount.toLocaleString("en-IN")} · Visit /insurance to complete` });
         }
       }
     }

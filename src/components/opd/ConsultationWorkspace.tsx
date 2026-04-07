@@ -437,9 +437,9 @@ const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onT
           visit_id: encounterId,
           record_type: "opd",
           status: "active",
-          destroy_after: new Date(Date.now() + 3 * 365 * 24 * 3600000)
-            .toISOString()
-            .split("T")[0],
+          destroy_after: new Date(
+            Date.now() + ((token as any).is_mlc ? 10 : 3) * 365 * 24 * 3600000
+          ).toISOString().split("T")[0],
         });
 
         await supabase.from("icd_codings").insert({
