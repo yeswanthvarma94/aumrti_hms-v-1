@@ -410,9 +410,8 @@ const EmergencyWorkspace: React.FC<Props> = ({ visit, hospitalId, userId, onRefr
               </div>
               <table style="width:100%;border-collapse:collapse;font-size:12px;margin:12px 0">
                 <tr><td style="padding:6px;border:1px solid #ccc;width:35%;font-weight:bold">Patient Name</td><td style="padding:6px;border:1px solid #ccc">${visit.patient_name}</td></tr>
-                <tr><td style="padding:6px;border:1px solid #ccc;font-weight:bold">Age / Gender</td><td style="padding:6px;border:1px solid #ccc">${visit.age || "—"} / ${visit.gender || "—"}</td></tr>
                 <tr><td style="padding:6px;border:1px solid #ccc;font-weight:bold">Date & Time of Arrival</td><td style="padding:6px;border:1px solid #ccc">${new Date(visit.arrival_time).toLocaleString("en-IN")}</td></tr>
-                <tr><td style="padding:6px;border:1px solid #ccc;font-weight:bold">Brought By</td><td style="padding:6px;border:1px solid #ccc">${visit.mode_of_arrival || "Self"}</td></tr>
+                <tr><td style="padding:6px;border:1px solid #ccc;font-weight:bold">Brought By</td><td style="padding:6px;border:1px solid #ccc">—</td></tr>
                 <tr><td style="padding:6px;border:1px solid #ccc;font-weight:bold">Nature of Injuries / Condition</td><td style="padding:6px;border:1px solid #ccc">${mlcDetails.injury_type || complaint || "—"}</td></tr>
                 <tr><td style="padding:6px;border:1px solid #ccc;font-weight:bold">Chief Complaint</td><td style="padding:6px;border:1px solid #ccc">${complaint || "—"}</td></tr>
                 <tr><td style="padding:6px;border:1px solid #ccc;font-weight:bold">Working Diagnosis</td><td style="padding:6px;border:1px solid #ccc">${diagnosis || "Under evaluation"}</td></tr>
