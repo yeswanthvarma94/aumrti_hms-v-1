@@ -1,8 +1,12 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useHospitalId } from "@/hooks/useHospitalId";
+import { Button } from "@/components/ui/button";
+import { ClipboardPlus } from "lucide-react";
 import NursingTaskList from "@/components/nursing/NursingTaskList";
 import NursingTaskExecution from "@/components/nursing/NursingTaskExecution";
+import NursingProcedureModal from "@/components/nursing/NursingProcedureModal";
 
 export interface NursingTask {
   id: string;
@@ -72,12 +76,14 @@ function getScheduledTimes(frequency: string): string[] {
 
 const NursingPage: React.FC = () => {
   const { toast } = useToast();
+  const { hospitalId } = useHospitalId();
   const [tasks, setTasks] = useState<NursingTask[]>([]);
   const [selectedTask, setSelectedTask] = useState<NursingTask | null>(null);
   const [loading, setLoading] = useState(true);
   const [wards, setWards] = useState<{ id: string; name: string }[]>([]);
   const [selectedWard, setSelectedWard] = useState<string>("all");
   const [filter, setFilter] = useState<string>("all");
+  const [showProcedureModal, setShowProcedureModal] = useState(false);
   const shift = getCurrentShift();
 
   const fetchTasks = useCallback(async () => {
@@ -281,26 +287,41 @@ const NursingPage: React.FC = () => {
   };
 
   return (
-    <div className="h-full flex overflow-hidden bg-background">
-      <NursingTaskList
-        tasks={filteredTasks}
-        loading={loading}
-        selectedTaskId={selectedTask?.id || null}
-        onSelectTask={setSelectedTask}
-        shift={shift}
-        wards={wards}
-        selectedWard={selectedWard}
-        onWardChange={setSelectedWard}
-        filter={filter}
-        onFilterChange={setFilter}
-        stats={stats}
-      />
-      <NursingTaskExecution
-        task={selectedTask}
-        shift={shift}
-        wards={wards}
-        onComplete={handleTaskComplete}
-      />
+    <div className="h-full flex flex-col overflow-hidden bg-background">
+      {/* Procedure button header */}
+      <div className="flex items-center justify-end px-4 py-1.5 border-b shrink-0">
+        <Button size="sm" onClick={() => setShowProcedureModal(true)}>
+          <ClipboardPlus className="h-4 w-4 mr-1" /> Log Procedure
+        </Button>
+      </div>
+      <div className="flex-1 flex overflow-hidden">
+        <NursingTaskList
+          tasks={filteredTasks}
+          loading={loading}
+          selectedTaskId={selectedTask?.id || null}
+          onSelectTask={setSelectedTask}
+          shift={shift}
+          wards={wards}
+          selectedWard={selectedWard}
+          onWardChange={setSelectedWard}
+          filter={filter}
+          onFilterChange={setFilter}
+          stats={stats}
+        />
+        <NursingTaskExecution
+          task={selectedTask}
+          shift={shift}
+          wards={wards}
+          onComplete={handleTaskComplete}
+        />
+      </div>
+      {showProcedureModal && hospitalId && (
+        <NursingProcedureModal
+          open={showProcedureModal}
+          onClose={() => setShowProcedureModal(false)}
+          hospitalId={hospitalId}
+        />
+      )}
     </div>
   );
 };

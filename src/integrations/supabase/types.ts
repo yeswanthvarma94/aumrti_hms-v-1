@@ -9650,6 +9650,93 @@ export type Database = {
           },
         ]
       }
+      nursing_procedures: {
+        Row: {
+          admission_id: string | null
+          bill_id: string | null
+          billed: boolean | null
+          created_at: string | null
+          encounter_id: string | null
+          hospital_id: string
+          id: string
+          notes: string | null
+          patient_id: string
+          performed_at: string | null
+          performed_by: string | null
+          procedure_name: string
+          procedure_type: string
+          quantity: number | null
+        }
+        Insert: {
+          admission_id?: string | null
+          bill_id?: string | null
+          billed?: boolean | null
+          created_at?: string | null
+          encounter_id?: string | null
+          hospital_id: string
+          id?: string
+          notes?: string | null
+          patient_id: string
+          performed_at?: string | null
+          performed_by?: string | null
+          procedure_name: string
+          procedure_type?: string
+          quantity?: number | null
+        }
+        Update: {
+          admission_id?: string | null
+          bill_id?: string | null
+          billed?: boolean | null
+          created_at?: string | null
+          encounter_id?: string | null
+          hospital_id?: string
+          id?: string
+          notes?: string | null
+          patient_id?: string
+          performed_at?: string | null
+          performed_by?: string | null
+          procedure_name?: string
+          procedure_type?: string
+          quantity?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nursing_procedures_admission_id_fkey"
+            columns: ["admission_id"]
+            isOneToOne: false
+            referencedRelation: "admissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nursing_procedures_bill_id_fkey"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "bills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nursing_procedures_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nursing_procedures_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nursing_procedures_performed_by_fkey"
+            columns: ["performed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       nutritional_screenings: {
         Row: {
           admission_id: string

@@ -251,6 +251,45 @@ const BillingPage: React.FC = () => {
       });
     });
 
+    // Nursing procedures
+    const { data: nursingProcs } = await (supabase as any)
+      .from("nursing_procedures")
+      .select("*")
+      .eq("hospital_id", hospitalId)
+      .eq("admission_id", admissionId)
+      .eq("billed", false);
+
+    if (nursingProcs?.length) {
+      const nursingRate = await getServiceRate('nursing_procedure', 150);
+      for (const np of nursingProcs) {
+        const { data: procRate } = await supabase
+          .from('service_master')
+          .select('fee, gst_percent, gst_applicable')
+          .eq('hospital_id', hospitalId!)
+          .ilike('name', `%${(np.procedure_name || '').split(' ').slice(0, 2).join('%')}%`)
+          .eq('item_type', 'nursing_procedure')
+          .eq('is_active', true)
+          .limit(1)
+          .maybeSingle();
+        const fee = procRate?.fee ? Number(procRate.fee) : nursingRate.fee;
+        const qty = Number(np.quantity) || 1;
+        const total = fee * qty;
+        const gstPct = procRate?.gst_applicable ? (Number(procRate.gst_percent) || 0) : nursingRate.gstPct;
+        const gst = Math.round(total * gstPct / 100 * 100) / 100;
+        items.push({
+          hospital_id: hospitalId, bill_id: billId,
+          item_type: "nursing_procedure", description: `Nursing: ${np.procedure_name}`,
+          quantity: qty, unit_rate: fee, taxable_amount: total,
+          gst_percent: gstPct, gst_amount: gst,
+          total_amount: total + gst, source_module: "nursing",
+        });
+        // Mark as billed
+        await (supabase as any).from("nursing_procedures").update({
+          billed: true, bill_id: billId,
+        }).eq("id", np.id);
+      }
+    }
+
     // Room charges
     const { data: admission } = await supabase
       .from("admissions")
