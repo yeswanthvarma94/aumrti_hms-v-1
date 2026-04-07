@@ -451,8 +451,100 @@ const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onT
       }
     }
 
+    // Auto-create OPD bill if none exists (e.g., portal booking / follow-up without walk-in)
+    if (encounterId && hospitalId && userId) {
+      try {
+        const today = new Date().toISOString().split("T")[0];
+        const { data: existingBill } = await (supabase as any)
+          .from("bills")
+          .select("id, encounter_id")
+          .eq("hospital_id", hospitalId)
+          .eq("patient_id", token.patient_id)
+          .eq("bill_type", "opd")
+          .eq("bill_date", today)
+          .limit(1)
+          .maybeSingle();
+
+        if (!existingBill) {
+          // No bill exists — create one (portal booking / follow-up scenario)
+          const { generateBillNumber } = await import("@/hooks/useBillNumber");
+          const { autoPostJournalEntry } = await import("@/lib/accounting");
+
+          // Smart fee lookup: doctor → dept → global → fallback
+          let fee = 500;
+          const doctorName = token.doctor?.full_name;
+          if (doctorName) {
+            const { data: docSvc } = await supabase.from("service_master").select("fee")
+              .eq("hospital_id", hospitalId).eq("item_type", "consultation").eq("is_active", true)
+              .ilike("name", `%${doctorName}%`).limit(1);
+            if (docSvc?.[0]?.fee) fee = docSvc[0].fee;
+          }
+          if (fee === 500 && token.department_id) {
+            const { data: dept } = await supabase.from("departments").select("name").eq("id", token.department_id).maybeSingle();
+            if (dept?.name) {
+              const { data: deptSvc } = await supabase.from("service_master").select("fee")
+                .eq("hospital_id", hospitalId).eq("item_type", "consultation").eq("is_active", true)
+                .ilike("name", `%${dept.name}%consultation%`).limit(1);
+              if (deptSvc?.[0]?.fee) fee = deptSvc[0].fee;
+            }
+          }
+          if (fee === 500) {
+            const { data: globalSvc } = await supabase.from("service_master").select("fee")
+              .eq("hospital_id", hospitalId).ilike("name", "%consultation%").eq("is_active", true).limit(1);
+            if (globalSvc?.[0]?.fee) fee = globalSvc[0].fee;
+          }
+
+          const billNumber = await generateBillNumber(hospitalId, "OPD");
+          const { data: bill } = await supabase.from("bills").insert({
+            hospital_id: hospitalId,
+            patient_id: token.patient_id,
+            bill_number: billNumber,
+            bill_type: "opd",
+            bill_date: today,
+            encounter_id: encounterId,
+            subtotal: fee,
+            total_amount: fee,
+            patient_payable: fee,
+            paid_amount: 0,
+            balance_due: fee,
+            payment_status: fee === 0 ? "paid" : "unpaid",
+            bill_status: "final",
+            created_by: userId,
+          }).select("id").single();
+
+          if (bill) {
+            await supabase.from("bill_line_items").insert({
+              hospital_id: hospitalId,
+              bill_id: bill.id,
+              description: "Consultation Fee",
+              item_type: "consultation",
+              unit_rate: fee,
+              quantity: 1,
+              total_amount: fee,
+            });
+
+            await autoPostJournalEntry({
+              triggerEvent: "bill_finalized_opd",
+              sourceModule: "billing",
+              sourceId: bill.id,
+              amount: fee,
+              description: `OPD Revenue - Bill ${billNumber}`,
+              hospitalId,
+              postedBy: userId,
+            });
+
+            if (fee > 0) {
+              toast({ title: `Consultation fee: ₹${fee.toLocaleString("en-IN")} (payment pending at billing counter)` });
+            }
+          }
+        }
+      } catch (billErr) {
+        console.error("Follow-up billing error (non-blocking):", billErr);
+      }
+    }
+
     onTokenUpdate();
-    toast({ title: "Encounter saved. Billing module coming in Phase 6." });
+    toast({ title: `Consultation complete for ${token.patient?.full_name || "patient"}` });
   };
 
   const handleSendWhatsApp = () => {
