@@ -150,12 +150,15 @@ const LineItemsTab: React.FC<Props> = ({ bill, hospitalId, lineItems, loading, o
     const gstAmt = taxable * updated.gst_percent / 100;
     const total = taxable + gstAmt;
     await supabase.from("bill_line_items").update({
-      [field]: value,
       taxable_amount: taxable,
       discount_amount: updated.quantity * updated.unit_rate * updated.discount_percent / 100,
       gst_amount: gstAmt,
       total_amount: total,
-    }).eq("id", itemId);
+      ...(field === "quantity" ? { quantity: value } : {}),
+      ...(field === "unit_rate" ? { unit_rate: value } : {}),
+      ...(field === "discount_percent" ? { discount_percent: value } : {}),
+      ...(field === "gst_percent" ? { gst_percent: value } : {}),
+    } as any).eq("id", itemId);
     onRefresh();
   };
 

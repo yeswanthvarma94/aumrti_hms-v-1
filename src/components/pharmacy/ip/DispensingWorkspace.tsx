@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { generateBillNumber } from "@/hooks/useBillNumber";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -362,7 +363,7 @@ const DispensingWorkspace: React.FC<Props> = ({ hospitalId, prescription, onDisp
 
       // Auto-create pharmacy bill in bills table for IPD billing sync
       if (prescription.admission_id && totalAmount > 0) {
-        const billNum = `PHARM-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${Math.floor(Math.random() * 9000) + 1000}`;
+        const billNum = await generateBillNumber(hospitalId, "PHARM");
         await supabase.from("bills").insert({
           hospital_id: hospitalId,
           patient_id: prescription.patient_id,

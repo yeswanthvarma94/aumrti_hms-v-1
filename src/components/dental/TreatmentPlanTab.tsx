@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { generateBillNumber } from "@/hooks/useBillNumber";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -85,8 +86,7 @@ const TreatmentPlanTab: React.FC<TreatmentPlanTabProps> = ({ patientId, hospital
           .single();
 
         const today = new Date().toISOString().split("T")[0];
-        const { count } = await supabase.from("bills").select("id", { count: "exact", head: true }).eq("hospital_id", hospitalId);
-        const billNum = `DENT-${today.replace(/-/g, "")}-${String((count || 0) + 1).padStart(4, "0")}`;
+        const billNum = await generateBillNumber(hospitalId, "DENT");
 
         const gst = Math.round(Number(item.cost) * 0.18 * 100) / 100;
 

@@ -143,7 +143,7 @@ const EmergencyWorkspace: React.FC<Props> = ({ visit, hospitalId, userId, onRefr
   };
 
   const saveField = async (field: string, value: any) => {
-    await supabase.from("ed_visits").update({ [field]: value }).eq("id", visit.id);
+    await supabase.from("ed_visits").update({ [field]: value } as any).eq("id", visit.id);
   };
 
   const handleDisposition = async (disp: string) => {

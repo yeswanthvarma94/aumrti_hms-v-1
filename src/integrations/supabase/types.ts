@@ -1454,6 +1454,35 @@ export type Database = {
           },
         ]
       }
+      bill_sequences: {
+        Row: {
+          hospital_id: string
+          last_date: string
+          last_number: number
+          prefix: string
+        }
+        Insert: {
+          hospital_id: string
+          last_date?: string
+          last_number?: number
+          prefix: string
+        }
+        Update: {
+          hospital_id?: string
+          last_date?: string
+          last_number?: number
+          prefix?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bill_sequences_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bills: {
         Row: {
           admission_id: string | null
@@ -15669,6 +15698,10 @@ export type Database = {
       ensure_billing_posting_rules: {
         Args: { p_hospital_id: string }
         Returns: undefined
+      }
+      generate_bill_number: {
+        Args: { p_hospital_id: string; p_prefix?: string }
+        Returns: string
       }
       get_daily_revenue_30d: {
         Args: { p_hospital_id: string }

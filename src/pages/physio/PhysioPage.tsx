@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { generateBillNumber } from "@/hooks/useBillNumber";
 import OutcomeTrajectoryPredictor from "@/components/physio/OutcomeTrajectoryPredictor";
 import { supabase } from "@/integrations/supabase/client";
 import { useHospitalId } from "@/hooks/useHospitalId";
@@ -246,12 +247,7 @@ const PhysioPage: React.FC = () => {
     }
 
     // OPD physio — create standalone bill
-    const { count } = await supabase
-      .from("bills")
-      .select("id", { count: "exact", head: true })
-      .eq("hospital_id", hospitalId);
-
-    const billNum = `PHYS-${session.session_date?.replace(/-/g, "") || ""}-${String((count || 0) + 1).padStart(4, "0")}`;
+    const billNum = await generateBillNumber(hospitalId!, "PHYS");
 
     const { data: newBill } = await supabase
       .from("bills")

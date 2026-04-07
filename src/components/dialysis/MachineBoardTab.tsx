@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { generateBillNumber } from "@/hooks/useBillNumber";
 import { logNABHEvidence } from "@/lib/nabh-evidence";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
@@ -249,12 +250,7 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
     }
 
     // Outpatient dialysis — create standalone bill
-    const { count } = await supabase
-      .from("bills")
-      .select("id", { count: "exact", head: true })
-      .eq("hospital_id", hospitalId);
-
-    const billNum = `DIAL-${sessionDate.replace(/-/g, "")}-${String((count || 0) + 1).padStart(4, "0")}`;
+    const billNum = await generateBillNumber(hospitalId, "DIAL");
 
     const { data: newBill } = await supabase
       .from("bills")
