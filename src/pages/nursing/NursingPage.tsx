@@ -76,12 +76,14 @@ function getScheduledTimes(frequency: string): string[] {
 
 const NursingPage: React.FC = () => {
   const { toast } = useToast();
+  const { hospitalId } = useHospitalId();
   const [tasks, setTasks] = useState<NursingTask[]>([]);
   const [selectedTask, setSelectedTask] = useState<NursingTask | null>(null);
   const [loading, setLoading] = useState(true);
   const [wards, setWards] = useState<{ id: string; name: string }[]>([]);
   const [selectedWard, setSelectedWard] = useState<string>("all");
   const [filter, setFilter] = useState<string>("all");
+  const [showProcedureModal, setShowProcedureModal] = useState(false);
   const shift = getCurrentShift();
 
   const fetchTasks = useCallback(async () => {
