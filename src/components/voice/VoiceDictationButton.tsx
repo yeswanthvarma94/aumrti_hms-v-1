@@ -105,11 +105,11 @@ const VoiceDictationButton: React.FC<Props> = ({ sessionType, className, size = 
     setIsPanelOpen(true);
 
     try {
-      console.log("Sending transcript to AI:", rawText.substring(0, 100));
+      
       const { data, error } = await supabase.functions.invoke("ai-clinical-voice", {
         body: { transcript: rawText, context_type: sessionType },
       });
-      console.log("Voice AI response:", data);
+      
       if (error || data?.error) throw new Error(data?.error || error?.message);
       setStructuredOutput(data.structured);
       setPanelState("output");

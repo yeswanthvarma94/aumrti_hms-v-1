@@ -107,7 +107,7 @@ const OTPage: React.FC = () => {
     }
 
     const { data, error } = await query;
-    console.log("OT Query date:", dateStr, "room:", selectedRoomId, "Results:", data?.length, "Error:", error);
+    
     setSchedules((data as any) || []);
     setLoading(false);
   }, [hospitalId, selectedRoomId, selectedDate]);

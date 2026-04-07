@@ -16,7 +16,7 @@ import { ROUTE_ROLES } from "@/lib/routeRoles";
 const Register = lazy(() => import("./pages/register"));
 const OnboardingWizard = lazy(() => import("./pages/setup/OnboardingWizard"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
-const ComingSoon = lazy(() => import("./pages/ComingSoon"));
+
 const QualityPage = lazy(() => import("./pages/quality/QualityPage"));
 const BillingPage = lazy(() => import("./pages/billing/BillingPage"));
 const PaymentsPage = lazy(() => import("./pages/billing/PaymentsPage"));

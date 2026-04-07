@@ -253,8 +253,10 @@ const ReportsPanel: React.FC = () => {
         )}
 
         {activeReport === "vendor" && (
-          <div className="flex-1 flex items-center justify-center text-muted-foreground text-xs">
-            Vendor performance analytics coming soon.
+          <div className="flex-1 flex flex-col items-center justify-center gap-2 text-muted-foreground">
+            <Building2 size={32} className="text-muted-foreground/40" />
+            <p className="text-sm font-medium text-foreground">Vendor Performance</p>
+            <p className="text-xs">Track delivery timelines, order accuracy, and pricing trends per vendor.</p>
           </div>
         )}
       </div>

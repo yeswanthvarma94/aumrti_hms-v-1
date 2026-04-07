@@ -309,7 +309,7 @@ const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onT
         items: data.radiology_orders,
       });
       if (labCount > 0 || radCount > 0) {
-        console.log(`Synced ${labCount} lab + ${radCount} radiology orders`);
+        
       }
     } catch (err) {
       console.error("Investigation sync error (non-blocking):", err);
