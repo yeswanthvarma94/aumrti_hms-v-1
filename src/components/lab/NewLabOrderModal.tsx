@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useDebounce } from "@/hooks/useDebounce";
 import { useToast } from "@/hooks/use-toast";
 import { X, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -74,10 +75,11 @@ const NewLabOrderModal: React.FC<Props> = ({ hospitalId, onClose, onCreated }) =
       .then(({ data }) => setAllTests((data as any) || []));
   }, [hospitalId]);
 
-  // Search patients
+  // Search patients (debounced)
+  const debouncedPatientSearch = useDebounce(patientSearch, 300);
   useEffect(() => {
-    if (patientSearch.length < 2) { setPatients([]); return; }
-    const q = `%${patientSearch}%`;
+    if (debouncedPatientSearch.length < 2) { setPatients([]); return; }
+    const q = `%${debouncedPatientSearch}%`;
     supabase
       .from("patients")
       .select("id, full_name, uhid, gender, dob")
@@ -88,7 +90,7 @@ const NewLabOrderModal: React.FC<Props> = ({ hospitalId, onClose, onCreated }) =
         setPatients((data as any) || []);
         setShowPatientResults(true);
       });
-  }, [patientSearch, hospitalId]);
+  }, [debouncedPatientSearch, hospitalId]);
 
   // Auto-link encounter/admission
   useEffect(() => {

@@ -45,81 +45,73 @@ export function useDashboardData() {
       const hid = hospitalIdRef.current;
       if (!hid) { setLoading(false); return; }
 
-      // 1. Total patients
-      const { count: totalPatients } = await supabase
-        .from("patients").select("*", { count: "exact", head: true })
-        .eq("hospital_id", hid);
-
-      // 2. Patients created today
       const today = new Date().toISOString().split("T")[0];
-      const { count: patientsToday } = await supabase
-        .from("patients").select("*", { count: "exact", head: true })
-        .eq("hospital_id", hid)
-        .gte("created_at", today + "T00:00:00")
-        .lt("created_at", today + "T23:59:59.999Z");
-
-      // 3. Beds
-      const { data: bedsData } = await supabase.from("beds").select("status").eq("hospital_id", hid);
-      const bedsTotal = bedsData?.length || 0;
-      const bedsOccupied = bedsData?.filter(b => b.status === "occupied").length || 0;
-
-      // 4. OPD visits today
-      const { data: opdData } = await supabase
-        .from("opd_visits").select("status")
-        .eq("hospital_id", hid)
-        .eq("visit_date", today);
-      const opdFiltered = opdData?.filter(v => v.status !== "cancelled") || [];
-      const opdActive = opdFiltered.length;
-      const opdWaiting = opdFiltered.filter(v => v.status === "waiting").length;
-      const opdSeen = opdFiltered.filter(v => v.status === "completed").length;
-
-      // 5. Revenue MTD
       const now = new Date();
       const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
-      const { data: billsThisMonth } = await supabase
-        .from("bills").select("paid_amount")
-        .eq("hospital_id", hid)
-        .gte("bill_date", monthStart);
-      const revenueMTD = billsThisMonth?.reduce((s, b) => s + Number(b.paid_amount), 0) || 0;
-
-      // Last month revenue
       const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
       const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
-      const { data: billsLastMonth } = await supabase
-        .from("bills").select("paid_amount")
-        .eq("hospital_id", hid)
-        .gte("bill_date", lastMonth.toISOString().split("T")[0])
-        .lte("bill_date", lastMonthEnd.toISOString().split("T")[0]);
-      const revenueLastMonth = billsLastMonth?.reduce((s, b) => s + Number(b.paid_amount), 0) || 0;
 
-      // 6. Doctors
-      const { count: totalDoctors } = await supabase
-        .from("users").select("*", { count: "exact", head: true })
-        .eq("hospital_id", hid)
-        .eq("role", "doctor").eq("is_active", true);
+      // Fire all queries in parallel with Promise.allSettled for resilience
+      const results = await Promise.allSettled([
+        // 0: Total patients
+        supabase.from("patients").select("*", { count: "exact", head: true }).eq("hospital_id", hid),
+        // 1: Patients today
+        supabase.from("patients").select("*", { count: "exact", head: true }).eq("hospital_id", hid)
+          .gte("created_at", today + "T00:00:00").lt("created_at", today + "T23:59:59.999Z"),
+        // 2: Beds
+        supabase.from("beds").select("status").eq("hospital_id", hid),
+        // 3: OPD visits today
+        supabase.from("opd_visits").select("status").eq("hospital_id", hid).eq("visit_date", today),
+        // 4: Revenue MTD
+        supabase.from("bills").select("paid_amount").eq("hospital_id", hid).gte("bill_date", monthStart),
+        // 5: Revenue last month
+        supabase.from("bills").select("paid_amount").eq("hospital_id", hid)
+          .gte("bill_date", lastMonth.toISOString().split("T")[0])
+          .lte("bill_date", lastMonthEnd.toISOString().split("T")[0]),
+        // 6: Total doctors
+        supabase.from("users").select("*", { count: "exact", head: true }).eq("hospital_id", hid)
+          .eq("role", "doctor").eq("is_active", true),
+        // 7: On leave
+        supabase.from("staff_attendance").select("*", { count: "exact", head: true }).eq("hospital_id", hid)
+          .eq("attendance_date", today).eq("status", "leave"),
+        // 8: Critical alerts
+        supabase.from("clinical_alerts").select("id", { count: "exact", head: true }).eq("hospital_id", hid)
+          .eq("is_acknowledged", false),
+      ]);
 
-      const { count: onLeave } = await supabase
-        .from("staff_attendance").select("*", { count: "exact", head: true })
-        .eq("hospital_id", hid)
-        .eq("attendance_date", today).eq("status", "leave");
+      const val = <T,>(idx: number, fallback: T): T => {
+        const r = results[idx];
+        if (r.status === "fulfilled") return r.value as unknown as T;
+        console.warn(`Dashboard query ${idx} failed:`, (r as PromiseRejectedResult).reason);
+        return fallback;
+      };
 
-      const doctorsOnLeave = onLeave || 0;
-      const doctorsOnDuty = (totalDoctors || 0) - doctorsOnLeave;
+      const totalPatientsRes = val<any>(0, { count: 0 });
+      const patientsTodayRes = val<any>(1, { count: 0 });
+      const bedsRes = val<any>(2, { data: [] });
+      const opdRes = val<any>(3, { data: [] });
+      const billsMTDRes = val<any>(4, { data: [] });
+      const billsLastRes = val<any>(5, { data: [] });
+      const totalDoctorsRes = val<any>(6, { count: 0 });
+      const onLeaveRes = val<any>(7, { count: 0 });
+      const alertsRes = val<any>(8, { count: 0 });
 
-      // 7. Critical alerts
-      const { count: criticalAlerts } = await supabase
-        .from("clinical_alerts").select("id", { count: "exact", head: true })
-        .eq("hospital_id", hid)
-        .eq("is_acknowledged", false);
+      const bedsData = bedsRes.data || [];
+      const opdData = (opdRes.data || []).filter((v: any) => v.status !== "cancelled");
 
       setKpis({
-        totalPatients: totalPatients || 0,
-        patientsToday: patientsToday || 0,
-        bedsOccupied, bedsTotal,
-        opdActive, opdWaiting, opdSeen,
-        revenueMTD, revenueLastMonth,
-        doctorsOnDuty, doctorsOnLeave,
-        criticalAlerts: criticalAlerts || 0,
+        totalPatients: totalPatientsRes.count || 0,
+        patientsToday: patientsTodayRes.count || 0,
+        bedsOccupied: bedsData.filter((b: any) => b.status === "occupied").length,
+        bedsTotal: bedsData.length,
+        opdActive: opdData.length,
+        opdWaiting: opdData.filter((v: any) => v.status === "waiting").length,
+        opdSeen: opdData.filter((v: any) => v.status === "completed").length,
+        revenueMTD: (billsMTDRes.data || []).reduce((s: number, b: any) => s + Number(b.paid_amount), 0),
+        revenueLastMonth: (billsLastRes.data || []).reduce((s: number, b: any) => s + Number(b.paid_amount), 0),
+        doctorsOnDuty: Math.max(0, (totalDoctorsRes.count || 0) - (onLeaveRes.count || 0)),
+        doctorsOnLeave: onLeaveRes.count || 0,
+        criticalAlerts: alertsRes.count || 0,
       });
     } catch (err) {
       console.error("Dashboard fetch error:", err);
