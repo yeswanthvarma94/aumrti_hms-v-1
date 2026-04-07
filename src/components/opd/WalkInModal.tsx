@@ -68,6 +68,7 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated, defaultD
   const [priority, setPriority] = useState("normal");
   const [nextToken, setNextToken] = useState("A-1");
   const [submitting, setSubmitting] = useState(false);
+  const [dpdpConsent, setDpdpConsent] = useState(false);
   const [referralSource, setReferralSource] = useState("");
   const [referralDoctorId, setReferralDoctorId] = useState<string | null>(null);
   const [showReferralModal, setShowReferralModal] = useState(false);
@@ -217,6 +218,10 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated, defaultD
       toast({ title: "Patient name is required", variant: "destructive" });
       return;
     }
+    if (!useExisting && !dpdpConsent) {
+      toast({ title: "DPDP consent required", description: "Patient must consent to data collection before registration", variant: "destructive" });
+      return;
+    }
     setStep("payment");
   };
 
@@ -262,6 +267,24 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated, defaultD
     setSubmitting(true);
     try {
       const patientId = await createPatient();
+
+      // Log DPDP consent for new patients
+      if (!useExisting) {
+        try {
+          const { getDPDPConsentText } = await import("@/lib/compliance-checks");
+          const { data: hospitalData } = await supabase.from("hospitals").select("name").eq("id", hospitalId).maybeSingle();
+          const consentText = getDPDPConsentText(hospitalData?.name || "Hospital");
+          await (supabase as any).from("patient_consents").insert({
+            hospital_id: hospitalId,
+            patient_id: patientId,
+            consent_type: "data_collection",
+            consent_given: true,
+            consent_text: consentText,
+          });
+        } catch (e) {
+          console.error("DPDP consent log failed:", e);
+        }
+      }
 
       const { data: { user } } = await supabase.auth.getUser();
       const { data: userData } = await supabase
@@ -613,6 +636,25 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated, defaultD
                 ))}
               </div>
             </div>
+
+            {/* DPDP Consent */}
+            {!useExisting && (
+              <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <label className="flex items-start gap-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={dpdpConsent}
+                    onChange={(e) => setDpdpConsent(e.target.checked)}
+                    className="mt-0.5 rounded border-blue-300 accent-blue-600"
+                  />
+                  <span className="text-xs text-blue-900 leading-relaxed">
+                    Patient consents to collection and processing of personal and health data
+                    as required for medical treatment, billing, and regulatory compliance
+                    under the <strong>Digital Personal Data Protection Act, 2023</strong>.
+                  </span>
+                </label>
+              </div>
+            )}
 
             {/* Token preview */}
             <div className="mt-4 p-3 bg-slate-50 rounded-lg border border-slate-100 text-center">
