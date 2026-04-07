@@ -10,6 +10,7 @@ import PatientSearchPicker from "@/components/shared/PatientSearchPicker";
 import { useHospitalId } from '@/hooks/useHospitalId';
 import { generateBillNumber } from "@/hooks/useBillNumber";
 import { autoPostJournalEntry } from "@/lib/accounting";
+import { recalculateBillTotalsSafe } from "@/lib/billTotals";
 
 interface Props { open: boolean; onClose: () => void; }
 
@@ -90,8 +91,13 @@ export default function BookPackageModal({ open, onClose }: Props) {
         item_type: "package",
         unit_rate: fee,
         quantity: 1,
+        taxable_amount: fee,
+        gst_percent: 0,
+        gst_amount: 0,
         total_amount: fee,
       });
+
+      await recalculateBillTotalsSafe(bill.id);
 
       // 5. Post journal entry
       await autoPostJournalEntry({

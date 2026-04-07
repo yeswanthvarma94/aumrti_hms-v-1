@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { generateBillNumber } from "@/hooks/useBillNumber";
 import { autoPostJournalEntry } from "@/lib/accounting";
+import { recalculateBillTotalsSafe } from "@/lib/billTotals";
 import { calcGST } from "@/lib/currency";
 import { logNABHEvidence } from "@/lib/nabh-evidence";
 import { supabase } from "@/integrations/supabase/client";
@@ -247,6 +248,11 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
           gst_amount: gst, total_amount: fee + gst,
           hsn_code: "999316", source_module: "dialysis",
         });
+
+        const result = await recalculateBillTotalsSafe(ipdBill.id);
+        if (!result.ok) {
+          console.error("Dialysis IPD bill recalculation failed:", result.error);
+        }
         return;
       }
     }
@@ -283,6 +289,7 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
         gst_amount: gst, total_amount: fee + gst,
         hsn_code: "999316", source_module: "dialysis",
       });
+      await recalculateBillTotalsSafe(newBill.id);
       toast({ title: `Dialysis billed: ₹${(fee + gst).toLocaleString("en-IN")}` });
 
       const { data: { user: authUser } } = await supabase.auth.getUser();
