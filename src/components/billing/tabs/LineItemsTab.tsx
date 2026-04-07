@@ -138,7 +138,14 @@ const LineItemsTab: React.FC<Props> = ({ bill, hospitalId, lineItems, loading, o
   };
 
   const deleteItem = async (itemId: string) => {
-    await supabase.from("bill_line_items").delete().eq("id", itemId);
+    // Soft delete — preserve audit trail
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data: userData } = await supabase.from("users").select("id").eq("auth_user_id", user?.id || "").maybeSingle();
+    await (supabase as any).from("bill_line_items").update({
+      is_deleted: true,
+      deleted_at: new Date().toISOString(),
+      deleted_by: userData?.id || null,
+    }).eq("id", itemId);
     onRefresh();
   };
 
