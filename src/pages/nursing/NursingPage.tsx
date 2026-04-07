@@ -287,26 +287,41 @@ const NursingPage: React.FC = () => {
   };
 
   return (
-    <div className="h-full flex overflow-hidden bg-background">
-      <NursingTaskList
-        tasks={filteredTasks}
-        loading={loading}
-        selectedTaskId={selectedTask?.id || null}
-        onSelectTask={setSelectedTask}
-        shift={shift}
-        wards={wards}
-        selectedWard={selectedWard}
-        onWardChange={setSelectedWard}
-        filter={filter}
-        onFilterChange={setFilter}
-        stats={stats}
-      />
-      <NursingTaskExecution
-        task={selectedTask}
-        shift={shift}
-        wards={wards}
-        onComplete={handleTaskComplete}
-      />
+    <div className="h-full flex flex-col overflow-hidden bg-background">
+      {/* Procedure button header */}
+      <div className="flex items-center justify-end px-4 py-1.5 border-b shrink-0">
+        <Button size="sm" onClick={() => setShowProcedureModal(true)}>
+          <ClipboardPlus className="h-4 w-4 mr-1" /> Log Procedure
+        </Button>
+      </div>
+      <div className="flex-1 flex overflow-hidden">
+        <NursingTaskList
+          tasks={filteredTasks}
+          loading={loading}
+          selectedTaskId={selectedTask?.id || null}
+          onSelectTask={setSelectedTask}
+          shift={shift}
+          wards={wards}
+          selectedWard={selectedWard}
+          onWardChange={setSelectedWard}
+          filter={filter}
+          onFilterChange={setFilter}
+          stats={stats}
+        />
+        <NursingTaskExecution
+          task={selectedTask}
+          shift={shift}
+          wards={wards}
+          onComplete={handleTaskComplete}
+        />
+      </div>
+      {showProcedureModal && hospitalId && (
+        <NursingProcedureModal
+          open={showProcedureModal}
+          onClose={() => setShowProcedureModal(false)}
+          hospitalId={hospitalId}
+        />
+      )}
     </div>
   );
 };
