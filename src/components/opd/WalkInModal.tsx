@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { X, Search, CheckCircle2, ArrowLeft, CreditCard, Printer, UserPlus } from "lucide-react";
+import { X, Search, CheckCircle2, ArrowLeft, CreditCard, Printer, UserPlus, AlertTriangle } from "lucide-react";
 import { autoPostJournalEntry } from "@/lib/accounting";
 import { generateBillNumber } from "@/hooks/useBillNumber";
 import { logAudit } from "@/lib/auditLog";
@@ -71,6 +71,11 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated, defaultD
   const [nextToken, setNextToken] = useState("A-1");
   const [submitting, setSubmitting] = useState(false);
   const [dpdpConsent, setDpdpConsent] = useState(false);
+
+  // Duplicate detection state
+  const [dupeCandidate, setDupeCandidate] = useState<FoundPatient | null>(null);
+  const [showDupeConfirm, setShowDupeConfirm] = useState(false);
+  const [dupeResolveCallback, setDupeResolveCallback] = useState<(() => void) | null>(null);
   const [referralSource, setReferralSource] = useState("");
   const [referralDoctorId, setReferralDoctorId] = useState<string | null>(null);
   const [showReferralModal, setShowReferralModal] = useState(false);
@@ -105,7 +110,7 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated, defaultD
     if (defaultDeptId) setDeptId(defaultDeptId);
   }, [defaultDeptId]);
 
-  // Fetch next token number
+  // Token preview only — actual token generated atomically at insert time
   useEffect(() => {
     const today = new Date().toISOString().split("T")[0];
     supabase
@@ -230,6 +235,49 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated, defaultD
   const createPatient = async (): Promise<string> => {
     if (useExisting && foundPatient) return foundPatient.id;
 
+    // Duplicate detection — check for existing patients with same phone or name+gender
+    const { data: potentialDupes } = await supabase
+      .from("patients")
+      .select("id, full_name, uhid, phone")
+      .eq("hospital_id", hospitalId)
+      .or(`phone.eq.${phone},full_name.ilike.%${fullName.trim()}%`)
+      .limit(5);
+
+    const matchedDupe = (potentialDupes || []).find(p => {
+      if (phone && p.phone === phone) return true;
+      if (p.full_name?.toLowerCase() === fullName.trim().toLowerCase() && p.phone) return true;
+      return false;
+    });
+
+    if (matchedDupe) {
+      // Show confirmation and wait for resolution
+      return new Promise<string>((resolve, reject) => {
+        setDupeCandidate(matchedDupe);
+        setDupeResolveCallback(() => () => {
+          // "Create New Anyway" was clicked — proceed with insert
+          setShowDupeConfirm(false);
+          setDupeCandidate(null);
+          insertNewPatient().then(resolve).catch(reject);
+        });
+        setShowDupeConfirm(true);
+      });
+    }
+
+    return insertNewPatient();
+  };
+
+  const handleUseDupePatient = () => {
+    if (dupeCandidate) {
+      setFoundPatient(dupeCandidate);
+      setUseExisting(true);
+      setShowDupeConfirm(false);
+      setDupeCandidate(null);
+      // Re-trigger payment flow with existing patient
+      handlePayAndIssue(false);
+    }
+  };
+
+  const insertNewPatient = async (): Promise<string> => {
     const dateStr = new Date().toISOString().split("T")[0].replace(/-/g, "");
     const { count } = await supabase.from("patients").select("id", { count: "exact", head: true }).eq("hospital_id", hospitalId);
     const seq = String((count || 0) + 1).padStart(4, "0");
@@ -369,13 +417,22 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated, defaultD
         postedBy: userId || "",
       });
 
+      // Generate atomic token number via RPC (fallback to preview value)
+      let atomicToken = nextToken;
+      try {
+        const { data: rpcToken } = await (supabase as any).rpc("generate_token_number", {
+          p_hospital_id: hospitalId, p_prefix: "A",
+        });
+        if (rpcToken) atomicToken = rpcToken;
+      } catch { /* fallback to preview token */ }
+
       // Insert token
       const { error: tokenErr } = await supabase.from("opd_tokens").insert({
         hospital_id: hospitalId,
         patient_id: patientId,
         doctor_id: doctorId || null,
         department_id: deptId || null,
-        token_number: nextToken,
+        token_number: atomicToken,
         token_prefix: "A",
         visit_date: today,
         status: "waiting",
@@ -416,7 +473,7 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated, defaultD
         uhid: useExisting ? foundPatient?.uhid || "" : "New",
         department: selectedDeptName,
         doctor: doctorId ? `Dr. ${selectedDoctorName}` : "—",
-        token: nextToken,
+        token: atomicToken,
         fee,
         paymentMode: isPaid ? paymentMode : "—",
         date: today,
@@ -426,8 +483,8 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated, defaultD
       setStep("receipt");
 
       const statusMsg = isPaid
-        ? `Token ${nextToken} issued · ₹${fee.toLocaleString("en-IN")} collected ✓`
-        : `Token ${nextToken} issued · Payment pending`;
+        ? `Token ${atomicToken} issued · ₹${fee.toLocaleString("en-IN")} collected ✓`
+        : `Token ${atomicToken} issued · Payment pending`;
       toast({ title: statusMsg });
     } catch (err: unknown) {
       toast({ title: "Registration failed", description: (err as Error).message, variant: "destructive" });
@@ -879,6 +936,37 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated, defaultD
           onSaved={(name, id) => { setReferralSource(name); setReferralDoctorId(id || null); }}
           hospitalId={hospitalId}
         />
+
+        {/* Duplicate patient confirmation dialog */}
+        {showDupeConfirm && dupeCandidate && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40" onClick={() => setShowDupeConfirm(false)}>
+            <div className="bg-background rounded-xl p-6 w-full max-w-[380px] shadow-2xl" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center gap-2 mb-3">
+                <AlertTriangle className="h-5 w-5 text-amber-500" />
+                <h3 className="text-sm font-bold text-foreground">Possible Duplicate Patient</h3>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">A patient with similar details already exists:</p>
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+                <p className="text-sm font-medium text-foreground">{dupeCandidate.full_name}</p>
+                <p className="text-xs text-muted-foreground">{dupeCandidate.uhid} · Phone: {dupeCandidate.phone || "—"}</p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleUseDupePatient}
+                  className="flex-1 h-9 text-xs font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90"
+                >
+                  Use Existing Patient
+                </button>
+                <button
+                  onClick={() => { if (dupeResolveCallback) dupeResolveCallback(); }}
+                  className="flex-1 h-9 text-xs font-medium rounded-lg border border-border text-foreground hover:bg-muted"
+                >
+                  Create New Anyway
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
