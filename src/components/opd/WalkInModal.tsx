@@ -661,11 +661,21 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated, defaultD
 
             {/* Consultation Fee */}
             <div className="mt-4">
-              <label className="text-xs font-medium text-slate-600">Consultation Fee (₹)</label>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-medium text-slate-600">Consultation Fee (₹)</label>
+                <span className={cn("text-[10px] font-medium px-1.5 py-0.5 rounded",
+                  feeSource === "doctor" ? "bg-emerald-100 text-emerald-700" :
+                  feeSource === "dept" ? "bg-blue-100 text-blue-700" :
+                  feeSource === "global" ? "bg-slate-100 text-slate-600" :
+                  "bg-amber-100 text-amber-700"
+                )}>
+                  {feeSource === "doctor" ? "Doctor rate" : feeSource === "dept" ? "Dept rate" : feeSource === "global" ? "Global rate" : "Default rate"}
+                </span>
+              </div>
               <input
                 type="number"
                 value={consultationFee}
-                onChange={(e) => setConsultationFee(Number(e.target.value) || 0)}
+                onChange={(e) => { setConsultationFee(Number(e.target.value) || 0); setFeeSource("default"); }}
                 min={0}
                 className="w-full h-12 px-4 border border-slate-200 rounded-lg text-lg font-bold mt-1 focus:border-[#0E7B7B] focus:ring-2 focus:ring-[#0E7B7B]/10 outline-none"
               />
