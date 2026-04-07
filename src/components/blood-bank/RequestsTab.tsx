@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { generateBillNumber } from "@/hooks/useBillNumber";
 import { autoPostJournalEntry } from "@/lib/accounting";
+import { calcGST } from "@/lib/currency";
 import { logNABHEvidence } from "@/lib/nabh-evidence";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";

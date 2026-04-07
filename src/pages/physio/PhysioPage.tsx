@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { generateBillNumber } from "@/hooks/useBillNumber";
 import { autoPostJournalEntry } from "@/lib/accounting";
+import { calcGST } from "@/lib/currency";
 import OutcomeTrajectoryPredictor from "@/components/physio/OutcomeTrajectoryPredictor";
 import { supabase } from "@/integrations/supabase/client";
 import { useHospitalId } from "@/hooks/useHospitalId";
