@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { generateBillNumber } from "@/hooks/useBillNumber";
+import { autoPostJournalEntry } from "@/lib/accounting";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -193,7 +194,7 @@ const RecordVaccineTab: React.FC<Props> = ({ hospitalId, onRecorded }) => {
       const today = new Date().toISOString().split("T")[0];
       const billNum = await generateBillNumber(hospitalId, "VACC");
 
-      await supabase.from("bills").insert({
+      const { data: vaccBill } = await supabase.from("bills").insert({
         hospital_id: hospitalId,
         patient_id: patientId,
         bill_number: billNum,
@@ -205,7 +206,19 @@ const RecordVaccineTab: React.FC<Props> = ({ hospitalId, onRecorded }) => {
         balance_due: totalFee,
         subtotal: fee * successCount, gst_amount: gst * successCount,
         taxable_amount: fee * successCount, patient_payable: totalFee,
-      });
+      }).select("id").single();
+
+      if (vaccBill) {
+        await autoPostJournalEntry({
+          triggerEvent: "bill_finalized_vaccination",
+          sourceModule: "vaccination",
+          sourceId: vaccBill.id,
+          amount: totalFee,
+          description: `Vaccination Revenue - Bill ${billNum}`,
+          hospitalId,
+          postedBy: userId || "",
+        });
+      }
     }
 
     if (successCount > 0) toast.success(`${successCount} vaccination${successCount > 1 ? "s" : ""} recorded`);
