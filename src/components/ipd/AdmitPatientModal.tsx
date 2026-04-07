@@ -110,7 +110,15 @@ const AdmitPatientModal: React.FC<Props> = ({ open, onClose, hospitalId, presele
     setAdmissionType("elective"); setDeptId(""); setDoctorId(""); setDiagnosis("");
     setInsuranceType("self_pay"); setInsuranceId(""); setExpectedDischarge("");
     setShowNewPatient(false); setNewName(""); setNewPhone(""); setNewAge(""); setNewGender("male");
+    setAllergyVerified(false); setPatientAllergies(null);
   };
+
+  // Fetch patient allergies when selected
+  useEffect(() => {
+    if (!selectedPatient) { setPatientAllergies(null); setAllergyVerified(false); return; }
+    (supabase as any).from("patients").select("allergies").eq("id", selectedPatient.id).maybeSingle()
+      .then(({ data }: any) => setPatientAllergies(data?.allergies || null));
+  }, [selectedPatient]);
 
   // Search patients
   useEffect(() => {
