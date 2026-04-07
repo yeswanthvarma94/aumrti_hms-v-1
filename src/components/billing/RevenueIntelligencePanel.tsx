@@ -149,7 +149,7 @@ Return ONLY JSON array (empty array if no issues):
   const resolveAlert = async (idx: number) => {
     const alert = alerts[idx];
     if (alert.id) {
-      await supabase.from("revenue_alerts").update({ resolved: true, resolved_at: new Date().toISOString() }).eq("id", alert.id);
+      await supabase.from("revenue_alerts").update({ resolved: true, resolved_at: new Date().toISOString() } as any).eq("id", alert.id);
     }
     setAlerts(prev => prev.filter((_, i) => i !== idx));
     toast({ title: "Alert resolved" });

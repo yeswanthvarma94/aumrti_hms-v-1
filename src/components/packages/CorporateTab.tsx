@@ -137,14 +137,13 @@ export default function CorporateTab() {
 
         // Create booking
         const { error: bErr } = await supabase.from("package_bookings").insert({
-          hospital_id: hospitalId,
           patient_id: patientId,
           package_id: bulkPackageId,
           scheduled_date: bulkDate,
           status: "booked",
           corporate_account_id: bulkAccountId,
           booking_source: "corporate",
-        });
+        } as any);
 
         if (bErr) { failed++; } else { success++; }
       } catch {

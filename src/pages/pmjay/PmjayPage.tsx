@@ -92,7 +92,7 @@ const PmjayPage: React.FC = () => {
       scheme_type: schemeForm.scheme_type,
       coverage_limit: schemeForm.coverage_limit ? Number(schemeForm.coverage_limit) : null,
       is_active: true,
-    });
+    } as any);
     setSchemeSaving(false);
     if (error) { toast({ title: "Failed to add scheme", description: error.message, variant: "destructive" }); return; }
     toast({ title: "Scheme added successfully" });
