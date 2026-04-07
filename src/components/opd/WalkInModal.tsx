@@ -110,7 +110,7 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated, defaultD
     if (defaultDeptId) setDeptId(defaultDeptId);
   }, [defaultDeptId]);
 
-  // Fetch next token number
+  // Token preview only — actual token generated atomically at insert time
   useEffect(() => {
     const today = new Date().toISOString().split("T")[0];
     supabase
