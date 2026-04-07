@@ -233,7 +233,10 @@ const IPDWardRoundTab: React.FC<Props> = ({ admissionId, hospitalId, userId, pat
               ))}
             </div>
             <div className="flex gap-2 mt-2">
-              <button onClick={() => { toast({ title: "Lab orders created" }); setInvestigationsToOrder([]); }}
+              <button onClick={async () => {
+                await createOrdersFromPlan("", investigationsToOrder);
+                setInvestigationsToOrder([]);
+              }}
                 className="text-[10px] bg-purple-600 text-white px-2.5 py-1 rounded hover:bg-purple-500 font-medium">
                 ✓ Create Lab Orders
               </button>
