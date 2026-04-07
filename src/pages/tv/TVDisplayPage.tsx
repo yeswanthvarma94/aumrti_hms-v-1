@@ -85,14 +85,21 @@ const TVDisplayPage: React.FC = () => {
     const { data } = await query;
     if (!data) return;
 
-    const mapped = data.map((t: any) => ({
-      id: t.id,
-      token_number: t.token_number,
-      token_prefix: t.token_prefix || "",
-      status: t.status,
-      patient_name: t.patients?.full_name?.split(" ")[0] || "",
-      doctor_name: t.users?.full_name || "",
-    }));
+    const mapped = data.map((t: any) => {
+      const fullName = t.patients?.full_name || "";
+      const parts = fullName.trim().split(/\s+/);
+      const masked = parts.length > 1
+        ? `${parts[0][0]}. ${parts.slice(1).join(" ")}`
+        : parts[0] ? `${parts[0][0]}.` : "";
+      return {
+        id: t.id,
+        token_number: t.token_number,
+        token_prefix: t.token_prefix || "",
+        status: t.status,
+        patient_name: masked,
+        doctor_name: t.users?.full_name || "",
+      };
+    });
 
     const calling = mapped.find(t => t.status === "in_consultation") || mapped.find(t => t.status === "called") || null;
     const waiting = mapped.filter(t => t.status === "waiting").slice(0, 3);

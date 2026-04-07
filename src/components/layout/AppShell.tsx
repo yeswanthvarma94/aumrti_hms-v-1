@@ -9,6 +9,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { VoiceScribeProvider } from "@/contexts/VoiceScribeContext";
 import VoiceScribePanel from "@/components/voice/VoiceScribePanel";
 import CommandPalette from "./CommandPalette";
+import IdleTimer from "@/components/auth/IdleTimer";
 
 const ShellContent: React.FC = () => {
   const { collapsed } = useSidebar();
@@ -18,6 +19,7 @@ const ShellContent: React.FC = () => {
   return (
     <div className="h-screen w-screen overflow-hidden bg-background">
       <AppHeader />
+      <IdleTimer />
       {!isMobile && <AppSidebar />}
       <CommandPalette />
 
