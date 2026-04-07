@@ -57,7 +57,7 @@ const NotificationCentre: React.FC<{ hospitalId: string | null }> = ({ hospitalI
   }, [fetchPending, fetchAlerts]);
 
   const handleSend = async (id: string, waUrl: string) => {
-    window.open(waUrl, "_blank");
+    window.open(waUrl, "_blank", "noopener,noreferrer");
     await supabase.from("whatsapp_notifications").update({ sent_at: new Date().toISOString() } as any).eq("id", id);
     fetchPending();
   };

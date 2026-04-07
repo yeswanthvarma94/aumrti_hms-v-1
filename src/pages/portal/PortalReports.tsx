@@ -113,7 +113,7 @@ const LabTab: React.FC<{ session: PortalSession }> = ({ session }) => {
     if (!orderItems) return;
     const order = orders.find((o) => o.id === orderId);
     
-    const printWindow = window.open("", "_blank");
+    const printWindow = window.open("", "_blank", "noopener,noreferrer");
     if (!printWindow) return;
 
     printWindow.document.write(`

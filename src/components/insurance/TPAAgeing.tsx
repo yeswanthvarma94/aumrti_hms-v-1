@@ -86,7 +86,7 @@ const TPAAgeing: React.FC = () => {
     const msg = encodeURIComponent(
       `Dear ${tpa} Team,\n\nHospital outstanding claims: ${fmtFull(outstanding)}\nPlease expedite settlement at the earliest.\n\nRegards`
     );
-    window.open(`https://wa.me/?text=${msg}`, "_blank");
+    window.open(`https://wa.me/?text=${msg}`, "_blank", "noopener,noreferrer");
   };
 
   const chartData = buckets.slice(0, 8).map(b => ({

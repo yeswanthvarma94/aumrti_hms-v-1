@@ -88,7 +88,7 @@ const ScheduleTeleconsultModal: React.FC<Props> = ({ open, onOpenChange, onCreat
       const msg = `🏥 Teleconsult Scheduled!\n\nDoctor: ${doctor?.full_name || "Doctor"}\nDate: ${date}\nTime: ${time}\nDuration: ${duration} min\n\nJoin link: https://meet.jit.si/HMS-${roomId}\n\nPlease join 5 minutes early.`;
       const clean = phone.replace(/\D/g, "");
       const intl = clean.startsWith("91") ? clean : `91${clean}`;
-      window.open(`https://wa.me/${intl}?text=${encodeURIComponent(msg)}`, "_blank");
+      window.open(`https://wa.me/${intl}?text=${encodeURIComponent(msg)}`, "_blank", "noopener,noreferrer");
     }
 
     // Reset

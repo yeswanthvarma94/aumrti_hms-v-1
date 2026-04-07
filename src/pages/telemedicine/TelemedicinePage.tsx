@@ -201,7 +201,7 @@ const TelemedicinePage: React.FC = () => {
     const msg = `💊 Prescription\n\n${lines}\n\n— From your teleconsult`;
     const clean = activeSession.patient_phone.replace(/\D/g, "");
     const intl = clean.startsWith("91") ? clean : `91${clean}`;
-    window.open(`https://wa.me/${intl}?text=${encodeURIComponent(msg)}`, "_blank");
+    window.open(`https://wa.me/${intl}?text=${encodeURIComponent(msg)}`, "_blank", "noopener,noreferrer");
     supabase.from("teleconsult_sessions").update({ prescription_sent: true }).eq("id", activeSession.id);
   };
 

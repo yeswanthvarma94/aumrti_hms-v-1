@@ -96,7 +96,7 @@ const PortalLogin: React.FC<PortalLoginProps> = ({ hospitalId, onLogin }) => {
     // Open WhatsApp with OTP message
     const hospitalName = hospitalBrand.name || "Hospital";
     const waMsg = `Your ${hospitalName} OTP: ${otpCode}. Valid for 10 minutes. Do not share.`;
-    window.open(`https://wa.me/91${clean.slice(-10)}?text=${encodeURIComponent(waMsg)}`, "_blank");
+    window.open(`https://wa.me/91${clean.slice(-10)}?text=${encodeURIComponent(waMsg)}`, "_blank", "noopener,noreferrer");
 
     setStep(2);
     setResendTimer(30);

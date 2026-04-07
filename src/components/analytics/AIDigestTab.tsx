@@ -171,7 +171,7 @@ const AIDigestTab: React.FC = () => {
   const sendWhatsApp = () => {
     if (!digest?.digest_text) return;
     const text = encodeURIComponent(`🏥 *Daily Digest — ${dateLabel}*\n\n${digest.digest_text.slice(0, 800)}\n\nFull analytics: ${window.location.origin}/analytics`);
-    window.open(`https://wa.me/?text=${text}`, "_blank");
+    window.open(`https://wa.me/?text=${text}`, "_blank", "noopener,noreferrer");
   };
 
   return (

@@ -85,7 +85,7 @@ Write ONLY in ${langLabel}. Do not include English unless the language selected 
   };
 
   const handlePrint = () => {
-    const printWindow = window.open("", "_blank");
+    const printWindow = window.open("", "_blank", "noopener,noreferrer");
     if (printWindow) {
       printWindow.document.write(`
         <html><head><title>Discharge Instructions - ${patientName}</title>
@@ -108,7 +108,7 @@ Write ONLY in ${langLabel}. Do not include English unless the language selected 
     }
     const phone = patientPhone.replace(/\D/g, "");
     const text = `*Discharge Instructions — ${patientName}*\n\n${instructions}`;
-    window.open(`https://wa.me/91${phone}?text=${encodeURIComponent(text)}`, "_blank");
+    window.open(`https://wa.me/91${phone}?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
   };
 
   const handleCopy = () => {

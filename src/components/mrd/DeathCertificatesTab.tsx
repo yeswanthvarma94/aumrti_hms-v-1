@@ -121,7 +121,7 @@ const DeathCertificatesTab: React.FC<Props> = ({ hospitalId, showCreate, onClose
         </div>
       </div>
     </body></html>`;
-    const w = window.open("", "_blank");
+    const w = window.open("", "_blank", "noopener,noreferrer");
     if (w) { w.document.write(html); w.document.close(); w.focus(); setTimeout(() => w.print(), 400); }
   };
 

@@ -101,7 +101,7 @@ Medical Director
   };  // end fallback
 
   const handlePrint = () => {
-    const printWindow = window.open("", "_blank");
+    const printWindow = window.open("", "_blank", "noopener,noreferrer");
     if (!printWindow) return;
     printWindow.document.write(`
       <html><head><title>Appeal Letter - ${claim.claim_number}</title>

@@ -257,7 +257,7 @@ Base64 image data: ${base64.substring(0, 500)}...`,
                     variant="ghost"
                     size="icon"
                     className="h-7 w-7"
-                    onClick={() => window.open(doc.file_url, "_blank")}
+                    onClick={() => window.open(doc.file_url, "_blank", "noopener,noreferrer")}
                     title="View document"
                   >
                     <Eye size={12} />

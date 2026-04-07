@@ -98,7 +98,7 @@ const DueListTab: React.FC<Props> = ({ hospitalId }) => {
     const msg = encodeURIComponent(
       `Dear parent/guardian,\n\nYour child *${patient.fullName}* has the following vaccinations due:\n\n${vaccineLines}\n\nPlease visit the hospital at your earliest convenience.\n\nThank you.`
     );
-    window.open(`https://wa.me/91${phone}?text=${msg}`, "_blank");
+    window.open(`https://wa.me/91${phone}?text=${msg}`, "_blank", "noopener,noreferrer");
   };
 
   const sendBulkReminders = () => {

@@ -70,7 +70,7 @@ export async function sendWhatsApp(opts: SendOpts): Promise<{ method: "wati" | "
 
   // ── wa.me fallback ──
   const waUrl = `https://wa.me/${cleanedPhone}?text=${encodeURIComponent(opts.message)}`;
-  window.open(waUrl, "_blank");
+  window.open(waUrl, "_blank", "noopener,noreferrer");
   return { method: "wame", success: true };
 }
 
