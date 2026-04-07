@@ -283,6 +283,44 @@ const RadiologyReportingWorkspace: React.FC<Props> = ({ order, hospitalId, onSta
       });
     }
 
+    // Auto-bill OPD radiology charges (skip IPD)
+    const { data: fullOrder } = await (supabase as any)
+      .from("radiology_orders")
+      .select("admission_id, encounter_id, patient_id, ordered_by")
+      .eq("id", order.id).single();
+
+    if (fullOrder && !fullOrder.admission_id) {
+      try {
+        const { autoBillOpdInvestigation, getInvestigationRate } = await import("@/lib/investigationBilling");
+        const { rate, gstPercent } = await getInvestigationRate(hospitalId, order.study_name, "radiology");
+        const gstAmount = rate * gstPercent / 100;
+
+        const result = await autoBillOpdInvestigation({
+          hospitalId,
+          patientId: fullOrder.patient_id,
+          encounterId: fullOrder.encounter_id,
+          admissionId: null,
+          orderedBy: fullOrder.ordered_by || currentUserId,
+          lineItems: [{
+            description: order.study_name,
+            itemType: "radiology",
+            unitRate: rate,
+            gstPercent,
+            gstAmount,
+          }],
+          billPrefix: "RAD",
+          sourceModule: "radiology",
+          sourceId: order.id,
+        });
+
+        if (result) {
+          toast({ title: `Radiology charges billed: ₹${result.total.toLocaleString("en-IN")}` });
+        }
+      } catch (e) {
+        console.error("Radiology auto-billing error (non-blocking):", e);
+      }
+    }
+
     setSaving(false);
     onStatusChange();
     toast({ title: "Report signed ✓" });
