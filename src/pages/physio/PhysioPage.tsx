@@ -216,7 +216,7 @@ const PhysioPage: React.FC = () => {
 
     const fee = rate?.fee ? Number(rate.fee) : 500;
     const gstPct = rate?.gst_applicable ? (Number(rate.gst_percent) || 0) : 0;
-    const gst = Math.round(fee * gstPct / 100 * 100) / 100;
+    const gst = calcGST(fee, gstPct);
 
     const { data: referral } = await (supabase as any)
       .from("physio_referrals")

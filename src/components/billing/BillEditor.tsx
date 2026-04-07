@@ -230,21 +230,7 @@ const BillEditor: React.FC<Props> = ({ bill, hospitalId, onRefresh }) => {
 
   const recalcBillTotals = async () => {
     if (!bill || !hospitalId) return;
-    const { data: items } = await (supabase as any)
-      .from("bill_line_items")
-      .select("total_amount, gst_amount, taxable_amount")
-      .eq("bill_id", bill.id)
-      .or("is_deleted.is.null,is_deleted.eq.false");
-    const subtotal = (items || []).reduce((s, i: any) => s + Number(i.taxable_amount || 0), 0);
-    const gst = (items || []).reduce((s, i: any) => s + Number(i.gst_amount || 0), 0);
-    const total = subtotal + gst;
-    const patientPayable = total - bill.advance_received - bill.insurance_amount;
-    const balanceDue = patientPayable - bill.paid_amount;
-    await supabase.from("bills").update({
-      subtotal, gst_amount: gst, total_amount: total,
-      taxable_amount: subtotal, patient_payable: Math.max(0, patientPayable),
-      balance_due: Math.max(0, balanceDue),
-    }).eq("id", bill.id);
+    await (supabase as any).rpc("recalculate_bill_totals", { p_bill_id: bill.id });
     onRefresh();
   };
 

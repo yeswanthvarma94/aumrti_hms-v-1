@@ -371,7 +371,7 @@ const DispensingWorkspace: React.FC<Props> = ({ hospitalId, prescription, onDisp
           const batch = row.batches.find(b => b.id === row.selected_batch_id);
           const batchGst = batch?.gst_percent || 5; // essential meds default 5%
           const itemTotal = row.mrp * row.dispense_qty;
-          totalGst += Math.round(itemTotal * batchGst / 100 * 100) / 100;
+          totalGst += calcGST(itemTotal, batchGst);
         }
 
         const billNum = await generateBillNumber(hospitalId, "PHARM");

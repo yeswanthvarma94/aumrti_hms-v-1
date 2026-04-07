@@ -222,7 +222,7 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
 
     const fee = rate?.fee ? Number(rate.fee) : 1500;
     const gstPct = rate?.gst_applicable ? (Number(rate.gst_percent) || 0) : 0;
-    const gst = Math.round(fee * gstPct / 100 * 100) / 100;
+    const gst = calcGST(fee, gstPct);
 
     const sessionDate = session.session_date || new Date().toISOString().split("T")[0];
 

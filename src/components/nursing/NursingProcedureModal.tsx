@@ -55,9 +55,9 @@ export default function NursingProcedureModal({ open, onClose, hospitalId, defau
 
       const unitRate = svc?.fee ? Number(svc.fee) : 150;
       const gstPct = svc?.gst_applicable ? (Number(svc.gst_percent) || 0) : 0;
-      const totalFee = unitRate * quantity;
-      const gstAmt = Math.round(totalFee * gstPct / 100);
-      const grandTotal = totalFee + gstAmt;
+      const totalFee = roundCurrency(unitRate * quantity);
+      const gstAmt = calcGST(totalFee, gstPct);
+      const grandTotal = roundCurrency(totalFee + gstAmt);
 
       // Check if patient has an active admission
       let activeAdmissionId = admissionId || null;
@@ -85,14 +85,8 @@ export default function NursingProcedureModal({ open, onClose, hospitalId, defau
             gst_percent: gstPct, gst_amount: gstAmt, total_amount: grandTotal,
             source_module: "nursing",
           });
-          // Recalculate
-          const newSub = (Number(existingBill.subtotal) || 0) + totalFee;
-          const newGst = (Number(existingBill.gst_amount) || 0) + gstAmt;
-          await supabase.from("bills").update({
-            subtotal: newSub, gst_amount: newGst,
-            total_amount: newSub + newGst, patient_payable: newSub + newGst,
-            balance_due: newSub + newGst - (Number(existingBill.total_amount) - (Number(existingBill.subtotal) + Number(existingBill.gst_amount)) || 0),
-          } as any).eq("id", billId!);
+          // Server-side recalculation
+          await (supabase as any).rpc("recalculate_bill_totals", { p_bill_id: billId! });
         } else {
           // Create new IPD bill
           const billNumber = await generateBillNumber(hospitalId, "NURS");
