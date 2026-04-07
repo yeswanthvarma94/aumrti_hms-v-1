@@ -6,7 +6,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { ExternalLink, Mic } from "lucide-react";
+import { ExternalLink, Mic, FileText } from "lucide-react";
+import { printDocument, printHeader } from "@/lib/printUtils";
 import { useVoiceScribe } from "@/contexts/VoiceScribeContext";
 import VoiceDictationButton from "@/components/voice/VoiceDictationButton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -392,6 +393,42 @@ const EmergencyWorkspace: React.FC<Props> = ({ visit, hospitalId, userId, onRefr
         <ActionBtn label="📟 Call Specialist" bg="#F59E0B" onClick={() => setShowSpecialistDialog(true)} />
         <ActionBtn label="🏠 Discharge" bg="#10B981" onClick={() => setShowDischargeConfirm(true)} />
         {mlc && <ActionBtn label="📄 MLC Register" bg="#7C3AED" onClick={() => setShowMlcDialog(true)} />}
+        {mlc && (
+          <ActionBtn label="📋 Police Intimation" bg="#6D28D9" onClick={() => {
+            const now = new Date();
+            const body = `
+              ${printHeader(hospitalId ? "Hospital" : "Hospital", "Medico-Legal Case — Police Intimation")}
+              <div style="text-align:center;font-size:14px;font-weight:bold;margin:12px 0;text-decoration:underline">
+                POLICE INTIMATION (FORM 4)
+              </div>
+              <div class="row"><span class="label">Date & Time:</span><span>${now.toLocaleDateString("en-IN")} ${now.toLocaleTimeString("en-IN")}</span></div>
+              <div class="row"><span class="label">To:</span><span>The Station House Officer, ${mlcDetails.police_station || "_______________"}</span></div>
+              <div style="margin:16px 0;font-size:12px;line-height:1.8">
+                <p>Sir/Madam,</p>
+                <p>This is to inform you that the following patient has been brought to this hospital
+                and the case appears to be of medico-legal nature:</p>
+              </div>
+              <table style="width:100%;border-collapse:collapse;font-size:12px;margin:12px 0">
+                <tr><td style="padding:6px;border:1px solid #ccc;width:35%;font-weight:bold">Patient Name</td><td style="padding:6px;border:1px solid #ccc">${visit.patient_name}</td></tr>
+                <tr><td style="padding:6px;border:1px solid #ccc;font-weight:bold">Age / Gender</td><td style="padding:6px;border:1px solid #ccc">${visit.age || "—"} / ${visit.gender || "—"}</td></tr>
+                <tr><td style="padding:6px;border:1px solid #ccc;font-weight:bold">Date & Time of Arrival</td><td style="padding:6px;border:1px solid #ccc">${new Date(visit.arrival_time).toLocaleString("en-IN")}</td></tr>
+                <tr><td style="padding:6px;border:1px solid #ccc;font-weight:bold">Brought By</td><td style="padding:6px;border:1px solid #ccc">${visit.mode_of_arrival || "Self"}</td></tr>
+                <tr><td style="padding:6px;border:1px solid #ccc;font-weight:bold">Nature of Injuries / Condition</td><td style="padding:6px;border:1px solid #ccc">${mlcDetails.injury_type || complaint || "—"}</td></tr>
+                <tr><td style="padding:6px;border:1px solid #ccc;font-weight:bold">Chief Complaint</td><td style="padding:6px;border:1px solid #ccc">${complaint || "—"}</td></tr>
+                <tr><td style="padding:6px;border:1px solid #ccc;font-weight:bold">Working Diagnosis</td><td style="padding:6px;border:1px solid #ccc">${diagnosis || "Under evaluation"}</td></tr>
+                <tr><td style="padding:6px;border:1px solid #ccc;font-weight:bold">Condition on Arrival</td><td style="padding:6px;border:1px solid #ccc">BP: ${vitals.bp_s || "—"}/${vitals.bp_d || "—"}, Pulse: ${vitals.pulse || "—"}, SpO2: ${vitals.spo2 || "—"}%, GCS: ${vitals.gcs || "—"}/15</td></tr>
+              </table>
+              <div style="margin:16px 0;font-size:12px;line-height:1.8">
+                <p>The patient is being treated at this hospital. You are requested to take necessary action.</p>
+              </div>
+              <div style="margin-top:40px;display:flex;justify-content:space-between;font-size:12px">
+                <div><p>_________________________</p><p>Attending Doctor</p></div>
+                <div style="text-align:right"><p>_________________________</p><p>Medical Superintendent</p></div>
+              </div>
+            `;
+            printDocument("Police Intimation - " + visit.patient_name, body);
+          }} />
+        )}
 
         <button
           onClick={() => navigate(`/patients?id=${visit.patient_id}`)}

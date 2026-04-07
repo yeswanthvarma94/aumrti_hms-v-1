@@ -1,11 +1,13 @@
-import React from "react";
+import React, { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Printer, MessageSquare, Mail } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Printer, MessageSquare, Mail, Info, Lock } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { printDocument, printHeader } from "@/lib/printUtils";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { BillRecord } from "@/pages/billing/BillingPage";
 import type { LineItem } from "@/components/billing/BillEditor";
 
@@ -20,8 +22,31 @@ interface Props {
 }
 
 const GSTInvoiceModal: React.FC<Props> = ({
-  bill, lineItems, hospitalName, hospitalGstin, hospitalAddress, irn, onClose,
+  bill, lineItems, hospitalName, hospitalGstin, hospitalAddress, irn: initialIrn, onClose,
 }) => {
+  const { toast } = useToast();
+  const [manualIrn, setManualIrn] = useState(initialIrn || "");
+  const [lockingIrn, setLockingIrn] = useState(false);
+  const irn = initialIrn || manualIrn;
+  const isLocked = bill.bill_status === "irn_locked";
+
+  const handleLockIrn = async () => {
+    if (!manualIrn.trim()) return;
+    setLockingIrn(true);
+    try {
+      await (supabase as any).from("bills").update({
+        irn: manualIrn.trim(),
+        irn_generated_at: new Date().toISOString(),
+        bill_status: "irn_locked",
+      }).eq("id", bill.id);
+      toast({ title: "IRN saved & bill locked", description: "This bill can no longer be edited." });
+    } catch {
+      toast({ title: "Failed to lock bill", variant: "destructive" });
+    } finally {
+      setLockingIrn(false);
+    }
+  };
+
   const taxableItems = lineItems.filter((i) => i.gst_percent > 0);
 
   // Group GST
@@ -70,7 +95,46 @@ const GSTInvoiceModal: React.FC<Props> = ({
             </div>
           </div>
 
-          {/* IRN */}
+          {/* IRN Status Indicator */}
+          <div className="bg-amber-50 dark:bg-amber-950/30 px-4 py-2.5 border-b border-border">
+            <div className="flex items-center gap-2">
+              {isLocked ? (
+                <Lock size={14} className="text-green-600 dark:text-green-400" />
+              ) : (
+                <Info size={14} className="text-amber-600 dark:text-amber-400" />
+              )}
+              <span className="text-[11px] font-semibold text-foreground">
+                IRN Generation: {isLocked ? "Locked" : "Manual Mode"}
+              </span>
+              {!isLocked && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info size={12} className="text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-[260px] text-xs">
+                    Automated IRN generation via GST portal API will be available in a future update.
+                    Currently, generate IRN manually on the GST portal and enter the IRN number here.
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            </div>
+            {!isLocked && !initialIrn && (
+              <div className="flex gap-2 mt-2">
+                <Input
+                  value={manualIrn}
+                  onChange={(e) => setManualIrn(e.target.value)}
+                  placeholder="Paste IRN from GST portal..."
+                  className="h-7 text-xs font-mono flex-1"
+                />
+                <Button size="sm" className="h-7 text-xs" disabled={!manualIrn.trim() || lockingIrn} onClick={handleLockIrn}>
+                  {lockingIrn ? "Locking..." : "Lock Bill"}
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {/* IRN display */}
+          {irn && (
           <div className="bg-muted/50 px-4 py-2 border-b border-border flex items-center justify-between">
             <div>
               <p className="text-[10px] font-bold uppercase text-muted-foreground">IRN</p>
@@ -81,6 +145,15 @@ const GSTInvoiceModal: React.FC<Props> = ({
               <p className="text-[10px] text-muted-foreground">Date: {bill.bill_date}</p>
             </div>
           </div>
+          )}
+          {!irn && (
+          <div className="bg-muted/50 px-4 py-2 border-b border-border flex items-center justify-between">
+            <div className="text-right w-full">
+              <p className="text-[10px] text-muted-foreground">Invoice No: {bill.bill_number}</p>
+              <p className="text-[10px] text-muted-foreground">Date: {bill.bill_date}</p>
+            </div>
+          </div>
+          )}
 
           {/* Items table */}
           <table className="w-full">
