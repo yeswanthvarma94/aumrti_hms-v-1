@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { generateBillNumber } from "@/hooks/useBillNumber";
+import { autoPostJournalEntry } from "@/lib/accounting";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -363,8 +364,18 @@ const DispensingWorkspace: React.FC<Props> = ({ hospitalId, prescription, onDisp
 
       // Auto-create pharmacy bill in bills table for IPD billing sync
       if (prescription.admission_id && totalAmount > 0) {
+        // Calculate actual GST from individual items
+        let totalGst = 0;
+        for (const row of drugRows) {
+          if (row.dispense_qty <= 0 || !row.selected_batch_id) continue;
+          const batch = row.batches.find(b => b.id === row.selected_batch_id);
+          const batchGst = batch?.gst_percent || 5; // essential meds default 5%
+          const itemTotal = row.mrp * row.dispense_qty;
+          totalGst += Math.round(itemTotal * batchGst / 100 * 100) / 100;
+        }
+
         const billNum = await generateBillNumber(hospitalId, "PHARM");
-        await supabase.from("bills").insert({
+        const { data: pharmBill } = await supabase.from("bills").insert({
           hospital_id: hospitalId,
           patient_id: prescription.patient_id,
           admission_id: prescription.admission_id,
@@ -372,13 +383,26 @@ const DispensingWorkspace: React.FC<Props> = ({ hospitalId, prescription, onDisp
           bill_type: "pharmacy",
           bill_status: "final",
           bill_date: new Date().toISOString().split("T")[0],
-          total_amount: totalAmount,
+          total_amount: totalAmount + totalGst,
           subtotal: totalAmount,
+          gst_amount: totalGst,
           paid_amount: 0,
-          balance_due: totalAmount,
+          balance_due: totalAmount + totalGst,
           payment_status: "unpaid",
           created_by: userData.id,
-        });
+        }).select("id").single();
+
+        if (pharmBill) {
+          await autoPostJournalEntry({
+            triggerEvent: "bill_finalized_pharmacy",
+            sourceModule: "pharmacy",
+            sourceId: pharmBill.id,
+            amount: totalAmount + totalGst,
+            description: `Pharmacy Revenue - Bill ${billNum}`,
+            hospitalId,
+            postedBy: user.id,
+          });
+        }
       }
 
       // Auto-sync: mark pharmacy cleared if all IP meds for this admission are dispensed

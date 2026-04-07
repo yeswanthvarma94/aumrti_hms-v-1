@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { generateBillNumber } from "@/hooks/useBillNumber";
+import { autoPostJournalEntry } from "@/lib/accounting";
 import { logNABHEvidence } from "@/lib/nabh-evidence";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
@@ -282,6 +283,17 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
         hsn_code: "999316", source_module: "dialysis",
       });
       toast({ title: `Dialysis billed: ₹${(fee + gst).toLocaleString("en-IN")}` });
+
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      await autoPostJournalEntry({
+        triggerEvent: "bill_finalized_dialysis",
+        sourceModule: "dialysis",
+        sourceId: newBill.id,
+        amount: fee + gst,
+        description: `Dialysis Revenue - Bill ${billNum}`,
+        hospitalId,
+        postedBy: authUser?.id || "",
+      });
     }
   };
 

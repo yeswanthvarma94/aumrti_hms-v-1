@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { generateBillNumber } from "@/hooks/useBillNumber";
+import { autoPostJournalEntry } from "@/lib/accounting";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -189,6 +190,18 @@ export default function PanchakarmaTab({ showNew, onShowNewDone }: Props) {
             balance_due: fee + gst,
             subtotal: fee, gst_amount: gst,
             taxable_amount: fee, patient_payable: fee + gst,
+          }).select("id").single().then(async ({ data: newBill }) => {
+            if (newBill) {
+              await autoPostJournalEntry({
+                triggerEvent: "bill_finalized_ayush",
+                sourceModule: "ayush",
+                sourceId: newBill.id,
+                amount: fee + gst,
+                description: `AYUSH Revenue - Bill ${billNum}`,
+                hospitalId,
+                postedBy: userData?.user?.id || "",
+              });
+            }
           });
         }
       }

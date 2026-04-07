@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { generateBillNumber } from "@/hooks/useBillNumber";
+import { autoPostJournalEntry } from "@/lib/accounting";
 import { useToast } from "@/hooks/use-toast";
 import type { OTSchedule } from "@/pages/ot/OTPage";
 
@@ -184,6 +185,17 @@ const EndCaseModal: React.FC<Props> = ({ schedule, onClose, onEnded }) => {
           balance_due: total,
         })
         .eq("id", billId);
+
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      await autoPostJournalEntry({
+        triggerEvent: "bill_finalized_ot",
+        sourceModule: "ot",
+        sourceId: billId,
+        amount: total,
+        description: `OT Revenue - ${otSchedule.surgery_name}`,
+        hospitalId,
+        postedBy: authUser?.id || "",
+      });
 
       toast({ title: `OT charges auto-billed: ₹${total.toLocaleString("en-IN")}` });
     }

@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import { generateBillNumber } from "@/hooks/useBillNumber";
+import { autoPostJournalEntry } from "@/lib/accounting";
 import { logNABHEvidence } from "@/lib/nabh-evidence";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
@@ -102,9 +104,12 @@ const RequestsTab: React.FC<Props> = ({ showModal, onCloseModal, onRefresh }) =>
     logNABHEvidence(hospitalId, "TMS.3",
       `Blood transfusion issued: Unit ${unit.unit_number}, ${unit.blood_group}${unit.rh_factor === "positive" ? "+" : "-"}, Patient ${selectedReq.patients?.full_name}. Cross-match: Compatible.`);
 
-    // Auto-bill if IPD admission
+    // Auto-bill blood product
     if (issueRecord?.admission_id) {
       await createBloodBankBill(hospitalId, issueRecord, unit);
+    } else {
+      // OPD blood issue — create standalone bill
+      await createBloodBankOPDBill(hospitalId, selectedReq.patient_id, unit);
     }
 
     fetchRequests();
@@ -154,6 +159,77 @@ const RequestsTab: React.FC<Props> = ({ showModal, onCloseModal, onRefresh }) =>
     });
 
     toast({ title: `Blood product charged: ₹${(fee + gst).toLocaleString("en-IN")}` });
+
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    await autoPostJournalEntry({
+      triggerEvent: "bill_finalized_blood_bank",
+      sourceModule: "blood_bank",
+      sourceId: bill.id,
+      amount: fee + gst,
+      description: `Blood Bank Revenue - ${(unit.component || "Blood").toUpperCase()}`,
+      hospitalId,
+      postedBy: authUser?.id || "",
+    });
+  };
+
+  const createBloodBankOPDBill = async (hospitalId: string, patientId: string, unit: any) => {
+    const { data: rate } = await supabase
+      .from("service_master")
+      .select("fee, gst_percent, gst_applicable")
+      .eq("hospital_id", hospitalId)
+      .ilike("name", `%${unit.component || "blood"}%`)
+      .maybeSingle();
+
+    const fee = rate?.fee ? Number(rate.fee) : 1500;
+    const gstPct = rate?.gst_applicable ? (Number(rate.gst_percent) || 0) : 0;
+    const gst = Math.round(fee * gstPct / 100 * 100) / 100;
+
+    const billNum = await generateBillNumber(hospitalId, "BLOOD");
+    const { data: newBill } = await supabase.from("bills").insert({
+      hospital_id: hospitalId,
+      patient_id: patientId,
+      bill_number: billNum,
+      bill_type: "opd",
+      bill_date: new Date().toISOString().split("T")[0],
+      bill_status: "final",
+      payment_status: "unpaid",
+      total_amount: fee + gst,
+      balance_due: fee + gst,
+      subtotal: fee,
+      gst_amount: gst,
+      taxable_amount: fee,
+      patient_payable: fee + gst,
+    }).select("id").single();
+
+    if (newBill) {
+      await supabase.from("bill_line_items").insert({
+        hospital_id: hospitalId,
+        bill_id: newBill.id,
+        item_type: "blood_product",
+        description: `Blood Product: ${(unit.component || "Blood").toUpperCase()} — ${unit.blood_group}${unit.rh_factor === "positive" ? "+" : "-"} (Unit: ${unit.unit_number})`,
+        quantity: 1,
+        unit_rate: fee,
+        taxable_amount: fee,
+        gst_percent: gstPct,
+        gst_amount: gst,
+        total_amount: fee + gst,
+        hsn_code: "999316",
+        source_module: "blood_bank",
+      });
+
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      await autoPostJournalEntry({
+        triggerEvent: "bill_finalized_blood_bank",
+        sourceModule: "blood_bank",
+        sourceId: newBill.id,
+        amount: fee + gst,
+        description: `Blood Bank OPD Revenue - Bill ${billNum}`,
+        hospitalId,
+        postedBy: authUser?.id || "",
+      });
+
+      toast({ title: `Blood product billed: ₹${(fee + gst).toLocaleString("en-IN")}` });
+    }
   };
 
   const submitRequest = async () => {

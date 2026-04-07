@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { generateBillNumber } from "@/hooks/useBillNumber";
+import { autoPostJournalEntry } from "@/lib/accounting";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -113,6 +114,17 @@ const TreatmentPlanTab: React.FC<TreatmentPlanTabProps> = ({ patientId, hospital
             taxable_amount: Number(item.cost), gst_percent: 18,
             gst_amount: gst, total_amount: Number(item.cost) + gst,
             source_module: "dental",
+          });
+
+          const { data: { user: authUser } } = await supabase.auth.getUser();
+          await autoPostJournalEntry({
+            triggerEvent: "bill_finalized_dental",
+            sourceModule: "dental",
+            sourceId: newBill.id,
+            amount: Number(item.cost) + gst,
+            description: `Dental Revenue - ${item.procedure}`,
+            hospitalId,
+            postedBy: authUser?.id || "",
           });
         }
       }

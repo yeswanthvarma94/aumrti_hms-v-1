@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { generateBillNumber } from "@/hooks/useBillNumber";
+import { autoPostJournalEntry } from "@/lib/accounting";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -199,12 +200,12 @@ const DaycareBoardTab: React.FC<DaycareBoardTabProps> = ({ showNewOrder, onClose
           const billDate = new Date().toISOString().split("T")[0];
           const billNum = await generateBillNumber(hospitalId, "CHEMO");
 
-          await supabase.from("bills").insert({
+          const { data: chemoBill } = await supabase.from("bills").insert({
             hospital_id: hospitalId,
             patient_id: order.patient_id,
             admission_id: order.admission_id || null,
             bill_number: billNum,
-            bill_type: "pharmacy",
+            bill_type: "daycare",
             bill_date: billDate,
             bill_status: "final",
             payment_status: "unpaid",
@@ -214,7 +215,20 @@ const DaycareBoardTab: React.FC<DaycareBoardTabProps> = ({ showNewOrder, onClose
             taxable_amount: totalDrugCost,
             patient_payable: totalDrugCost,
             notes: `Chemotherapy: ${order.cycle_number ? "Cycle " + order.cycle_number : ""}`,
-          });
+          }).select("id").single();
+
+          if (chemoBill) {
+            const { data: { user: authUser } } = await supabase.auth.getUser();
+            await autoPostJournalEntry({
+              triggerEvent: "bill_finalized_oncology",
+              sourceModule: "oncology",
+              sourceId: chemoBill.id,
+              amount: totalDrugCost,
+              description: `Oncology Daycare Revenue - Bill ${billNum}`,
+              hospitalId,
+              postedBy: authUser?.id || "",
+            });
+          }
         }
       }
     }

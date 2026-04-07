@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { generateBillNumber } from "@/hooks/useBillNumber";
+import { autoPostJournalEntry } from "@/lib/accounting";
 import OutcomeTrajectoryPredictor from "@/components/physio/OutcomeTrajectoryPredictor";
 import { supabase } from "@/integrations/supabase/client";
 import { useHospitalId } from "@/hooks/useHospitalId";
@@ -278,6 +279,18 @@ const PhysioPage: React.FC = () => {
         gst_amount: gst, total_amount: fee + gst,
         source_module: "physio",
       });
+
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      await autoPostJournalEntry({
+        triggerEvent: "bill_finalized_physio",
+        sourceModule: "physio",
+        sourceId: newBill.id,
+        amount: fee + gst,
+        description: `Physio Revenue - Bill ${billNum}`,
+        hospitalId: hospitalId!,
+        postedBy: authUser?.id || "",
+      });
+
       toast({ title: `Physio billed: ₹${(fee + gst).toLocaleString("en-IN")}` });
     }
   };
