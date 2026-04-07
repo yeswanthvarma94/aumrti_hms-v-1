@@ -1,44 +1,78 @@
-## SQL Migration: Soft Delete + Prescription History
+## SQL Migration: Server-Side Bill Total Recalculation
 
-### 1. Add soft delete columns to bill_line_items
+### What it does
+Creates a PostgreSQL function `recalculate_bill_totals(p_bill_id)` and a trigger on `bill_line_items` that auto-recalculates bill totals whenever line items are inserted, updated, or deleted.
+
+### SQL
 ```sql
-ALTER TABLE bill_line_items ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT false;
-ALTER TABLE bill_line_items ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
-ALTER TABLE bill_line_items ADD COLUMN IF NOT EXISTS deleted_by UUID;
+-- Server-side bill total recalculation function
+CREATE OR REPLACE FUNCTION recalculate_bill_totals(p_bill_id UUID)
+RETURNS void LANGUAGE plpgsql AS $$
+DECLARE
+  v_subtotal NUMERIC;
+  v_gst NUMERIC;
+  v_total NUMERIC;
+  v_advance NUMERIC;
+  v_insurance NUMERIC;
+  v_paid NUMERIC;
+BEGIN
+  SELECT
+    COALESCE(SUM(ROUND(taxable_amount::numeric, 2)), 0),
+    COALESCE(SUM(ROUND(gst_amount::numeric, 2)), 0)
+  INTO v_subtotal, v_gst
+  FROM bill_line_items
+  WHERE bill_id = p_bill_id
+    AND (is_deleted IS NULL OR is_deleted = false);
+
+  v_total := v_subtotal + v_gst;
+
+  SELECT
+    COALESCE(advance_received, 0),
+    COALESCE(insurance_amount, 0),
+    COALESCE(paid_amount, 0)
+  INTO v_advance, v_insurance, v_paid
+  FROM bills WHERE id = p_bill_id;
+
+  UPDATE bills SET
+    subtotal = v_subtotal,
+    taxable_amount = v_subtotal,
+    gst_amount = v_gst,
+    total_amount = v_total,
+    patient_payable = GREATEST(v_total - v_advance - v_insurance, 0),
+    balance_due = GREATEST(v_total - v_advance - v_insurance - v_paid, 0),
+    updated_at = now()
+  WHERE id = p_bill_id;
+END;
+$$;
+
+-- Trigger function
+CREATE OR REPLACE FUNCTION trigger_recalculate_bill()
+RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  IF TG_OP = 'DELETE' THEN
+    PERFORM recalculate_bill_totals(OLD.bill_id);
+    RETURN OLD;
+  ELSE
+    PERFORM recalculate_bill_totals(NEW.bill_id);
+    RETURN NEW;
+  END IF;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_bill_line_items_recalc ON bill_line_items;
+CREATE TRIGGER trg_bill_line_items_recalc
+AFTER INSERT OR UPDATE OR DELETE ON bill_line_items
+FOR EACH ROW EXECUTE FUNCTION trigger_recalculate_bill();
 ```
 
-### 2. Add is_active column to duty_roster
-```sql
-ALTER TABLE duty_roster ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
-```
+### Why
+- Bill totals are currently calculated client-side only — crash mid-save = stale totals
+- Trigger ensures totals stay correct regardless of which module adds line items
+- The `recalculate_bill_totals` RPC is also called explicitly as a fallback from client code
+- Excludes soft-deleted items (`is_deleted = true`)
 
-### 3. Create prescription_history table
-```sql
-CREATE TABLE IF NOT EXISTS prescription_history (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  prescription_id UUID NOT NULL,
-  hospital_id UUID NOT NULL,
-  version_number INTEGER NOT NULL DEFAULT 1,
-  snapshot JSONB NOT NULL,
-  changed_by UUID,
-  changed_at TIMESTAMPTZ DEFAULT now()
-);
-
-ALTER TABLE prescription_history ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users can view own hospital prescription history"
-  ON prescription_history FOR SELECT USING (
-    hospital_id IN (SELECT hospital_id FROM users WHERE auth_user_id = auth.uid())
-  );
-CREATE POLICY "Users can insert own hospital prescription history"
-  ON prescription_history FOR INSERT WITH CHECK (
-    hospital_id IN (SELECT hospital_id FROM users WHERE auth_user_id = auth.uid())
-  );
-
-CREATE INDEX idx_prescription_history_rx ON prescription_history(prescription_id, version_number);
-```
-
-### Code already updated
-- LineItemsTab: soft delete with is_deleted/deleted_at/deleted_by
-- BillEditor: filters out soft-deleted items in queries
-- RosterTab: sets is_active=false instead of DELETE, filters inactive
-- ConsultationWorkspace: saves prescription snapshot to history before UPDATE
+### Code changes already made
+- Created `src/lib/currency.ts` with `roundCurrency()`, `calcGST()`, `formatINR()`
+- Replaced all `Math.round(fee * gstPct / 100 * 100) / 100` with `calcGST()` across 10 files
+- Replaced all client-side reduce-based recalculations with `supabase.rpc("recalculate_bill_totals")`
+- All files compile cleanly with zero TypeScript errors
