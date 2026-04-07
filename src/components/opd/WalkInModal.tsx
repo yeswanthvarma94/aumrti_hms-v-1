@@ -4,6 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { X, Search, CheckCircle2, ArrowLeft, CreditCard, Printer, UserPlus } from "lucide-react";
 import { autoPostJournalEntry } from "@/lib/accounting";
+import { generateBillNumber } from "@/hooks/useBillNumber";
 import AddReferralDoctorModal from "@/components/shared/AddReferralDoctorModal";
 
 interface Props {
@@ -223,8 +224,7 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated, defaultD
       const today = new Date().toISOString().split("T")[0];
 
       // Generate bill number
-      const { count: billCount } = await supabase.from("bills").select("id", { count: "exact", head: true }).eq("hospital_id", hospitalId);
-      const billNumber = `OPD-${today.replace(/-/g, "")}-${String((billCount || 0) + 1).padStart(4, "0")}`;
+      const billNumber = await generateBillNumber(hospitalId, "OPD");
 
       const fee = consultationFee;
       const isPaid = !skipPayment && fee > 0;

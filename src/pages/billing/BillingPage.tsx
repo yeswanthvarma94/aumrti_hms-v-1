@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { generateBillNumber } from "@/hooks/useBillNumber";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -110,10 +111,7 @@ const BillingPage: React.FC = () => {
     const { data: userData } = await supabase.from("users").select("id")
       .eq("auth_user_id", user?.id || "").maybeSingle();
 
-    const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-    const { count } = await supabase.from("bills").select("id", { count: "exact", head: true }).eq("hospital_id", hospitalId);
-    const seq = String((count ?? 0) + 1).padStart(4, "0");
-    const billNumber = `BILL-${dateStr}-${seq}`;
+    const billNumber = await generateBillNumber(hospitalId, "BILL");
 
     const { data: newBill, error } = await supabase.from("bills").insert({
       hospital_id: hospitalId,

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { generateBillNumber } from "@/hooks/useBillNumber";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -196,8 +197,7 @@ const DaycareBoardTab: React.FC<DaycareBoardTabProps> = ({ showNewOrder, onClose
             .reduce((s: number, d: any) => s + (Number(d.planned_dose_mg || 0) * 50), 0);
 
           const billDate = new Date().toISOString().split("T")[0];
-          const { count } = await supabase.from("bills").select("id", { count: "exact", head: true }).eq("hospital_id", hospitalId);
-          const billNum = `CHEMO-${billDate.replace(/-/g, "")}-${String((count || 0) + 1).padStart(4, "0")}`;
+          const billNum = await generateBillNumber(hospitalId, "CHEMO");
 
           await supabase.from("bills").insert({
             hospital_id: hospitalId,

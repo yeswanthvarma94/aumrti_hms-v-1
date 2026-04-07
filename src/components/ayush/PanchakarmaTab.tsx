@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { generateBillNumber } from "@/hooks/useBillNumber";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -174,8 +175,7 @@ export default function PanchakarmaTab({ showNew, onShowNewDone }: Props) {
           const gst = Math.round(fee * gstPct / 100 * 100) / 100;
 
           const today = new Date().toISOString().split("T")[0];
-          const { count } = await supabase.from("bills").select("id", { count: "exact", head: true }).eq("hospital_id", hospitalId);
-          const billNum = `AYSH-${today.replace(/-/g, "")}-${String((count || 0) + 1).padStart(4, "0")}`;
+          const billNum = await generateBillNumber(hospitalId, "AYSH");
 
           await supabase.from("bills").insert({
             hospital_id: hospitalId,

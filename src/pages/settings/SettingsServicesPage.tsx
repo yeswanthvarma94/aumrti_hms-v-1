@@ -155,7 +155,7 @@ const SettingsServicesPage: React.FC = () => {
   const inlineUpdateFee = async (id: string, field: "fee" | "follow_up_fee", value: string) => {
     const numVal = parseFloat(value);
     if (isNaN(numVal)) return;
-    await supabase.from("service_master").update({ [field]: numVal }).eq("id", id);
+    await supabase.from("service_master").update({ [field]: numVal } as any).eq("id", id);
     qc.invalidateQueries({ queryKey: ["settings-services"] });
   };
 

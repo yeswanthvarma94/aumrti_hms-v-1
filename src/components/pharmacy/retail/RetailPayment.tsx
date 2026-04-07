@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { generateBillNumber } from "@/hooks/useBillNumber";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -92,7 +93,7 @@ const RetailPayment: React.FC<Props> = ({
         resolvedCustomerName = createdPatient.full_name;
       }
 
-      const dispNum = `RET-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${Math.floor(Math.random() * 9000) + 1000}`;
+      const dispNum = await generateBillNumber(hospitalId, "RET");
 
       const { data: disp, error: dispErr } = await supabase
         .from("pharmacy_dispensing")
