@@ -68,6 +68,7 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated, defaultD
   const [priority, setPriority] = useState("normal");
   const [nextToken, setNextToken] = useState("A-1");
   const [submitting, setSubmitting] = useState(false);
+  const [dpdpConsent, setDpdpConsent] = useState(false);
   const [referralSource, setReferralSource] = useState("");
   const [referralDoctorId, setReferralDoctorId] = useState<string | null>(null);
   const [showReferralModal, setShowReferralModal] = useState(false);
@@ -215,6 +216,10 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated, defaultD
   const handleProceedToPayment = () => {
     if (!useExisting && !fullName.trim()) {
       toast({ title: "Patient name is required", variant: "destructive" });
+      return;
+    }
+    if (!useExisting && !dpdpConsent) {
+      toast({ title: "DPDP consent required", description: "Patient must consent to data collection before registration", variant: "destructive" });
       return;
     }
     setStep("payment");
