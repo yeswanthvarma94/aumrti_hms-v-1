@@ -113,6 +113,17 @@ const IPDOverviewTab: React.FC<Props> = ({ admissionId, hospitalId, onTabChange,
   };
 
   const handlePharmacyClear = async () => {
+    // Hard-block: verify no pending dispenses remain
+    const { data: pendingDisp } = await supabase.from("pharmacy_dispensing")
+      .select("id")
+      .eq("admission_id", admissionId)
+      .in("status", ["pending", "processing"]);
+
+    if (pendingDisp && pendingDisp.length > 0) {
+      toast({ title: "Cannot clear pharmacy", description: `${pendingDisp.length} pending dispense(s) remain`, variant: "destructive" });
+      return;
+    }
+
     const ok = await updateAdmission("pharmacy_cleared", true);
     if (ok) setPharmacyCleared(true);
   };
@@ -121,6 +132,23 @@ const IPDOverviewTab: React.FC<Props> = ({ admissionId, hospitalId, onTabChange,
     // Now handled by DischargeSummaryGenerator component
     setDischargeSummaryDone(true);
   };
+
+  // Billing balance due for warning badge
+  const [balanceDue, setBalanceDue] = useState(0);
+  useEffect(() => {
+    if (!admissionId) return;
+    (async () => {
+      const { data: bills } = await (supabase as any).from("bills")
+        .select("net_amount, total_amount")
+        .eq("admission_id", admissionId);
+      const { data: payments } = await (supabase as any).from("bill_payments")
+        .select("amount")
+        .eq("admission_id", admissionId);
+      const totalBilled = (bills || []).reduce((s: number, b: any) => s + (b.net_amount || b.total_amount || 0), 0);
+      const totalPaid = (payments || []).reduce((s: number, p: any) => s + (p.amount || 0), 0);
+      setBalanceDue(Math.max(0, totalBilled - totalPaid));
+    })();
+  }, [admissionId, billingCleared]);
 
   const steps = [
     { key: "medical", label: "Medical", icon: Stethoscope, done: medicalCleared, color: "text-blue-600" },
@@ -223,6 +251,9 @@ const IPDOverviewTab: React.FC<Props> = ({ admissionId, hospitalId, onTabChange,
                     <span className={`text-[9px] mt-1 ${step.done ? 'text-emerald-600 font-semibold' : isActive ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
                       {step.label}
                     </span>
+                    {step.key === "billing" && !step.done && balanceDue > 0 && (
+                      <span className="text-[8px] text-destructive font-bold mt-0.5">₹{balanceDue.toLocaleString("en-IN")} due</span>
+                    )}
                   </div>
                   {i < 3 && <div className={`flex-1 h-px mb-4 ${step.done ? 'bg-emerald-400' : 'bg-border'}`} />}
                 </React.Fragment>
@@ -254,11 +285,18 @@ const IPDOverviewTab: React.FC<Props> = ({ admissionId, hospitalId, onTabChange,
               </Button>
             )}
             {currentStep === 3 && hospitalId && (
-              <DischargeSummaryGenerator
-                admissionId={admissionId}
-                hospitalId={hospitalId}
-                onSummaryDone={() => setDischargeSummaryDone(true)}
-              />
+              !billingCleared ? (
+                <div className="bg-destructive/10 border border-destructive/30 rounded p-2 text-center">
+                  <p className="text-[11px] text-destructive font-medium">⚠ Billing not cleared. Clear billing before generating discharge summary.</p>
+                </div>
+              ) : (
+                <DischargeSummaryGenerator
+                  admissionId={admissionId}
+                  hospitalId={hospitalId}
+                  billingCleared={billingCleared}
+                  onSummaryDone={() => setDischargeSummaryDone(true)}
+                />
+              )
             )}
             {currentStep === 4 && (
               <p className="text-[11px] text-emerald-600 font-medium text-center">✅ Patient discharged</p>

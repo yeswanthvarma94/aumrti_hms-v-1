@@ -10,10 +10,11 @@ import { logNABHEvidence } from "@/lib/nabh-evidence";
 interface Props {
   admissionId: string;
   hospitalId: string;
+  billingCleared?: boolean;
   onSummaryDone: () => void;
 }
 
-const DischargeSummaryGenerator: React.FC<Props> = ({ admissionId, hospitalId, onSummaryDone }) => {
+const DischargeSummaryGenerator: React.FC<Props> = ({ admissionId, hospitalId, billingCleared = true, onSummaryDone }) => {
   const [summary, setSummary] = useState("");
   const [generating, setGenerating] = useState(false);
   const [signing, setSigning] = useState(false);
@@ -153,6 +154,10 @@ Use formal medical language. Keep factual. Do not invent details not provided. M
       toast.error("Summary is empty");
       return;
     }
+    if (!billingCleared) {
+      toast.error("Cannot discharge — billing not cleared");
+      return;
+    }
 
     setSigning(true);
     const { data: { user } } = await supabase.auth.getUser();
@@ -208,6 +213,26 @@ Use formal medical language. Keep factual. Do not invent details not provided. M
 
     setSigned(true);
     setSigning(false);
+
+    // WhatsApp discharge summary (non-blocking)
+    try {
+      const { data: patient } = await supabase.from("patients")
+        .select("full_name, uhid, phone")
+        .eq("id", (await supabase.from("admissions").select("patient_id").eq("id", admissionId).single()).data?.patient_id)
+        .maybeSingle();
+
+      const phone = patient?.phone;
+      if (phone && summary) {
+        const shortSummary = summary.slice(0, 300).replace(/\n/g, " ");
+        const msg = `🏥 Discharge Summary\n\nPatient: ${patient.full_name} (${patient.uhid})\nDate: ${new Date().toLocaleDateString("en-IN")}\n\n${shortSummary}...\n\nPlease follow your doctor's instructions. For emergencies, contact the hospital.`;
+        const clean = phone.replace(/\D/g, "");
+        const intl = clean.startsWith("91") ? clean : `91${clean}`;
+        window.open(`https://wa.me/${intl}?text=${encodeURIComponent(msg)}`, "_blank");
+        toast.success("Discharge summary sent via WhatsApp");
+      }
+    } catch (whatsErr) {
+      console.error("WhatsApp discharge failed:", whatsErr);
+    }
 
     logNABHEvidence(hospitalId, "COP.10",
       `Discharge summary completed: Patient ${admissionId}, AI-assisted: ${summary ? "Yes" : "No"}`);
