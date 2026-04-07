@@ -473,7 +473,7 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated, defaultD
         uhid: useExisting ? foundPatient?.uhid || "" : "New",
         department: selectedDeptName,
         doctor: doctorId ? `Dr. ${selectedDoctorName}` : "—",
-        token: nextToken,
+        token: atomicToken,
         fee,
         paymentMode: isPaid ? paymentMode : "—",
         date: today,
