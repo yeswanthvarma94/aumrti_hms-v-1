@@ -125,6 +125,13 @@ const RG = ({ path, children }: { path: string; children: React.ReactNode }) => 
   return <RoleGuard allowedRoles={roles}>{children}</RoleGuard>;
 };
 
+/** Wraps a lazy module in both ErrorBoundary (crash isolation) and Suspense (loading) */
+const SM = ({ name, children }: { name: string; children: React.ReactNode }) => (
+  <ModuleErrorBoundary moduleName={name}>
+    <Suspense fallback={<div />}>{children}</Suspense>
+  </ModuleErrorBoundary>
+);
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
