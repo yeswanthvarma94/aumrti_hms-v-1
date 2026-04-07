@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Menu, Search, Wifi, WifiOff } from "lucide-react";
+import { Menu, Search, Wifi, WifiOff, Moon, Sun } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "./SidebarContext";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -49,6 +49,22 @@ const AppHeader: React.FC = () => {
   const [online, setOnline] = useState(navigator.onLine);
   const [hospitalId, setHospitalId] = useState<string | null>(null);
   const [userInitials, setUserInitials] = useState("U");
+  const [darkMode, setDarkMode] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("hms_theme") === "dark";
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("hms_theme", "dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("hms_theme", "light");
+    }
+  }, [darkMode]);
 
   // Get hospital ID for notification centre
   useEffect(() => {
@@ -135,6 +151,15 @@ const AppHeader: React.FC = () => {
 
         {/* Right: status + notifications + user */}
         <div className="flex items-center gap-2">
+          {/* Dark mode toggle */}
+          <button
+            onClick={() => setDarkMode((prev) => !prev)}
+            className="p-2 rounded-md hover:bg-muted transition-colors"
+            aria-label="Toggle dark mode"
+          >
+            {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
+
           {/* Online/offline pill */}
           <div
             className={cn(
@@ -163,7 +188,7 @@ const AppHeader: React.FC = () => {
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem onClick={() => toast({ title: "Profile", description: "Profile page coming soon." })}>
+              <DropdownMenuItem onClick={() => navigate("/settings/profile")}>
                 Profile
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => navigate("/settings")}>
