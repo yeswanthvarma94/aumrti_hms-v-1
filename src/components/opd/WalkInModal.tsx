@@ -417,13 +417,22 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated, defaultD
         postedBy: userId || "",
       });
 
+      // Generate atomic token number via RPC (fallback to preview value)
+      let atomicToken = nextToken;
+      try {
+        const { data: rpcToken } = await (supabase as any).rpc("generate_token_number", {
+          p_hospital_id: hospitalId, p_prefix: "A",
+        });
+        if (rpcToken) atomicToken = rpcToken;
+      } catch { /* fallback to preview token */ }
+
       // Insert token
       const { error: tokenErr } = await supabase.from("opd_tokens").insert({
         hospital_id: hospitalId,
         patient_id: patientId,
         doctor_id: doctorId || null,
         department_id: deptId || null,
-        token_number: nextToken,
+        token_number: atomicToken,
         token_prefix: "A",
         visit_date: today,
         status: "waiting",
