@@ -76,7 +76,7 @@ const NursingVitalsTask: React.FC<Props> = ({ task, onComplete }) => {
     return () => unregisterScreen("nursing");
   }, [registerScreen, unregisterScreen]);
 
-  const news2 = useMemo(() => calcNEWS2(vitals), [vitals]);
+  const news2 = useMemo(() => calcNEWS2Legacy(vitals), [vitals]);
   const hasValues = vitals.bp_systolic || vitals.pulse || vitals.spo2;
 
   const handleSave = async () => {
