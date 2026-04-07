@@ -250,11 +250,11 @@ const IPDVitalsTab: React.FC<Props> = ({ admissionId, hospitalId, userId, patien
               return (
                 <tr key={v.id} className={i % 2 === 0 ? "bg-white" : "bg-slate-50/50"}>
                   <td className="px-3 py-2 text-slate-600">{new Date(v.recorded_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</td>
-                  <td className="px-3 py-2 font-medium">{v.bp_systolic || "—"}/{v.bp_diastolic || "—"}</td>
-                  <td className="px-3 py-2">{v.pulse || "—"}</td>
-                  <td className="px-3 py-2">{v.temperature || "—"}</td>
-                  <td className="px-3 py-2">{v.spo2 || "—"}</td>
-                  <td className="px-3 py-2">{v.respiratory_rate || "—"}</td>
+                  <td className={cn("px-3 py-2 font-medium", vitalSeverityClass("bp_systolic", v.bp_systolic))}>{v.bp_systolic || "—"}/{v.bp_diastolic || "—"}</td>
+                  <td className={cn("px-3 py-2", vitalSeverityClass("pulse", v.pulse))}>{v.pulse || "—"}</td>
+                  <td className={cn("px-3 py-2", vitalSeverityClass("temperature", v.temperature))}>{v.temperature || "—"}</td>
+                  <td className={cn("px-3 py-2", vitalSeverityClass("spo2", v.spo2))}>{v.spo2 || "—"}</td>
+                  <td className={cn("px-3 py-2", vitalSeverityClass("respiratory_rate", v.respiratory_rate))}>{v.respiratory_rate || "—"}</td>
                   <td className="px-3 py-2">{v.pain_score ?? "—"}</td>
                   <td className="px-3 py-2"><span className={cn("px-1.5 py-0.5 rounded text-[11px] font-bold", n2Color)}>{v.news2_score ?? "—"}</span></td>
                 </tr>
