@@ -84,6 +84,38 @@ const IPDWardRoundTab: React.FC<Props> = ({ admissionId, hospitalId, userId, pat
 
   useEffect(() => { fetchNotes(); }, [fetchNotes]);
 
+  // Create real DB orders from ward round plan text or voice-detected investigations
+  const createOrdersFromPlan = async (planText: string, voiceInvestigations: string[]) => {
+    if (!hospitalId || !userId || !patientId) return;
+    try {
+      const { syncLabOrders, syncRadiologyOrders, parseInvestigationsFromText } = await import("@/lib/investigationSync");
+
+      // Combine voice-detected + text-parsed investigations
+      const parsed = parseInvestigationsFromText(planText);
+      const allLabTests = [...new Set([...voiceInvestigations, ...parsed.labTests])];
+
+      const labItems = allLabTests.map((name) => ({ test_name: name, urgency: "routine", clinical_indication: "" }));
+      const radItems = parsed.radiologyStudies.map((name) => ({ study_name: name, urgency: "routine", clinical_indication: "" }));
+
+      const labCount = await syncLabOrders({
+        hospitalId, patientId, orderedBy: userId,
+        encounterId: null, admissionId,
+        items: labItems,
+      });
+      const radCount = await syncRadiologyOrders({
+        hospitalId, patientId, orderedBy: userId,
+        encounterId: null, admissionId,
+        items: radItems,
+      });
+
+      if (labCount > 0 || radCount > 0) {
+        toast({ title: `Auto-created ${labCount} lab and ${radCount} radiology orders from ward round` });
+      }
+    } catch (err) {
+      console.error("Ward round order sync error (non-blocking):", err);
+    }
+  };
+
   const handleSave = async () => {
     if (!hospitalId || !userId || !patientId) return;
     if (!form.s && !form.o && !form.a && !form.p) {
@@ -104,6 +136,14 @@ const IPDWardRoundTab: React.FC<Props> = ({ admissionId, hospitalId, userId, pat
     setSaving(false);
     if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
     toast({ title: "Ward round note saved" });
+
+    // Create real lab/radiology orders from plan text + voice investigations
+    const planText = form.p || "";
+    const voiceInv = [...investigationsToOrder];
+    if (planText || voiceInv.length > 0) {
+      await createOrdersFromPlan(planText, voiceInv);
+    }
+
     setForm({ s: "", o: "", a: "", p: "" });
     setMedChanges([]);
     setInvestigationsToOrder([]);

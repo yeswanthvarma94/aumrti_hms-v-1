@@ -293,6 +293,29 @@ const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onT
     }
   }, [token, hospitalId, userId, encounterId]);
 
+  // Sync investigation orders to real DB tables
+  const syncInvestigationOrders = useCallback(async (data: PrescriptionData, eid: string) => {
+    if (!hospitalId || !userId || !token) return;
+    try {
+      const { syncLabOrders, syncRadiologyOrders } = await import("@/lib/investigationSync");
+      const labCount = await syncLabOrders({
+        hospitalId, patientId: token.patient_id, orderedBy: userId,
+        encounterId: eid, admissionId: null,
+        items: data.lab_orders,
+      });
+      const radCount = await syncRadiologyOrders({
+        hospitalId, patientId: token.patient_id, orderedBy: userId,
+        encounterId: eid, admissionId: null,
+        items: data.radiology_orders,
+      });
+      if (labCount > 0 || radCount > 0) {
+        console.log(`Synced ${labCount} lab + ${radCount} radiology orders`);
+      }
+    } catch (err) {
+      console.error("Investigation sync error (non-blocking):", err);
+    }
+  }, [hospitalId, userId, token]);
+
   // Auto-save prescription
   const autoSavePrescription = useCallback(async (data: PrescriptionData) => {
     if (!token || !hospitalId || !userId || !encounterId) return;
@@ -316,10 +339,15 @@ const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onT
         const { data: newRx } = await supabase.from("prescriptions").insert([payload] as never).select("id").single();
         if (newRx) setPrescriptionId(newRx.id);
       }
+
+      // Sync to real lab_orders / radiology_orders tables
+      if (data.lab_orders.length > 0 || data.radiology_orders.length > 0) {
+        await syncInvestigationOrders(data, encounterId);
+      }
     } catch (err) {
       console.error("Prescription save error:", err);
     }
-  }, [token, hospitalId, userId, encounterId, prescriptionId]);
+  }, [token, hospitalId, userId, encounterId, prescriptionId, syncInvestigationOrders]);
 
   // Debounced update
   const updateEncounter = useCallback((partial: Partial<EncounterData>) => {
