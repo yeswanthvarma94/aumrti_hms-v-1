@@ -936,6 +936,37 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated, defaultD
           onSaved={(name, id) => { setReferralSource(name); setReferralDoctorId(id || null); }}
           hospitalId={hospitalId}
         />
+
+        {/* Duplicate patient confirmation dialog */}
+        {showDupeConfirm && dupeCandidate && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40" onClick={() => setShowDupeConfirm(false)}>
+            <div className="bg-background rounded-xl p-6 w-full max-w-[380px] shadow-2xl" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center gap-2 mb-3">
+                <AlertTriangle className="h-5 w-5 text-amber-500" />
+                <h3 className="text-sm font-bold text-foreground">Possible Duplicate Patient</h3>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">A patient with similar details already exists:</p>
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+                <p className="text-sm font-medium text-foreground">{dupeCandidate.full_name}</p>
+                <p className="text-xs text-muted-foreground">{dupeCandidate.uhid} · Phone: {dupeCandidate.phone || "—"}</p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleUseDupePatient}
+                  className="flex-1 h-9 text-xs font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90"
+                >
+                  Use Existing Patient
+                </button>
+                <button
+                  onClick={() => { if (dupeResolveCallback) dupeResolveCallback(); }}
+                  className="flex-1 h-9 text-xs font-medium rounded-lg border border-border text-foreground hover:bg-muted"
+                >
+                  Create New Anyway
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
