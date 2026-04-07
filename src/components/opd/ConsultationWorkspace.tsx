@@ -397,6 +397,29 @@ const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onT
       consultation_end_at: new Date().toISOString(),
     }).eq("id", token.id);
 
+    // Link OPD bill to encounter_id (bill was created at walk-in without encounter)
+    if (encounterId && hospitalId) {
+      const today = new Date().toISOString().split("T")[0];
+      const { data: opdBill } = await (supabase as any)
+        .from("bills")
+        .select("id")
+        .eq("hospital_id", hospitalId)
+        .eq("patient_id", token.patient_id)
+        .eq("bill_type", "opd")
+        .eq("bill_date", today)
+        .is("encounter_id", null)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (opdBill) {
+        await (supabase as any).from("bills").update({
+          encounter_id: encounterId,
+          updated_at: new Date().toISOString(),
+        } as any).eq("id", opdBill.id);
+      }
+    }
+
     // Upsert MRD records for this encounter
     if (encounterId && hospitalId) {
       const { data: existingRecord } = await supabase

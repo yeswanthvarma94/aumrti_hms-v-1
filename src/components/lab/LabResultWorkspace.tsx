@@ -347,6 +347,49 @@ const LabResultWorkspace: React.FC<Props> = ({ order, onRefresh }) => {
 
     await supabase.from("lab_orders").update({ status: "completed" }).eq("id", order.id);
 
+    // Auto-bill OPD lab charges (skip IPD — handled by discharge auto-pull)
+    const { data: fullOrder } = await supabase.from("lab_orders")
+      .select("hospital_id, admission_id, encounter_id, patient_id, ordered_by")
+      .eq("id", order.id).single();
+
+    if (fullOrder && !fullOrder.admission_id) {
+      try {
+        const { autoBillOpdInvestigation, getInvestigationRate } = await import("@/lib/investigationBilling");
+        const lineItems: { description: string; itemType: "lab_test"; unitRate: number; gstPercent: number; gstAmount: number }[] = [];
+
+        for (const item of items) {
+          if (!item.test_name) continue;
+          const { rate, gstPercent } = await getInvestigationRate(fullOrder.hospital_id, item.test_name, "lab");
+          const gstAmount = rate * gstPercent / 100;
+          lineItems.push({
+            description: item.test_name,
+            itemType: "lab_test",
+            unitRate: rate,
+            gstPercent,
+            gstAmount,
+          });
+        }
+
+        const result = await autoBillOpdInvestigation({
+          hospitalId: fullOrder.hospital_id,
+          patientId: fullOrder.patient_id,
+          encounterId: fullOrder.encounter_id,
+          admissionId: null,
+          orderedBy: fullOrder.ordered_by,
+          lineItems,
+          billPrefix: "LAB",
+          sourceModule: "lab",
+          sourceId: order.id,
+        });
+
+        if (result) {
+          toast({ title: `Lab charges billed: ₹${result.total.toLocaleString("en-IN")}` });
+        }
+      } catch (e) {
+        console.error("Lab auto-billing error (non-blocking):", e);
+      }
+    }
+
     // Trigger WhatsApp notification
     if (patient?.phone) {
       const { data: orderData } = await supabase.from("lab_orders").select("hospital_id").eq("id", order.id).single();
