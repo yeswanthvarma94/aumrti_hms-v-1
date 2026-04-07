@@ -32,7 +32,7 @@ export async function sendWhatsApp(opts: SendOpts): Promise<{ method: "wati" | "
     .from("hospitals")
     .select("wati_api_url, whatsapp_enabled")
     .eq("id", opts.hospitalId)
-    .single();
+    .maybeSingle();
 
   const watiUrl = hospital?.wati_api_url;
 
@@ -82,7 +82,7 @@ export async function shouldAutoSend(hospitalId: string, triggerEvent: string): 
     .from("hospitals")
     .select("wati_api_url, whatsapp_enabled")
     .eq("id", hospitalId)
-    .single();
+    .maybeSingle();
 
   if (!hospital?.wati_api_url || !hospital?.whatsapp_enabled) return false;
 
@@ -91,7 +91,7 @@ export async function shouldAutoSend(hospitalId: string, triggerEvent: string): 
     .select("auto_send, is_active")
     .eq("hospital_id", hospitalId)
     .eq("trigger_event", triggerEvent)
-    .single();
+    .maybeSingle();
 
   return !!(template?.is_active && template?.auto_send);
 }

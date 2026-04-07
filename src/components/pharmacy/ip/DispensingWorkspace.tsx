@@ -271,7 +271,7 @@ const DispensingWorkspace: React.FC<Props> = ({ hospitalId, prescription, onDisp
             status: "dispensed",
           })
           .select("id")
-          .single();
+          .maybeSingle();
         if (dispErr) throw dispErr;
         dispensingId = newDisp.id;
       }
@@ -390,7 +390,7 @@ const DispensingWorkspace: React.FC<Props> = ({ hospitalId, prescription, onDisp
           balance_due: totalAmount + totalGst,
           payment_status: "unpaid",
           created_by: userData.id,
-        }).select("id").single();
+        }).select("id").maybeSingle();
 
         if (pharmBill) {
           await autoPostJournalEntry({

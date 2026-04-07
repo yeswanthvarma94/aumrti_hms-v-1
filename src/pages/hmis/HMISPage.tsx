@@ -170,7 +170,7 @@ const HMISPage: React.FC = () => {
         status: "generated",
         generated_at: new Date().toISOString(),
         report_data: reportData,
-      } as any, { onConflict: "hospital_id,report_type,period_year,period_month" }).select().single();
+      } as any, { onConflict: "hospital_id,report_type,period_year,period_month" }).select().maybeSingle();
 
       if (error) {
         // Fallback: insert if upsert fails

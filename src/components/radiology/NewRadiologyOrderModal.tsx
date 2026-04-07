@@ -131,7 +131,7 @@ const NewRadiologyOrderModal: React.FC<Props> = ({ hospitalId, modalities, onClo
         .from("radiology_modalities")
         .insert({ hospital_id: hospitalId, name: selectedModalityType.toUpperCase(), modality_type: selectedModalityType, is_active: true } as any)
         .select("id, name, modality_type, is_active")
-        .single();
+        .maybeSingle();
       if (modErr || !newMod) {
         toast({ title: "Failed to create modality", description: modErr?.message, variant: "destructive" });
         setSubmitting(false);
@@ -168,7 +168,7 @@ const NewRadiologyOrderModal: React.FC<Props> = ({ hospitalId, modalities, onClo
         is_pcpndt: isPcpndt,
       })
       .select("id")
-      .single();
+      .maybeSingle();
 
     if (orderError) {
       console.error("Radiology order insert error:", orderError);

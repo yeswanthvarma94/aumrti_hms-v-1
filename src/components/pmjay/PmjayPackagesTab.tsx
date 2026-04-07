@@ -50,7 +50,7 @@ const PmjayPackagesTab: React.FC = () => {
     if (!form.package_code || !form.package_name || !form.specialty || !form.rate_inr) {
       toast({ title: "Fill all required fields", variant: "destructive" }); return;
     }
-    const { data: userData } = await supabase.from("users").select("hospital_id").eq("auth_user_id", (await supabase.auth.getUser()).data.user?.id || "").single();
+    const { data: userData } = await supabase.from("users").select("hospital_id").eq("auth_user_id", (await supabase.auth.getUser()).data.user?.id || "").maybeSingle();
     if (!userData?.hospital_id) return;
 
     const { error } = await supabase.from("pmjay_packages").insert({

@@ -84,7 +84,7 @@ const RosterTab: React.FC = () => {
 
   const assignShift = async (userId: string, date: Date, shiftId: string | null, isOff = false) => {
     const dateStr = format(date, "yyyy-MM-dd");
-    const { data: userData } = await supabase.from("users").select("hospital_id").eq("id", userId).single();
+    const { data: userData } = await supabase.from("users").select("hospital_id").eq("id", userId).maybeSingle();
     if (!userData) return;
 
     const { error } = await (supabase as any).from("duty_roster").upsert(

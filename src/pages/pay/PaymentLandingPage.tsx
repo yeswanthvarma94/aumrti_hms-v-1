@@ -72,7 +72,7 @@ const PaymentLandingPage: React.FC = () => {
 
     // Insert payment record
     await supabase.from("bill_payments").insert({
-      hospital_id: (await supabase.from("bills").select("hospital_id").eq("id", link.bill_id).single()).data?.hospital_id,
+      hospital_id: (await supabase.from("bills").select("hospital_id").eq("id", link.bill_id).maybeSingle()).data?.hospital_id,
       bill_id: link.bill_id,
       amount: link.amount,
       payment_mode: "online",
@@ -81,7 +81,7 @@ const PaymentLandingPage: React.FC = () => {
     });
 
     // Update bill
-    const { data: bill } = await supabase.from("bills").select("paid_amount, balance_due, total_amount, admission_id").eq("id", link.bill_id).single();
+    const { data: bill } = await supabase.from("bills").select("paid_amount, balance_due, total_amount, admission_id").eq("id", link.bill_id).maybeSingle();
     if (bill) {
       const newPaid = (Number(bill.paid_amount) || 0) + link.amount;
       const newBalance = Math.max(0, (Number(bill.total_amount) || 0) - newPaid);

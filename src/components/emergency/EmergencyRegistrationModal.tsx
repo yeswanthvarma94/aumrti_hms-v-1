@@ -109,7 +109,7 @@ const EmergencyRegistrationModal: React.FC<Props> = ({ open, onClose, hospitalId
         dob,
         gender: gender as any,
         uhid,
-      }).select("id").single();
+      }).select("id").maybeSingle();
 
       if (pErr || !patient) {
         toast({ title: "Error", description: pErr?.message || "Failed to create patient", variant: "destructive" });

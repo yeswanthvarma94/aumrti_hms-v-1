@@ -97,7 +97,7 @@ const PmjayBeneficiariesTab: React.FC<Props> = ({ showNewForm, onFormClosed }) =
       toast({ title: "Fill required fields", variant: "destructive" });
       return;
     }
-    const { data: userData } = await supabase.from("users").select("hospital_id").eq("auth_user_id", (await supabase.auth.getUser()).data.user?.id || "").single();
+    const { data: userData } = await supabase.from("users").select("hospital_id").eq("auth_user_id", (await supabase.auth.getUser()).data.user?.id || "").maybeSingle();
     if (!userData?.hospital_id) { toast({ title: "Hospital not found", variant: "destructive" }); return; }
 
     const { error } = await supabase.from("scheme_beneficiaries").insert({

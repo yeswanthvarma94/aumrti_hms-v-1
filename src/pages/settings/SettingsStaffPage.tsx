@@ -139,7 +139,7 @@ const SettingsStaffPage: React.FC = () => {
 
   /* ─── Mutations ─── */
   const getHospitalId = async () => {
-    const { data } = await supabase.from("users").select("hospital_id").limit(1).single();
+    const { data } = await supabase.from("users").select("hospital_id").limit(1).maybeSingle();
     if (!data) throw new Error("No hospital context");
     return data.hospital_id;
   };

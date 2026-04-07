@@ -126,7 +126,7 @@ const CAPATrackerTab: React.FC = () => {
       const { data: userData } = await supabase.auth.getUser();
       const userId = userData.user?.id;
       if (!userId) { toast({ title: "Not authenticated", variant: "destructive" }); setSaving(false); return; }
-      const { data: userProfile } = await supabase.from("users").select("hospital_id").eq("auth_user_id", userId).single();
+      const { data: userProfile } = await supabase.from("users").select("hospital_id").eq("auth_user_id", userId).maybeSingle();
       if (!userProfile) { toast({ title: "User profile not found", variant: "destructive" }); setSaving(false); return; }
 
       const capaNumber = `CAPA-${Date.now().toString(36).toUpperCase().slice(-6)}`;

@@ -105,7 +105,7 @@ const OpeningBalancesPage: React.FC = () => {
         total_credit: finalCredit,
         is_balanced: Math.abs(finalDebit - finalCredit) < 0.01,
         posted_by: userId,
-      }).select("id").single();
+      }).select("id").maybeSingle();
 
       if (entryErr) throw entryErr;
 

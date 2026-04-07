@@ -91,7 +91,7 @@ const WHOChecklistTab: React.FC<Props> = ({ schedule, onRefresh }) => {
         .from("ot_checklists")
         .insert({ hospital_id: hid.data, ot_schedule_id: schedule.id })
         .select("*")
-        .single();
+        .maybeSingle();
       data = created;
     }
     setCl(data as any);

@@ -105,7 +105,7 @@ const LabResultWorkspace: React.FC<Props> = ({ order, onRefresh }) => {
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) return;
-      supabase.from("users").select("id, hospital_id").eq("auth_user_id", user.id).limit(1).single()
+      supabase.from("users").select("id, hospital_id").eq("auth_user_id", user.id).limit(1).maybeSingle()
         .then(({ data }) => { if (data) { setCurrentUserId(data.id); setLabHospitalId(data.hospital_id); } });
     });
   }, []);
@@ -172,7 +172,7 @@ const LabResultWorkspace: React.FC<Props> = ({ order, onRefresh }) => {
         lab_test_master!lab_order_items_test_id_fkey (test_name, test_code),
         lab_orders!lab_order_items_lab_order_id_fkey (order_date)
       `)
-      .eq("hospital_id", (await supabase.from("lab_orders").select("hospital_id").eq("id", order.id).single()).data?.hospital_id || "")
+      .eq("hospital_id", (await supabase.from("lab_orders").select("hospital_id").eq("id", order.id).maybeSingle()).data?.hospital_id || "")
       .in("status", ["validated", "reported"])
       .not("result_value", "is", null)
       .order("created_at", { ascending: false })
@@ -244,7 +244,7 @@ const LabResultWorkspace: React.FC<Props> = ({ order, onRefresh }) => {
 
     // Critical alert
     if (finalFlag === "CH" || finalFlag === "CL") {
-      const { data: orderData } = await supabase.from("lab_orders").select("hospital_id").eq("id", order.id).single();
+      const { data: orderData } = await supabase.from("lab_orders").select("hospital_id").eq("id", order.id).maybeSingle();
       if (orderData) {
         await supabase.from("clinical_alerts").insert({
           hospital_id: orderData.hospital_id,
@@ -350,7 +350,7 @@ const LabResultWorkspace: React.FC<Props> = ({ order, onRefresh }) => {
     // Auto-bill OPD lab charges (skip IPD — handled by discharge auto-pull)
     const { data: fullOrder } = await supabase.from("lab_orders")
       .select("hospital_id, admission_id, encounter_id, patient_id, ordered_by")
-      .eq("id", order.id).single();
+      .eq("id", order.id).maybeSingle();
 
     if (fullOrder && !fullOrder.admission_id) {
       try {
@@ -392,7 +392,7 @@ const LabResultWorkspace: React.FC<Props> = ({ order, onRefresh }) => {
 
     // Trigger WhatsApp notification
     if (patient?.phone) {
-      const { data: orderData } = await supabase.from("lab_orders").select("hospital_id").eq("id", order.id).single();
+      const { data: orderData } = await supabase.from("lab_orders").select("hospital_id").eq("id", order.id).maybeSingle();
       if (orderData) {
         const { data: hospital } = await supabase.from("hospitals").select("name").eq("id", orderData.hospital_id).maybeSingle();
         const abnormalCount = items.filter(i => i.result_flag && !["N", null].includes(i.result_flag)).length;

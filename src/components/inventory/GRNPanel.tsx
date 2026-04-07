@@ -152,7 +152,7 @@ const GRNPanel: React.FC = () => {
     const validItems = newGRNItems.filter((gi: any) => gi.quantity_received > 0);
     if (validItems.length === 0) { toast({ title: "Add items to GRN", variant: "destructive" }); return; }
     setSaving(true);
-    const { data: userData } = await supabase.from("users").select("id, hospital_id").limit(1).single();
+    const { data: userData } = await supabase.from("users").select("id, hospital_id").limit(1).maybeSingle();
     if (!userData) { setSaving(false); return; }
 
     const vendorId = newGRN.vendor_id || (fromPO && selectedPO ? pos.find((p) => p.id === selectedPO)?.vendor_id : null);
@@ -171,7 +171,7 @@ const GRNPanel: React.FC = () => {
       total_amount: totalAmount,
       quality_check: newGRN.quality_check,
       received_by: userData.id,
-    }).select().single();
+    }).select().maybeSingle();
 
     if (error || !grn) { toast({ title: "Failed to save GRN", variant: "destructive" }); setSaving(false); return; }
 

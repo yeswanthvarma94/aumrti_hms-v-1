@@ -468,6 +468,6 @@ async function getHospitalId(): Promise<string | null> {
   const { data } = await supabase.from("users")
     .select("hospital_id")
     .eq("auth_user_id", user.id)
-    .single();
+    .maybeSingle();
   return data?.hospital_id || null;
 }

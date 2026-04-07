@@ -72,7 +72,7 @@ const DonorsTab: React.FC<Props> = ({ showModal, onCloseModal }) => {
 
   const submitDonor = async () => {
     const reactive = [form.hiv_status, form.hbsag_status, form.hcv_status, form.vdrl_status, form.malaria_status].some(s => s === "reactive");
-    const { data: user } = await supabase.from("users").select("id, hospital_id").limit(1).single();
+    const { data: user } = await supabase.from("users").select("id, hospital_id").limit(1).maybeSingle();
     if (!user) return;
 
     const donorCode = `BB-${new Date().getFullYear()}-${String(donors.length + 1).padStart(4, "0")}`;
@@ -101,7 +101,7 @@ const DonorsTab: React.FC<Props> = ({ showModal, onCloseModal }) => {
       donation_count: reactive ? 0 : 1,
       last_donation: reactive ? null : today,
       next_eligible: reactive ? null : new Date(Date.now() + 90 * 86400000).toISOString().split("T")[0],
-    }).select("id").single();
+    }).select("id").maybeSingle();
 
     if (reactive) {
       toast({ title: "REACTIVE — Donor permanently deferred", variant: "destructive" });

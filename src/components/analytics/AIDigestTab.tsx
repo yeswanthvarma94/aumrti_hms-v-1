@@ -10,14 +10,14 @@ import { toast } from "sonner";
 async function getHospitalId(): Promise<string | null> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
-  const { data } = await supabase.from("users").select("hospital_id").eq("auth_user_id", user.id).single();
+  const { data } = await supabase.from("users").select("hospital_id").eq("auth_user_id", user.id).maybeSingle();
   return data?.hospital_id || null;
 }
 
 async function getHospitalName(): Promise<string> {
   const hospitalId = await getHospitalId();
   if (!hospitalId) return "Hospital";
-  const { data } = await supabase.from("hospitals").select("name").eq("id", hospitalId).single();
+  const { data } = await supabase.from("hospitals").select("name").eq("id", hospitalId).maybeSingle();
   return data?.name || "Hospital";
 }
 

@@ -164,7 +164,7 @@ const PreAuthQueue: React.FC<Props> = ({ initialAdmission, onAdmissionHandled })
     }
 
     // Get hospital_id
-    const { data: userData } = await supabase.from("users").select("hospital_id").eq("auth_user_id", (await supabase.auth.getUser()).data.user?.id || "").single();
+    const { data: userData } = await supabase.from("users").select("hospital_id").eq("auth_user_id", (await supabase.auth.getUser()).data.user?.id || "").maybeSingle();
     if (!userData?.hospital_id) {
       toast({ title: "Could not determine hospital", variant: "destructive" });
       return;
@@ -317,7 +317,7 @@ const PreAuthQueue: React.FC<Props> = ({ initialAdmission, onAdmissionHandled })
                   onClick={async () => {
                     setAiLoading(true);
                     try {
-                      const { data: userData } = await supabase.from("users").select("hospital_id").eq("auth_user_id", (await supabase.auth.getUser()).data.user?.id || "").single();
+                      const { data: userData } = await supabase.from("users").select("hospital_id").eq("auth_user_id", (await supabase.auth.getUser()).data.user?.id || "").maybeSingle();
                       const prompt = `Generate a concise clinical summary for an insurance pre-authorization request.
 Patient procedure codes: ${formState.procedure_codes || "Not specified"}
 Diagnosis codes: ${formState.diagnosis_codes || "Not specified"}
@@ -352,7 +352,7 @@ Write a 3-4 paragraph medical necessity justification suitable for Indian privat
                   onClick={async () => {
                     setAiLoading(true);
                     try {
-                      const { data: userData } = await supabase.from("users").select("hospital_id").eq("auth_user_id", (await supabase.auth.getUser()).data.user?.id || "").single();
+                      const { data: userData } = await supabase.from("users").select("hospital_id").eq("auth_user_id", (await supabase.auth.getUser()).data.user?.id || "").maybeSingle();
                       const prompt = `Based on this pre-auth for procedures: ${formState.procedure_codes} with ${formState.tpa_name} (private Indian insurer), diagnosis: ${formState.diagnosis_codes || "not specified"}, claimed amount ₹${formState.estimated_amount}, documents attached: ${selectedTpa?.required_documents?.length || 0}, estimate approval probability 0-100 for Indian private insurance. Return ONLY valid JSON: {"score": number, "risk": "low|medium|high", "recommendation": "one line advice"}`;
                       const result = await callAI({ featureKey: "approval_predictor", hospitalId: userData?.hospital_id || "", prompt, maxTokens: 200 });
                       const parsed = JSON.parse(result.text.replace(/```json\n?|\n?```/g, "").trim());

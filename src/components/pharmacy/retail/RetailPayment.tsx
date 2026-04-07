@@ -112,7 +112,7 @@ const RetailPayment: React.FC<Props> = ({
           payment_mode: paymentMode,
         })
         .select("id")
-        .single();
+        .maybeSingle();
 
       if (dispErr) throw dispErr;
 
@@ -139,7 +139,7 @@ const RetailPayment: React.FC<Props> = ({
           .from("drug_batches")
           .select("quantity_available")
           .eq("id", item.batch_id)
-          .single();
+          .maybeSingle();
 
         if (batch) {
           await supabase

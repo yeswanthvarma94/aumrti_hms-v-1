@@ -16,7 +16,7 @@ export function useHospitalId() {
           .from('users')
           .select('hospital_id, role')
           .eq('auth_user_id', user.id)
-          .single()
+          .maybeSingle()
         
         setHospitalId(data?.hospital_id || null)
         setRole(data?.role || null)
@@ -48,6 +48,6 @@ export async function getHospitalIdAsync(): Promise<string | null> {
     .from('users')
     .select('hospital_id')
     .eq('auth_user_id', user.id)
-    .single()
+    .maybeSingle()
   return data?.hospital_id || null
 }

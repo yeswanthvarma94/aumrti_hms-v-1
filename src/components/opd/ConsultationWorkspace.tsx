@@ -280,7 +280,7 @@ const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onT
       if (encounterId) {
         await supabase.from("opd_encounters").update(payload as never).eq("id", encounterId);
       } else {
-        const { data: newEnc } = await supabase.from("opd_encounters").insert([payload] as never).select("id").single();
+        const { data: newEnc } = await supabase.from("opd_encounters").insert([payload] as never).select("id").maybeSingle();
         if (newEnc) setEncounterId(newEnc.id);
       }
       setSaved(true);
@@ -336,7 +336,7 @@ const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onT
       if (prescriptionId) {
         await supabase.from("prescriptions").update(payload as never).eq("id", prescriptionId);
       } else {
-        const { data: newRx } = await supabase.from("prescriptions").insert([payload] as never).select("id").single();
+        const { data: newRx } = await supabase.from("prescriptions").insert([payload] as never).select("id").maybeSingle();
         if (newRx) setPrescriptionId(newRx.id);
       }
 
@@ -510,7 +510,7 @@ const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onT
             payment_status: fee === 0 ? "paid" : "unpaid",
             bill_status: "final",
             created_by: userId,
-          }).select("id").single();
+          }).select("id").maybeSingle();
 
           if (bill) {
             await supabase.from("bill_line_items").insert({

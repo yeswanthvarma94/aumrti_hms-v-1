@@ -39,7 +39,7 @@ const VendorsPanel: React.FC = () => {
 
   const handleAdd = async () => {
     if (!form.vendor_name) { toast({ title: "Vendor name required", variant: "destructive" }); return; }
-    const { data: userData } = await supabase.from("users").select("hospital_id").limit(1).single();
+    const { data: userData } = await supabase.from("users").select("hospital_id").limit(1).maybeSingle();
     if (!userData) return;
     await (supabase as any).from("vendors").insert({
       hospital_id: userData.hospital_id,

@@ -57,7 +57,7 @@ const SetsInstrumentsTab: React.FC<Props> = ({ onRefresh }) => {
       toast({ title: "Name and barcode required", variant: "destructive" });
       return;
     }
-    const { data: user } = await supabase.from("users").select("hospital_id").limit(1).single();
+    const { data: user } = await supabase.from("users").select("hospital_id").limit(1).maybeSingle();
     if (!user) return;
     await supabase.from("instruments").insert({
       hospital_id: user.hospital_id,
@@ -82,7 +82,7 @@ const SetsInstrumentsTab: React.FC<Props> = ({ onRefresh }) => {
       toast({ title: "Name and code required", variant: "destructive" });
       return;
     }
-    const { data: user } = await supabase.from("users").select("hospital_id").limit(1).single();
+    const { data: user } = await supabase.from("users").select("hospital_id").limit(1).maybeSingle();
     if (!user) return;
     await supabase.from("instrument_sets").insert({
       hospital_id: user.hospital_id,

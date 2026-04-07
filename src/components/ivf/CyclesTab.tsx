@@ -76,7 +76,7 @@ async function billIVFMilestone(opts: {
       payment_status: "unpaid",
       bill_status: "final",
       created_by: userId,
-    }).select("id").single();
+    }).select("id").maybeSingle();
 
     if (error || !bill) { console.error("IVF billing failed:", error); return; }
 
@@ -140,7 +140,7 @@ const CyclesTab = ({ showStartCycle, onCloseStartCycle, onRefreshKPIs }: Props) 
     if (!couple?.consent_obtained) { toast.error("Cannot start cycle — consent not obtained"); return; }
 
     setSaving(true);
-    const { data: userData } = await supabase.from("users").select("id, hospital_id").limit(1).single();
+    const { data: userData } = await supabase.from("users").select("id, hospital_id").limit(1).maybeSingle();
     const hospitalId = userData?.hospital_id;
     const existingCount = cycles.filter((c) => c.couple_id === coupleId).length;
 
@@ -192,7 +192,7 @@ const CyclesTab = ({ showStartCycle, onCloseStartCycle, onRefreshKPIs }: Props) 
     const milestone = STATUS_BILLING_MAP[newStatus];
     if (milestone) {
       const couple = couples.find((cp) => cp.id === cycle.couple_id);
-      const { data: userData } = await supabase.from("users").select("id, hospital_id").limit(1).single();
+      const { data: userData } = await supabase.from("users").select("id, hospital_id").limit(1).maybeSingle();
       if (userData?.hospital_id && couple?.female_patient_id) {
         await billIVFMilestone({
           hospitalId: userData.hospital_id,

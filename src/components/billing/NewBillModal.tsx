@@ -60,7 +60,7 @@ const NewBillModal: React.FC<Props> = ({ hospitalId, onClose, onCreated }) => {
       bill_type: billType,
       bill_status: "draft",
       created_by: userData?.id || null,
-    }).select("id").single();
+    }).select("id").maybeSingle();
 
     if (error) {
       toast({ title: "Error creating bill", description: error.message, variant: "destructive" });

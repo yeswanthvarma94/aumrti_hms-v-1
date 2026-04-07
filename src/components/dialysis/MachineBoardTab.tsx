@@ -162,7 +162,7 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
       }
     }
 
-    const { data: user } = await supabase.from("users").select("id, hospital_id").limit(1).single();
+    const { data: user } = await supabase.from("users").select("id, hospital_id").limit(1).maybeSingle();
     if (!user) return;
 
     const ufGoal = selectedPatient.dry_weight_kg ? Math.round((parseFloat(preWeight) - selectedPatient.dry_weight_kg) * 1000) : null;
@@ -201,7 +201,7 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
       .from("dialysis_patients")
       .select("patient_id")
       .eq("id", session.dialysis_patient_id)
-      .single();
+      .maybeSingle();
 
     if (!dialysisPatient) return;
 
@@ -270,7 +270,7 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
         taxable_amount: fee, patient_payable: fee + gst,
       })
       .select("id")
-      .single();
+      .maybeSingle();
 
     if (newBill) {
       await (supabase as any).from("bill_line_items").insert({
@@ -302,7 +302,7 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
     const session = activeSessions[endMachine.id];
     if (!session) return;
 
-    const { data: user } = await supabase.from("users").select("id, hospital_id").limit(1).single();
+    const { data: user } = await supabase.from("users").select("id, hospital_id").limit(1).maybeSingle();
 
     // Kt/V calculation (Daugirdas second-generation)
     let ktv: number | null = null;
@@ -391,7 +391,7 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
 
   const saveMachine = async () => {
     if (!mName.trim()) return;
-    const { data: user } = await supabase.from("users").select("id, hospital_id").limit(1).single();
+    const { data: user } = await supabase.from("users").select("id, hospital_id").limit(1).maybeSingle();
     if (!user) return;
 
     if (machineModal.editing) {

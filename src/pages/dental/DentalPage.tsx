@@ -79,7 +79,7 @@ const DentalPage: React.FC = () => {
       .from("users")
       .select("id, hospital_id")
       .eq("auth_user_id", user.id)
-      .single();
+      .maybeSingle();
     if (!userData) { setLoading(false); return; }
 
     setHospitalId(userData.hospital_id);

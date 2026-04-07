@@ -308,7 +308,7 @@ const ImportWizard: React.FC<ImportWizardProps> = ({ entityType, onClose, onComp
     setImportProgress(0);
 
     // Get hospital_id
-    const { data: userData } = await supabase.from("users").select("hospital_id").limit(1).single();
+    const { data: userData } = await supabase.from("users").select("hospital_id").limit(1).maybeSingle();
     const hospitalId = userData?.hospital_id;
     if (!hospitalId) {
       toast({ title: "Hospital not found", variant: "destructive" });
@@ -326,7 +326,7 @@ const ImportWizard: React.FC<ImportWizardProps> = ({ entityType, onClose, onComp
       status: "importing",
       started_at: new Date().toISOString(),
       rollback_until: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-    }).select("id").single();
+    }).select("id").maybeSingle();
 
     if (jobErr || !job) {
       toast({ title: "Failed to create migration job", variant: "destructive" });
@@ -356,32 +356,32 @@ const ImportWizard: React.FC<ImportWizardProps> = ({ entityType, onClose, onComp
             if (row.dob) record.dob = new Date(row.dob).toISOString().split("T")[0];
             if (row.gender) record.gender = row.gender;
             if (row.uhid) record.uhid = row.uhid;
-            const { data: ins, error } = await supabase.from("patients").insert(record).select("id").single();
+            const { data: ins, error } = await supabase.from("patients").insert(record).select("id").maybeSingle();
             if (error) throw error;
             entityId = ins?.id || null;
           } else if (entityType === "staff") {
             record = { ...record, full_name: row.full_name, phone: row.phone, email: row.email || null, role: row.role };
             if (row.employee_id) record.employee_id = row.employee_id;
-            const { data: ins, error } = await supabase.from("users").insert(record).select("id").single();
+            const { data: ins, error } = await supabase.from("users").insert(record).select("id").maybeSingle();
             if (error) throw error;
             entityId = ins?.id || null;
           } else if (entityType === "services") {
             record = { ...record, name: row.service_name, category: row.category, fee: parseFloat(row.rate), item_type: row.category };
             if (row.gst_percent) record.gst_percent = Number(row.gst_percent);
             if (row.hsn_code) record.hsn_code = row.hsn_code;
-            const { data: ins, error } = await supabase.from("service_master").insert(record).select("id").single();
+            const { data: ins, error } = await supabase.from("service_master").insert(record).select("id").maybeSingle();
             if (error) throw error;
             entityId = ins?.id || null;
           } else if (entityType === "drugs") {
             record = { ...record, drug_name: row.drug_name, generic_name: row.generic_name || null, category: row.category };
             if (row.schedule) record.drug_schedule = row.schedule;
             if (row.hsn_code) record.hsn_code = row.hsn_code;
-            const { data: ins, error } = await supabase.from("drug_master").insert(record).select("id").single();
+            const { data: ins, error } = await supabase.from("drug_master").insert(record).select("id").maybeSingle();
             if (error) throw error;
             entityId = ins?.id || null;
           } else if (entityType === "vendors") {
             record = { ...record, vendor_name: row.vendor_name, contact_name: row.contact_person || null, contact_phone: row.phone || null, contact_email: row.email || null, gstin: row.gst_number || null, address: row.address || null };
-            const { data: ins, error } = await supabase.from("vendors").insert(record).select("id").single();
+            const { data: ins, error } = await supabase.from("vendors").insert(record).select("id").maybeSingle();
             if (error) throw error;
             entityId = ins?.id || null;
           } else if (entityType === "lab_tests") {
@@ -389,7 +389,7 @@ const ImportWizard: React.FC<ImportWizardProps> = ({ entityType, onClose, onComp
             if (row.normal_range_low) record.normal_min = parseFloat(row.normal_range_low);
             if (row.normal_range_high) record.normal_max = parseFloat(row.normal_range_high);
             if (row.tat_hours) record.tat_minutes = parseInt(row.tat_hours) * 60;
-            const { data: ins, error } = await supabase.from("lab_test_master").insert(record).select("id").single();
+            const { data: ins, error } = await supabase.from("lab_test_master").insert(record).select("id").maybeSingle();
             if (error) throw error;
             entityId = ins?.id || null;
           }

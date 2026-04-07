@@ -115,7 +115,7 @@ const RecordVaccineTab: React.FC<Props> = ({ hospitalId, onRecorded }) => {
 
     const { data: userData } = await supabase.auth.getUser();
     const userId = userData?.user?.id;
-    const { data: userRow } = await supabase.from("users").select("id").eq("auth_user_id", userId).single();
+    const { data: userRow } = await supabase.from("users").select("id").eq("auth_user_id", userId).maybeSingle();
     const administeredBy = userRow?.id || patientId;
 
     let successCount = 0;
@@ -206,7 +206,7 @@ const RecordVaccineTab: React.FC<Props> = ({ hospitalId, onRecorded }) => {
         balance_due: totalFee,
         subtotal: fee * successCount, gst_amount: gst * successCount,
         taxable_amount: fee * successCount, patient_payable: totalFee,
-      }).select("id").single();
+      }).select("id").maybeSingle();
 
       if (vaccBill) {
         await autoPostJournalEntry({

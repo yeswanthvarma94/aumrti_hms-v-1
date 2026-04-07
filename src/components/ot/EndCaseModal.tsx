@@ -62,7 +62,7 @@ const EndCaseModal: React.FC<Props> = ({ schedule, onClose, onEnded }) => {
           balance_due: 0,
         })
         .select("id")
-        .single();
+        .maybeSingle();
       billId = newBill?.id;
     }
 

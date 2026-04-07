@@ -69,7 +69,7 @@ const ScheduleTeleconsultModal: React.FC<Props> = ({ open, onOpenChange, onCreat
       scheduled_at: scheduledAt,
       duration_minutes: duration,
       patient_phone: phone,
-      hospital_id: (await supabase.from("users").select("hospital_id").eq("auth_user_id", (await supabase.auth.getUser()).data.user?.id).single()).data?.hospital_id,
+      hospital_id: (await supabase.from("users").select("hospital_id").eq("auth_user_id", (await supabase.auth.getUser()).data.user?.id).maybeSingle()).data?.hospital_id,
     });
 
     setSaving(false);

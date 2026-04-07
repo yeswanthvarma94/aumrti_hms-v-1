@@ -287,7 +287,7 @@ const RadiologyReportingWorkspace: React.FC<Props> = ({ order, hospitalId, onSta
     const { data: fullOrder } = await (supabase as any)
       .from("radiology_orders")
       .select("admission_id, encounter_id, patient_id, ordered_by")
-      .eq("id", order.id).single();
+      .eq("id", order.id).maybeSingle();
 
     if (fullOrder && !fullOrder.admission_id) {
       try {

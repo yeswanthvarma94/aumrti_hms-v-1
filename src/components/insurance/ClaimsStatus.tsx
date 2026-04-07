@@ -101,7 +101,7 @@ const ClaimsStatus: React.FC = () => {
       toast({ title: "Please fill reason and category", variant: "destructive" });
       return;
     }
-    const { data: userData } = await supabase.from("users").select("hospital_id").eq("auth_user_id", (await supabase.auth.getUser()).data.user?.id || "").single();
+    const { data: userData } = await supabase.from("users").select("hospital_id").eq("auth_user_id", (await supabase.auth.getUser()).data.user?.id || "").maybeSingle();
     await supabase.from("denial_logs").insert({
       hospital_id: userData?.hospital_id || "",
       claim_id: claim.id,

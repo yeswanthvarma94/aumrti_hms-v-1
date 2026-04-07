@@ -143,7 +143,7 @@ const DeathCertificatesTab: React.FC<Props> = ({ hospitalId, showCreate, onClose
       certified_by: certifiedBy,
       mccd_form_number: mccdNum,
       issued_at: new Date().toISOString(),
-    }).select("*, patients(full_name, uhid)").single();
+    }).select("*, patients(full_name, uhid)").maybeSingle();
 
     if (error) { toast.error(error.message); setSaving(false); return; }
     toast.success("Death certificate created");

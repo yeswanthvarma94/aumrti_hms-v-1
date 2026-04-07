@@ -115,7 +115,7 @@ export default function TodaysCheckupsTab({ onRefreshKPIs }: Props) {
           .eq("hospital_id", hospitalId)
           .ilike("test_name", `%${testName}%`)
           .limit(1)
-          .single();
+          .maybeSingle();
         
         if (test) {
           await supabase.from("lab_orders").insert({

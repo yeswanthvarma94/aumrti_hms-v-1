@@ -102,7 +102,7 @@ export default function NursingProcedureModal({ open, onClose, hospitalId, defau
             subtotal: totalFee, gst_amount: gstAmt, total_amount: grandTotal,
             patient_payable: grandTotal, paid_amount: 0, balance_due: grandTotal,
             payment_status: "unpaid", bill_status: "final", created_by: userId,
-          }).select("id").single();
+          }).select("id").maybeSingle();
           billId = bill?.id || null;
           if (billId) {
             await supabase.from("bill_line_items").insert({
@@ -123,7 +123,7 @@ export default function NursingProcedureModal({ open, onClose, hospitalId, defau
           subtotal: totalFee, gst_amount: gstAmt, total_amount: grandTotal,
           patient_payable: grandTotal, paid_amount: 0, balance_due: grandTotal,
           payment_status: "unpaid", bill_status: "final", created_by: userId,
-        }).select("id").single();
+        }).select("id").maybeSingle();
         billId = bill?.id || null;
         if (billId) {
           await supabase.from("bill_line_items").insert({

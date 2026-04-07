@@ -81,7 +81,7 @@ const IndentsPanel: React.FC = () => {
     setIndents((prev) => prev.map((i) => i.id === id ? { ...i, status } : i));
     if (selected?.id === id) setSelected((prev: any) => prev ? { ...prev, status } : prev);
 
-    const { data: userData } = await supabase.from("users").select("id").limit(1).single();
+    const { data: userData } = await supabase.from("users").select("id").limit(1).maybeSingle();
     await (supabase as any).from("department_indents").update({
       status,
       approved_by: userData?.id,
@@ -96,7 +96,7 @@ const IndentsPanel: React.FC = () => {
   const issueItems = async () => {
     if (!selected) return;
     setSaving(true);
-    const { data: userData } = await supabase.from("users").select("id, hospital_id").limit(1).single();
+    const { data: userData } = await supabase.from("users").select("id, hospital_id").limit(1).maybeSingle();
     if (!userData) { setSaving(false); return; }
 
     const validItems = indentItems.filter((item) => (issueQtys[item.id] || 0) > 0);
@@ -161,7 +161,7 @@ const IndentsPanel: React.FC = () => {
       return;
     }
     setSaving(true);
-    const { data: userData } = await supabase.from("users").select("id, hospital_id").limit(1).single();
+    const { data: userData } = await supabase.from("users").select("id, hospital_id").limit(1).maybeSingle();
     if (!userData) { setSaving(false); return; }
 
     const indentNumber = `IND-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${Math.floor(Math.random() * 900 + 100)}`;
@@ -173,7 +173,7 @@ const IndentsPanel: React.FC = () => {
       required_date: newIndent.required_date || null,
       notes: newIndent.notes || null,
       status: "pending",
-    }).select().single();
+    }).select().maybeSingle();
 
     if (error || !indent) { toast({ title: "Failed to create indent", variant: "destructive" }); setSaving(false); return; }
 

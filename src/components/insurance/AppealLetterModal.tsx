@@ -33,7 +33,7 @@ const AppealLetterModal: React.FC<AppealLetterModalProps> = ({ open, onOpenChang
     const today = new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" });
 
     try {
-      const { data: userData } = await supabase.from("users").select("hospital_id").eq("auth_user_id", (await supabase.auth.getUser()).data.user?.id || "").single();
+      const { data: userData } = await supabase.from("users").select("hospital_id").eq("auth_user_id", (await supabase.auth.getUser()).data.user?.id || "").maybeSingle();
       const prompt = `Write a formal medical necessity appeal letter for a denied claim with ${claim.tpa_name} (private Indian insurer).
 Claim Number: ${claim.claim_number || "N/A"}
 Patient: ${claim.patient_name}

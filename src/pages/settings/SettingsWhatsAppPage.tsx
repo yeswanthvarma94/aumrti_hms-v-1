@@ -171,14 +171,14 @@ const SettingsWhatsAppPage: React.FC = () => {
         .from("users")
         .select("hospital_id")
         .eq("auth_user_id", user.id)
-        .single();
+        .maybeSingle();
       if (!userData) return;
 
       const { data: hospital } = await supabase
         .from("hospitals")
         .select("wati_api_url, whatsapp_enabled")
         .eq("id", userData.hospital_id)
-        .single();
+        .maybeSingle();
 
       if (hospital?.wati_api_url) {
         setWatiConnected(true);
@@ -246,7 +246,7 @@ const SettingsWhatsAppPage: React.FC = () => {
     setSavingWati(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    const { data: userData } = await supabase.from("users").select("hospital_id").eq("auth_user_id", user.id).single();
+    const { data: userData } = await supabase.from("users").select("hospital_id").eq("auth_user_id", user.id).maybeSingle();
     if (!userData) return;
 
     await supabase
@@ -267,7 +267,7 @@ const SettingsWhatsAppPage: React.FC = () => {
   const handleDisconnect = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    const { data: userData } = await supabase.from("users").select("hospital_id").eq("auth_user_id", user.id).single();
+    const { data: userData } = await supabase.from("users").select("hospital_id").eq("auth_user_id", user.id).maybeSingle();
     if (!userData) return;
 
     await supabase
@@ -307,7 +307,7 @@ const SettingsWhatsAppPage: React.FC = () => {
     setSavingTemplates(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    const { data: userData } = await supabase.from("users").select("hospital_id").eq("auth_user_id", user.id).single();
+    const { data: userData } = await supabase.from("users").select("hospital_id").eq("auth_user_id", user.id).maybeSingle();
     if (!userData) return;
 
     for (const tpl of templates) {
@@ -335,7 +335,7 @@ const SettingsWhatsAppPage: React.FC = () => {
             send_delay_hours: tpl.send_delay_hours,
           } as any)
           .select()
-          .single();
+          .maybeSingle();
         if (data) {
           setTemplates((prev) =>
             prev.map((t) => (t.trigger_event === tpl.trigger_event && !t.id ? { ...t, id: (data as any).id } : t))

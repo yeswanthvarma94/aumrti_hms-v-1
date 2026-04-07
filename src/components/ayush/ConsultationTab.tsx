@@ -105,7 +105,7 @@ export default function ConsultationTab({ system, showNew, onShowNewDone }: Prop
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return; }
 
-    const { data: userData } = await supabase.from("users").select("id, hospital_id").eq("auth_user_id", user.id).single();
+    const { data: userData } = await supabase.from("users").select("id, hospital_id").eq("auth_user_id", user.id).maybeSingle();
     if (!userData) { setLoading(false); return; }
     setHospitalId(userData.hospital_id);
     setUserId(userData.id);
@@ -225,7 +225,7 @@ export default function ConsultationTab({ system, showNew, onShowNewDone }: Prop
     try {
       const { data: userData } = await supabase.auth.getUser();
       const userId = userData?.user?.id;
-      const { data: userRow } = await supabase.from("users").select("id, hospital_id").eq("auth_user_id", userId).single();
+      const { data: userRow } = await supabase.from("users").select("id, hospital_id").eq("auth_user_id", userId).maybeSingle();
       if (!userRow) { toast.error("User not found"); return; }
 
       const record: any = {

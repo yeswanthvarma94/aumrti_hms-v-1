@@ -43,7 +43,7 @@ const OnboardingWizard: React.FC = () => {
         .from("users")
         .select("hospital_id")
         .eq("id", session.user.id)
-        .single();
+        .maybeSingle();
 
       if (!user?.hospital_id) { navigate("/", { replace: true }); return; }
 
@@ -51,7 +51,7 @@ const OnboardingWizard: React.FC = () => {
         .from("hospitals")
         .select("id, name, setup_complete")
         .eq("id", user.hospital_id)
-        .single();
+        .maybeSingle();
 
       if (!hospital) { navigate("/", { replace: true }); return; }
       if (hospital.setup_complete) { navigate("/dashboard", { replace: true }); return; }

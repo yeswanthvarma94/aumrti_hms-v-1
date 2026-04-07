@@ -108,7 +108,7 @@ export default function CorporateTab() {
             .eq("hospital_id", hospitalId)
             .eq("phone", emp.phone)
             .limit(1)
-            .single();
+            .maybeSingle();
           
           if (existing) {
             patientId = existing.id;
@@ -127,7 +127,7 @@ export default function CorporateTab() {
               uhid: `EMP-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
             } as any)
             .select("id")
-            .single();
+            .maybeSingle();
           
           if (pErr || !newPatient) { failed++; continue; }
           patientId = newPatient.id;

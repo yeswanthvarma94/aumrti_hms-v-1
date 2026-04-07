@@ -119,7 +119,7 @@ const BookOTModal: React.FC<Props> = ({ rooms, selectedRoomId, selectedDate, pre
         booking_notes: form.notes || null,
       })
       .select("id")
-      .single();
+      .maybeSingle();
 
     if (error) {
       toast({ title: "Failed to book OT", description: error.message, variant: "destructive" });
@@ -148,7 +148,7 @@ const BookOTModal: React.FC<Props> = ({ rooms, selectedRoomId, selectedDate, pre
           .from("patients")
           .select("blood_group, full_name")
           .eq("id", otSchedule.patient_id)
-          .single();
+          .maybeSingle();
 
         const bloodGroup = patient?.blood_group?.replace(/[+-]/g, "").trim() || null;
         const rhFactor = patient?.blood_group?.includes("+") ? "positive" : "negative";

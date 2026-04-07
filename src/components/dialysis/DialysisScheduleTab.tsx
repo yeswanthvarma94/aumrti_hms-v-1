@@ -53,7 +53,7 @@ const DialysisScheduleTab: React.FC<Props> = ({ showSchedule, onCloseSchedule, o
 
   const scheduleSession = async () => {
     if (!schedPatient) { toast({ title: "Select a patient", variant: "destructive" }); return; }
-    const { data: user } = await supabase.from("users").select("id, hospital_id").limit(1).single();
+    const { data: user } = await supabase.from("users").select("id, hospital_id").limit(1).maybeSingle();
     if (!user) return;
 
     const patient = patients.find(p => p.id === schedPatient);
@@ -95,7 +95,7 @@ const DialysisScheduleTab: React.FC<Props> = ({ showSchedule, onCloseSchedule, o
   };
 
   const markMissed = async (session: any) => {
-    const { data: user } = await supabase.from("users").select("id, hospital_id").limit(1).single();
+    const { data: user } = await supabase.from("users").select("id, hospital_id").limit(1).maybeSingle();
     await (supabase as any).from("dialysis_sessions").update({ status: "missed" }).eq("id", session.id);
     if (user) {
       await supabase.from("clinical_alerts").insert({

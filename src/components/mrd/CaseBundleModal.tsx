@@ -43,14 +43,14 @@ const CaseBundleModal: React.FC<Props> = ({ open, onClose, record, hospitalId })
     if (visitId) {
       const { data } = await (supabase as any).from("admissions")
         .select("*, patients(full_name, uhid, phone, gender, dob), beds(bed_number), wards(name)")
-        .eq("id", visitId).single();
+        .eq("id", visitId).maybeSingle();
       admission = data;
     }
     if (!admission && patientId) {
       const { data } = await (supabase as any).from("admissions")
         .select("*, patients(full_name, uhid, phone, gender, dob), beds(bed_number), wards(name)")
         .eq("patient_id", patientId).eq("hospital_id", hospitalId)
-        .order("admitted_at", { ascending: false }).limit(1).single();
+        .order("admitted_at", { ascending: false }).limit(1).maybeSingle();
       admission = data;
     }
     setAdmissionData(admission);

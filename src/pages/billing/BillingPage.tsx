@@ -121,7 +121,7 @@ const BillingPage: React.FC = () => {
       bill_type: "ipd",
       bill_status: "draft",
       created_by: userData?.id || null,
-    }).select("id").single();
+    }).select("id").maybeSingle();
 
     if (error || !newBill) {
       toast({ title: "Error creating discharge bill", variant: "destructive" });

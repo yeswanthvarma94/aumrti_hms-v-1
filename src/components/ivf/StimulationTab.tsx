@@ -67,7 +67,7 @@ const StimulationTab = () => {
   const handleSave = async () => {
     if (!selectedCycleId || !scanDay) { toast.error("Cycle and scan day required"); return; }
     setSaving(true);
-    const { data: userData } = await supabase.from("users").select("id, hospital_id").limit(1).single();
+    const { data: userData } = await supabase.from("users").select("id, hospital_id").limit(1).maybeSingle();
     const { error } = await supabase.from("stimulation_monitoring").insert({
       hospital_id: userData?.hospital_id,
       cycle_id: selectedCycleId,

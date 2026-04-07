@@ -153,7 +153,7 @@ const NeonatalSheet: React.FC<Props> = ({ patientId, hospitalId, encounterId, ad
       if (recordId) {
         await (supabase as any).from('neonatal_records').update(payload).eq('id', recordId);
       } else {
-        const { data } = await (supabase as any).from('neonatal_records').insert([payload]).select('id').single();
+        const { data } = await (supabase as any).from('neonatal_records').insert([payload]).select('id').maybeSingle();
         if (data) setRecordId(data.id);
       }
       toast.success('Neonatal record saved');

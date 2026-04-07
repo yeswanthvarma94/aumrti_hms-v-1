@@ -260,7 +260,7 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated, defaultD
     (patientData as any).allergies = allergies.trim() || "NKDA";
     if (referralSource) (patientData as any).referral_source = referralSource;
 
-    const { data: newPatient, error } = await supabase.from("patients").insert([patientData]).select("id").single();
+    const { data: newPatient, error } = await supabase.from("patients").insert([patientData]).select("id").maybeSingle();
     if (error) throw error;
     return newPatient.id;
   };
@@ -316,7 +316,7 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated, defaultD
         payment_status: isPaid ? "paid" : "unpaid",
         bill_status: "final",
         created_by: userId,
-      }).select("id").single();
+      }).select("id").maybeSingle();
       if (billErr) throw billErr;
 
       // Insert line item
@@ -396,7 +396,7 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated, defaultD
           .from("referral_doctors")
           .select("total_referrals, total_revenue")
           .eq("id", referralDoctorId)
-          .single();
+          .maybeSingle();
         if (rd) {
           await supabase.from("referral_doctors").update({
             total_referrals: (rd.total_referrals || 0) + 1,

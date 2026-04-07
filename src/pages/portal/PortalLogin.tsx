@@ -89,7 +89,7 @@ const PortalLogin: React.FC<PortalLoginProps> = ({ hospitalId, onLogin }) => {
         otp_expires_at: new Date(Date.now() + 10 * 60000).toISOString(),
       } as any)
       .select("id")
-      .single();
+      .maybeSingle();
 
     if (sess) setSessionId((sess as any).id);
 

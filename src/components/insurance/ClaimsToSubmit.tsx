@@ -31,7 +31,7 @@ const ClaimsToSubmit: React.FC = () => {
 
   const loadData = async () => {
     setLoading(true);
-    const { data: userData } = await supabase.from("users").select("hospital_id").limit(1).single();
+    const { data: userData } = await supabase.from("users").select("hospital_id").limit(1).maybeSingle();
     if (userData?.hospital_id) setHospitalId(userData.hospital_id);
     // Get finalised bills for insurance patients that don't have claims yet
     const { data: bills } = await supabase
@@ -85,7 +85,7 @@ const ClaimsToSubmit: React.FC = () => {
 
   const submitClaim = async (row: ClaimRow) => {
     setSubmitting(row.bill_id);
-    const { data: userData } = await supabase.from("users").select("id, hospital_id").limit(1).single();
+    const { data: userData } = await supabase.from("users").select("id, hospital_id").limit(1).maybeSingle();
     if (!userData) { setSubmitting(null); return; }
 
     const claimNumber = `CLM-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${Math.floor(Math.random() * 9000 + 1000)}`;
