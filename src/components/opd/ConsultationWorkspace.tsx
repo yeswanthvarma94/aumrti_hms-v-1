@@ -556,7 +556,7 @@ const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onT
     const drugList = prescription.drugs.map((d) => `• ${d.drug_name} - ${d.dose} - ${d.frequency} - ${d.duration_days} days`).join("\n");
     const labList = prescription.lab_orders.map((l) => l.test_name).join(", ");
     const msg = `🏥 *Prescription*\n*Patient:* ${token.patient.full_name}\n📅 ${new Date().toLocaleDateString("en-IN")}\n\n💊 *Medicines:*\n${drugList || "None"}\n\n🔬 *Lab Tests:* ${labList || "None"}\n\n📋 *Advice:* ${prescription.advice_notes || "—"}\n📅 *Review:* ${prescription.review_date || "As needed"}`;
-    window.open(`https://wa.me/91${phone}?text=${encodeURIComponent(msg)}`);
+    window.open(`https://wa.me/91${phone}?text=${encodeURIComponent(msg)}`, "_blank", "noopener,noreferrer");
     if (prescriptionId) {
       supabase.from("prescriptions").update({ whatsapp_sent: true }).eq("id", prescriptionId);
     }

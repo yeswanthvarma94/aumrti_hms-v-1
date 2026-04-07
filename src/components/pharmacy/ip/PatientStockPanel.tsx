@@ -141,7 +141,7 @@ const PatientStockPanel: React.FC<Props> = ({ patient, stockItems, todayDispense
           onClick={() => {
             if (patient.phone) {
               const msg = `Medicines for ${patient.full_name}:\n${stockItems.map(s => `• ${s.drug_name}`).join("\n")}`;
-              window.open(`https://wa.me/91${patient.phone.replace(/\D/g, "")}?text=${encodeURIComponent(msg)}`);
+              window.open(`https://wa.me/91${patient.phone.replace(/\D/g, "")}?text=${encodeURIComponent(msg)}`, "_blank", "noopener,noreferrer");
             }
           }}
         >
