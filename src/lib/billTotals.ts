@@ -24,8 +24,7 @@ export async function recalculateBillTotalsSafe(billId: string): Promise<Recalcu
       (supabase as any)
         .from("bill_line_items")
         .select("taxable_amount, gst_amount")
-        .eq("bill_id", billId)
-        .or("is_deleted.is.null,is_deleted.eq.false"),
+        .eq("bill_id", billId),
     ]);
 
     if (billError || !bill) {
