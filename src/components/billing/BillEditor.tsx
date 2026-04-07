@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Receipt, Printer, MessageSquare, FileText, Send, Lock, AlertTriangle } from "lucide-react";
+import { printDocument, printHeader, printAmount } from "@/lib/printUtils";
 import { Badge } from "@/components/ui/badge";
 import RevenueIntelligencePanel from "@/components/billing/RevenueIntelligencePanel";
 import { Button } from "@/components/ui/button";
@@ -298,7 +299,29 @@ const BillEditor: React.FC<Props> = ({ bill, hospitalId, onRefresh }) => {
               <Send size={12} /> Payment Link
             </Button>
           )}
-          <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1" onClick={() => window.print()}>
+          <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1" onClick={() => {
+            const itemsHtml = lineItems.map((i, idx) => {
+              const taxable = i.quantity * i.unit_rate * (1 - i.discount_percent / 100);
+              const gst = taxable * i.gst_percent / 100;
+              return `<tr><td>${idx + 1}</td><td>${i.description}</td><td style="text-align:center">${i.quantity}</td><td style="text-align:right">${printAmount(i.unit_rate)}</td><td style="text-align:right">${printAmount(taxable + gst)}</td></tr>`;
+            }).join("");
+            const totalAmt = lineItems.reduce((s, i) => s + i.total_amount, 0);
+            const body = `${printHeader(hospitalInfo?.name || "Hospital", `Bill #${bill.bill_number}`)}
+              <div class="row"><span class="label">Patient:</span><span>${bill.patient_name} (${bill.uhid})</span></div>
+              <div class="row"><span class="label">Date:</span><span>${bill.bill_date}</span></div>
+              <div class="row"><span class="label">Type:</span><span class="badge">${bill.bill_type.toUpperCase()}</span></div>
+              <table><tr><th>#</th><th>Description</th><th style="text-align:center">Qty</th><th style="text-align:right">Rate</th><th style="text-align:right">Amount</th></tr>${itemsHtml}</table>
+              <div class="row"><span class="label">Subtotal</span><span class="amount">${printAmount(bill.subtotal)}</span></div>
+              ${bill.gst_amount > 0 ? `<div class="row"><span class="label">GST</span><span class="amount">${printAmount(bill.gst_amount)}</span></div>` : ""}
+              ${bill.discount_amount > 0 ? `<div class="row"><span class="label">Discount</span><span class="amount">-${printAmount(bill.discount_amount)}</span></div>` : ""}
+              <div class="total-row"><span>Total</span><span class="amount">${printAmount(bill.total_amount)}</span></div>
+              ${bill.advance_received > 0 ? `<div class="row"><span class="label">Advance</span><span>-${printAmount(bill.advance_received)}</span></div>` : ""}
+              ${bill.insurance_amount > 0 ? `<div class="row"><span class="label">Insurance</span><span>-${printAmount(bill.insurance_amount)}</span></div>` : ""}
+              <div class="row" style="font-weight:bold;font-size:15px"><span>Patient Payable</span><span class="amount">${printAmount(Math.max(0, bill.patient_payable))}</span></div>
+              ${bill.paid_amount > 0 ? `<div class="row"><span class="label">Paid</span><span>${printAmount(bill.paid_amount)}</span></div>` : ""}
+              ${bill.balance_due > 0 ? `<div class="row" style="color:#dc2626;font-weight:bold"><span>Balance Due</span><span>${printAmount(bill.balance_due)}</span></div>` : ""}`;
+            printDocument(`Bill ${bill.bill_number}`, body);
+          }}>
             <Printer size={12} /> Print
           </Button>
         </div>

@@ -340,7 +340,14 @@ Hospital letterhead will be added. Just write the body content.`,
             <Button variant="outline" size="sm" onClick={() => navigator.clipboard.writeText(appealText)}>
               <Copy size={13} className="mr-1" /> Copy
             </Button>
-            <Button variant="outline" size="sm" onClick={() => window.print()}>
+            <Button variant="outline" size="sm" onClick={() => {
+              const { printDocument } = require("@/lib/printUtils");
+              const claim = claimDetail;
+              const body = claim?.appeal_letter
+                ? `<h2 style="color:#1A2F5A">PMJAY Appeal Letter</h2><div class="row"><span class="label">Claim:</span><span>${claim.claim_number || claim.id}</span></div><pre>${claim.appeal_letter}</pre>`
+                : `<p>No appeal letter generated</p>`;
+              printDocument("PMJAY Claim", body);
+            }}>
               <Printer size={13} className="mr-1" /> Print
             </Button>
             <Button size="sm" onClick={saveAppeal}>Save to Claim</Button>

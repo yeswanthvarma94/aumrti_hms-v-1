@@ -144,7 +144,11 @@ const AlertsPanel: React.FC<{ kpis?: any }> = ({ kpis }) => {
               <Building2 size={14} /> New Admission
             </button>
             <button
-              onClick={() => window.print()}
+              onClick={() => {
+                const { printDocument } = require("@/lib/printUtils");
+                const rows = alerts.map(a => `<tr><td>${a.time}</td><td>${a.text}</td><td><span class="badge">${a.severity}</span></td></tr>`).join("");
+                printDocument("Today's Alerts Report", `<h2 style="color:#1A2F5A">Today's Alerts</h2><table><tr><th>Time</th><th>Alert</th><th>Severity</th></tr>${rows}</table>`);
+              }}
               className="flex items-center gap-2 bg-[hsl(38,92%,50%)]/5 text-[hsl(26,72%,29%)] rounded-lg px-3 py-2 text-xs font-medium hover:bg-[hsl(38,92%,50%)]/10 transition-colors active:scale-[0.97]"
             >
               <FileBarChart size={14} /> Today's Report

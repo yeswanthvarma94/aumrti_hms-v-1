@@ -675,7 +675,10 @@ Note any special preparations for the diet type.`,
                     <Card className="p-4 border-border">
                       <div className="flex items-center justify-between mb-3">
                         <h3 className="text-sm font-bold text-foreground">🤖 AI Therapeutic Meal Plan</h3>
-                        <Button size="sm" variant="ghost" className="h-6 text-[10px]" onClick={() => window.print()}>
+                        <Button size="sm" variant="ghost" className="h-6 text-[10px]" onClick={() => {
+                          const { printDocument } = require("@/lib/printUtils");
+                          printDocument("AI Therapeutic Meal Plan", `<h2 style="color:#1A2F5A">AI Therapeutic Meal Plan</h2><pre>${planContent}</pre>`);
+                        }}>
                           <Printer className="h-3 w-3 mr-1" /> Print
                         </Button>
                       </div>
@@ -726,7 +729,11 @@ Note any special preparations for the diet type.`,
               </TableBody>
             </Table>
             <DialogFooter>
-              <Button size="sm" variant="outline" className="text-xs" onClick={() => window.print()}>
+              <Button size="sm" variant="outline" className="text-xs" onClick={() => {
+                const { printDocument } = require("@/lib/printUtils");
+                const rows = dietOrders.map((o: any) => `<tr><td>${o.patients?.full_name}</td><td>${o.diet_type}</td><td>${o.texture}</td><td>${o.specific_instructions || "—"}</td></tr>`).join("");
+                printDocument("Kitchen Dispatch", `<h2 style="color:#1A2F5A">Today's Kitchen Dispatch</h2><table><tr><th>Patient</th><th>Diet Type</th><th>Texture</th><th>Notes</th></tr>${rows}</table>`);
+              }}>
                 <Printer className="h-3 w-3 mr-1" /> Print
               </Button>
             </DialogFooter>
