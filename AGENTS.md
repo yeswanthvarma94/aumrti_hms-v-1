@@ -297,4 +297,22 @@ The 4-step discharge stepper now ENFORCES sequential completion:
  
 ---
 
+### NEW SECURITY RULES
 
+1. **RoleGuard** — src/components/auth/RoleGuard.tsx wraps routes with role check
+   Uses ALL_MODULES roles mapping from src/lib/modules.ts
+   Unauthorized access → redirect to /dashboard with toast
+
+2. **IdleTimer** — src/components/auth/IdleTimer.tsx auto-logout after 15min
+   Configurable timeout. 60-second warning modal before logout.
+
+3. **DPDP Consent** — Required in BOTH WalkInModal AND PatientRegistrationModal
+   Uses getDPDPConsentText() from src/lib/compliance-checks.ts
+   Logs to patient_consents table
+
+4. **Audit Trail** — audit_log table + logAudit() utility
+   Called on: patient create/edit, bill create/finalize, discharge, medication admin,
+   user role change, settings change
+
+5. **Print** — NEVER use window.print(). Always window.open() with custom HTML.
+   Reusable: src/lib/printUtils.ts → printDocument(title, htmlContent)
