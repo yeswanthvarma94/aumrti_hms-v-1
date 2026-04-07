@@ -200,7 +200,7 @@ const DaycareBoardTab: React.FC<DaycareBoardTabProps> = ({ showNewOrder, onClose
           const billDate = new Date().toISOString().split("T")[0];
           const billNum = await generateBillNumber(hospitalId, "CHEMO");
 
-          await supabase.from("bills").insert({
+          const { data: chemoBill } = await supabase.from("bills").insert({
             hospital_id: hospitalId,
             patient_id: order.patient_id,
             admission_id: order.admission_id || null,
