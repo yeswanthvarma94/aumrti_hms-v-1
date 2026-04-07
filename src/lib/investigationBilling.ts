@@ -83,19 +83,8 @@ export async function autoBillOpdInvestigation(opts: {
         });
       }
 
-      // Recalculate bill totals
-      const newSubtotal = (existingBill.subtotal || 0) + subtotal;
-      const newGst = (existingBill.gst_amount || 0) + totalGst;
-      const newTotal = newSubtotal + newGst;
-
-      await (supabase as any).from("bills").update({
-        subtotal: newSubtotal,
-        gst_amount: newGst,
-        total_amount: newTotal,
-        patient_payable: newTotal,
-        balance_due: newTotal - (existingBill.paid_amount || 0),
-        updated_at: new Date().toISOString(),
-      } as any).eq("id", existingBill.id);
+      // Server-side recalculation
+      await (supabase as any).rpc("recalculate_bill_totals", { p_bill_id: existingBill.id });
 
       return { billId: existingBill.id, total: grandTotal };
     } else {

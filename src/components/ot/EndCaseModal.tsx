@@ -3,6 +3,7 @@ import { X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { generateBillNumber } from "@/hooks/useBillNumber";
 import { autoPostJournalEntry } from "@/lib/accounting";
+import { calcGST, roundCurrency } from "@/lib/currency";
 import { useToast } from "@/hooks/use-toast";
 import type { OTSchedule } from "@/pages/ot/OTPage";
 
@@ -81,7 +82,7 @@ const EndCaseModal: React.FC<Props> = ({ schedule, onClose, onEnded }) => {
       if (!data) return { fee: fallback, gstPct: 0, gst: 0, hsn: "" };
       const fee = Number(data.fee) || fallback;
       const gstPct = data.gst_applicable ? (Number(data.gst_percent) || 0) : 0;
-      return { fee, gstPct, gst: Math.round((fee * gstPct) / 100 * 100) / 100, hsn: data.hsn_code || "" };
+      return { fee, gstPct, gst: calcGST(fee, gstPct), hsn: data.hsn_code || "" };
     };
 
     const otRate = await getRate("ot_charge", 2000);
@@ -99,8 +100,8 @@ const EndCaseModal: React.FC<Props> = ({ schedule, onClose, onEnded }) => {
         : Math.ceil((otSchedule.estimated_duration_minutes || 60) / 60);
 
     const hours = Math.max(1, actualDuration);
-    const otTimeCharge = hours * otRate.fee;
-    const otTimeGst = Math.round((otTimeCharge * otRate.gstPct) / 100 * 100) / 100;
+    const otTimeCharge = roundCurrency(hours * otRate.fee);
+    const otTimeGst = calcGST(otTimeCharge, otRate.gstPct);
 
     const lineItems: any[] = [];
 
@@ -153,38 +154,25 @@ const EndCaseModal: React.FC<Props> = ({ schedule, onClose, onEnded }) => {
             description: `Implant: ${imp.name || imp.item_name || "Surgical Consumable"}`,
             quantity: Number(imp.quantity || 1), unit_rate: cost,
             taxable_amount: cost, gst_percent: 12,
-            gst_amount: Math.round(cost * 0.12 * 100) / 100,
-            total_amount: cost * 1.12,
+            gst_amount: calcGST(cost, 12),
+            total_amount: roundCurrency(cost + calcGST(cost, 12)),
             hsn_code: "9021", source_module: "ot",
           });
         }
       }
     }
 
-    // Insert line items & recalculate
+    // Insert line items — trigger auto-recalculates bill totals
     if (lineItems.length > 0) {
       await supabase.from("bill_line_items").insert(lineItems);
 
-      const { data: allItems } = await supabase
-        .from("bill_line_items")
-        .select("taxable_amount, gst_amount, total_amount")
-        .eq("bill_id", billId);
+      // Server-side recalculation via DB trigger handles totals;
+      // call RPC as fallback to ensure consistency
+      await (supabase as any).rpc("recalculate_bill_totals", { p_bill_id: billId });
 
-      const subtotal = (allItems || []).reduce((s, i) => s + Number(i.taxable_amount || 0), 0);
-      const gstTotal = (allItems || []).reduce((s, i) => s + Number(i.gst_amount || 0), 0);
-      const total = subtotal + gstTotal;
-
-      await supabase
-        .from("bills")
-        .update({
-          subtotal,
-          gst_amount: gstTotal,
-          total_amount: total,
-          taxable_amount: subtotal,
-          patient_payable: total,
-          balance_due: total,
-        })
-        .eq("id", billId);
+      // Re-fetch updated bill total for journal entry
+      const { data: updatedBill } = await supabase.from("bills").select("total_amount").eq("id", billId).maybeSingle();
+      const total = Number(updatedBill?.total_amount || 0);
 
       const { data: { user: authUser } } = await supabase.auth.getUser();
       await autoPostJournalEntry({

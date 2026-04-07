@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { generateBillNumber } from "@/hooks/useBillNumber";
 import { autoPostJournalEntry } from "@/lib/accounting";
+import { calcGST } from "@/lib/currency";
 import { logNABHEvidence } from "@/lib/nabh-evidence";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
@@ -130,7 +131,7 @@ const RequestsTab: React.FC<Props> = ({ showModal, onCloseModal, onRefresh }) =>
 
     const fee = rate?.fee ? Number(rate.fee) : 1500;
     const gstPct = rate?.gst_applicable ? (Number(rate.gst_percent) || 0) : 0;
-    const gst = Math.round(fee * gstPct / 100 * 100) / 100;
+    const gst = calcGST(fee, gstPct);
 
     // Find IPD bill
     const { data: bill } = await supabase
@@ -182,7 +183,7 @@ const RequestsTab: React.FC<Props> = ({ showModal, onCloseModal, onRefresh }) =>
 
     const fee = rate?.fee ? Number(rate.fee) : 1500;
     const gstPct = rate?.gst_applicable ? (Number(rate.gst_percent) || 0) : 0;
-    const gst = Math.round(fee * gstPct / 100 * 100) / 100;
+    const gst = calcGST(fee, gstPct);
 
     const billNum = await generateBillNumber(hospitalId, "BLOOD");
     const { data: newBill } = await supabase.from("bills").insert({

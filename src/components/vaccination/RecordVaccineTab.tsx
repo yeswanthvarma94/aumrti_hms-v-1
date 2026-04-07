@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { generateBillNumber } from "@/hooks/useBillNumber";
 import { autoPostJournalEntry } from "@/lib/accounting";
+import { calcGST, roundCurrency } from "@/lib/currency";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -188,8 +189,8 @@ const RecordVaccineTab: React.FC<Props> = ({ hospitalId, onRecorded }) => {
 
       const fee = vaccRate?.fee ? Number(vaccRate.fee) : 150;
       const gstPct = vaccRate?.gst_applicable ? (Number(vaccRate.gst_percent) || 0) : 0;
-      const gst = Math.round(fee * gstPct / 100 * 100) / 100;
-      const totalFee = (fee + gst) * successCount;
+      const gst = calcGST(fee, gstPct);
+      const totalFee = roundCurrency((fee + gst) * successCount);
 
       const today = new Date().toISOString().split("T")[0];
       const billNum = await generateBillNumber(hospitalId, "VACC");

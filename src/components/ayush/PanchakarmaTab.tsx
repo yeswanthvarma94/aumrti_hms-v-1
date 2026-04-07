@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { generateBillNumber } from "@/hooks/useBillNumber";
 import { autoPostJournalEntry } from "@/lib/accounting";
+import { calcGST } from "@/lib/currency";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -173,7 +174,7 @@ export default function PanchakarmaTab({ showNew, onShowNewDone }: Props) {
 
           const fee = rate?.fee ? Number(rate.fee) : 800;
           const gstPct = rate?.gst_applicable ? (Number(rate.gst_percent) || 0) : 5;
-          const gst = Math.round(fee * gstPct / 100 * 100) / 100;
+          const gst = calcGST(fee, gstPct);
 
           const today = new Date().toISOString().split("T")[0];
           const billNum = await generateBillNumber(hospitalId, "AYSH");

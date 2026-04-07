@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { generateBillNumber } from "@/hooks/useBillNumber";
+import { calcGST } from "@/lib/currency";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -156,7 +157,7 @@ const BillingPage: React.FC = () => {
       const gstPct = data.gst_applicable ? (Number(data.gst_percent) || 0) : 0;
       return {
         fee,
-        gst: Math.round(fee * gstPct / 100 * 100) / 100,
+        gst: calcGST(fee, gstPct),
         gstPct,
         hsn: data.hsn_code || ''
       };
@@ -189,7 +190,7 @@ const BillingPage: React.FC = () => {
           .maybeSingle();
         const finalRate = testRate?.fee ? Number(testRate.fee) : labRate.fee;
         const labGstPct = labRate.gstPct;
-        const labGst = Math.round(finalRate * labGstPct / 100 * 100) / 100;
+        const labGst = calcGST(finalRate, labGstPct);
         items.push({
           hospital_id: hospitalId, bill_id: billId,
           item_type: "lab", description: `Lab: ${(li as any).lab_test_master?.test_name || "Test"}`,
@@ -219,7 +220,7 @@ const BillingPage: React.FC = () => {
         .maybeSingle();
       const radFee = studyRate?.fee ? Number(studyRate.fee) : radRate.fee;
       const radGstPct = studyRate?.gst_applicable ? (Number(studyRate.gst_percent) || 0) : radRate.gstPct;
-      const radGst = Math.round(radFee * radGstPct / 100 * 100) / 100;
+      const radGst = calcGST(radFee, radGstPct);
       items.push({
         hospital_id: hospitalId, bill_id: billId,
         item_type: "radiology", description: `Radiology: ${(ro as any).study_name}`,
@@ -275,7 +276,7 @@ const BillingPage: React.FC = () => {
         const qty = Number(np.quantity) || 1;
         const total = fee * qty;
         const gstPct = procRate?.gst_applicable ? (Number(procRate.gst_percent) || 0) : nursingRate.gstPct;
-        const gst = Math.round(total * gstPct / 100 * 100) / 100;
+        const gst = calcGST(total, gstPct);
         items.push({
           hospital_id: hospitalId, bill_id: billId,
           item_type: "nursing_procedure", description: `Nursing: ${np.procedure_name}`,
@@ -318,7 +319,7 @@ const BillingPage: React.FC = () => {
       const ratePerDay = roomRate?.fee ? Number(roomRate.fee) : 500;
       const roomGstPct = roomRate?.gst_applicable ? (Number(roomRate.gst_percent) || 0) : 0;
       const roomTotal = ratePerDay * days;
-      const roomGst = Math.round(roomTotal * roomGstPct / 100 * 100) / 100;
+      const roomGst = calcGST(roomTotal, roomGstPct);
 
       items.push({
         hospital_id: hospitalId, bill_id: billId,
@@ -332,14 +333,8 @@ const BillingPage: React.FC = () => {
 
     if (items.length > 0) {
       await supabase.from("bill_line_items").insert(items);
-      // Recalc totals
-      const subtotal = items.reduce((s, i) => s + (i.taxable_amount || 0), 0);
-      const gst = items.reduce((s, i) => s + (i.gst_amount || 0), 0);
-      await supabase.from("bills").update({
-        subtotal, gst_amount: gst, total_amount: subtotal + gst,
-        taxable_amount: subtotal, patient_payable: subtotal + gst,
-        balance_due: subtotal + gst,
-      }).eq("id", billId);
+      // Server-side recalculation via DB trigger + explicit RPC
+      await (supabase as any).rpc("recalculate_bill_totals", { p_bill_id: billId });
     }
   };
 

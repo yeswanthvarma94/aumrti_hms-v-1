@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { calcGST } from "@/lib/currency";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -56,7 +57,7 @@ async function billIVFMilestone(opts: {
       .ilike("name", `%${milestoneType.replace("ivf_", "").replace("_", "%")}%`).limit(1);
     const fee = svc?.[0]?.fee || fallbackFee;
     const gstPct = svc?.[0]?.gst_percent || 0;
-    const gstAmt = Math.round(fee * gstPct / 100);
+    const gstAmt = calcGST(fee, gstPct);
     const total = fee + gstAmt;
 
     const billNumber = await generateBillNumber(hospitalId, "IVF");
