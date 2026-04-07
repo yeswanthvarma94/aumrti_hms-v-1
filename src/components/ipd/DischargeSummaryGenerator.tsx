@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { callAI } from "@/lib/aiProvider";
 import { toast } from "sonner";
 import { logNABHEvidence } from "@/lib/nabh-evidence";
+import { logAudit } from "@/lib/auditLog";
 
 interface Props {
   admissionId: string;
@@ -213,6 +214,7 @@ Use formal medical language. Keep factual. Do not invent details not provided. M
 
     setSigned(true);
     setSigning(false);
+    logAudit({ action: "updated", module: "ipd", entityType: "admission", entityId: admissionId, details: { action: "discharged" } });
 
     // WhatsApp discharge summary (non-blocking)
     try {
