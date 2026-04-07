@@ -44,7 +44,7 @@ export default function BookPackageModal({ open, onClose }: Props) {
         scheduled_date: scheduledDate,
         scheduled_time: scheduledTime || null,
         status: "booked",
-      }).select("id").single();
+      }).select("id").maybeSingle();
 
       if (error) { toast.error("Booking failed: " + error.message); setSaving(false); return; }
 
@@ -72,7 +72,7 @@ export default function BookPackageModal({ open, onClose }: Props) {
         payment_status: "unpaid",
         bill_status: "final",
         created_by: userId,
-      }).select("id").single();
+      }).select("id").maybeSingle();
 
       if (billErr || !bill) {
         console.error("Package bill failed:", billErr);

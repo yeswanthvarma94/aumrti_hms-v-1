@@ -40,8 +40,8 @@ const OncologyReportsTab: React.FC = () => {
     if (!toxForm.orderId || !toxForm.type) { toast({ title: "Order and toxicity type required", variant: "destructive" }); return; }
     const order = orders.find((o: any) => o.id === toxForm.orderId);
     const { error } = await (supabase as any).from("toxicity_events").insert({
-      hospital_id: (await supabase.from("patients").select("hospital_id").limit(1).single()).data?.hospital_id,
-      patient_id: (await (supabase as any).from("chemo_orders").select("patient_id").eq("id", toxForm.orderId).single()).data?.patient_id,
+      hospital_id: (await supabase.from("patients").select("hospital_id").limit(1).maybeSingle()).data?.hospital_id,
+      patient_id: (await (supabase as any).from("chemo_orders").select("patient_id").eq("id", toxForm.orderId).maybeSingle()).data?.patient_id,
       order_id: toxForm.orderId,
       cycle_number: toxForm.cycleNumber,
       toxicity_type: toxForm.type,

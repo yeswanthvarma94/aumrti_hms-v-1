@@ -63,7 +63,7 @@ const EmbryologyTab = () => {
   const handleAdd = async () => {
     if (!selectedCycleId || !embryoId) { toast.error("Cycle and embryo ID required"); return; }
     setSaving(true);
-    const { data: userData } = await supabase.from("users").select("hospital_id").limit(1).single();
+    const { data: userData } = await supabase.from("users").select("hospital_id").limit(1).maybeSingle();
     const { error } = await supabase.from("embryology_records").insert({
       hospital_id: userData?.hospital_id,
       cycle_id: selectedCycleId,

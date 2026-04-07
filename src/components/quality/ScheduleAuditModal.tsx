@@ -45,7 +45,7 @@ const ScheduleAuditModal: React.FC<Props> = ({ open, onOpenChange }) => {
       const userId = userData.user?.id;
       if (!userId) { toast({ title: "Not authenticated", variant: "destructive" }); setSaving(false); return; }
 
-      const { data: userProfile } = await supabase.from("users").select("hospital_id").eq("auth_user_id", userId).single();
+      const { data: userProfile } = await supabase.from("users").select("hospital_id").eq("auth_user_id", userId).maybeSingle();
       if (!userProfile) { toast({ title: "User profile not found", variant: "destructive" }); setSaving(false); return; }
 
       await supabase.from("audit_records").insert({

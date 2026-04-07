@@ -64,7 +64,7 @@ const RecordExpenseModal: React.FC<Props> = ({ hospitalId, userId, onClose }) =>
       reference_number: form.reference_number || null,
       department_id: form.department_id || null,
       created_by: userId,
-    }).select().single();
+    }).select().maybeSingle();
 
     if (error) { toast({ title: "Failed to save", variant: "destructive" }); setSaving(false); return; }
 

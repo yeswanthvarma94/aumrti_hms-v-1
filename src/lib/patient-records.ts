@@ -73,7 +73,7 @@ export async function createPatientRecord({
       gender: gender || null,
     })
     .select("id, full_name, uhid, phone")
-    .single();
+    .maybeSingle();
 
   if (error) throw error;
   return data as BasicPatientRecord;

@@ -37,7 +37,7 @@ const PatientCardTab: React.FC<Props> = ({ hospitalId }) => {
     // Fetch full patient
     const { data: p, error: pErr } = await supabase.from("patients")
       .select("id, full_name, uhid, dob, phone, gender")
-      .eq("id", id).single();
+      .eq("id", id).maybeSingle();
     if (pErr || !p) { toast.error("Failed to load patient"); return; }
     setSelectedPatient(p);
 

@@ -120,7 +120,7 @@ const InfectionControlTab: React.FC = () => {
     try {
       const { data: userData } = await supabase.auth.getUser();
       if (userData.user?.id) {
-        const { data: userProfile } = await supabase.from("users").select("hospital_id").eq("auth_user_id", userData.user.id).single();
+        const { data: userProfile } = await supabase.from("users").select("hospital_id").eq("auth_user_id", userData.user.id).maybeSingle();
         if (userProfile) {
           await supabase.from("clinical_alerts").insert({
             hospital_id: userProfile.hospital_id,

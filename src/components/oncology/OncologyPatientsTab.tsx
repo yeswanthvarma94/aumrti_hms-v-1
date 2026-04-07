@@ -53,7 +53,7 @@ const OncologyPatientsTab: React.FC<OncologyPatientsTabProps> = ({ showRegister,
   const handleRegister = async () => {
     if (!form.patientId || !form.diagnosis) { toast({ title: "Patient and diagnosis required", variant: "destructive" }); return; }
     const patient = allPatients.find((p) => p.id === form.patientId);
-    const hospitalRes = await supabase.from("patients").select("hospital_id").eq("id", form.patientId).single();
+    const hospitalRes = await supabase.from("patients").select("hospital_id").eq("id", form.patientId).maybeSingle();
     const hospitalId = hospitalRes.data?.hospital_id;
     if (!hospitalId) { toast({ title: "Hospital not found", variant: "destructive" }); return; }
 

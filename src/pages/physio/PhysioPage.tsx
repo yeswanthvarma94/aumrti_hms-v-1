@@ -267,7 +267,7 @@ const PhysioPage: React.FC = () => {
         taxable_amount: fee, patient_payable: fee + gst,
       })
       .select("id")
-      .single();
+      .maybeSingle();
 
     if (newBill) {
       await (supabase as any).from("bill_line_items").insert({
@@ -312,7 +312,7 @@ const PhysioPage: React.FC = () => {
 
     // Increment sessions done
     await supabase.rpc("increment_icd_use_count", { p_code: "" }).then(() => {}); // no-op, manual increment below
-    const { data: ref } = await supabase.from("physio_referrals").select("total_sessions_done").eq("id", completeSession.referral_id).single();
+    const { data: ref } = await supabase.from("physio_referrals").select("total_sessions_done").eq("id", completeSession.referral_id).maybeSingle();
     if (ref) {
       await supabase.from("physio_referrals").update({ total_sessions_done: (ref.total_sessions_done || 0) + 1 }).eq("id", completeSession.referral_id);
     }

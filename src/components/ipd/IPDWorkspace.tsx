@@ -73,7 +73,7 @@ const IPDWorkspace: React.FC<Props> = ({ bed, hospitalId, onRefresh }) => {
     const admissionData = bed.admission as any;
     supabase.from("patients").select("*")
       .eq("id", admissionData.patient_id || "")
-      .single()
+      .maybeSingle()
       .then(({ data }) => {
         if (data) setPatient(data as unknown as PatientDetails);
       });

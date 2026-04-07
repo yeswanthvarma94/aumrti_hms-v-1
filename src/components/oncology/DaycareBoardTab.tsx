@@ -92,7 +92,7 @@ const DaycareBoardTab: React.FC<DaycareBoardTabProps> = ({ showNewOrder, onClose
       creatinine: newOrder.creatinine ? parseFloat(newOrder.creatinine) : null,
       bilirubin: newOrder.bilirubin ? parseFloat(newOrder.bilirubin) : null,
       lab_date: new Date().toISOString().split("T")[0],
-    }).select().single();
+    }).select().maybeSingle();
 
     if (error) { toast({ title: "Error creating order", description: error.message, variant: "destructive" }); return; }
 
@@ -188,10 +188,10 @@ const DaycareBoardTab: React.FC<DaycareBoardTabProps> = ({ showNewOrder, onClose
         .from("chemo_orders")
         .select("*, chemo_order_drugs(*)")
         .eq("id", orderId)
-        .single();
+        .maybeSingle();
 
       if (order?.patient_id) {
-        const { data: user } = await supabase.from("users").select("hospital_id").limit(1).single();
+        const { data: user } = await supabase.from("users").select("hospital_id").limit(1).maybeSingle();
         const hospitalId = user?.hospital_id || order.hospital_id;
         if (hospitalId) {
           const totalDrugCost = (order.chemo_order_drugs || [])
@@ -215,7 +215,7 @@ const DaycareBoardTab: React.FC<DaycareBoardTabProps> = ({ showNewOrder, onClose
             taxable_amount: totalDrugCost,
             patient_payable: totalDrugCost,
             notes: `Chemotherapy: ${order.cycle_number ? "Cycle " + order.cycle_number : ""}`,
-          }).select("id").single();
+          }).select("id").maybeSingle();
 
           if (chemoBill) {
             const { data: { user: authUser } } = await supabase.auth.getUser();

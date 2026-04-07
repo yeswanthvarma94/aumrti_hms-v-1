@@ -76,7 +76,7 @@ const DialysisPatientsTab: React.FC<Props> = ({ showRegister, onCloseRegister, o
 
   const register = async () => {
     if (!patientId) { toast({ title: "Select a patient", variant: "destructive" }); return; }
-    const { data: user } = await supabase.from("users").select("id, hospital_id").limit(1).single();
+    const { data: user } = await supabase.from("users").select("id, hospital_id").limit(1).maybeSingle();
     if (!user) return;
     const machineType = deriveMachineType(hbv, hcv, hiv);
 

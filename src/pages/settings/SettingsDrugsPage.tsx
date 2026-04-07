@@ -28,7 +28,7 @@ const SettingsDrugsPage: React.FC = () => {
 
   const addDrug = useMutation({
     mutationFn: async () => {
-      const { data: me } = await supabase.from("users").select("hospital_id").limit(1).single();
+      const { data: me } = await supabase.from("users").select("hospital_id").limit(1).maybeSingle();
       if (!me) throw new Error("No hospital context");
       const { error } = await supabase.from("drug_master").insert({
         hospital_id: me.hospital_id,

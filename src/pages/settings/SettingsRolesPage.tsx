@@ -212,7 +212,7 @@ const SettingsRolesPage: React.FC = () => {
           permissions: {},
         } as any)
         .select()
-        .single();
+        .maybeSingle();
       if (error) throw error;
       return data;
     },

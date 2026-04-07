@@ -36,7 +36,7 @@ const OPDPage: React.FC = () => {
   const fetchTokens = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return; }
-    const { data: userData, error: userErr } = await supabase.from("users").select("id, hospital_id").eq("auth_user_id", user.id).single();
+    const { data: userData, error: userErr } = await supabase.from("users").select("id, hospital_id").eq("auth_user_id", user.id).maybeSingle();
     if (userErr || !userData) { console.error("OPD user fetch error:", userErr?.message); setLoading(false); return; }
     setUserId(userData.id);
     setHospitalId(userData.hospital_id);

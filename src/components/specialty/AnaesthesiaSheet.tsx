@@ -128,7 +128,7 @@ const AnaesthesiaSheet: React.FC<Props> = ({ patientId, hospitalId, encounterId,
       if (recordId) {
         await (supabase as any).from('anaesthesia_records').update(payload).eq('id', recordId);
       } else {
-        const { data } = await (supabase as any).from('anaesthesia_records').insert([payload]).select('id').single();
+        const { data } = await (supabase as any).from('anaesthesia_records').insert([payload]).select('id').maybeSingle();
         if (data) setRecordId(data.id);
       }
       toast.success('Anaesthesia record saved');

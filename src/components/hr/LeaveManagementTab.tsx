@@ -119,7 +119,7 @@ const LeaveManagementTab: React.FC = () => {
     }
 
     const days = differenceInDays(applyForm.toDate, applyForm.fromDate) + 1;
-    const { data: userData } = await supabase.from("users").select("hospital_id").eq("id", applyForm.userId).single();
+    const { data: userData } = await supabase.from("users").select("hospital_id").eq("id", applyForm.userId).maybeSingle();
     if (!userData) return;
 
     const { error } = await (supabase as any).from("leave_requests").insert({

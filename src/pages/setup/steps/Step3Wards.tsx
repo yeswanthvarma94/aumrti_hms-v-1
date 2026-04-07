@@ -57,7 +57,7 @@ const Step3Wards: React.FC<Props> = ({ hospitalId, onComplete }) => {
         .from("wards")
         .insert({ hospital_id: hospitalId, name: ward.name, type: ward.type as any, total_beds: ward.beds, is_active: true })
         .select("id")
-        .single();
+        .maybeSingle();
 
       if (wardErr || !wardData) {
         toast({ title: "Error creating ward", description: wardErr?.message, variant: "destructive" });

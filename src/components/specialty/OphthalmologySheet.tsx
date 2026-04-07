@@ -105,7 +105,7 @@ const OphthalmologySheet: React.FC<Props> = ({ patientId, hospitalId, encounterI
       if (recordId) {
         await (supabase as any).from('ophthalmology_records').update(payload).eq('id', recordId);
       } else {
-        const { data } = await (supabase as any).from('ophthalmology_records').insert([payload]).select('id').single();
+        const { data } = await (supabase as any).from('ophthalmology_records').insert([payload]).select('id').maybeSingle();
         if (data) setRecordId(data.id);
       }
       toast.success('Ophthalmology record saved');

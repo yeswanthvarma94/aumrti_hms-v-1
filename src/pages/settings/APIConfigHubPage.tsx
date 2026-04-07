@@ -181,7 +181,7 @@ const APIConfigHubPage: React.FC = () => {
         .from("ai_provider_config")
         .insert(insertPayload)
         .select()
-        .single();
+        .maybeSingle();
       if (error) {
         toast({ title: "Failed to create AI config", description: error.message, variant: "destructive" });
       } else if (data) {

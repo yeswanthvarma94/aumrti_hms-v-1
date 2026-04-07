@@ -81,7 +81,7 @@ const CollectionCampaignModal: React.FC<Props> = ({ hospitalId, onClose, onCompl
 
   const runCampaign = async () => {
     setRunning(true);
-    const { data: userData } = await supabase.from("users").select("id").limit(1).single();
+    const { data: userData } = await supabase.from("users").select("id").limit(1).maybeSingle();
 
     // Create campaign record
     const { data: campaign } = await supabase.from("collection_campaigns" as any).insert({
@@ -91,7 +91,7 @@ const CollectionCampaignModal: React.FC<Props> = ({ hospitalId, onClose, onCompl
       message_template: template,
       status: "running",
       created_by: userData?.id,
-    }).select("id").single();
+    }).select("id").maybeSingle();
 
     // Get matching bills
     let query = supabase

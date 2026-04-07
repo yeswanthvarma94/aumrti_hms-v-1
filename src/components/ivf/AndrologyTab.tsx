@@ -45,7 +45,7 @@ const AndrologyTab = () => {
   const handleSave = async () => {
     if (!patientId) { toast.error("Patient is required"); return; }
     setSaving(true);
-    const { data: userData } = await supabase.from("users").select("id, hospital_id").limit(1).single();
+    const { data: userData } = await supabase.from("users").select("id, hospital_id").limit(1).maybeSingle();
     const { error } = await supabase.from("andrology_reports").insert({
       hospital_id: userData?.hospital_id,
       patient_id: patientId,

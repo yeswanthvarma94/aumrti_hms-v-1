@@ -176,7 +176,7 @@ const PayrollTab: React.FC = () => {
     setProcessing(true);
     try {
       const { data: user } = await supabase.auth.getUser();
-      const { data: currentUser } = await supabase.from("users").select("id, hospital_id").eq("auth_user_id", user.user?.id || "").single();
+      const { data: currentUser } = await supabase.from("users").select("id, hospital_id").eq("auth_user_id", user.user?.id || "").maybeSingle();
       if (!currentUser) throw new Error("No user");
 
       const totalGross = calculatedItems.reduce((s, i) => s + i.gross_salary, 0);
@@ -192,7 +192,7 @@ const PayrollTab: React.FC = () => {
         staff_count: calculatedItems.length,
         status: "processed",
         processed_by: currentUser.id,
-      }).select().single();
+      }).select().maybeSingle();
 
       if (runErr) throw runErr;
 
@@ -243,7 +243,7 @@ const PayrollTab: React.FC = () => {
     // Auto-post journal entry for payroll
     const run = runs.find(r => r.id === runId);
     if (run) {
-      const { data: userData } = await supabase.from("users").select("id, hospital_id").limit(1).single();
+      const { data: userData } = await supabase.from("users").select("id, hospital_id").limit(1).maybeSingle();
       if (userData) {
         await autoPostJournalEntry({
           triggerEvent: "payroll_processed",
@@ -283,7 +283,7 @@ const PayrollTab: React.FC = () => {
               created_by: userData.id,
             })
             .select("id")
-            .single();
+            .maybeSingle();
 
           if (journal) {
             const lines: any[] = [

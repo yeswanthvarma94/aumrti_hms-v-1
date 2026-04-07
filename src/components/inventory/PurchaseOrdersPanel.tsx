@@ -74,7 +74,7 @@ const PurchaseOrdersPanel: React.FC = () => {
   const updatePOStatus = async (id: string, status: string) => {
     const update: any = { status };
     if (status === "approved") {
-      const { data: userData } = await supabase.from("users").select("id").limit(1).single();
+      const { data: userData } = await supabase.from("users").select("id").limit(1).maybeSingle();
       update.approved_by = userData?.id;
     }
     await (supabase as any).from("purchase_orders").update(update).eq("id", id);
@@ -98,7 +98,7 @@ const PurchaseOrdersPanel: React.FC = () => {
       toast({ title: "Select vendor and add items", variant: "destructive" });
       return;
     }
-    const { data: userData } = await supabase.from("users").select("id, hospital_id").limit(1).single();
+    const { data: userData } = await supabase.from("users").select("id, hospital_id").limit(1).maybeSingle();
     if (!userData) return;
 
     const poNumber = `PO-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${Math.floor(Math.random() * 900 + 100)}`;
@@ -123,7 +123,7 @@ const PurchaseOrdersPanel: React.FC = () => {
       net_amount: subtotal + gstTotal,
       created_by: userData.id,
       status: "draft",
-    }).select().single();
+    }).select().maybeSingle();
 
     if (error || !po) { toast({ title: "Failed to create PO", variant: "destructive" }); return; }
 

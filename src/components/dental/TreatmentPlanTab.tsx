@@ -84,7 +84,7 @@ const TreatmentPlanTab: React.FC<TreatmentPlanTabProps> = ({ patientId, hospital
           .from("dental_treatment_plans")
           .select("patient_id, chart_id")
           .eq("id", planId!)
-          .single();
+          .maybeSingle();
 
         const today = new Date().toISOString().split("T")[0];
         const billNum = await generateBillNumber(hospitalId, "DENT");
@@ -103,7 +103,7 @@ const TreatmentPlanTab: React.FC<TreatmentPlanTabProps> = ({ patientId, hospital
           balance_due: Number(item.cost) + gst,
           subtotal: Number(item.cost), gst_amount: gst,
           taxable_amount: Number(item.cost), patient_payable: Number(item.cost) + gst,
-        }).select("id").single();
+        }).select("id").maybeSingle();
 
         if (newBill) {
           await (supabase as any).from("bill_line_items").insert({

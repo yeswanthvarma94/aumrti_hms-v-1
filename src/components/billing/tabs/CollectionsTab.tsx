@@ -207,7 +207,7 @@ const CollectionsTab: React.FC<CollectionsTabProps> = ({ hospitalId }) => {
   const generatePayLink = async () => {
     if (!payLinkModal) return;
     setPayLinkGenerating(true);
-    const { data: userData } = await supabase.from("users").select("id").limit(1).single();
+    const { data: userData } = await supabase.from("users").select("id").limit(1).maybeSingle();
     const token = crypto.randomUUID();
     const expiresAt = new Date(Date.now() + payLinkExpiry * 86400000).toISOString();
 
@@ -244,7 +244,7 @@ const CollectionsTab: React.FC<CollectionsTabProps> = ({ hospitalId }) => {
 
   const sendPayLinkWhatsApp = async (bill: OutstandingBill, url: string) => {
     // Get patient phone
-    const { data: patient } = await supabase.from("patients").select("phone").eq("id", bill.patient_id).single();
+    const { data: patient } = await supabase.from("patients").select("phone").eq("id", bill.patient_id).maybeSingle();
     if (!patient?.phone) {
       toast({ title: "Patient phone not found", variant: "destructive" });
       return;
@@ -263,7 +263,7 @@ const CollectionsTab: React.FC<CollectionsTabProps> = ({ hospitalId }) => {
 
   // WhatsApp reminder for outstanding bill
   const sendReminder = async (bill: OutstandingBill) => {
-    const { data: patient } = await supabase.from("patients").select("phone").eq("id", bill.patient_id).single();
+    const { data: patient } = await supabase.from("patients").select("phone").eq("id", bill.patient_id).maybeSingle();
     if (!patient?.phone) {
       toast({ title: "Patient phone not found", variant: "destructive" });
       return;
@@ -299,7 +299,7 @@ const CollectionsTab: React.FC<CollectionsTabProps> = ({ hospitalId }) => {
   const createEMI = async () => {
     if (!emiModal) return;
     setEmiCreating(true);
-    const { data: userData } = await supabase.from("users").select("id").limit(1).single();
+    const { data: userData } = await supabase.from("users").select("id").limit(1).maybeSingle();
     const installmentAmt = Math.ceil(emiModal.balance_due / emiInstallments);
     const firstDate = new Date();
     firstDate.setDate(firstDate.getDate() + (emiFrequency === "weekly" ? 7 : emiFrequency === "fortnightly" ? 14 : 30));
@@ -314,7 +314,7 @@ const CollectionsTab: React.FC<CollectionsTabProps> = ({ hospitalId }) => {
       first_payment_date: firstDate.toISOString().split("T")[0],
       installment_amount: installmentAmt,
       created_by: userData?.id,
-    }).select("id").single();
+    }).select("id").maybeSingle();
 
     if (error || !plan) {
       toast({ title: "Failed to create EMI plan", variant: "destructive" });
@@ -359,7 +359,7 @@ const CollectionsTab: React.FC<CollectionsTabProps> = ({ hospitalId }) => {
       return;
     }
 
-    const { data: userData } = await supabase.from("users").select("id").limit(1).single();
+    const { data: userData } = await supabase.from("users").select("id").limit(1).maybeSingle();
     const { error } = await supabase.from("bill_payments").insert({
       hospital_id: hospitalId,
       bill_id: collectModal.id,

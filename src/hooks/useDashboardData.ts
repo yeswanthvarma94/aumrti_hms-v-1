@@ -39,7 +39,7 @@ export function useDashboardData() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setLoading(false); return; }
       if (!hospitalIdRef.current) {
-        const { data } = await supabase.from("users").select("hospital_id").eq("auth_user_id", user.id).single();
+        const { data } = await supabase.from("users").select("hospital_id").eq("auth_user_id", user.id).maybeSingle();
         if (data) hospitalIdRef.current = data.hospital_id;
       }
       const hid = hospitalIdRef.current;

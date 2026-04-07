@@ -112,7 +112,7 @@ export default function PanchakarmaTab({ showNew, onShowNewDone }: Props) {
     setSaving(true);
     try {
       const { data: userData } = await supabase.auth.getUser();
-      const { data: userRow } = await supabase.from("users").select("id, hospital_id").eq("auth_user_id", userData?.user?.id).single();
+      const { data: userRow } = await supabase.from("users").select("id, hospital_id").eq("auth_user_id", userData?.user?.id).maybeSingle();
       if (!userRow) throw new Error("User not found");
 
       const { error } = await supabase.from("panchakarma_schedules").insert({
@@ -156,11 +156,11 @@ export default function PanchakarmaTab({ showNew, onShowNewDone }: Props) {
         .from("panchakarma_schedules")
         .select("*, patient_id")
         .eq("id", selectedSchedule.id)
-        .single();
+        .maybeSingle();
 
       if (session) {
         const { data: userData } = await supabase.auth.getUser();
-        const { data: userRow } = await supabase.from("users").select("hospital_id").eq("auth_user_id", userData?.user?.id).single();
+        const { data: userRow } = await supabase.from("users").select("hospital_id").eq("auth_user_id", userData?.user?.id).maybeSingle();
         const hospitalId = userRow?.hospital_id;
 
         if (hospitalId) {
@@ -190,7 +190,7 @@ export default function PanchakarmaTab({ showNew, onShowNewDone }: Props) {
             balance_due: fee + gst,
             subtotal: fee, gst_amount: gst,
             taxable_amount: fee, patient_payable: fee + gst,
-          }).select("id").single().then(async ({ data: newBill }) => {
+          }).select("id").maybeSingle().then(async ({ data: newBill }) => {
             if (newBill) {
               await autoPostJournalEntry({
                 triggerEvent: "bill_finalized_ayush",

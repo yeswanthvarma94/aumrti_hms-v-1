@@ -77,7 +77,7 @@ export async function syncLabOrders(opts: {
         status: "ordered",
       })
       .select("id")
-      .single();
+      .maybeSingle();
 
     if (orderErr || !newOrder) {
       console.error("Lab order insert failed:", orderErr?.message);

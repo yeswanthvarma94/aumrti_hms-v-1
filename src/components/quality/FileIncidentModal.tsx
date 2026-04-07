@@ -63,7 +63,7 @@ const FileIncidentModal: React.FC<Props> = ({ open, onOpenChange, onFiled }) => 
         .from("users")
         .select("hospital_id, full_name")
         .eq("auth_user_id", userId)
-        .single();
+        .maybeSingle();
       if (!userProfile) { toast({ title: "User profile not found", variant: "destructive" }); setSaving(false); return; }
 
       const dt = new Date(form.incident_datetime);

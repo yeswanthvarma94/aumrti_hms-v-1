@@ -58,7 +58,7 @@ const PatientDetailDrawer: React.FC<Props> = ({ patient, onClose }) => {
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) return;
-      const { data } = await supabase.from("users").select("id, hospital_id").eq("auth_user_id", user.id).single();
+      const { data } = await supabase.from("users").select("id, hospital_id").eq("auth_user_id", user.id).maybeSingle();
       if (data) {
         setHospitalId(data.hospital_id);
         setCurrentUserId(data.id);

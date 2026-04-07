@@ -52,7 +52,7 @@ const CouplesTab = ({ showRegister, onCloseRegister, onRefreshKPIs }: Props) => 
     if (!consentObtained) { toast.error("ICMR ART Act 2021 requires informed consent before any ART procedure"); return; }
 
     setSaving(true);
-    const { data: userData } = await supabase.from("users").select("id, hospital_id").limit(1).single();
+    const { data: userData } = await supabase.from("users").select("id, hospital_id").limit(1).maybeSingle();
     if (!userData) { toast.error("User session not found"); setSaving(false); return; }
 
     const code = `ART-${new Date().getFullYear()}-${String(couples.length + 1).padStart(3, "0")}`;

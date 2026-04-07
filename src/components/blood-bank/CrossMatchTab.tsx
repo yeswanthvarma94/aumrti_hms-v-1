@@ -46,7 +46,7 @@ const CrossMatchTab: React.FC<Props> = ({ onRefresh }) => {
     const { data } = await supabase.from("blood_units")
       .select("*")
       .eq("unit_number", unitNumber.trim())
-      .single();
+      .maybeSingle();
 
     if (!data) {
       toast({ title: "Unit not found", variant: "destructive" });
@@ -99,7 +99,7 @@ const CrossMatchTab: React.FC<Props> = ({ onRefresh }) => {
       return;
     }
 
-    const { data: user } = await supabase.from("users").select("id, hospital_id").limit(1).single();
+    const { data: user } = await supabase.from("users").select("id, hospital_id").limit(1).maybeSingle();
     if (!user) return;
 
     await supabase.from("cross_match_records").insert({

@@ -242,7 +242,7 @@ const SettingsICDCodesPage: React.FC = () => {
         uploaded_at: new Date().toISOString(),
       })
       .select()
-      .single();
+      .maybeSingle();
 
     if (csErr || !cs) {
       toast({ title: "Failed to create code set", variant: "destructive" });

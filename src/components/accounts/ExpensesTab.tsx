@@ -109,7 +109,7 @@ const ExpensesTab: React.FC<Props> = ({ hospitalId, dateRange, userId }) => {
       department_id: form.department_id || null,
       receipt_url: receiptUrl,
       created_by: userId,
-    }).select().single();
+    }).select().maybeSingle();
 
     if (error) { toast({ title: "Failed to save", variant: "destructive" }); setSaving(false); return; }
 

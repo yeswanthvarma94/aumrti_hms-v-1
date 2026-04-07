@@ -115,7 +115,7 @@ const ObstetricSheet: React.FC<Props> = ({ patientId, hospitalId, encounterId, a
       if (recordId) {
         await (supabase as any).from('obstetric_records').update(payload).eq('id', recordId);
       } else {
-        const { data } = await (supabase as any).from('obstetric_records').insert([payload]).select('id').single();
+        const { data } = await (supabase as any).from('obstetric_records').insert([payload]).select('id').maybeSingle();
         if (data) setRecordId(data.id);
       }
 

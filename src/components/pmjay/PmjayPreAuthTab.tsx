@@ -158,7 +158,7 @@ const PmjayPreAuthTab: React.FC<Props> = ({ showNewForm, onFormClosed }) => {
     if (!selectedPkg) return;
 
     setSubmitting(true);
-    const { data: userData } = await supabase.from("users").select("hospital_id").eq("auth_user_id", (await supabase.auth.getUser()).data.user?.id || "").single();
+    const { data: userData } = await supabase.from("users").select("hospital_id").eq("auth_user_id", (await supabase.auth.getUser()).data.user?.id || "").maybeSingle();
     if (!userData?.hospital_id) { toast({ title: "Hospital not found", variant: "destructive" }); setSubmitting(false); return; }
 
     const { error } = await supabase.from("pre_auth_requests").insert({
@@ -213,7 +213,7 @@ const PmjayPreAuthTab: React.FC<Props> = ({ showNewForm, onFormClosed }) => {
           .from("admissions")
           .select("*, patients(full_name, dob, gender), wards(ward_name)")
           .eq("id", pa.admission_id)
-          .single();
+          .maybeSingle();
         if (admission) {
           const p = admission.patients as any;
           const w = admission.wards as any;

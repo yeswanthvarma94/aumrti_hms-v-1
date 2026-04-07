@@ -140,7 +140,7 @@ const TelemedicinePage: React.FC = () => {
             tax_amount: 0,
           })
           .select()
-          .single();
+          .maybeSingle();
 
         if (bill) {
           // Insert line item

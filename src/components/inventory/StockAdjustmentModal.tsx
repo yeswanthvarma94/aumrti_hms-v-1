@@ -33,7 +33,7 @@ const StockAdjustmentModal: React.FC<Props> = ({ item, onClose, onSaved }) => {
     if (!quantity || quantity <= 0) { toast({ title: "Enter valid quantity", variant: "destructive" }); return; }
 
     setSaving(true);
-    const { data: userData } = await supabase.from("users").select("id, hospital_id").limit(1).single();
+    const { data: userData } = await supabase.from("users").select("id, hospital_id").limit(1).maybeSingle();
     if (!userData) { setSaving(false); return; }
 
     const finalQty = direction === "deduct" ? -quantity : quantity;
@@ -48,7 +48,7 @@ const StockAdjustmentModal: React.FC<Props> = ({ item, onClose, onSaved }) => {
     });
 
     // Update stock
-    const { data: stock } = await (supabase as any).from("inventory_stock").select("id, quantity_available").eq("item_id", item.id).limit(1).single();
+    const { data: stock } = await (supabase as any).from("inventory_stock").select("id, quantity_available").eq("item_id", item.id).limit(1).maybeSingle();
     if (stock) {
       await (supabase as any).from("inventory_stock").update({ quantity_available: Math.max(0, stock.quantity_available + finalQty) }).eq("id", stock.id);
     }

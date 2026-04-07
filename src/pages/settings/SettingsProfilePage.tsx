@@ -18,9 +18,9 @@ const SettingsProfilePage: React.FC = () => {
   const { data: hospital } = useQuery({
     queryKey: ["settings-hospital"],
     queryFn: async () => {
-      const { data: me } = await supabase.from("users").select("hospital_id").limit(1).single();
+      const { data: me } = await supabase.from("users").select("hospital_id").limit(1).maybeSingle();
       if (!me) return null;
-      const { data, error } = await supabase.from("hospitals").select("*").eq("id", me.hospital_id).single();
+      const { data, error } = await supabase.from("hospitals").select("*").eq("id", me.hospital_id).maybeSingle();
       if (error) throw error;
       return data;
     },

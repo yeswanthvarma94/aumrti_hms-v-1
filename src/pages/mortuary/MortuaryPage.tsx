@@ -235,7 +235,7 @@ export default function MortuaryPage() {
     try {
       let diagInfo = "Not available";
       if (mort.admission_id) {
-        const { data: adm } = await supabase.from("admissions").select("admitting_diagnosis").eq("id", mort.admission_id).single();
+        const { data: adm } = await supabase.from("admissions").select("admitting_diagnosis").eq("id", mort.admission_id).maybeSingle();
         if (adm?.admitting_diagnosis) diagInfo = adm.admitting_diagnosis;
       }
       const response = await callAI({

@@ -120,7 +120,7 @@ export async function autoBillOpdInvestigation(opts: {
           balance_due: grandTotal,
         })
         .select("id")
-        .single();
+        .maybeSingle();
 
       if (billErr || !newBill) {
         console.error("Auto-bill creation failed:", billErr?.message);

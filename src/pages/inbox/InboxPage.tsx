@@ -89,7 +89,7 @@ const InboxPage: React.FC = () => {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const { data: ud } = await supabase.from("users").select("hospital_id").eq("auth_user_id", user.id).single();
+      const { data: ud } = await supabase.from("users").select("hospital_id").eq("auth_user_id", user.id).maybeSingle();
       if (!ud) return;
       setHospitalId(ud.hospital_id);
 
@@ -211,7 +211,7 @@ const InboxPage: React.FC = () => {
       sender_phone: selectedMsg.sender_phone,
       parent_id: rootId,
       status: "open",
-    } as any).select().single();
+    } as any).select().maybeSingle();
 
     if (inserted) {
       setThread((prev) => [...prev, inserted as any]);

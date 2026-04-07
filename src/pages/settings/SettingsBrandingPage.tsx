@@ -56,9 +56,9 @@ const SettingsBrandingPage: React.FC = () => {
   const { data: hospital } = useQuery({
     queryKey: ["hospital-branding"],
     queryFn: async () => {
-      const { data: user } = await supabase.from("users").select("hospital_id").limit(1).single();
+      const { data: user } = await supabase.from("users").select("hospital_id").limit(1).maybeSingle();
       if (!user) return null;
-      const { data } = await supabase.from("hospitals").select("*").eq("id", user.hospital_id).single();
+      const { data } = await supabase.from("hospitals").select("*").eq("id", user.hospital_id).maybeSingle();
       return data;
     },
   });

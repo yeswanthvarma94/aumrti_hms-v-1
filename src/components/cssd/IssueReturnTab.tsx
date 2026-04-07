@@ -43,7 +43,7 @@ const IssueReturnTab: React.FC<Props> = ({ showIssue, onCloseIssue, onRefresh })
 
   const issueSet = async () => {
     if (!issueSetId) { toast({ title: "Select a set", variant: "destructive" }); return; }
-    const { data: user } = await supabase.from("users").select("id, hospital_id").limit(1).single();
+    const { data: user } = await supabase.from("users").select("id, hospital_id").limit(1).maybeSingle();
     if (!user) return;
     const set = sterileSets.find(s => s.id === issueSetId);
     if (!set) return;
@@ -67,7 +67,7 @@ const IssueReturnTab: React.FC<Props> = ({ showIssue, onCloseIssue, onRefresh })
 
   const processReturn = async () => {
     if (!returnItem) return;
-    const { data: user } = await supabase.from("users").select("id, hospital_id").limit(1).single();
+    const { data: user } = await supabase.from("users").select("id, hospital_id").limit(1).maybeSingle();
     if (!user) return;
 
     const lostCount = returnItem.instruments_issued_count - returnedCount - damagedCount;

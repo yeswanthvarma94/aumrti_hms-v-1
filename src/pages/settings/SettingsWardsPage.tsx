@@ -68,7 +68,7 @@ const SettingsWardsPage: React.FC = () => {
   };
 
   const getHospitalId = async () => {
-    const { data } = await supabase.from("users").select("hospital_id").limit(1).single();
+    const { data } = await supabase.from("users").select("hospital_id").limit(1).maybeSingle();
     if (!data) throw new Error("No hospital context");
     return data.hospital_id;
   };
@@ -76,7 +76,7 @@ const SettingsWardsPage: React.FC = () => {
   const createWardWithBeds = async (hid: string, name: string, type: string, bedCount: number) => {
     const { data: ward, error } = await supabase.from("wards").insert({
       hospital_id: hid, name, type: type as any, total_beds: bedCount,
-    }).select("id").single();
+    }).select("id").maybeSingle();
     if (error) throw error;
     const code = name.replace(/[^A-Za-z]/g, "").substring(0, 3).toUpperCase();
     const bedRows = Array.from({ length: bedCount }, (_, i) => ({

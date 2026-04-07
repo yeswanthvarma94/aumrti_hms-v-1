@@ -89,7 +89,7 @@ const AttendanceTab: React.FC = () => {
   };
 
   const markStatus = async (userId: string, status: string) => {
-    const { data: userData } = await supabase.from("users").select("hospital_id").eq("id", userId).single();
+    const { data: userData } = await supabase.from("users").select("hospital_id").eq("id", userId).maybeSingle();
     if (!userData) return;
 
     const { error } = await (supabase as any).from("staff_attendance").upsert(

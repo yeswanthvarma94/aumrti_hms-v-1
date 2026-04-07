@@ -82,7 +82,7 @@ const PmjayClaimsTab: React.FC = () => {
         .from("patients")
         .select("full_name, dob, gender")
         .eq("id", selected.patient_id)
-        .single();
+        .maybeSingle();
 
       const patientAge = patientData?.dob
         ? Math.floor((Date.now() - new Date(patientData.dob).getTime()) / (365.25 * 86400000))
@@ -93,7 +93,7 @@ const PmjayClaimsTab: React.FC = () => {
         .from("hospitals")
         .select("name")
         .limit(1)
-        .single();
+        .maybeSingle();
 
       const response = await callAI({
         featureKey: "appeal_letter",
@@ -191,7 +191,7 @@ Hospital letterhead will be added. Just write the body content.`,
         .from("bills")
         .select("paid_amount, patient_payable")
         .eq("id", selected.bill_id)
-        .single();
+        .maybeSingle();
 
       if (billData) {
         const newPaid = (billData.paid_amount || 0) + settledAmt;

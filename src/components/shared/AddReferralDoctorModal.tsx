@@ -87,7 +87,7 @@ const AddReferralDoctorModal: React.FC<Props> = ({ open, onClose, onSaved, hospi
       toast({ title: "Doctor updated" });
       onSaved(form.doctor_name, editDoc.id);
     } else {
-      const { data, error } = await supabase.from("referral_doctors").insert(payload).select("id").single();
+      const { data, error } = await supabase.from("referral_doctors").insert(payload).select("id").maybeSingle();
       if (error) { toast({ title: "Error saving", description: error.message, variant: "destructive" }); return; }
       toast({ title: "Referral doctor added" });
       onSaved(form.doctor_name, data?.id);

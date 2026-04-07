@@ -29,7 +29,7 @@ const RevenueForecastCard: React.FC = () => {
   const runForecast = async () => {
     setLoading(true);
     try {
-      const { data: userData } = await supabase.from("users").select("hospital_id").limit(1).single();
+      const { data: userData } = await supabase.from("users").select("hospital_id").limit(1).maybeSingle();
       if (!userData?.hospital_id) { setLoading(false); return; }
       const hospitalId = userData.hospital_id;
 

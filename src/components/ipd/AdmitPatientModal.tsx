@@ -96,7 +96,7 @@ const AdmitPatientModal: React.FC<Props> = ({ open, onClose, hospitalId, presele
       .select("id, full_name, uhid, phone, dob, gender, blood_group, chronic_conditions")
       .eq("id", preselectedPatientId)
       .eq("hospital_id", hospitalId)
-      .single()
+      .maybeSingle()
       .then(({ data }) => {
         if (data) {
           setSelectedPatient(data as unknown as PatientResult);
@@ -142,7 +142,7 @@ const AdmitPatientModal: React.FC<Props> = ({ open, onClose, hospitalId, presele
       full_name: newName,
       phone: newPhone || null,
       dob, gender: newGender as any, uhid,
-    }).select().single();
+    }).select().maybeSingle();
     if (error || !data) { toast({ title: "Error", description: error?.message || "Failed", variant: "destructive" }); return; }
     setSelectedPatient(data as unknown as PatientResult);
     setShowNewPatient(false);
@@ -188,7 +188,7 @@ const AdmitPatientModal: React.FC<Props> = ({ open, onClose, hospitalId, presele
       .select("id")
       .eq("hospital_id", hospitalId)
       .eq("admission_number", admNum)
-      .single();
+      .maybeSingle();
 
     if (newAdm) {
       (supabase as any).from("medical_records").upsert({

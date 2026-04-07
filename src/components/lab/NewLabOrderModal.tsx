@@ -162,7 +162,7 @@ const NewLabOrderModal: React.FC<Props> = ({ hospitalId, onClose, onCreated }) =
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
-      const { data: userData } = await supabase.from("users").select("id").eq("auth_user_id", user.id).limit(1).single();
+      const { data: userData } = await supabase.from("users").select("id").eq("auth_user_id", user.id).limit(1).maybeSingle();
       if (!userData) throw new Error("User record not found");
 
       // Insert lab order
@@ -179,7 +179,7 @@ const NewLabOrderModal: React.FC<Props> = ({ hospitalId, onClose, onCreated }) =
           status: "ordered",
         })
         .select("id")
-        .single();
+        .maybeSingle();
 
       if (orderErr || !order) throw orderErr || new Error("Failed to create order");
 

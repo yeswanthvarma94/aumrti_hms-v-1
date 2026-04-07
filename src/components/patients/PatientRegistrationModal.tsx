@@ -44,7 +44,7 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess }) => {
     const fetchHospital = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const { data } = await supabase.from("users").select("hospital_id").eq("auth_user_id", user.id).single();
+      const { data } = await supabase.from("users").select("hospital_id").eq("auth_user_id", user.id).maybeSingle();
       if (data?.hospital_id) {
         setHospitalIdState(data.hospital_id);
         const { data: h } = await supabase.from("hospitals").select("name").eq("id", data.hospital_id).maybeSingle();
@@ -80,7 +80,7 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess }) => {
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { toast({ title: "Not authenticated", variant: "destructive" }); setSaving(false); return; }
-    const { data: userData } = await supabase.from("users").select("hospital_id").eq("auth_user_id", user.id).single();
+    const { data: userData } = await supabase.from("users").select("hospital_id").eq("auth_user_id", user.id).maybeSingle();
     if (!userData) {
       toast({ title: "Could not determine hospital", variant: "destructive" });
       setSaving(false);
@@ -158,7 +158,7 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess }) => {
             .from("referral_doctors")
             .select("total_referrals, total_revenue")
             .eq("id", referralDoctorId)
-            .single();
+            .maybeSingle();
           if (rd) {
             await supabase.from("referral_doctors").update({
               total_referrals: (rd.total_referrals || 0) + 1,

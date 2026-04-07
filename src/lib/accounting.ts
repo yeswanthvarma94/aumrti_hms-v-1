@@ -52,7 +52,7 @@ export const autoPostJournalEntry = async (data: PostingData) => {
         posted_by: data.postedBy,
       })
       .select()
-      .single();
+      .maybeSingle();
 
     if (error || !entry) {
       console.error("Journal entry creation failed:", error);
@@ -148,7 +148,7 @@ export const postManualExpenseJournal = async (data: {
       total_credit: data.amount,
       is_balanced: true,
       posted_by: data.postedBy,
-    }).select().single();
+    }).select().maybeSingle();
 
     if (error || !entry) return null;
 

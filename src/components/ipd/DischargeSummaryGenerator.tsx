@@ -28,7 +28,7 @@ const DischargeSummaryGenerator: React.FC<Props> = ({ admissionId, hospitalId, b
       // Gather admission + patient data
       const { data: admission } = await supabase.from("admissions")
         .select("*, patients(full_name, age, gender, blood_group, allergies)")
-        .eq("id", admissionId).single();
+        .eq("id", admissionId).maybeSingle();
 
       if (!admission) {
         toast.error("Admission not found");
@@ -164,7 +164,7 @@ Use formal medical language. Keep factual. Do not invent details not provided. M
     if (!user) { setSigning(false); return; }
 
     const { data: userData } = await (supabase as any).from("users")
-      .select("id").eq("auth_user_id", user.id).single();
+      .select("id").eq("auth_user_id", user.id).maybeSingle();
 
     const { error } = await supabase.from("admissions").update({
       discharge_summary_done: true,
@@ -218,7 +218,7 @@ Use formal medical language. Keep factual. Do not invent details not provided. M
     try {
       const { data: patient } = await supabase.from("patients")
         .select("full_name, uhid, phone")
-        .eq("id", (await supabase.from("admissions").select("patient_id").eq("id", admissionId).single()).data?.patient_id)
+        .eq("id", (await supabase.from("admissions").select("patient_id").eq("id", admissionId).maybeSingle()).data?.patient_id)
         .maybeSingle();
 
       const phone = patient?.phone;

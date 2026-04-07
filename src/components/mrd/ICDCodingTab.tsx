@@ -344,7 +344,7 @@ Return ONLY valid JSON (no markdown, no explanation):
     setSaving(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setSaving(false); return; }
-    const { data: userData } = await (supabase as any).from("users").select("id").eq("auth_user_id", user.id).single();
+    const { data: userData } = await (supabase as any).from("users").select("id").eq("auth_user_id", user.id).maybeSingle();
 
     const updates: any = {
       primary_icd_code: primaryCode,

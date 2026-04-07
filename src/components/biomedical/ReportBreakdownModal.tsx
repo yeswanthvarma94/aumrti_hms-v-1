@@ -31,7 +31,7 @@ const ReportBreakdownModal: React.FC<Props> = ({ open, onClose, onSaved }) => {
     }
     setSaving(true);
 
-    const { data: userData } = await supabase.from("users").select("id").eq("hospital_id", hospitalId).limit(1).single();
+    const { data: userData } = await supabase.from("users").select("id").eq("hospital_id", hospitalId).limit(1).maybeSingle();
     const userId = userData?.id || DUMMY_USER;
 
     const { error } = await supabase.from("breakdown_logs").insert({

@@ -124,7 +124,7 @@ const SterilizeTab: React.FC<Props> = ({ showNewCycle, onCloseNewCycle, onRefres
 
     // Create clinical alert for IC team
     try {
-      const { data: user } = await supabase.from("users").select("id, hospital_id").limit(1).single();
+      const { data: user } = await supabase.from("users").select("id, hospital_id").limit(1).maybeSingle();
       const hospitalId = user?.hospital_id;
       if (hospitalId) {
         const approver = users.find(u => u.id === flashApprovedBy);
@@ -160,14 +160,14 @@ const SterilizeTab: React.FC<Props> = ({ showNewCycle, onCloseNewCycle, onRefres
       toast({ title: "Set name and code are required", variant: "destructive" });
       return;
     }
-    const { data: user } = await supabase.from("users").select("hospital_id").limit(1).single();
+    const { data: user } = await supabase.from("users").select("hospital_id").limit(1).maybeSingle();
     if (!user) return;
     const { data, error } = await supabase.from("instrument_sets").insert({
       hospital_id: user.hospital_id,
       set_name: quickSetName.trim(),
       set_code: quickSetCode.trim(),
       status: "dirty",
-    }).select().single();
+    }).select().maybeSingle();
     if (error) {
       toast({ title: "Failed to create set", description: error.message, variant: "destructive" });
       return;
@@ -188,7 +188,7 @@ const SterilizeTab: React.FC<Props> = ({ showNewCycle, onCloseNewCycle, onRefres
       toast({ title: "Add at least one set to the load", variant: "destructive" });
       return;
     }
-    const { data: user } = await supabase.from("users").select("id, hospital_id").limit(1).single();
+    const { data: user } = await supabase.from("users").select("id, hospital_id").limit(1).maybeSingle();
     if (!user) return;
 
     const cycleNum = `CYC-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
@@ -208,7 +208,7 @@ const SterilizeTab: React.FC<Props> = ({ showNewCycle, onCloseNewCycle, onRefres
       chemical_indicator_result: chemResult,
       flash_justification: loadType === "flash" ? flashJustification : null,
       flash_approved_by: loadType === "flash" ? flashApprovedBy : null,
-    }).select().single();
+    }).select().maybeSingle();
 
     if (error) {
       toast({ title: "Failed to start cycle", description: error.message, variant: "destructive" });
@@ -267,7 +267,7 @@ const SterilizeTab: React.FC<Props> = ({ showNewCycle, onCloseNewCycle, onRefres
     }
 
     // NABH evidence: cycle completed
-    const { data: cUser } = await supabase.from("users").select("hospital_id").limit(1).single();
+    const { data: cUser } = await supabase.from("users").select("hospital_id").limit(1).maybeSingle();
     if (cUser) {
       logNABHEvidence(
         cUser.hospital_id,
@@ -282,7 +282,7 @@ const SterilizeTab: React.FC<Props> = ({ showNewCycle, onCloseNewCycle, onRefres
   };
 
   const enterBIResult = async (cycle: any, result: "pass" | "fail") => {
-    const { data: user } = await supabase.from("users").select("id, hospital_id").limit(1).single();
+    const { data: user } = await supabase.from("users").select("id, hospital_id").limit(1).maybeSingle();
 
     await supabase.from("sterilization_cycles").update({
       bi_result: result,

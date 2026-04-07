@@ -60,7 +60,7 @@ const TPAConfiguration: React.FC = () => {
   };
 
   const save = async () => {
-    const { data: userData } = await supabase.from("users").select("hospital_id").limit(1).single();
+    const { data: userData } = await supabase.from("users").select("hospital_id").limit(1).maybeSingle();
     if (!userData) return;
 
     const payload = {

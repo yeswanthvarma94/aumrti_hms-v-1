@@ -72,7 +72,7 @@ const RequestsTab: React.FC<Props> = ({ showModal, onCloseModal, onRefresh }) =>
 
   const issueUnit = async (unit: any) => {
     if (!selectedReq) return;
-    const { data: user } = await supabase.from("users").select("id, hospital_id").limit(1).single();
+    const { data: user } = await supabase.from("users").select("id, hospital_id").limit(1).maybeSingle();
     if (!user) return;
     const hospitalId = user.hospital_id;
 
@@ -84,7 +84,7 @@ const RequestsTab: React.FC<Props> = ({ showModal, onCloseModal, onRefresh }) =>
       admission_id: selectedReq.admission_id || null,
       issued_by: user.id,
       issued_at: new Date().toISOString(),
-    }).select("id, admission_id").single();
+    }).select("id, admission_id").maybeSingle();
 
     if (error) {
       toast({ title: "Issue failed", description: error.message, variant: "destructive" });
@@ -199,7 +199,7 @@ const RequestsTab: React.FC<Props> = ({ showModal, onCloseModal, onRefresh }) =>
       gst_amount: gst,
       taxable_amount: fee,
       patient_payable: fee + gst,
-    }).select("id").single();
+    }).select("id").maybeSingle();
 
     if (newBill) {
       await supabase.from("bill_line_items").insert({
@@ -237,7 +237,7 @@ const RequestsTab: React.FC<Props> = ({ showModal, onCloseModal, onRefresh }) =>
       toast({ title: "Fill all required fields", variant: "destructive" });
       return;
     }
-    const { data: user } = await supabase.from("users").select("id, hospital_id").limit(1).single();
+    const { data: user } = await supabase.from("users").select("id, hospital_id").limit(1).maybeSingle();
     if (!user) return;
     await supabase.from("blood_requests").insert({
       hospital_id: user.hospital_id,
