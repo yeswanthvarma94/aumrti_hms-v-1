@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { generateBillNumber } from "@/hooks/useBillNumber";
 import { autoPostJournalEntry } from "@/lib/accounting";
 import { calcGST, roundCurrency } from "@/lib/currency";
+import { recalculateBillTotalsSafe } from "@/lib/billTotals";
 import { useToast } from "@/hooks/use-toast";
 import type { OTSchedule } from "@/pages/ot/OTPage";
 
@@ -166,12 +167,10 @@ const EndCaseModal: React.FC<Props> = ({ schedule, onClose, onEnded }) => {
     if (lineItems.length > 0) {
       await supabase.from("bill_line_items").insert(lineItems);
 
-      // Server-side recalculation via DB trigger handles totals;
-      // call RPC as fallback to ensure consistency
-      try {
-        await (supabase as any).rpc("recalculate_bill_totals", { p_bill_id: billId });
-      } catch (e) {
-        console.error("recalculate_bill_totals RPC failed (trigger should handle):", e);
+      const result = await recalculateBillTotalsSafe(billId);
+      if (!result.ok) {
+        console.error("OT bill recalculation failed:", result.error);
+        toast({ title: "OT bill totals need refresh", description: result.error || "Charges were added but totals could not be updated", variant: "destructive" });
       }
 
       // Re-fetch updated bill total for journal entry

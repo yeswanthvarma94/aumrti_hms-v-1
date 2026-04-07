@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { generateBillNumber } from "@/hooks/useBillNumber";
 import { calcGST } from "@/lib/currency";
+import { recalculateBillTotalsSafe } from "@/lib/billTotals";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -333,11 +334,10 @@ const BillingPage: React.FC = () => {
 
     if (items.length > 0) {
       await supabase.from("bill_line_items").insert(items);
-      // Server-side recalculation via DB trigger + explicit RPC fallback
-      try {
-        await (supabase as any).rpc("recalculate_bill_totals", { p_bill_id: billId });
-      } catch (e) {
-        console.error("recalculate_bill_totals RPC failed (trigger should handle):", e);
+      const result = await recalculateBillTotalsSafe(billId);
+      if (!result.ok) {
+        console.error("Discharge bill recalculation failed:", result.error);
+        toast({ title: "Charge totals need refresh", description: result.error || "Bill totals could not be updated", variant: "destructive" });
       }
     }
   };

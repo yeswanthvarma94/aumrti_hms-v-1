@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { generateBillNumber } from "@/hooks/useBillNumber";
 import { autoPostJournalEntry } from "@/lib/accounting";
+import { recalculateBillTotalsSafe } from "@/lib/billTotals";
 
 /**
  * Auto-bill OPD lab/radiology charges when results are finalized.
@@ -83,11 +84,9 @@ export async function autoBillOpdInvestigation(opts: {
         });
       }
 
-      // Server-side recalculation (trigger also handles this)
-      try {
-        await (supabase as any).rpc("recalculate_bill_totals", { p_bill_id: existingBill.id });
-      } catch (e) {
-        console.error("recalculate_bill_totals RPC failed (trigger should handle):", e);
+      const result = await recalculateBillTotalsSafe(existingBill.id);
+      if (!result.ok) {
+        console.error("Investigation bill recalculation failed:", result.error);
       }
 
       return { billId: existingBill.id, total: grandTotal };
