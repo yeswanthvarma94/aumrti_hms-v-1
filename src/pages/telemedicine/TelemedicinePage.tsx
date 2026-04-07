@@ -3,6 +3,8 @@ import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useHospitalId } from "@/hooks/useHospitalId";
+import { generateBillNumber } from "@/hooks/useBillNumber";
+import { autoPostJournalEntry } from "@/lib/accounting";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -83,13 +85,105 @@ const TelemedicinePage: React.FC = () => {
 
   const endCall = async () => {
     if (!activeSession) return;
+    const durationMin = Math.ceil(callSeconds / 60);
+
+    // 1. Mark session completed
     await supabase.from("teleconsult_sessions").update({
       status: "completed",
       ended_at: new Date().toISOString(),
       actual_duration: callSeconds,
       notes,
     }).eq("id", activeSession.id);
-    toast({ title: "Call ended" });
+
+    // 2. Auto-bill teleconsultation
+    try {
+      if (hospitalId && activeSession.patient_id) {
+        // Smart fee lookup: tele-specific → generic consultation → fallback ₹300
+        let fee = 300;
+        const { data: teleService } = await (supabase as any)
+          .from("service_master")
+          .select("rate")
+          .eq("hospital_id", hospitalId)
+          .eq("item_type", "consultation")
+          .ilike("name", "%tele%")
+          .maybeSingle();
+
+        if (teleService?.rate) {
+          fee = teleService.rate;
+        } else {
+          const { data: genericConsult } = await (supabase as any)
+            .from("service_master")
+            .select("rate")
+            .eq("hospital_id", hospitalId)
+            .eq("item_type", "consultation")
+            .limit(1)
+            .maybeSingle();
+          if (genericConsult?.rate) fee = genericConsult.rate;
+        }
+
+        const billNumber = await generateBillNumber(hospitalId, "TELE");
+        const patientName = activeSession.patients?.full_name || "Patient";
+
+        const { data: bill } = await (supabase as any)
+          .from("bills")
+          .insert({
+            hospital_id: hospitalId,
+            patient_id: activeSession.patient_id,
+            bill_number: billNumber,
+            bill_date: new Date().toISOString().split("T")[0],
+            bill_type: "opd",
+            bill_status: "final",
+            payment_status: "unpaid",
+            total_amount: fee,
+            net_amount: fee,
+            discount_amount: 0,
+            tax_amount: 0,
+          })
+          .select()
+          .single();
+
+        if (bill) {
+          // Insert line item
+          await (supabase as any).from("bill_line_items").insert({
+            hospital_id: hospitalId,
+            bill_id: bill.id,
+            item_type: "teleconsultation",
+            item_name: `Teleconsultation - ${patientName} - ${durationMin}min`,
+            quantity: 1,
+            unit_price: fee,
+            total_price: fee,
+          });
+
+          // Link bill to session
+          await supabase.from("teleconsult_sessions").update({
+            bill_generated: true,
+            bill_id: bill.id,
+          } as any).eq("id", activeSession.id);
+
+          // Post journal entry
+          const { data: authData } = await supabase.auth.getUser();
+          await autoPostJournalEntry({
+            triggerEvent: "bill_created",
+            sourceModule: "telemedicine",
+            sourceId: bill.id,
+            amount: fee,
+            description: `Teleconsultation bill ${billNumber}`,
+            hospitalId,
+            postedBy: authData?.user?.id || "system",
+          });
+
+          toast({ title: `Teleconsultation billed: ₹${fee.toLocaleString("en-IN")}` });
+        } else {
+          toast({ title: "Call ended" });
+        }
+      } else {
+        toast({ title: "Call ended" });
+      }
+    } catch (err) {
+      console.error("Teleconsult billing failed:", err);
+      toast({ title: "Call ended (billing skipped)" });
+    }
+
     setActiveSession(null);
     setCallSeconds(0);
     fetchSessions();
