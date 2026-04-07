@@ -10,6 +10,7 @@ import LoginPage from "./pages/login/LoginPage";
 import NotFound from "./pages/NotFound";
 import AuthGuard from "@/components/auth/AuthGuard";
 import RoleGuard from "@/components/auth/RoleGuard";
+import ModuleErrorBoundary from "@/components/auth/ModuleErrorBoundary";
 import { ROUTE_ROLES } from "@/lib/routeRoles";
 
 const Register = lazy(() => import("./pages/register"));
@@ -124,6 +125,13 @@ const RG = ({ path, children }: { path: string; children: React.ReactNode }) => 
   return <RoleGuard allowedRoles={roles}>{children}</RoleGuard>;
 };
 
+/** Wraps a lazy module in both ErrorBoundary (crash isolation) and Suspense (loading) */
+const SM = ({ name, children }: { name: string; children: React.ReactNode }) => (
+  <ModuleErrorBoundary moduleName={name}>
+    <Suspense fallback={<div />}>{children}</Suspense>
+  </ModuleErrorBoundary>
+);
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -144,84 +152,84 @@ const App = () => (
 
           {/* App shell routes */}
           <Route element={<AuthGuard><AppShell /></AuthGuard>}>
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/modules" element={<ModulesPage />} />
-            <Route path="/patients" element={<PatientsPage />} />
-            <Route path="/opd" element={<RG path="/opd"><OPDPage /></RG>} />
-            <Route path="/ipd" element={<RG path="/ipd"><IPDPage /></RG>} />
-            <Route path="/emergency" element={<RG path="/emergency"><EmergencyPage /></RG>} />
-            <Route path="/ot" element={<RG path="/ot"><OTPage /></RG>} />
-            <Route path="/nursing" element={<RG path="/nursing"><NursingPage /></RG>} />
-            <Route path="/lab" element={<RG path="/lab"><LabPage /></RG>} />
-            <Route path="/radiology" element={<RG path="/radiology"><RadiologyPage /></RG>} />
-            <Route path="/pharmacy" element={<RG path="/pharmacy"><PharmacyPage /></RG>} />
-            <Route path="/billing" element={<RG path="/billing"><BillingPage /></RG>} />
-            <Route path="/insurance" element={<RG path="/insurance"><InsurancePage /></RG>} />
-            <Route path="/payments" element={<RG path="/payments"><PaymentsPage /></RG>} />
-            <Route path="/hr" element={<RG path="/hr"><HRPage /></RG>} />
-            <Route path="/inventory" element={<RG path="/inventory"><InventoryPage /></RG>} />
-            <Route path="/quality" element={<RG path="/quality"><QualityPage /></RG>} />
-            <Route path="/analytics" element={<RG path="/analytics"><AnalyticsPage /></RG>} />
-            <Route path="/telemedicine" element={<RG path="/telemedicine"><TelemedicinePage /></RG>} />
-            <Route path="/inbox" element={<RG path="/inbox"><InboxPage /></RG>} />
-            <Route path="/settings" element={<RG path="/settings"><SettingsPage /></RG>} />
-            <Route path="/settings/bank-accounts" element={<RG path="/settings"><SettingsBankAccountsPage /></RG>} />
-            <Route path="/settings/staff" element={<RG path="/settings"><SettingsStaffPage /></RG>} />
-            <Route path="/settings/departments" element={<RG path="/settings"><SettingsDepartmentsPage /></RG>} />
-            <Route path="/settings/wards" element={<RG path="/settings"><SettingsWardsPage /></RG>} />
-            <Route path="/settings/services" element={<RG path="/settings"><SettingsServicesPage /></RG>} />
-            <Route path="/settings/drugs" element={<RG path="/settings"><SettingsDrugsPage /></RG>} />
-            <Route path="/settings/profile" element={<RG path="/settings"><SettingsProfilePage /></RG>} />
-            <Route path="/settings/roles" element={<RG path="/settings"><SettingsRolesPage /></RG>} />
-            <Route path="/settings/branding" element={<RG path="/settings"><SettingsBrandingPage /></RG>} />
-            <Route path="/settings/whatsapp" element={<RG path="/settings"><SettingsWhatsAppPage /></RG>} />
-            <Route path="/settings/language" element={<RG path="/settings"><SettingsLanguagePage /></RG>} />
-            <Route path="/settings/plan" element={<RG path="/settings"><SettingsPlanPage /></RG>} />
-            <Route path="/settings/shifts" element={<RG path="/settings"><SettingsShiftsPage /></RG>} />
-            <Route path="/settings/modules" element={<RG path="/settings"><SettingsModulesPage /></RG>} />
-            <Route path="/settings/doctor-schedules" element={<RG path="/settings"><SettingsDoctorSchedulesPage /></RG>} />
-            <Route path="/settings/lab-tests" element={<RG path="/settings"><SettingsLabTestsPage /></RG>} />
-            <Route path="/settings/consent-forms" element={<RG path="/settings"><SettingsConsentFormsPage /></RG>} />
-            <Route path="/settings/ot-checklist" element={<RG path="/settings"><SettingsOTChecklistPage /></RG>} />
-            <Route path="/settings/protocols" element={<RG path="/settings"><SettingsProtocolsPage /></RG>} />
-            <Route path="/settings/clinical-thresholds" element={<RG path="/settings"><SettingsThresholdsPage /></RG>} />
-            <Route path="/settings/discharge-workflow" element={<RG path="/settings"><SettingsDischargeWorkflowPage /></RG>} />
-            <Route path="/settings/approvals" element={<RG path="/settings"><SettingsApprovalsPage /></RG>} />
-            <Route path="/settings/opd-workflow" element={<RG path="/settings"><SettingsOPDWorkflowPage /></RG>} />
-            <Route path="/settings/notifications" element={<RG path="/settings"><SettingsNotificationsPage /></RG>} />
-            <Route path="/settings/report-schedules" element={<RG path="/settings"><SettingsReportSchedulesPage /></RG>} />
-            <Route path="/settings/razorpay" element={<RG path="/settings"><SettingsRazorpayPage /></RG>} />
-            <Route path="/settings/gst" element={<RG path="/settings"><SettingsGSTPage /></RG>} />
-            <Route path="/settings/abdm" element={<RG path="/settings"><SettingsABDMPage /></RG>} />
-            <Route path="/settings/backup" element={<RG path="/settings"><SettingsBackupPage /></RG>} />
-            <Route path="/settings/api-keys" element={<RG path="/settings"><SettingsAPIKeysPage /></RG>} />
-            <Route path="/settings/api-hub" element={<RG path="/settings"><APIConfigHubPage /></RG>} />
-            <Route path="/settings/icd-codes" element={<RG path="/settings"><SettingsICDCodesPage /></RG>} />
-            <Route path="/settings/radiology" element={<RG path="/settings"><SettingsRadiologyPage /></RG>} />
-            <Route path="/accounts" element={<RG path="/accounts"><AccountsPage /></RG>} />
-            <Route path="/accounts/setup" element={<RG path="/accounts"><OpeningBalancesPage /></RG>} />
-            <Route path="/blood-bank" element={<RG path="/blood-bank"><BloodBankPage /></RG>} />
-            <Route path="/cssd" element={<RG path="/cssd"><CSSDPage /></RG>} />
-            <Route path="/dialysis" element={<RG path="/dialysis"><DialysisPage /></RG>} />
-            <Route path="/oncology" element={<RG path="/oncology"><OncologyPage /></RG>} />
-            <Route path="/mrd" element={<RG path="/mrd"><MRDPage /></RG>} />
-            <Route path="/pmjay" element={<RG path="/pmjay"><PmjayPage /></RG>} />
-            <Route path="/biomedical" element={<RG path="/biomedical"><BiomedicalPage /></RG>} />
-            <Route path="/housekeeping" element={<RG path="/housekeeping"><HousekeepingPage /></RG>} />
-            <Route path="/hmis" element={<RG path="/hmis"><HMISPage /></RG>} />
-            <Route path="/dietetics" element={<RG path="/dietetics"><DietPage /></RG>} />
-            <Route path="/lms" element={<RG path="/lms"><LMSPage /></RG>} />
-            <Route path="/crm" element={<RG path="/crm"><CRMPage /></RG>} />
-            <Route path="/pro" element={<RG path="/pro"><PROPage /></RG>} />
-            <Route path="/physio" element={<RG path="/physio"><PhysioPage /></RG>} />
-            <Route path="/mortuary" element={<RG path="/mortuary"><MortuaryPage /></RG>} />
-            <Route path="/vaccination" element={<RG path="/vaccination"><VaccinationPage /></RG>} />
-            <Route path="/dental" element={<RG path="/dental"><DentalPage /></RG>} />
-            <Route path="/ayush" element={<RG path="/ayush"><AyushPage /></RG>} />
-            <Route path="/packages" element={<RG path="/packages"><PackagesPage /></RG>} />
-            <Route path="/ivf" element={<RG path="/ivf"><IVFPage /></RG>} />
-            <Route path="/admin/go-live" element={<RG path="/admin/go-live"><GoLiveChecklistPage /></RG>} />
-            <Route path="/admin/data-migration" element={<RG path="/admin/data-migration"><DataMigrationPage /></RG>} />
+            <Route path="/dashboard" element={<SM name="Dashboard"><Dashboard /></SM>} />
+            <Route path="/modules" element={<SM name="Modules"><ModulesPage /></SM>} />
+            <Route path="/patients" element={<SM name="Patients"><PatientsPage /></SM>} />
+            <Route path="/opd" element={<RG path="/opd"><SM name="OPD"><OPDPage /></SM></RG>} />
+            <Route path="/ipd" element={<RG path="/ipd"><SM name="IPD"><IPDPage /></SM></RG>} />
+            <Route path="/emergency" element={<RG path="/emergency"><SM name="Emergency"><EmergencyPage /></SM></RG>} />
+            <Route path="/ot" element={<RG path="/ot"><SM name="Operation Theatre"><OTPage /></SM></RG>} />
+            <Route path="/nursing" element={<RG path="/nursing"><SM name="Nursing"><NursingPage /></SM></RG>} />
+            <Route path="/lab" element={<RG path="/lab"><SM name="Laboratory"><LabPage /></SM></RG>} />
+            <Route path="/radiology" element={<RG path="/radiology"><SM name="Radiology"><RadiologyPage /></SM></RG>} />
+            <Route path="/pharmacy" element={<RG path="/pharmacy"><SM name="Pharmacy"><PharmacyPage /></SM></RG>} />
+            <Route path="/billing" element={<RG path="/billing"><SM name="Billing"><BillingPage /></SM></RG>} />
+            <Route path="/insurance" element={<RG path="/insurance"><SM name="Insurance"><InsurancePage /></SM></RG>} />
+            <Route path="/payments" element={<RG path="/payments"><SM name="Payments"><PaymentsPage /></SM></RG>} />
+            <Route path="/hr" element={<RG path="/hr"><SM name="HR & Payroll"><HRPage /></SM></RG>} />
+            <Route path="/inventory" element={<RG path="/inventory"><SM name="Inventory"><InventoryPage /></SM></RG>} />
+            <Route path="/quality" element={<RG path="/quality"><SM name="Quality"><QualityPage /></SM></RG>} />
+            <Route path="/analytics" element={<RG path="/analytics"><SM name="Analytics"><AnalyticsPage /></SM></RG>} />
+            <Route path="/telemedicine" element={<RG path="/telemedicine"><SM name="Telemedicine"><TelemedicinePage /></SM></RG>} />
+            <Route path="/inbox" element={<RG path="/inbox"><SM name="Inbox"><InboxPage /></SM></RG>} />
+            <Route path="/settings" element={<RG path="/settings"><SM name="Settings"><SettingsPage /></SM></RG>} />
+            <Route path="/settings/bank-accounts" element={<RG path="/settings"><SM name="Bank Accounts"><SettingsBankAccountsPage /></SM></RG>} />
+            <Route path="/settings/staff" element={<RG path="/settings"><SM name="Staff"><SettingsStaffPage /></SM></RG>} />
+            <Route path="/settings/departments" element={<RG path="/settings"><SM name="Departments"><SettingsDepartmentsPage /></SM></RG>} />
+            <Route path="/settings/wards" element={<RG path="/settings"><SM name="Wards"><SettingsWardsPage /></SM></RG>} />
+            <Route path="/settings/services" element={<RG path="/settings"><SM name="Services"><SettingsServicesPage /></SM></RG>} />
+            <Route path="/settings/drugs" element={<RG path="/settings"><SM name="Drugs"><SettingsDrugsPage /></SM></RG>} />
+            <Route path="/settings/profile" element={<RG path="/settings"><SM name="Profile"><SettingsProfilePage /></SM></RG>} />
+            <Route path="/settings/roles" element={<RG path="/settings"><SM name="Roles"><SettingsRolesPage /></SM></RG>} />
+            <Route path="/settings/branding" element={<RG path="/settings"><SM name="Branding"><SettingsBrandingPage /></SM></RG>} />
+            <Route path="/settings/whatsapp" element={<RG path="/settings"><SM name="WhatsApp"><SettingsWhatsAppPage /></SM></RG>} />
+            <Route path="/settings/language" element={<RG path="/settings"><SM name="Language"><SettingsLanguagePage /></SM></RG>} />
+            <Route path="/settings/plan" element={<RG path="/settings"><SM name="Plan"><SettingsPlanPage /></SM></RG>} />
+            <Route path="/settings/shifts" element={<RG path="/settings"><SM name="Shifts"><SettingsShiftsPage /></SM></RG>} />
+            <Route path="/settings/modules" element={<RG path="/settings"><SM name="Modules Config"><SettingsModulesPage /></SM></RG>} />
+            <Route path="/settings/doctor-schedules" element={<RG path="/settings"><SM name="Doctor Schedules"><SettingsDoctorSchedulesPage /></SM></RG>} />
+            <Route path="/settings/lab-tests" element={<RG path="/settings"><SM name="Lab Tests"><SettingsLabTestsPage /></SM></RG>} />
+            <Route path="/settings/consent-forms" element={<RG path="/settings"><SM name="Consent Forms"><SettingsConsentFormsPage /></SM></RG>} />
+            <Route path="/settings/ot-checklist" element={<RG path="/settings"><SM name="OT Checklist"><SettingsOTChecklistPage /></SM></RG>} />
+            <Route path="/settings/protocols" element={<RG path="/settings"><SM name="Protocols"><SettingsProtocolsPage /></SM></RG>} />
+            <Route path="/settings/clinical-thresholds" element={<RG path="/settings"><SM name="Clinical Thresholds"><SettingsThresholdsPage /></SM></RG>} />
+            <Route path="/settings/discharge-workflow" element={<RG path="/settings"><SM name="Discharge Workflow"><SettingsDischargeWorkflowPage /></SM></RG>} />
+            <Route path="/settings/approvals" element={<RG path="/settings"><SM name="Approvals"><SettingsApprovalsPage /></SM></RG>} />
+            <Route path="/settings/opd-workflow" element={<RG path="/settings"><SM name="OPD Workflow"><SettingsOPDWorkflowPage /></SM></RG>} />
+            <Route path="/settings/notifications" element={<RG path="/settings"><SM name="Notifications"><SettingsNotificationsPage /></SM></RG>} />
+            <Route path="/settings/report-schedules" element={<RG path="/settings"><SM name="Report Schedules"><SettingsReportSchedulesPage /></SM></RG>} />
+            <Route path="/settings/razorpay" element={<RG path="/settings"><SM name="Razorpay"><SettingsRazorpayPage /></SM></RG>} />
+            <Route path="/settings/gst" element={<RG path="/settings"><SM name="GST"><SettingsGSTPage /></SM></RG>} />
+            <Route path="/settings/abdm" element={<RG path="/settings"><SM name="ABDM"><SettingsABDMPage /></SM></RG>} />
+            <Route path="/settings/backup" element={<RG path="/settings"><SM name="Backup & Export"><SettingsBackupPage /></SM></RG>} />
+            <Route path="/settings/api-keys" element={<RG path="/settings"><SM name="API Keys"><SettingsAPIKeysPage /></SM></RG>} />
+            <Route path="/settings/api-hub" element={<RG path="/settings"><SM name="API Hub"><APIConfigHubPage /></SM></RG>} />
+            <Route path="/settings/icd-codes" element={<RG path="/settings"><SM name="ICD Codes"><SettingsICDCodesPage /></SM></RG>} />
+            <Route path="/settings/radiology" element={<RG path="/settings"><SM name="Radiology Settings"><SettingsRadiologyPage /></SM></RG>} />
+            <Route path="/accounts" element={<RG path="/accounts"><SM name="Accounts"><AccountsPage /></SM></RG>} />
+            <Route path="/accounts/setup" element={<RG path="/accounts"><SM name="Opening Balances"><OpeningBalancesPage /></SM></RG>} />
+            <Route path="/blood-bank" element={<RG path="/blood-bank"><SM name="Blood Bank"><BloodBankPage /></SM></RG>} />
+            <Route path="/cssd" element={<RG path="/cssd"><SM name="CSSD"><CSSDPage /></SM></RG>} />
+            <Route path="/dialysis" element={<RG path="/dialysis"><SM name="Dialysis"><DialysisPage /></SM></RG>} />
+            <Route path="/oncology" element={<RG path="/oncology"><SM name="Oncology"><OncologyPage /></SM></RG>} />
+            <Route path="/mrd" element={<RG path="/mrd"><SM name="Medical Records"><MRDPage /></SM></RG>} />
+            <Route path="/pmjay" element={<RG path="/pmjay"><SM name="PMJAY"><PmjayPage /></SM></RG>} />
+            <Route path="/biomedical" element={<RG path="/biomedical"><SM name="Biomedical"><BiomedicalPage /></SM></RG>} />
+            <Route path="/housekeeping" element={<RG path="/housekeeping"><SM name="Housekeeping"><HousekeepingPage /></SM></RG>} />
+            <Route path="/hmis" element={<RG path="/hmis"><SM name="HMIS"><HMISPage /></SM></RG>} />
+            <Route path="/dietetics" element={<RG path="/dietetics"><SM name="Dietetics"><DietPage /></SM></RG>} />
+            <Route path="/lms" element={<RG path="/lms"><SM name="LMS"><LMSPage /></SM></RG>} />
+            <Route path="/crm" element={<RG path="/crm"><SM name="CRM"><CRMPage /></SM></RG>} />
+            <Route path="/pro" element={<RG path="/pro"><SM name="PRO"><PROPage /></SM></RG>} />
+            <Route path="/physio" element={<RG path="/physio"><SM name="Physiotherapy"><PhysioPage /></SM></RG>} />
+            <Route path="/mortuary" element={<RG path="/mortuary"><SM name="Mortuary"><MortuaryPage /></SM></RG>} />
+            <Route path="/vaccination" element={<RG path="/vaccination"><SM name="Vaccination"><VaccinationPage /></SM></RG>} />
+            <Route path="/dental" element={<RG path="/dental"><SM name="Dental"><DentalPage /></SM></RG>} />
+            <Route path="/ayush" element={<RG path="/ayush"><SM name="AYUSH"><AyushPage /></SM></RG>} />
+            <Route path="/packages" element={<RG path="/packages"><SM name="Health Packages"><PackagesPage /></SM></RG>} />
+            <Route path="/ivf" element={<RG path="/ivf"><SM name="IVF"><IVFPage /></SM></RG>} />
+            <Route path="/admin/go-live" element={<RG path="/admin/go-live"><SM name="Go-Live Checklist"><GoLiveChecklistPage /></SM></RG>} />
+            <Route path="/admin/data-migration" element={<RG path="/admin/data-migration"><SM name="Data Migration"><DataMigrationPage /></SM></RG>} />
           </Route>
 
           <Route path="*" element={<NotFound />} />
