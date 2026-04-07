@@ -81,7 +81,6 @@ const BillEditor: React.FC<Props> = ({ bill, hospitalId, onRefresh }) => {
       .from("bill_line_items")
       .select("*")
       .eq("bill_id", bill.id)
-      .or("is_deleted.is.null,is_deleted.eq.false")
       .order("created_at", { ascending: true });
     setLineItems(
       (data || []).map((d: any) => ({

@@ -138,14 +138,8 @@ const LineItemsTab: React.FC<Props> = ({ bill, hospitalId, lineItems, loading, o
   };
 
   const deleteItem = async (itemId: string) => {
-    // Soft delete — preserve audit trail
-    const { data: { user } } = await supabase.auth.getUser();
-    const { data: userData } = await supabase.from("users").select("id").eq("auth_user_id", user?.id || "").maybeSingle();
-    await (supabase as any).from("bill_line_items").update({
-      is_deleted: true,
-      deleted_at: new Date().toISOString(),
-      deleted_by: userData?.id || null,
-    }).eq("id", itemId);
+    // Hard delete (is_deleted column not in schema yet)
+    await (supabase as any).from("bill_line_items").delete().eq("id", itemId);
     onRefresh();
   };
 
