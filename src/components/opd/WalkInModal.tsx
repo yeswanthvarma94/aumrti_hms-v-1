@@ -483,8 +483,8 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated, defaultD
       setStep("receipt");
 
       const statusMsg = isPaid
-        ? `Token ${nextToken} issued · ₹${fee.toLocaleString("en-IN")} collected ✓`
-        : `Token ${nextToken} issued · Payment pending`;
+        ? `Token ${atomicToken} issued · ₹${fee.toLocaleString("en-IN")} collected ✓`
+        : `Token ${atomicToken} issued · Payment pending`;
       toast({ title: statusMsg });
     } catch (err: unknown) {
       toast({ title: "Registration failed", description: (err as Error).message, variant: "destructive" });
