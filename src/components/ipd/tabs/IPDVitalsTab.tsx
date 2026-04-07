@@ -101,7 +101,30 @@ const IPDVitalsTab: React.FC<Props> = ({ admissionId, hospitalId, userId, patien
     });
     setSaving(false);
     if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
-    toast({ title: "Vitals recorded" });
+
+    // Threshold-based alerts
+    const thresholdAlerts = checkVitalsThresholds({
+      bp_systolic: form.bp_s ? parseInt(form.bp_s) : undefined,
+      spo2: form.spo2 ? parseInt(form.spo2) : undefined,
+      pulse: form.pulse ? parseInt(form.pulse) : undefined,
+      temperature: form.temp ? parseFloat(form.temp) : undefined,
+      respiratory_rate: form.rr ? parseInt(form.rr) : undefined,
+    });
+    const criticals = thresholdAlerts.filter((a) => a.severity === "critical");
+    if (criticals.length > 0) {
+      toast({ title: `⚠️ CRITICAL: ${criticals.map((a) => a.message).join("; ")}`, variant: "destructive" });
+      if (hospitalId && patientId) {
+        await supabase.from("clinical_alerts").insert({
+          hospital_id: hospitalId,
+          patient_id: patientId,
+          alert_type: "vitals_critical",
+          severity: "critical",
+          alert_message: criticals.map((a) => `${a.parameter}: ${a.value} — ${a.message}`).join("; "),
+        });
+      }
+    } else {
+      toast({ title: `Vitals recorded — NEWS2: ${news2}` });
+    }
 
     // Run sepsis check if NEWS2 >= 3
     if (news2 >= 3 && patientId) {
