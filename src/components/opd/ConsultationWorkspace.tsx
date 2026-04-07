@@ -334,6 +334,29 @@ const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onT
       };
 
       if (prescriptionId) {
+        // Save current version to history before overwriting
+        try {
+          const { data: currentRx } = await supabase
+            .from("prescriptions")
+            .select("*")
+            .eq("id", prescriptionId)
+            .maybeSingle();
+          if (currentRx) {
+            const { count } = await (supabase as any)
+              .from("prescription_history")
+              .select("id", { count: "exact", head: true })
+              .eq("prescription_id", prescriptionId);
+            await (supabase as any).from("prescription_history").insert({
+              prescription_id: prescriptionId,
+              hospital_id: hospitalId,
+              version_number: ((count as number) || 0) + 1,
+              snapshot: currentRx,
+              changed_by: userId,
+            });
+          }
+        } catch (histErr) {
+          console.error("Prescription history save error (non-blocking):", histErr);
+        }
         await supabase.from("prescriptions").update(payload as never).eq("id", prescriptionId);
       } else {
         const { data: newRx } = await supabase.from("prescriptions").insert([payload] as never).select("id").maybeSingle();

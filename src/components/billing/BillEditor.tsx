@@ -75,10 +75,11 @@ const BillEditor: React.FC<Props> = ({ bill, hospitalId, onRefresh }) => {
   const fetchLineItems = useCallback(async () => {
     if (!bill) return;
     setLoadingItems(true);
-    const { data } = await supabase
+    const { data } = await (supabase as any)
       .from("bill_line_items")
       .select("*")
       .eq("bill_id", bill.id)
+      .or("is_deleted.is.null,is_deleted.eq.false")
       .order("created_at", { ascending: true });
     setLineItems(
       (data || []).map((d: any) => ({
@@ -228,10 +229,11 @@ const BillEditor: React.FC<Props> = ({ bill, hospitalId, onRefresh }) => {
 
   const recalcBillTotals = async () => {
     if (!bill || !hospitalId) return;
-    const { data: items } = await supabase
+    const { data: items } = await (supabase as any)
       .from("bill_line_items")
       .select("total_amount, gst_amount, taxable_amount")
-      .eq("bill_id", bill.id);
+      .eq("bill_id", bill.id)
+      .or("is_deleted.is.null,is_deleted.eq.false");
     const subtotal = (items || []).reduce((s, i: any) => s + Number(i.taxable_amount || 0), 0);
     const gst = (items || []).reduce((s, i: any) => s + Number(i.gst_amount || 0), 0);
     const total = subtotal + gst;
