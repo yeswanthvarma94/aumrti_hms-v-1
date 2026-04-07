@@ -71,6 +71,11 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated, defaultD
   const [nextToken, setNextToken] = useState("A-1");
   const [submitting, setSubmitting] = useState(false);
   const [dpdpConsent, setDpdpConsent] = useState(false);
+
+  // Duplicate detection state
+  const [dupeCandidate, setDupeCandidate] = useState<FoundPatient | null>(null);
+  const [showDupeConfirm, setShowDupeConfirm] = useState(false);
+  const [dupeResolveCallback, setDupeResolveCallback] = useState<(() => void) | null>(null);
   const [referralSource, setReferralSource] = useState("");
   const [referralDoctorId, setReferralDoctorId] = useState<string | null>(null);
   const [showReferralModal, setShowReferralModal] = useState(false);
