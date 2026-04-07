@@ -222,3 +222,79 @@ setItems(data)
 - All dates: DD/MM/YYYY display, store as ISO 8601 in DB
 - All currency: ₹ with Indian numbering (1,00,000 not 100,000)
 
+ 
+## ACTIVE FIX SEQUENCE — POST-AUDIT (April 2026)
+ 
+These fixes are being applied in order. Each prompt builds on previous ones.
+DO NOT revert any of these patterns when making other changes.
+ 
+### NEW ARCHITECTURE RULES
+ 
+1. **Bill Numbers — NEVER use count+padStart**
+   All bill numbers MUST use `generateBillNumber()` from `src/hooks/useBillNumber.ts`
+   which calls the `generate_bill_number` Supabase RPC (atomic, no duplicates).
+   ```typescript
+   import { generateBillNumber } from '@/hooks/useBillNumber';
+   const billNumber = await generateBillNumber(hospitalId, 'OPD'); // or BILL, PHARM, DIAL, etc.
+   ```
+ 
+2. **OPD Lab/Radiology — MUST create real DB records**
+   When doctor prescribes investigations in OPD (ConsultationWorkspace) or IPD Ward Rounds,
+   the code MUST insert rows into `lab_orders` + `lab_order_items` + `lab_samples` tables
+   (for lab tests) and `radiology_orders` table (for imaging studies).
+   JSON storage in prescriptions table is kept for prescription display but is NOT the
+   source of truth for Lab/Radiology modules.
+ 
+3. **Every billing module MUST call autoPostJournalEntry()**
+   ```typescript
+   import { autoPostJournalEntry } from '@/lib/accounting';
+   await autoPostJournalEntry({
+     triggerEvent: 'bill_finalized_{module}',
+     sourceModule: '{module}',
+     sourceId: billId,
+     amount: totalAmount,
+     description: '{Module} Revenue - Bill {billNumber}',
+     hospitalId,
+     postedBy: userId || '',
+   });
+   ```
+ 
+4. **Encounter linking — OPD bills MUST have encounter_id**
+   After OPD consultation is completed, the bill created at walk-in must be
+   updated with the encounter_id from the opd_encounters record.
+ 
+### NEW TABLES (added during fix sequence)
+ 
+| Table | Purpose |
+|-------|---------|
+| bill_sequences | Atomic bill number generation (hospital_id + prefix = unique) |
+| nursing_procedures | Bedside procedure logging with auto-billing |
+| telemedicine_sessions | Video consultation persistence + billing |
+ 
+### NEW HOOKS/UTILITIES
+ 
+| File | Purpose |
+|------|---------|
+| src/hooks/useBillNumber.ts | generateBillNumber(hospitalId, prefix) — calls RPC |
+ 
+### BILLING CONNECTIONS STATUS
+ 
+These modules HAVE billing (do not remove):
+OPD WalkInModal, OT EndCaseModal, Pharmacy IP, Pharmacy Retail, Blood Bank (IPD),
+Dialysis, Physio, Dental, Vaccination, AYUSH, Oncology
+ 
+These modules GAINED billing during fix sequence (do not remove):
+Lab (OPD standalone), Radiology (OPD standalone), IVF, Packages, Nursing Procedures,
+Telemedicine, Blood Bank (OPD)
+ 
+### DISCHARGE HARD BLOCK
+ 
+The 4-step discharge stepper now ENFORCES sequential completion:
+- Billing step: HARD BLOCKED until paid bill exists (cannot be manually overridden)
+- Pharmacy step: HARD BLOCKED until zero pending dispensing records
+- Summary step: Only renders after all 3 prior steps complete
+- WhatsApp discharge summary sent automatically after sign-off
+ 
+---
+
+
