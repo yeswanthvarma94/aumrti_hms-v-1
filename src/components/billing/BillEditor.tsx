@@ -230,7 +230,34 @@ const BillEditor: React.FC<Props> = ({ bill, hospitalId, onRefresh }) => {
 
   const recalcBillTotals = async () => {
     if (!bill || !hospitalId) return;
-    await (supabase as any).rpc("recalculate_bill_totals", { p_bill_id: bill.id });
+    try {
+      await (supabase as any).rpc("recalculate_bill_totals", { p_bill_id: bill.id });
+    } catch (e) {
+      console.error("recalculate_bill_totals RPC failed, using client-side fallback:", e);
+      // Client-side fallback: calculate from line items and update directly
+      try {
+        const { data: items } = await supabase.from("bill_line_items")
+          .select("taxable_amount, gst_amount")
+          .eq("bill_id", bill.id)
+          .or("is_deleted.is.null,is_deleted.eq.false");
+        if (items) {
+          const subtotal = items.reduce((s, i) => s + Number(i.taxable_amount || 0), 0);
+          const gst = items.reduce((s, i) => s + Number(i.gst_amount || 0), 0);
+          const total = subtotal + gst;
+          const advance = Number((bill as any).advance_received || 0);
+          const insurance = Number((bill as any).insurance_amount || 0);
+          const paid = Number((bill as any).paid_amount || 0);
+          await supabase.from("bills").update({
+            subtotal, taxable_amount: subtotal, gst_amount: gst, total_amount: total,
+            patient_payable: Math.max(total - advance - insurance, 0),
+            balance_due: Math.max(total - advance - insurance - paid, 0),
+          } as any).eq("id", bill.id);
+        }
+      } catch (fb) {
+        console.error("Client-side fallback also failed:", fb);
+        toast({ title: "Bill total update failed", description: "Please refresh the page", variant: "destructive" });
+      }
+    }
     onRefresh();
   };
 

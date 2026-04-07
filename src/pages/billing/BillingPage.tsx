@@ -333,8 +333,12 @@ const BillingPage: React.FC = () => {
 
     if (items.length > 0) {
       await supabase.from("bill_line_items").insert(items);
-      // Server-side recalculation via DB trigger + explicit RPC
-      await (supabase as any).rpc("recalculate_bill_totals", { p_bill_id: billId });
+      // Server-side recalculation via DB trigger + explicit RPC fallback
+      try {
+        await (supabase as any).rpc("recalculate_bill_totals", { p_bill_id: billId });
+      } catch (e) {
+        console.error("recalculate_bill_totals RPC failed (trigger should handle):", e);
+      }
     }
   };
 
