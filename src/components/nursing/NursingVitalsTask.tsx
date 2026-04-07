@@ -104,11 +104,39 @@ const NursingVitalsTask: React.FC<Props> = ({ task, onComplete }) => {
     if (error) {
       toast({ title: "Error saving vitals", description: error.message, variant: "destructive" });
     } else {
+      // Threshold-based alerts
+      const thresholdAlerts = checkVitalsThresholds({
+        bp_systolic: vitals.bp_systolic ? Number(vitals.bp_systolic) : undefined,
+        spo2: vitals.spo2 ? Number(vitals.spo2) : undefined,
+        pulse: vitals.pulse ? Number(vitals.pulse) : undefined,
+        temperature: vitals.temperature ? Number(vitals.temperature) : undefined,
+        respiratory_rate: vitals.respiratory_rate ? Number(vitals.respiratory_rate) : undefined,
+      });
+
+      const criticals = thresholdAlerts.filter((a) => a.severity === "critical");
+      const warnings = thresholdAlerts.filter((a) => a.severity === "warning");
+
+      if (criticals.length > 0) {
+        toast({ title: `⚠️ CRITICAL: ${criticals.map((a) => a.message).join("; ")}`, variant: "destructive" });
+        // Auto-create clinical alert for critical vitals
+        await supabase.from("clinical_alerts").insert({
+          hospital_id: task.hospitalId!,
+          patient_id: task.patientId,
+          alert_type: "vitals_critical",
+          severity: "critical",
+          alert_message: criticals.map((a) => `${a.parameter}: ${a.value} — ${a.message}`).join("; "),
+          bed_number: task.bedLabel,
+        });
+      } else if (warnings.length > 0) {
+        toast({ title: `🟠 ${warnings.map((a) => a.message).join("; ")}` });
+      }
+
+      // NEWS2-based alerts
       if (news2 >= 7) {
         toast({ title: `🔴 NEWS2: ${news2} — URGENT: Call doctor + Rapid Response`, variant: "destructive" });
       } else if (news2 >= 5) {
         toast({ title: `🟠 NEWS2: ${news2} — Escalate to charge nurse` });
-      } else {
+      } else if (criticals.length === 0 && warnings.length === 0) {
         toast({ title: `Vitals recorded — NEWS2: ${news2}` });
       }
 
@@ -176,21 +204,25 @@ const NursingVitalsTask: React.FC<Props> = ({ task, onComplete }) => {
           { key: "temperature", label: "Temperature", placeholder: "98.6", unit: "°F" },
           { key: "spo2", label: "SpO2", placeholder: "98", unit: "%" },
           { key: "respiratory_rate", label: "Resp. Rate", placeholder: "16", unit: "/min" },
-        ].map((f) => (
-          <div key={f.key} className="bg-card rounded-lg border border-border p-3">
-            <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">{f.label}</Label>
-            <div className="flex items-baseline gap-1 mt-1">
-              <Input
-                type="number"
-                value={vitals[f.key]}
-                onChange={(e) => set(f.key, e.target.value)}
-                placeholder={f.placeholder}
-                className="h-11 text-lg font-semibold border-0 p-0 focus-visible:ring-0 bg-transparent"
-              />
-              <span className="text-[10px] text-muted-foreground">{f.unit}</span>
+        ].map((f) => {
+          const val = vitals[f.key] ? Number(vitals[f.key]) : null;
+          const sevClass = vitalSeverityClass(f.key, val);
+          return (
+            <div key={f.key} className={cn("bg-card rounded-lg border p-3", sevClass ? "border-destructive/40" : "border-border")}>
+              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">{f.label}</Label>
+              <div className="flex items-baseline gap-1 mt-1">
+                <Input
+                  type="number"
+                  value={vitals[f.key]}
+                  onChange={(e) => set(f.key, e.target.value)}
+                  placeholder={f.placeholder}
+                  className={cn("h-11 text-lg font-semibold border-0 p-0 focus-visible:ring-0 bg-transparent", sevClass)}
+                />
+                <span className="text-[10px] text-muted-foreground">{f.unit}</span>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Extra fields */}
