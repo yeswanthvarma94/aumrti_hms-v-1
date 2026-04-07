@@ -137,6 +137,61 @@ const IPDWardRoundTab: React.FC<Props> = ({ admissionId, hospitalId, userId, pat
     if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
     toast({ title: "Ward round note saved" });
 
+    // Auto-capture consultant opinion fee if rounding doctor != admitting doctor
+    try {
+      const { data: admission } = await (supabase as any)
+        .from("admissions")
+        .select("admitting_doctor_id")
+        .eq("id", admissionId)
+        .maybeSingle();
+      if (admission?.admitting_doctor_id && userId !== admission.admitting_doctor_id) {
+        const { data: fee } = await (supabase as any)
+          .from("service_master")
+          .select("fee")
+          .eq("hospital_id", hospitalId)
+          .or("name.ilike.%consult%opinion%,name.ilike.%consulting%")
+          .limit(1)
+          .maybeSingle();
+        const consultFee = fee?.fee ? Number(fee.fee) : 500;
+
+        // Find active IPD bill
+        const { data: ipdBill } = await (supabase as any)
+          .from("bills")
+          .select("id")
+          .eq("admission_id", admissionId)
+          .eq("bill_type", "ipd")
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (ipdBill?.id) {
+          const { data: docInfo } = await supabase
+            .from("users")
+            .select("full_name")
+            .eq("id", userId)
+            .maybeSingle();
+          await (supabase as any).from("bill_line_items").insert({
+            bill_id: ipdBill.id,
+            item_type: "consultant_opinion",
+            description: `Consultant Opinion: ${docInfo?.full_name || "Doctor"}`,
+            quantity: 1,
+            unit_price: consultFee,
+            amount: consultFee,
+          });
+          // Update bill total
+          const { data: items } = await (supabase as any)
+            .from("bill_line_items")
+            .select("amount")
+            .eq("bill_id", ipdBill.id);
+          const newTotal = (items || []).reduce((s: number, i: any) => s + (Number(i.amount) || 0), 0);
+          await (supabase as any).from("bills").update({ total_amount: newTotal, balance_due: newTotal }).eq("id", ipdBill.id);
+
+          toast({ title: `Consultant opinion fee auto-captured: ₹${consultFee.toLocaleString("en-IN")}` });
+        }
+      }
+    } catch (err) {
+      console.error("Consultant fee capture (non-blocking):", err);
+    }
+
     // Create real lab/radiology orders from plan text + voice investigations
     const planText = form.p || "";
     const voiceInv = [...investigationsToOrder];

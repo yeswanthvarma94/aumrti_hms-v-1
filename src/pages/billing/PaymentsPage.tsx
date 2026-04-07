@@ -56,6 +56,23 @@ const PaymentsPage: React.FC = () => {
 
   // Manual reconciliation
   const [manualTxnId, setManualTxnId] = useState("");
+  const [outstandingTotal, setOutstandingTotal] = useState<number | null>(null);
+
+  // Fetch outstanding balance
+  useEffect(() => {
+    if (!hospitalId) return;
+    (async () => {
+      const { data } = await (supabase as any)
+        .from("bills")
+        .select("balance_due")
+        .eq("hospital_id", hospitalId)
+        .neq("payment_status", "paid");
+      if (data) {
+        const total = data.reduce((s: number, r: any) => s + (Number(r.balance_due) || 0), 0);
+        setOutstandingTotal(total);
+      }
+    })();
+  }, [hospitalId, payments]);
 
   useEffect(() => {
     (async () => {
@@ -165,8 +182,8 @@ const PaymentsPage: React.FC = () => {
             <div className="w-8 h-8 rounded-lg bg-destructive/10 flex items-center justify-center"><Wallet size={16} className="text-destructive" /></div>
             <span className="text-[11px] font-medium text-muted-foreground uppercase">Outstanding</span>
           </div>
-          <p className="text-xl font-bold text-destructive tabular-nums">—</p>
-          <p className="text-[10px] text-muted-foreground mt-1">View in Billing</p>
+          <p className="text-xl font-bold text-destructive tabular-nums">{outstandingTotal !== null ? fmt(outstandingTotal) : "—"}</p>
+          <p className="text-[10px] text-muted-foreground mt-1">{outstandingTotal !== null ? "Unpaid bills" : "Loading..."}</p>
         </div>
 
         <div className="bg-card rounded-xl border border-border p-4 shadow-sm">

@@ -110,7 +110,13 @@ const NursingVitalsTask: React.FC<Props> = ({ task, onComplete }) => {
     if (error) {
       toast({ title: "Error saving vitals", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: `Vitals recorded — NEWS2: ${news2}` });
+      if (news2 >= 7) {
+        toast({ title: `🔴 NEWS2: ${news2} — URGENT: Call doctor + Rapid Response`, variant: "destructive" });
+      } else if (news2 >= 5) {
+        toast({ title: `🟠 NEWS2: ${news2} — Escalate to charge nurse` });
+      } else {
+        toast({ title: `Vitals recorded — NEWS2: ${news2}` });
+      }
 
       // Auto-escalate if NEWS2 >= 5
       if (news2 >= 5) {
@@ -118,8 +124,8 @@ const NursingVitalsTask: React.FC<Props> = ({ task, onComplete }) => {
           hospital_id: task.hospitalId!,
           patient_id: task.patientId,
           alert_type: "high_news2",
-          severity: "critical",
-          alert_message: `NEWS2 Score ${news2} for ${task.patientName} at ${task.bedLabel}`,
+          severity: news2 >= 7 ? "critical" : "high",
+          alert_message: `NEWS2 Score ${news2} for ${task.patientName} at ${task.bedLabel}${news2 >= 7 ? " — URGENT RESPONSE REQUIRED" : ""}`,
           bed_number: task.bedLabel,
         });
       }
