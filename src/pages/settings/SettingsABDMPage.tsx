@@ -27,6 +27,19 @@ const SettingsABDMPage: React.FC = () => {
 
   return (
     <SettingsPageWrapper title="ABDM / ABHA" onSave={handleSave} saving={saving}>
+      <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30 p-4 mb-6">
+        <div className="flex items-start gap-3">
+          <AlertTriangle className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold text-blue-800 dark:text-blue-300">Configuration Mode</p>
+            <p className="text-xs text-blue-700 dark:text-blue-400 mt-1 leading-relaxed">
+              ABDM integration is currently in configuration mode. Live API connection to ABDM
+              sandbox/production will be available in a future update. ABHA IDs entered during
+              patient registration are stored locally and will be verified when API integration is active.
+            </p>
+          </div>
+        </div>
+      </div>
       <p className="text-sm text-muted-foreground mb-6">Connect to Ayushman Bharat Digital Mission for ABHA ID creation and health record sharing.</p>
 
       <div className="space-y-8">
