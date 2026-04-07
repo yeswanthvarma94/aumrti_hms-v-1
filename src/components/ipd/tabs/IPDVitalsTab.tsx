@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { runSepsisCheck, type SepsisResult } from "@/lib/clinicalPredictions";
+import { checkVitalsThresholds, calculateNEWS2, vitalSeverityClass } from "@/lib/vitalsAlerts";
 
 interface Props {
   admissionId: string;
@@ -72,18 +73,13 @@ const IPDVitalsTab: React.FC<Props> = ({ admissionId, hospitalId, userId, patien
   }, [admissionId]);
 
   const calcNEWS2 = () => {
-    let score = 0;
-    const rr = parseInt(form.rr);
-    if (rr) { if (rr <= 8 || rr >= 25) score += 3; else if (rr >= 21) score += 2; else if (rr >= 12 && rr <= 20) score += 0; else score += 1; }
-    const spo2 = parseInt(form.spo2);
-    if (spo2) { if (spo2 <= 91) score += 3; else if (spo2 <= 93) score += 2; else if (spo2 <= 95) score += 1; }
-    const sys = parseInt(form.bp_s);
-    if (sys) { if (sys <= 90 || sys >= 220) score += 3; else if (sys <= 100) score += 2; else if (sys <= 110) score += 1; }
-    const pulse = parseInt(form.pulse);
-    if (pulse) { if (pulse <= 40 || pulse >= 131) score += 3; else if (pulse >= 111) score += 2; else if (pulse <= 50 || pulse >= 91) score += 1; }
-    const temp = parseFloat(form.temp);
-    if (temp) { if (temp <= 95) score += 3; else if (temp >= 102.2) score += 2; else if (temp <= 96.8 || temp >= 100.4) score += 1; }
-    return score;
+    return calculateNEWS2({
+      respiratory_rate: form.rr ? parseInt(form.rr) : undefined,
+      spo2: form.spo2 ? parseInt(form.spo2) : undefined,
+      bp_systolic: form.bp_s ? parseInt(form.bp_s) : undefined,
+      pulse: form.pulse ? parseInt(form.pulse) : undefined,
+      temperature: form.temp ? parseFloat(form.temp) : undefined,
+    });
   };
 
   const handleSave = async () => {
@@ -105,7 +101,30 @@ const IPDVitalsTab: React.FC<Props> = ({ admissionId, hospitalId, userId, patien
     });
     setSaving(false);
     if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
-    toast({ title: "Vitals recorded" });
+
+    // Threshold-based alerts
+    const thresholdAlerts = checkVitalsThresholds({
+      bp_systolic: form.bp_s ? parseInt(form.bp_s) : undefined,
+      spo2: form.spo2 ? parseInt(form.spo2) : undefined,
+      pulse: form.pulse ? parseInt(form.pulse) : undefined,
+      temperature: form.temp ? parseFloat(form.temp) : undefined,
+      respiratory_rate: form.rr ? parseInt(form.rr) : undefined,
+    });
+    const criticals = thresholdAlerts.filter((a) => a.severity === "critical");
+    if (criticals.length > 0) {
+      toast({ title: `⚠️ CRITICAL: ${criticals.map((a) => a.message).join("; ")}`, variant: "destructive" });
+      if (hospitalId && patientId) {
+        await supabase.from("clinical_alerts").insert({
+          hospital_id: hospitalId,
+          patient_id: patientId,
+          alert_type: "vitals_critical",
+          severity: "critical",
+          alert_message: criticals.map((a) => `${a.parameter}: ${a.value} — ${a.message}`).join("; "),
+        });
+      }
+    } else {
+      toast({ title: `Vitals recorded — NEWS2: ${news2}` });
+    }
 
     // Run sepsis check if NEWS2 >= 3
     if (news2 >= 3 && patientId) {
@@ -231,11 +250,11 @@ const IPDVitalsTab: React.FC<Props> = ({ admissionId, hospitalId, userId, patien
               return (
                 <tr key={v.id} className={i % 2 === 0 ? "bg-white" : "bg-slate-50/50"}>
                   <td className="px-3 py-2 text-slate-600">{new Date(v.recorded_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</td>
-                  <td className="px-3 py-2 font-medium">{v.bp_systolic || "—"}/{v.bp_diastolic || "—"}</td>
-                  <td className="px-3 py-2">{v.pulse || "—"}</td>
-                  <td className="px-3 py-2">{v.temperature || "—"}</td>
-                  <td className="px-3 py-2">{v.spo2 || "—"}</td>
-                  <td className="px-3 py-2">{v.respiratory_rate || "—"}</td>
+                  <td className={cn("px-3 py-2 font-medium", vitalSeverityClass("bp_systolic", v.bp_systolic))}>{v.bp_systolic || "—"}/{v.bp_diastolic || "—"}</td>
+                  <td className={cn("px-3 py-2", vitalSeverityClass("pulse", v.pulse))}>{v.pulse || "—"}</td>
+                  <td className={cn("px-3 py-2", vitalSeverityClass("temperature", v.temperature))}>{v.temperature || "—"}</td>
+                  <td className={cn("px-3 py-2", vitalSeverityClass("spo2", v.spo2))}>{v.spo2 || "—"}</td>
+                  <td className={cn("px-3 py-2", vitalSeverityClass("respiratory_rate", v.respiratory_rate))}>{v.respiratory_rate || "—"}</td>
                   <td className="px-3 py-2">{v.pain_score ?? "—"}</td>
                   <td className="px-3 py-2"><span className={cn("px-1.5 py-0.5 rounded text-[11px] font-bold", n2Color)}>{v.news2_score ?? "—"}</span></td>
                 </tr>

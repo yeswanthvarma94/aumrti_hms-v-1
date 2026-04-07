@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { AlertTriangle, Mic } from "lucide-react";
 import { useVoiceScribe } from "@/contexts/VoiceScribeContext";
 import VoiceDictationButton from "@/components/voice/VoiceDictationButton";
+import { checkVitalsThresholds, calculateNEWS2, vitalSeverityClass } from "@/lib/vitalsAlerts";
 import type { NursingTask } from "@/pages/nursing/NursingPage";
 
 interface Props {
@@ -15,22 +16,15 @@ interface Props {
   onComplete: () => void;
 }
 
-function calcNEWS2(v: Record<string, string>): number {
-  let score = 0;
-  const rr = Number(v.respiratory_rate);
-  if (rr) { if (rr <= 8) score += 3; else if (rr <= 11) score += 1; else if (rr <= 20) score += 0; else if (rr <= 24) score += 2; else score += 3; }
-  const spo2 = Number(v.spo2);
-  if (spo2) { if (spo2 <= 91) score += 3; else if (spo2 <= 93) score += 2; else if (spo2 <= 95) score += 1; }
-  const sys = Number(v.bp_systolic);
-  if (sys) { if (sys <= 90) score += 3; else if (sys <= 100) score += 2; else if (sys <= 110) score += 1; else if (sys <= 219) score += 0; else score += 3; }
-  const pulse = Number(v.pulse);
-  if (pulse) { if (pulse <= 40) score += 3; else if (pulse <= 50) score += 1; else if (pulse <= 90) score += 0; else if (pulse <= 110) score += 1; else if (pulse <= 130) score += 2; else score += 3; }
-  const temp = Number(v.temperature);
-  if (temp) {
-    const f = temp;
-    if (f <= 95) score += 3; else if (f <= 96.8) score += 1; else if (f <= 100.4) score += 0; else if (f <= 102.2) score += 1; else score += 2;
-  }
-  return score;
+// Use shared NEWS2 calculation from vitalsAlerts.ts
+function calcNEWS2Legacy(v: Record<string, string>): number {
+  return calculateNEWS2({
+    respiratory_rate: v.respiratory_rate ? Number(v.respiratory_rate) : undefined,
+    spo2: v.spo2 ? Number(v.spo2) : undefined,
+    bp_systolic: v.bp_systolic ? Number(v.bp_systolic) : undefined,
+    pulse: v.pulse ? Number(v.pulse) : undefined,
+    temperature: v.temperature ? Number(v.temperature) : undefined,
+  });
 }
 
 const NursingVitalsTask: React.FC<Props> = ({ task, onComplete }) => {
@@ -82,7 +76,7 @@ const NursingVitalsTask: React.FC<Props> = ({ task, onComplete }) => {
     return () => unregisterScreen("nursing");
   }, [registerScreen, unregisterScreen]);
 
-  const news2 = useMemo(() => calcNEWS2(vitals), [vitals]);
+  const news2 = useMemo(() => calcNEWS2Legacy(vitals), [vitals]);
   const hasValues = vitals.bp_systolic || vitals.pulse || vitals.spo2;
 
   const handleSave = async () => {
@@ -110,11 +104,39 @@ const NursingVitalsTask: React.FC<Props> = ({ task, onComplete }) => {
     if (error) {
       toast({ title: "Error saving vitals", description: error.message, variant: "destructive" });
     } else {
+      // Threshold-based alerts
+      const thresholdAlerts = checkVitalsThresholds({
+        bp_systolic: vitals.bp_systolic ? Number(vitals.bp_systolic) : undefined,
+        spo2: vitals.spo2 ? Number(vitals.spo2) : undefined,
+        pulse: vitals.pulse ? Number(vitals.pulse) : undefined,
+        temperature: vitals.temperature ? Number(vitals.temperature) : undefined,
+        respiratory_rate: vitals.respiratory_rate ? Number(vitals.respiratory_rate) : undefined,
+      });
+
+      const criticals = thresholdAlerts.filter((a) => a.severity === "critical");
+      const warnings = thresholdAlerts.filter((a) => a.severity === "warning");
+
+      if (criticals.length > 0) {
+        toast({ title: `⚠️ CRITICAL: ${criticals.map((a) => a.message).join("; ")}`, variant: "destructive" });
+        // Auto-create clinical alert for critical vitals
+        await supabase.from("clinical_alerts").insert({
+          hospital_id: task.hospitalId!,
+          patient_id: task.patientId,
+          alert_type: "vitals_critical",
+          severity: "critical",
+          alert_message: criticals.map((a) => `${a.parameter}: ${a.value} — ${a.message}`).join("; "),
+          bed_number: task.bedLabel,
+        });
+      } else if (warnings.length > 0) {
+        toast({ title: `🟠 ${warnings.map((a) => a.message).join("; ")}` });
+      }
+
+      // NEWS2-based alerts
       if (news2 >= 7) {
         toast({ title: `🔴 NEWS2: ${news2} — URGENT: Call doctor + Rapid Response`, variant: "destructive" });
       } else if (news2 >= 5) {
         toast({ title: `🟠 NEWS2: ${news2} — Escalate to charge nurse` });
-      } else {
+      } else if (criticals.length === 0 && warnings.length === 0) {
         toast({ title: `Vitals recorded — NEWS2: ${news2}` });
       }
 
@@ -182,21 +204,25 @@ const NursingVitalsTask: React.FC<Props> = ({ task, onComplete }) => {
           { key: "temperature", label: "Temperature", placeholder: "98.6", unit: "°F" },
           { key: "spo2", label: "SpO2", placeholder: "98", unit: "%" },
           { key: "respiratory_rate", label: "Resp. Rate", placeholder: "16", unit: "/min" },
-        ].map((f) => (
-          <div key={f.key} className="bg-card rounded-lg border border-border p-3">
-            <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">{f.label}</Label>
-            <div className="flex items-baseline gap-1 mt-1">
-              <Input
-                type="number"
-                value={vitals[f.key]}
-                onChange={(e) => set(f.key, e.target.value)}
-                placeholder={f.placeholder}
-                className="h-11 text-lg font-semibold border-0 p-0 focus-visible:ring-0 bg-transparent"
-              />
-              <span className="text-[10px] text-muted-foreground">{f.unit}</span>
+        ].map((f) => {
+          const val = vitals[f.key] ? Number(vitals[f.key]) : null;
+          const sevClass = vitalSeverityClass(f.key, val);
+          return (
+            <div key={f.key} className={cn("bg-card rounded-lg border p-3", sevClass ? "border-destructive/40" : "border-border")}>
+              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">{f.label}</Label>
+              <div className="flex items-baseline gap-1 mt-1">
+                <Input
+                  type="number"
+                  value={vitals[f.key]}
+                  onChange={(e) => set(f.key, e.target.value)}
+                  placeholder={f.placeholder}
+                  className={cn("h-11 text-lg font-semibold border-0 p-0 focus-visible:ring-0 bg-transparent", sevClass)}
+                />
+                <span className="text-[10px] text-muted-foreground">{f.unit}</span>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Extra fields */}
