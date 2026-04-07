@@ -235,6 +235,49 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated, defaultD
   const createPatient = async (): Promise<string> => {
     if (useExisting && foundPatient) return foundPatient.id;
 
+    // Duplicate detection — check for existing patients with same phone or name+gender
+    const { data: potentialDupes } = await supabase
+      .from("patients")
+      .select("id, full_name, uhid, phone")
+      .eq("hospital_id", hospitalId)
+      .or(`phone.eq.${phone},full_name.ilike.%${fullName.trim()}%`)
+      .limit(5);
+
+    const matchedDupe = (potentialDupes || []).find(p => {
+      if (phone && p.phone === phone) return true;
+      if (p.full_name?.toLowerCase() === fullName.trim().toLowerCase() && p.phone) return true;
+      return false;
+    });
+
+    if (matchedDupe) {
+      // Show confirmation and wait for resolution
+      return new Promise<string>((resolve, reject) => {
+        setDupeCandidate(matchedDupe);
+        setDupeResolveCallback(() => () => {
+          // "Create New Anyway" was clicked — proceed with insert
+          setShowDupeConfirm(false);
+          setDupeCandidate(null);
+          insertNewPatient().then(resolve).catch(reject);
+        });
+        setShowDupeConfirm(true);
+      });
+    }
+
+    return insertNewPatient();
+  };
+
+  const handleUseDupePatient = () => {
+    if (dupeCandidate) {
+      setFoundPatient(dupeCandidate);
+      setUseExisting(true);
+      setShowDupeConfirm(false);
+      setDupeCandidate(null);
+      // Re-trigger payment flow with existing patient
+      handlePayAndIssue(false);
+    }
+  };
+
+  const insertNewPatient = async (): Promise<string> => {
     const dateStr = new Date().toISOString().split("T")[0].replace(/-/g, "");
     const { count } = await supabase.from("patients").select("id", { count: "exact", head: true }).eq("hospital_id", hospitalId);
     const seq = String((count || 0) + 1).padStart(4, "0");
