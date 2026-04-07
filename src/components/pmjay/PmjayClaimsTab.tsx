@@ -342,11 +342,7 @@ Hospital letterhead will be added. Just write the body content.`,
             </Button>
             <Button variant="outline" size="sm" onClick={() => {
               const { printDocument } = require("@/lib/printUtils");
-              const claim = claimDetail;
-              const body = claim?.appeal_letter
-                ? `<h2 style="color:#1A2F5A">PMJAY Appeal Letter</h2><div class="row"><span class="label">Claim:</span><span>${claim.claim_number || claim.id}</span></div><pre>${claim.appeal_letter}</pre>`
-                : `<p>No appeal letter generated</p>`;
-              printDocument("PMJAY Claim", body);
+              printDocument("PMJAY Appeal Letter", `<h2 style="color:#1A2F5A">PMJAY Appeal Letter</h2><pre>${appealText}</pre>`);
             }}>
               <Printer size={13} className="mr-1" /> Print
             </Button>

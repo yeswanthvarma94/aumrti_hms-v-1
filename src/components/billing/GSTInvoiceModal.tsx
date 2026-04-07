@@ -5,8 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Printer, MessageSquare, Mail } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
-import { printDocument, printHeader, printAmount } from "@/lib/printUtils";
-import { QRCodeSVG } from "qrcode.react";
+import { printDocument, printHeader } from "@/lib/printUtils";
 import type { BillRecord } from "@/pages/billing/BillingPage";
 import type { LineItem } from "@/components/billing/BillEditor";
 

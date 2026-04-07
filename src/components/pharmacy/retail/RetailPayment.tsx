@@ -220,7 +220,7 @@ const RetailPayment: React.FC<Props> = ({
     const body = `<h2 style="color:#1A2F5A">Pharmacy Receipt</h2>
       <div class="row"><span class="label">Receipt:</span><span>${receipt.dispensingNumber}</span></div>
       <div class="row"><span class="label">Date:</span><span>${receipt.date}</span></div>
-      ${receipt.patientName ? `<div class="row"><span class="label">Patient:</span><span>${receipt.patientName}</span></div>` : ""}
+      ${(receipt as any).patientName ? `<div class="row"><span class="label">Patient:</span><span>${(receipt as any).patientName}</span></div>` : ""}
       <table><tr><th>#</th><th>Item</th><th style="text-align:center">Qty</th><th style="text-align:right">Amount</th></tr>${rows}</table>
       <div class="total-row"><span>Total</span><span class="amount">₹${receipt.netTotal.toFixed(0)}</span></div>
       <div class="row"><span class="label">Payment:</span><span>${receipt.paymentMode.toUpperCase()}</span></div>`;
