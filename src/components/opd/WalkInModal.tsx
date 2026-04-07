@@ -257,6 +257,7 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated, defaultD
     if (dob) patientData.dob = dob;
     if (bloodGroup) patientData.blood_group = bloodGroup;
     if (address) patientData.address = address;
+    (patientData as any).allergies = allergies.trim() || "NKDA";
     if (referralSource) (patientData as any).referral_source = referralSource;
 
     const { data: newPatient, error } = await supabase.from("patients").insert([patientData]).select("id").single();
