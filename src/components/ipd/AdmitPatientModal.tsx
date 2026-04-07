@@ -424,6 +424,31 @@ const AdmitPatientModal: React.FC<Props> = ({ open, onClose, hospitalId, presele
               )}
             </div>
 
+            {/* Allergy Verification — NABH COP Mandatory */}
+            {selectedPatient && (
+              <div className="p-3 bg-amber-50 border border-amber-300 rounded-lg">
+                <div className="flex items-center gap-2 mb-1">
+                  <AlertTriangle className="h-4 w-4 text-amber-600" />
+                  <span className="text-xs font-bold text-amber-800 uppercase tracking-wider">Allergy Verification (Mandatory)</span>
+                </div>
+                <p className="text-sm font-medium text-amber-900 mb-2">
+                  {patientAllergies && patientAllergies !== "NKDA"
+                    ? patientAllergies
+                    : patientAllergies === "NKDA"
+                    ? "NKDA — No Known Drug Allergies"
+                    : "⚠️ No allergies recorded — please ask patient"}
+                </p>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={allergyVerified}
+                    onChange={(e) => setAllergyVerified(e.target.checked)}
+                    className="rounded border-amber-400 accent-amber-600" />
+                  <span className="text-xs text-amber-800">
+                    I have verified the patient's allergy status with the patient/attendant
+                  </span>
+                </label>
+              </div>
+            )}
+
             {/* Expected discharge */}
             <div>
               <label className="text-xs font-bold text-slate-600 block mb-1">Expected Discharge (optional)</label>
@@ -433,7 +458,7 @@ const AdmitPatientModal: React.FC<Props> = ({ open, onClose, hospitalId, presele
 
             <div className="flex justify-between pt-2">
               <Button variant="outline" onClick={() => setStep(1)}>← Back</Button>
-              <Button onClick={() => setStep(3)} disabled={!doctorId || !bedId} className="bg-[#1A2F5A] hover:bg-[#152647]">Next →</Button>
+              <Button onClick={() => setStep(3)} disabled={!doctorId || !bedId || !allergyVerified} className="bg-[#1A2F5A] hover:bg-[#152647]">Next →</Button>
             </div>
           </div>
         )}
