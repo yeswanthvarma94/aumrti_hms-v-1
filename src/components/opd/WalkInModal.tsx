@@ -59,6 +59,7 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated, defaultD
   const [dob, setDob] = useState("");
   const [bloodGroup, setBloodGroup] = useState("");
   const [address, setAddress] = useState("");
+  const [allergies, setAllergies] = useState("");
 
   // Token fields
   const [departments, setDepartments] = useState<{ id: string; name: string }[]>([]);
@@ -574,6 +575,10 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated, defaultD
                     <div>
                       <label className="text-xs font-medium text-slate-600">Address</label>
                       <input value={address} onChange={(e) => setAddress(e.target.value)} className="w-full h-10 px-3 border border-slate-200 rounded-lg text-sm mt-1 outline-none" placeholder="Address (optional)" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-slate-600">Known Allergies</label>
+                      <input value={allergies} onChange={(e) => setAllergies(e.target.value)} className="w-full h-10 px-3 border border-slate-200 rounded-lg text-sm mt-1 outline-none" placeholder="e.g., Penicillin, Sulfa, NKDA (No Known Drug Allergies)" />
                     </div>
                   </div>
                 )}
