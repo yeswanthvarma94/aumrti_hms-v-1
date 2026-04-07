@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { autoPostJournalEntry } from "@/lib/accounting";
+import { logAudit } from "@/lib/auditLog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -115,6 +116,7 @@ const PaymentsTab: React.FC<Props> = ({ bill, hospitalId, payments, onRefresh })
     }
 
     toast({ title: `Payment of ₹${totalCollecting.toLocaleString("en-IN")} collected ✓` });
+    logAudit({ action: "created", module: "billing", entityType: "payment", entityId: bill.id, details: { amount: totalCollecting, modes: rows.map(r => r.mode) } });
     setSubmitting(false);
     onRefresh();
   };

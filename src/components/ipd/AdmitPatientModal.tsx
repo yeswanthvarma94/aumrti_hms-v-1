@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { AlertTriangle } from "lucide-react";
+import { logAudit } from "@/lib/auditLog";
 
 interface Props {
   open: boolean;
@@ -262,6 +263,7 @@ const AdmitPatientModal: React.FC<Props> = ({ open, onClose, hospitalId, presele
     }
 
     setSubmitting(false);
+    logAudit({ action: "created", module: "ipd", entityType: "admission", entityId: newAdm?.id, details: { patient: selectedPatient.full_name, bed: bedLabel } });
     toast({ title: `${selectedPatient.full_name} admitted`, description: `Bed ${bedLabel} · ${admNum}` });
     onClose();
     onAdmitted();

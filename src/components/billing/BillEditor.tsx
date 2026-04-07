@@ -16,6 +16,7 @@ import { useWhatsAppNotification } from "@/components/whatsapp/WhatsAppNotificat
 import { sendBillGenerated } from "@/lib/whatsapp-notifications";
 import { validateGSTLineItems } from "@/lib/compliance-checks";
 import { autoPostJournalEntry } from "@/lib/accounting";
+import { logAudit } from "@/lib/auditLog";
 import type { BillRecord } from "@/pages/billing/BillingPage";
 
 export interface LineItem {
@@ -187,6 +188,7 @@ const BillEditor: React.FC<Props> = ({ bill, hospitalId, onRefresh }) => {
     }
 
     toast({ title: "Bill finalized" });
+    logAudit({ action: "updated", module: "billing", entityType: "bill", entityId: bill.id, details: { status: "finalized", amount: bill.total_amount, billNumber: bill.bill_number } });
 
     // Trigger WhatsApp notification
     const { data: patient } = await supabase.from("patients").select("full_name, phone").eq("id", bill.patient_id).maybeSingle();

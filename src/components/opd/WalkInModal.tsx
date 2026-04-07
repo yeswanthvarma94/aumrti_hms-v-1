@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { X, Search, CheckCircle2, ArrowLeft, CreditCard, Printer, UserPlus } from "lucide-react";
 import { autoPostJournalEntry } from "@/lib/accounting";
 import { generateBillNumber } from "@/hooks/useBillNumber";
+import { logAudit } from "@/lib/auditLog";
 import AddReferralDoctorModal from "@/components/shared/AddReferralDoctorModal";
 
 interface Props {
@@ -318,6 +319,10 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated, defaultD
         created_by: userId,
       }).select("id").maybeSingle();
       if (billErr) throw billErr;
+
+      // Audit: patient + bill creation
+      if (!useExisting) logAudit({ action: "created", module: "opd", entityType: "patient", entityId: patientId });
+      logAudit({ action: "created", module: "billing", entityType: "bill", entityId: bill.id, details: { billNumber, amount: fee } });
 
       // Insert line item
       await supabase.from("bill_line_items").insert({
