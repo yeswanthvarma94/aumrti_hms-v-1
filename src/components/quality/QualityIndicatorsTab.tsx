@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { LineChart, Line, ResponsiveContainer } from "recharts";
 import { useToast } from "@/hooks/use-toast";
 import { Activity, BedDouble, Clock, ShieldAlert, TrendingUp, TrendingDown } from "lucide-react";
-import useHospitalId from "@/hooks/useHospitalId";
+import { useHospitalId } from "@/hooks/useHospitalId";
 
 interface Indicator {
   id: string;
