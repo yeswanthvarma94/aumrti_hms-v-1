@@ -432,7 +432,7 @@ Guidelines:
                     <div className="flex gap-2">
                       <Button size="sm" variant="outline" onClick={() => {
                         const msg = `Dear Dr. ${selectedDoctor.doctor_name}, thank you for your referrals to Aumrti Hospital. We appreciate your trust and partnership. — Aumrti Hospital Team`;
-                        window.open(`https://wa.me/${selectedDoctor.phone?.replace(/\D/g, "")}?text=${encodeURIComponent(msg)}`, "_blank");
+                        window.open(`https://wa.me/${selectedDoctor.phone?.replace(/\D/g, "")}?text=${encodeURIComponent(msg)}`, "_blank", "noopener,noreferrer");
                       }}>
                         <MessageCircle className="w-4 h-4 mr-1" /> Send Thank-You
                       </Button>

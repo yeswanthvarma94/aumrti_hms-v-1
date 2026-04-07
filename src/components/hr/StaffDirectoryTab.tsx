@@ -110,7 +110,7 @@ const StaffDirectoryTab: React.FC = () => {
     const msg = encodeURIComponent(
       `Dear ${s.full_name}, your ${s.registration_body || "medical"} license (Reg No: ${s.registration_number || "N/A"}) expires on ${s.license_expiry_date}. Please renew to avoid disruption. — HR Team`
     );
-    window.open(`https://wa.me/${s.phone?.replace(/\D/g, "")}?text=${msg}`, "_blank");
+    window.open(`https://wa.me/${s.phone?.replace(/\D/g, "")}?text=${msg}`, "_blank", "noopener,noreferrer");
   };
 
   const roles = Array.from(new Set(staff.map((s) => s.role)));

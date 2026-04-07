@@ -264,7 +264,7 @@ const PROPage: React.FC = () => {
     // WhatsApp
     if (selectedGrievance.patient_phone) {
       const msg = `Dear ${selectedGrievance.patient_name}, your grievance regarding ${selectedGrievance.category.replace(/_/g, " ")} has been resolved. Resolution: ${resolution}. If not satisfied, please contact us. — Patient Relations Team`;
-      window.open(`https://wa.me/91${selectedGrievance.patient_phone.replace(/\D/g, "")}?text=${encodeURIComponent(msg)}`, "_blank");
+      window.open(`https://wa.me/91${selectedGrievance.patient_phone.replace(/\D/g, "")}?text=${encodeURIComponent(msg)}`, "_blank", "noopener,noreferrer");
     }
     setSelectedGrievance(null);
     setResolution("");

@@ -408,7 +408,7 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated, defaultD
 
   const handlePrintReceipt = () => {
     if (!receiptData) return;
-    const printWin = window.open("", "_blank", "width=400,height=600");
+    const printWin = window.open("", "_blank", "noopener,noreferrer,width=400,height=600");
     if (!printWin) return;
     const paidLabel = receiptData.paid ? "Paid (" + receiptData.paymentMode + ")" : "Pending";
     const paidClass = receiptData.paid ? "paid" : "pending";

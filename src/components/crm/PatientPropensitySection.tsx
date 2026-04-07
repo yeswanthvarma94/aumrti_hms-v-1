@@ -62,7 +62,7 @@ const PatientPropensitySection: React.FC = () => {
   const contactPatient = (p: ScoredPatient) => {
     if (!p.phone) { toast({ title: "No phone number", variant: "destructive" }); return; }
     const msg = `Dear ${p.full_name}, we noticed you haven't visited Aumrti Hospital recently. As a valued patient, we'd love to see you. Book an appointment at your convenience.`;
-    window.open(`https://wa.me/91${p.phone.replace(/\D/g, "")}?text=${encodeURIComponent(msg)}`, "_blank");
+    window.open(`https://wa.me/91${p.phone.replace(/\D/g, "")}?text=${encodeURIComponent(msg)}`, "_blank", "noopener,noreferrer");
   };
 
   const runCampaign = async () => {

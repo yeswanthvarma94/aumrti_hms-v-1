@@ -337,7 +337,7 @@ export default function LMSPage() {
   const printCertificate = () => {
     const el = document.getElementById('certificate-content');
     if (!el) return;
-    const w = window.open('', '', 'width=1100,height=800');
+    const w = window.open('', '_blank', 'noopener,noreferrer,width=1100,height=800');
     if (!w) return;
     w.document.write(`<html><head><title>Certificate</title>
       <style>
