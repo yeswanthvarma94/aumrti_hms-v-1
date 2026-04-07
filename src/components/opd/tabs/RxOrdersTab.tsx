@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useDebounce } from "@/hooks/useDebounce";
 import { cn } from "@/lib/utils";
 import { X, Plus, AlertTriangle, ShieldX, CheckCircle2 } from "lucide-react";
 import type { PrescriptionData, DrugEntry, LabOrder, RadiologyOrder } from "../ConsultationWorkspace";
@@ -53,20 +54,20 @@ const RxOrdersTab: React.FC<Props> = ({ prescription, onChange, hospitalId, pati
   const [safeFlash, setSafeFlash] = useState(false);
   const [drugSafetyMeta, setDrugSafetyMeta] = useState<Map<number, DrugSafetyMeta>>(new Map());
 
-  // Drug search
+  // Drug search (debounced)
+  const debouncedDrugSearch = useDebounce(searchQuery, 250);
   useEffect(() => {
-    if (!searchQuery || searchQuery.length < 2 || !hospitalId) { setSearchResults([]); return; }
-    const timer = setTimeout(async () => {
+    if (!debouncedDrugSearch || debouncedDrugSearch.length < 2 || !hospitalId) { setSearchResults([]); return; }
+    (async () => {
       const { data } = await supabase
         .from("drug_master")
         .select("drug_name, generic_name, is_ndps")
         .eq("hospital_id", hospitalId)
-        .ilike("drug_name", `%${searchQuery}%`)
+        .ilike("drug_name", `%${debouncedDrugSearch}%`)
         .limit(8);
       setSearchResults(data || []);
-    }, 200);
-    return () => clearTimeout(timer);
-  }, [searchQuery, hospitalId]);
+    })();
+  }, [debouncedDrugSearch, hospitalId]);
 
   const performSafetyCheck = async (drug: DrugEntry) => {
     setChecking(true);

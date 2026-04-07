@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useHospitalId } from "@/hooks/useHospitalId";
+import { useDebounce } from "@/hooks/useDebounce";
 import { Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -56,9 +57,12 @@ const PatientsPage: React.FC = () => {
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
   const [filter, setFilter] = useState<FilterPeriod>("all");
   const [showRegister, setShowRegister] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 50;
 
   // Deep-link: auto-open patient by ?id= param
   useEffect(() => {
@@ -71,17 +75,18 @@ const PatientsPage: React.FC = () => {
       });
   }, [hospitalId]);
 
-  const fetchPatients = useCallback(async () => {
+  const fetchPatients = useCallback(async (append = false) => {
     if (!hospitalId) return;
-    setLoading(true);
+    if (!append) setLoading(true);
+    const currentPage = append ? page : 0;
     let query = supabase
       .from("patients")
       .select("*", { count: "exact" })
       .eq("hospital_id", hospitalId)
       .order("created_at", { ascending: false });
 
-    if (search.trim()) {
-      const trimmed = search.trim();
+    if (debouncedSearch.trim()) {
+      const trimmed = debouncedSearch.trim();
       if (/^\d{10,}$/.test(trimmed)) {
         query = query.eq("phone", trimmed);
       } else {
@@ -100,20 +105,33 @@ const PatientsPage: React.FC = () => {
       query = query.gte("created_at", d.toISOString());
     }
 
-    const { data, count, error } = await query.limit(200);
+    const { data, count, error } = await query.range(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE - 1);
     if (error) {
       toast({ title: "Error loading patients", description: error.message, variant: "destructive" });
     } else {
-      setPatients((data as Patient[]) || []);
+      if (append) {
+        setPatients((prev) => [...prev, ...((data as Patient[]) || [])]);
+      } else {
+        setPatients((data as Patient[]) || []);
+      }
       setTotalCount(count ?? 0);
     }
     setLoading(false);
-  }, [search, filter, toast, hospitalId]);
+  }, [debouncedSearch, filter, toast, hospitalId, page]);
 
   useEffect(() => {
-    const t = setTimeout(fetchPatients, 300);
-    return () => clearTimeout(t);
-  }, [fetchPatients]);
+    setPage(0);
+    fetchPatients();
+  }, [debouncedSearch, filter, hospitalId]);
+
+  const loadMore = () => {
+    const nextPage = page + 1;
+    setPage(nextPage);
+  };
+
+  useEffect(() => {
+    if (page > 0) fetchPatients(true);
+  }, [page]);
 
   if (hidLoading) return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   if (!hospitalId) return null;
@@ -191,6 +209,13 @@ const PatientsPage: React.FC = () => {
             )}
           </TableBody>
         </Table>
+        {!loading && patients.length < totalCount && (
+          <div className="flex justify-center py-3 border-t border-border">
+            <Button variant="outline" size="sm" onClick={loadMore}>
+              Load More ({patients.length} of {totalCount})
+            </Button>
+          </div>
+        )}
       </div>
 
       {showRegister && <PatientRegistrationModal onClose={() => setShowRegister(false)} onSuccess={() => { setShowRegister(false); fetchPatients(); }} />}

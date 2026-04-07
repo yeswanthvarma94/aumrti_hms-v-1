@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useDebounce } from "@/hooks/useDebounce";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -210,10 +211,10 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated, defaultD
     setSearching(false);
   }, [hospitalId]);
 
+  const debouncedPhone = useDebounce(phone, 300);
   useEffect(() => {
-    const timer = setTimeout(() => searchPatient(phone), 300);
-    return () => clearTimeout(timer);
-  }, [phone, searchPatient]);
+    searchPatient(debouncedPhone);
+  }, [debouncedPhone, searchPatient]);
 
   const filteredDoctors = deptId ? doctors.filter((d) => d.department_id === deptId) : doctors;
   const selectedDeptName = departments.find(d => d.id === deptId)?.name || "—";
