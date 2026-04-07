@@ -687,7 +687,21 @@ const RadiologyReportingWorkspace: React.FC<Props> = ({ order, hospitalId, onSta
               <span className="text-[12px] text-emerald-600 font-medium">✓ Report signed</span>
             )}
             <div className="flex-1" />
-            <Button variant="outline" size="sm" className="h-8 text-[12px]" onClick={() => window.print()}>
+            <Button variant="outline" size="sm" className="h-8 text-[12px]" onClick={() => {
+              const { printDocument, printHeader } = require("@/lib/printUtils");
+              const patientName = order.patients?.full_name || "Patient";
+              const uhid = order.patients?.uhid || "";
+              const body = `${printHeader("Radiology Report", order.study_name)}
+                <div class="row"><span class="label">Patient:</span><span>${patientName} (${uhid})</span></div>
+                <div class="row"><span class="label">Study:</span><span>${order.study_name}</span></div>
+                <div class="row"><span class="label">Date:</span><span>${order.order_date}</span></div>
+                ${report?.technique ? `<p class="section-title">Technique</p><p>${report.technique}</p>` : ""}
+                ${report?.findings ? `<p class="section-title">Findings</p><pre>${report.findings}</pre>` : ""}
+                ${report?.impression ? `<p class="section-title">Impression</p><pre>${report.impression}</pre>` : ""}
+                ${report?.recommendations ? `<p class="section-title">Recommendations</p><pre>${report.recommendations}</pre>` : ""}
+                ${report?.is_critical ? `<p style="color:#dc2626;font-weight:bold">⚠️ CRITICAL FINDING: ${report.critical_finding || ""}</p>` : ""}`;
+              printDocument(`Radiology - ${patientName}`, body);
+            }}>
               <Printer size={14} /> Print
             </Button>
             {isSigned && (

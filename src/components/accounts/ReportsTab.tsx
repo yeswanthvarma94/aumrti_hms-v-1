@@ -485,7 +485,16 @@ ${vouchers}
                 <p className="text-xs text-muted-foreground">{dateRange.start} to {dateRange.end}</p>
               </div>
               <div className="flex gap-2">
-                <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => window.print()}><Printer className="h-3 w-3 mr-1" />Print</Button>
+                <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => {
+                  const { printDocument } = require("@/lib/printUtils");
+                  const mkRow = (label: string, amount: number, bold = false) => `<div class="row" style="${bold ? "font-weight:bold;font-size:14px;" : ""}"><span>${label}</span><span class="amount">₹${Math.abs(amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span></div>`;
+                  const body = `<h2 style="color:#1A2F5A">Profit & Loss Statement</h2><p class="label">${dateRange.start} to ${dateRange.end}</p>
+                    <p class="section-title">Revenue from Operations</p>${PNL_REVENUE.map(r => mkRow(r.label, revenueBalance(r.code))).join("")}${mkRow("Total Revenue", totalRevOps, true)}
+                    <p class="section-title">Cost of Services</p>${PNL_COS.map(r => mkRow(r.label, expenseBalance(r.code))).join("")}${mkRow("Gross Profit", grossProfit, true)}
+                    <p class="section-title">Operating Expenses</p>${[...PNL_PERSONNEL, ...PNL_INFRA, ...PNL_MAINT, ...PNL_ADMIN].map(r => mkRow(r.label, expenseBalance(r.code))).join("")}
+                    ${mkRow("Net Profit", netProfit, true)}`;
+                  printDocument("Profit & Loss Statement", body);
+                }}><Printer className="h-3 w-3 mr-1" />Print</Button>
                 <Button size="sm" variant="outline" className="text-xs h-7"><FileText className="h-3 w-3 mr-1" />PDF</Button>
                 <Button size="sm" variant="outline" className="text-xs h-7"><FileSpreadsheet className="h-3 w-3 mr-1" />Excel</Button>
               </div>
@@ -592,7 +601,16 @@ ${vouchers}
                 <p className="text-xs text-muted-foreground">As at {dateRange.end}</p>
               </div>
               <div className="flex gap-2">
-                <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => window.print()}><Printer className="h-3 w-3 mr-1" />Print</Button>
+                <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => {
+                  const { printDocument } = require("@/lib/printUtils");
+                  const mkRow = (label: string, amount: number, bold = false) => `<div class="row" style="${bold ? "font-weight:bold;font-size:14px;" : ""}"><span>${label}</span><span class="amount">₹${Math.abs(amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span></div>`;
+                  const body = `<h2 style="color:#1A2F5A">Balance Sheet</h2><p class="label">As at ${dateRange.end}</p>
+                    <p class="section-title">Assets</p>${BS_CURRENT_ASSETS.map(r => mkRow(r.label, assetBalance(r.code))).join("")}${mkRow("Total Current Assets", totalCurrentAssets, true)}
+                    ${BS_FIXED_ASSETS.map(r => mkRow(r.label, assetBalance(r.code))).join("")}${mkRow("Total Assets", totalAssets, true)}
+                    <p class="section-title">Liabilities</p>${BS_CURRENT_LIABILITIES.map(r => mkRow(r.label, liabilityBalance(r.code))).join("")}
+                    <p class="section-title">Equity</p>${BS_EQUITY.map(r => mkRow(r.label, liabilityBalance(r.code))).join("")}${mkRow("Net Profit (Current Year)", netProfit)}${mkRow("Total Liabilities & Equity", totalLiabEquity, true)}`;
+                  printDocument("Balance Sheet", body);
+                }}><Printer className="h-3 w-3 mr-1" />Print</Button>
                 <Button size="sm" variant="outline" className="text-xs h-7"><FileSpreadsheet className="h-3 w-3 mr-1" />Excel</Button>
               </div>
             </CardHeader>

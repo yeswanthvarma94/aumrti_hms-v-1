@@ -65,7 +65,8 @@ const ExportModal: React.FC<ExportModalProps> = ({ open, onOpenChange, range, ac
       if (!hospitalId) throw new Error("No hospital");
 
       if (format === "pdf") {
-        window.print();
+        const { printDocument } = require("@/lib/printUtils");
+        printDocument("Analytics Report", `<h2 style="color:#1A2F5A">Analytics Report</h2><p>Report exported from Aumrti HMS Analytics</p>`);
         toast.success("PDF print dialog opened ✓");
         onOpenChange(false);
         setLoading(false);

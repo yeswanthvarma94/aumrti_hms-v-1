@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Printer, MessageSquare, Mail } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
+import { printDocument, printHeader } from "@/lib/printUtils";
 import type { BillRecord } from "@/pages/billing/BillingPage";
 import type { LineItem } from "@/components/billing/BillEditor";
 
@@ -160,7 +161,23 @@ const GSTInvoiceModal: React.FC<Props> = ({
 
         {/* Actions */}
         <div className="grid grid-cols-3 gap-2 mt-2">
-          <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={() => window.print()}>
+          <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={() => {
+            const rows = taxableItems.map((item, idx) => {
+              const taxable = item.quantity * item.unit_rate * (1 - item.discount_percent / 100);
+              const gst = taxable * item.gst_percent / 100;
+              return `<tr><td>${idx + 1}</td><td>${item.description}</td><td>${item.hsn_code || "999311"}</td><td style="text-align:center">${item.quantity}</td><td style="text-align:right">${fmt(taxable)}</td><td style="text-align:center">${item.gst_percent / 2}%</td><td style="text-align:right">${fmt(gst / 2)}</td><td style="text-align:center">${item.gst_percent / 2}%</td><td style="text-align:right">${fmt(gst / 2)}</td><td style="text-align:right">${fmt(taxable + gst)}</td></tr>`;
+            }).join("");
+            const body = `<div style="text-align:center;background:#1A2F5A;color:#fff;padding:12px;font-size:16px;font-weight:bold">TAX INVOICE</div>
+              ${printHeader(hospitalName, `GSTIN: ${hospitalGstin || "Not configured"}`)}
+              <div class="row"><span class="label">Buyer:</span><span>${bill.patient_name} (${bill.uhid})</span></div>
+              <div class="row"><span class="label">Invoice:</span><span>${bill.bill_number}</span></div>
+              <div class="row"><span class="label">Date:</span><span>${bill.bill_date}</span></div>
+              <div class="row"><span class="label">IRN:</span><span style="font-family:monospace;font-size:11px">${irn}</span></div>
+              <table><tr><th>#</th><th>Description</th><th>HSN</th><th>Qty</th><th style="text-align:right">Taxable</th><th>CGST%</th><th style="text-align:right">CGST</th><th>SGST%</th><th style="text-align:right">SGST</th><th style="text-align:right">Total</th></tr>${rows}
+              <tr style="font-weight:bold;background:#f1f5f9"><td colspan="4">Total</td><td style="text-align:right">${fmt(totalTaxable)}</td><td></td><td style="text-align:right">${fmt(totalCgst)}</td><td></td><td style="text-align:right">${fmt(totalSgst)}</td><td style="text-align:right">${fmt(totalTaxable + totalCgst + totalSgst)}</td></tr></table>
+              <p style="font-size:10px;color:#64748b;font-style:italic">We declare that this invoice shows actual price of goods/services described and that all particulars are true and correct.</p>`;
+            printDocument(`GST Invoice ${bill.bill_number}`, body);
+          }}>
             <Printer size={14} /> Print Invoice
           </Button>
           <Button variant="outline" size="sm" className="gap-1 text-xs">
