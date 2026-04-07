@@ -8,6 +8,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { generateBillNumber } from "@/hooks/useBillNumber";
+import { autoPostJournalEntry } from "@/lib/accounting";
 
 const STATUS_COLS = [
   { key: "stimulation", label: "Stimulation", color: "bg-blue-50 border-blue-200" },
@@ -20,10 +22,90 @@ const STATUS_COLS = [
 const CYCLE_TYPES = ["ivf", "icsi", "fet", "iui", "imsi", "donor_egg", "donor_sperm", "surrogacy"];
 const PROTOCOLS = ["Long agonist", "Short agonist", "Antagonist", "Mini IVF", "Natural cycle"];
 
+// IVF status → billing milestone mapping
+const STATUS_BILLING_MAP: Record<string, { itemType: string; label: string; fallbackFee: number }> = {
+  stimulation: { itemType: "ivf_stimulation", label: "Stimulation", fallbackFee: 15000 },
+  opu_done: { itemType: "ivf_egg_retrieval", label: "Egg Retrieval (OPU)", fallbackFee: 25000 },
+  et_done: { itemType: "ivf_embryo_transfer", label: "Embryo Transfer", fallbackFee: 20000 },
+  completed: { itemType: "ivf_cycle_package", label: "Cycle Completion", fallbackFee: 10000 },
+};
+
 interface Props {
   showStartCycle: boolean;
   onCloseStartCycle: () => void;
   onRefreshKPIs: () => void;
+}
+
+/** Auto-bill an IVF milestone */
+async function billIVFMilestone(opts: {
+  hospitalId: string;
+  patientId: string;
+  coupleCode: string;
+  cycleNumber: number;
+  milestoneType: string;
+  milestoneLabel: string;
+  fallbackFee: number;
+  userId: string;
+}) {
+  try {
+    const { hospitalId, patientId, milestoneType, milestoneLabel, fallbackFee, coupleCode, cycleNumber, userId } = opts;
+
+    // Look up rate
+    const { data: svc } = await supabase.from("service_master").select("fee, gst_percent")
+      .eq("hospital_id", hospitalId).eq("is_active", true)
+      .ilike("name", `%${milestoneType.replace("ivf_", "").replace("_", "%")}%`).limit(1);
+    const fee = svc?.[0]?.fee || fallbackFee;
+    const gstPct = svc?.[0]?.gst_percent || 0;
+    const gstAmt = Math.round(fee * gstPct / 100);
+    const total = fee + gstAmt;
+
+    const billNumber = await generateBillNumber(hospitalId, "IVF");
+
+    const { data: bill, error } = await supabase.from("bills").insert({
+      hospital_id: hospitalId,
+      patient_id: patientId,
+      bill_number: billNumber,
+      bill_type: "opd",
+      bill_date: new Date().toISOString().split("T")[0],
+      subtotal: fee,
+      gst_amount: gstAmt,
+      total_amount: total,
+      patient_payable: total,
+      paid_amount: 0,
+      balance_due: total,
+      payment_status: "unpaid",
+      bill_status: "final",
+      created_by: userId,
+    }).select("id").single();
+
+    if (error || !bill) { console.error("IVF billing failed:", error); return; }
+
+    await supabase.from("bill_line_items").insert({
+      hospital_id: hospitalId,
+      bill_id: bill.id,
+      description: `IVF: ${milestoneLabel} - ${coupleCode} Cycle #${cycleNumber}`,
+      item_type: milestoneType,
+      unit_rate: fee,
+      quantity: 1,
+      total_amount: fee,
+      gst_percent: gstPct,
+      gst_amount: gstAmt,
+    });
+
+    await autoPostJournalEntry({
+      triggerEvent: "bill_finalized_opd",
+      sourceModule: "ivf",
+      sourceId: bill.id,
+      amount: total,
+      description: `IVF Revenue - ${milestoneLabel} - ${billNumber}`,
+      hospitalId,
+      postedBy: userId,
+    });
+
+    toast.success(`IVF billed: ₹${total.toLocaleString("en-IN")} (${milestoneLabel})`);
+  } catch (err) {
+    console.error("IVF billing error (non-blocking):", err);
+  }
 }
 
 const CyclesTab = ({ showStartCycle, onCloseStartCycle, onRefreshKPIs }: Props) => {
@@ -41,7 +123,7 @@ const CyclesTab = ({ showStartCycle, onCloseStartCycle, onRefreshKPIs }: Props) 
     setLoading(true);
     const [cyclesRes, couplesRes] = await Promise.all([
       supabase.from("ivf_cycles").select("*").order("created_at", { ascending: false }),
-      supabase.from("art_couples").select("id, couple_code, consent_obtained").eq("is_active", true),
+      supabase.from("art_couples").select("id, couple_code, consent_obtained, female_patient_id").eq("is_active", true),
     ]);
     if (cyclesRes.error) console.error(cyclesRes.error);
     if (couplesRes.error) console.error(couplesRes.error);
@@ -58,11 +140,12 @@ const CyclesTab = ({ showStartCycle, onCloseStartCycle, onRefreshKPIs }: Props) 
     if (!couple?.consent_obtained) { toast.error("Cannot start cycle — consent not obtained"); return; }
 
     setSaving(true);
-    const { data: userData } = await supabase.from("users").select("hospital_id").limit(1).single();
+    const { data: userData } = await supabase.from("users").select("id, hospital_id").limit(1).single();
+    const hospitalId = userData?.hospital_id;
     const existingCount = cycles.filter((c) => c.couple_id === coupleId).length;
 
     const { error } = await supabase.from("ivf_cycles").insert({
-      hospital_id: userData?.hospital_id,
+      hospital_id: hospitalId,
       couple_id: coupleId,
       cycle_number: existingCount + 1,
       cycle_type: cycleType,
@@ -73,6 +156,22 @@ const CyclesTab = ({ showStartCycle, onCloseStartCycle, onRefreshKPIs }: Props) 
     if (error) { console.error(error); toast.error("Failed to start cycle"); }
     else {
       toast.success("Cycle started");
+
+      // Bill the stimulation start milestone
+      if (hospitalId && couple.female_patient_id) {
+        const milestone = STATUS_BILLING_MAP["stimulation"];
+        await billIVFMilestone({
+          hospitalId,
+          patientId: couple.female_patient_id,
+          coupleCode: couple.couple_code,
+          cycleNumber: existingCount + 1,
+          milestoneType: milestone.itemType,
+          milestoneLabel: milestone.label,
+          fallbackFee: milestone.fallbackFee,
+          userId: userData?.id || "",
+        });
+      }
+
       onCloseStartCycle();
       setCoupleId(""); setCycleType(""); setProtocol("");
       loadData();
@@ -81,12 +180,51 @@ const CyclesTab = ({ showStartCycle, onCloseStartCycle, onRefreshKPIs }: Props) 
     setSaving(false);
   };
 
+  /** Advance cycle status and trigger billing */
+  const advanceCycleStatus = async (cycleId: string, newStatus: string) => {
+    const cycle = cycles.find((c) => c.id === cycleId);
+    if (!cycle) return;
+
+    const { error } = await (supabase as any).from("ivf_cycles").update({ status: newStatus }).eq("id", cycleId);
+    if (error) { toast.error("Status update failed"); return; }
+
+    // Trigger billing for milestone
+    const milestone = STATUS_BILLING_MAP[newStatus];
+    if (milestone) {
+      const couple = couples.find((cp) => cp.id === cycle.couple_id);
+      const { data: userData } = await supabase.from("users").select("id, hospital_id").limit(1).single();
+      if (userData?.hospital_id && couple?.female_patient_id) {
+        await billIVFMilestone({
+          hospitalId: userData.hospital_id,
+          patientId: couple.female_patient_id,
+          coupleCode: couple?.couple_code || "—",
+          cycleNumber: cycle.cycle_number || 1,
+          milestoneType: milestone.itemType,
+          milestoneLabel: milestone.label,
+          fallbackFee: milestone.fallbackFee,
+          userId: userData.id,
+        });
+      }
+    }
+
+    loadData();
+    onRefreshKPIs();
+  };
+
   const getStatusCycles = (status: string) => {
     if (status === "luteal_support") return cycles.filter((c) => ["luteal_support", "test_due"].includes(c.status));
     return cycles.filter((c) => c.status === status);
   };
 
   const typeLabel = (t: string) => t.toUpperCase().replace("_", " ");
+
+  // Next status for each column
+  const nextStatusMap: Record<string, string> = {
+    stimulation: "opu_done",
+    opu_done: "fertilization",
+    fertilization: "et_done",
+    et_done: "luteal_support",
+  };
 
   return (
     <div className="space-y-4">
@@ -99,12 +237,23 @@ const CyclesTab = ({ showStartCycle, onCloseStartCycle, onRefreshKPIs }: Props) 
               {getStatusCycles(col.key).map((c) => {
                 const couple = couples.find((cp) => cp.id === c.couple_id);
                 const daysSinceStart = Math.floor((Date.now() - new Date(c.start_date).getTime()) / 86400000);
+                const nextStatus = nextStatusMap[col.key];
                 return (
                   <Card key={c.id} className="p-2 text-xs space-y-1">
                     <div className="font-mono font-medium">{couple?.couple_code || "—"}</div>
                     <Badge variant="outline" className="text-[10px]">{typeLabel(c.cycle_type)}</Badge>
                     <div className="text-muted-foreground">Day {daysSinceStart} • Cycle #{c.cycle_number}</div>
                     {c.protocol && <div className="text-muted-foreground">{c.protocol}</div>}
+                    {nextStatus && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full h-6 text-[10px] mt-1"
+                        onClick={() => advanceCycleStatus(c.id, nextStatus)}
+                      >
+                        → {STATUS_COLS.find(s => s.key === nextStatus)?.label || nextStatus}
+                      </Button>
+                    )}
                   </Card>
                 );
               })}

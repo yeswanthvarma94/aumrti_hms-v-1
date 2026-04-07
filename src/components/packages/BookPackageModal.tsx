@@ -8,7 +8,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import PatientSearchPicker from "@/components/shared/PatientSearchPicker";
 import { useHospitalId } from '@/hooks/useHospitalId';
-
+import { generateBillNumber } from "@/hooks/useBillNumber";
+import { autoPostJournalEntry } from "@/lib/accounting";
 
 interface Props { open: boolean; onClose: () => void; }
 
@@ -22,7 +23,7 @@ export default function BookPackageModal({ open, onClose }: Props) {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    supabase.from("health_packages").select("id, package_name, price, package_type")
+    supabase.from("health_packages").select("id, package_name, price, package_type, included_tests, included_radiology, included_services")
       .eq("hospital_id", hospitalId).eq("is_active", true).order("display_order")
       .then(({ data }) => setPackages(data || []));
   }, []);
@@ -30,19 +31,134 @@ export default function BookPackageModal({ open, onClose }: Props) {
   const book = async () => {
     if (!patientId || !packageId || !scheduledDate) { toast.error("Please fill all required fields"); return; }
     setSaving(true);
-    const { error } = await supabase.from("package_bookings").insert({
-      hospital_id: hospitalId,
-      patient_id: patientId,
-      package_id: packageId,
-      booking_date: new Date().toISOString().split("T")[0],
-      scheduled_date: scheduledDate,
-      scheduled_time: scheduledTime || null,
-      status: "booked",
-    });
-    setSaving(false);
-    if (error) { toast.error("Booking failed: " + error.message); return; }
-    toast.success("Package booked successfully");
-    onClose();
+    try {
+      const selectedPkg = packages.find(p => p.id === packageId);
+      if (!selectedPkg) { toast.error("Package not found"); setSaving(false); return; }
+
+      // 1. Create booking
+      const { data: booking, error } = await supabase.from("package_bookings").insert({
+        hospital_id: hospitalId,
+        patient_id: patientId,
+        package_id: packageId,
+        booking_date: new Date().toISOString().split("T")[0],
+        scheduled_date: scheduledDate,
+        scheduled_time: scheduledTime || null,
+        status: "booked",
+      }).select("id").single();
+
+      if (error) { toast.error("Booking failed: " + error.message); setSaving(false); return; }
+
+      // 2. Get user for billing
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: userData } = await supabase.from("users").select("id").eq("auth_user_id", user?.id || "").maybeSingle();
+      const userId = userData?.id || null;
+
+      // 3. Create bill
+      const fee = Number(selectedPkg.price) || 0;
+      const billNumber = await generateBillNumber(hospitalId, "PKG");
+      const today = new Date().toISOString().split("T")[0];
+
+      const { data: bill, error: billErr } = await supabase.from("bills").insert({
+        hospital_id: hospitalId,
+        patient_id: patientId,
+        bill_number: billNumber,
+        bill_type: "package" as any,
+        bill_date: today,
+        subtotal: fee,
+        total_amount: fee,
+        patient_payable: fee,
+        paid_amount: 0,
+        balance_due: fee,
+        payment_status: "unpaid",
+        bill_status: "final",
+        created_by: userId,
+      }).select("id").single();
+
+      if (billErr || !bill) {
+        console.error("Package bill failed:", billErr);
+        toast.success("Package booked (billing failed — create bill manually)");
+        onClose();
+        setSaving(false);
+        return;
+      }
+
+      // 4. Insert bill line item
+      await supabase.from("bill_line_items").insert({
+        hospital_id: hospitalId,
+        bill_id: bill.id,
+        description: `Health Package: ${selectedPkg.package_name}`,
+        item_type: "package",
+        unit_rate: fee,
+        quantity: 1,
+        total_amount: fee,
+      });
+
+      // 5. Post journal entry
+      await autoPostJournalEntry({
+        triggerEvent: "bill_finalized_opd",
+        sourceModule: "packages",
+        sourceId: bill.id,
+        amount: fee,
+        description: `Package Revenue - ${selectedPkg.package_name} - ${billNumber}`,
+        hospitalId,
+        postedBy: userId || "",
+      });
+
+      // 6. Auto-create constituent orders
+      let labCount = 0;
+      let radCount = 0;
+
+      // Lab orders from included_tests
+      const includedTests: string[] = Array.isArray(selectedPkg.included_tests)
+        ? selectedPkg.included_tests
+        : [];
+      if (includedTests.length > 0 && hospitalId) {
+        try {
+          const { syncLabOrders } = await import("@/lib/investigationSync");
+          labCount = await syncLabOrders({
+            hospitalId,
+            patientId,
+            orderedBy: userId || "",
+            encounterId: null,
+            admissionId: null,
+            items: includedTests.map(t => ({ test_name: t, urgency: "routine", clinical_indication: `Health Package: ${selectedPkg.package_name}` })),
+          });
+        } catch (e) {
+          console.error("Package lab order sync error:", e);
+        }
+      }
+
+      // Radiology orders from included_radiology
+      const includedRad: string[] = Array.isArray(selectedPkg.included_radiology)
+        ? selectedPkg.included_radiology
+        : [];
+      if (includedRad.length > 0 && hospitalId) {
+        try {
+          const { syncRadiologyOrders } = await import("@/lib/investigationSync");
+          radCount = await syncRadiologyOrders({
+            hospitalId,
+            patientId,
+            orderedBy: userId || "",
+            encounterId: null,
+            admissionId: null,
+            items: includedRad.map(r => ({ study_name: r, urgency: "routine", clinical_indication: `Health Package: ${selectedPkg.package_name}` })),
+          });
+        } catch (e) {
+          console.error("Package radiology order sync error:", e);
+        }
+      }
+
+      const parts = [`Package booked — ₹${fee.toLocaleString("en-IN")}`];
+      if (labCount > 0) parts.push(`${labCount} lab orders`);
+      if (radCount > 0) parts.push(`${radCount} radiology orders`);
+      toast.success(parts.join(" + "));
+      onClose();
+    } catch (err) {
+      console.error("Package booking error:", err);
+      toast.error("Booking failed");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -73,7 +189,7 @@ export default function BookPackageModal({ open, onClose }: Props) {
           </div>
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={onClose}>Cancel</Button>
-            <Button onClick={book} disabled={saving}>{saving ? "Booking..." : "Book Package"}</Button>
+            <Button onClick={book} disabled={saving}>{saving ? "Booking..." : "Book & Bill Package"}</Button>
           </div>
         </div>
       </DialogContent>
