@@ -1,13 +1,6 @@
-## SQL Migration: Server-Side Bill Total Recalculation
-
-### What it does
-Creates a PostgreSQL function `recalculate_bill_totals(p_bill_id)` and a trigger on `bill_line_items` that auto-recalculates bill totals whenever line items are inserted, updated, or deleted.
-
-### SQL
-```sql
--- Server-side bill total recalculation function
-CREATE OR REPLACE FUNCTION recalculate_bill_totals(p_bill_id UUID)
-RETURNS void LANGUAGE plpgsql AS $$
+-- recalculate_bill_totals function
+CREATE OR REPLACE FUNCTION public.recalculate_bill_totals(p_bill_id UUID)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
   v_subtotal NUMERIC;
   v_gst NUMERIC;
@@ -46,8 +39,8 @@ END;
 $$;
 
 -- Trigger function
-CREATE OR REPLACE FUNCTION trigger_recalculate_bill()
-RETURNS trigger LANGUAGE plpgsql AS $$
+CREATE OR REPLACE FUNCTION public.trigger_recalculate_bill()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER AS $$
 BEGIN
   IF TG_OP = 'DELETE' THEN
     PERFORM recalculate_bill_totals(OLD.bill_id);
@@ -62,17 +55,45 @@ $$;
 DROP TRIGGER IF EXISTS trg_bill_line_items_recalc ON bill_line_items;
 CREATE TRIGGER trg_bill_line_items_recalc
 AFTER INSERT OR UPDATE OR DELETE ON bill_line_items
-FOR EACH ROW EXECUTE FUNCTION trigger_recalculate_bill();
-```
+FOR EACH ROW EXECUTE FUNCTION public.trigger_recalculate_bill();
 
-### Why
-- Bill totals are currently calculated client-side only — crash mid-save = stale totals
-- Trigger ensures totals stay correct regardless of which module adds line items
-- The `recalculate_bill_totals` RPC is also called explicitly as a fallback from client code
-- Excludes soft-deleted items (`is_deleted = true`)
+-- Token sequences table
+CREATE TABLE IF NOT EXISTS token_sequences (
+  hospital_id UUID NOT NULL REFERENCES hospitals(id) ON DELETE CASCADE,
+  prefix TEXT NOT NULL,
+  last_number INTEGER NOT NULL DEFAULT 0,
+  last_date TEXT NOT NULL DEFAULT '',
+  PRIMARY KEY (hospital_id, prefix)
+);
 
-### Code changes already made
-- Created `src/lib/currency.ts` with `roundCurrency()`, `calcGST()`, `formatINR()`
-- Replaced all `Math.round(fee * gstPct / 100 * 100) / 100` with `calcGST()` across 10 files
-- Replaced all client-side reduce-based recalculations with `supabase.rpc("recalculate_bill_totals")`
-- All files compile cleanly with zero TypeScript errors
+ALTER TABLE token_sequences ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "token_sequences_hospital_isolation" ON token_sequences
+  FOR ALL TO authenticated
+  USING (hospital_id IN (SELECT hospital_id FROM users WHERE auth_user_id = auth.uid()));
+
+-- generate_token_number RPC
+CREATE OR REPLACE FUNCTION public.generate_token_number(p_hospital_id UUID, p_prefix TEXT DEFAULT 'A')
+RETURNS TEXT LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  v_today TEXT;
+  v_next INTEGER;
+  v_token TEXT;
+BEGIN
+  v_today := to_char(now() AT TIME ZONE 'Asia/Kolkata', 'YYYYMMDD');
+
+  INSERT INTO token_sequences (hospital_id, prefix, last_number, last_date)
+  VALUES (p_hospital_id, p_prefix, 1, v_today)
+  ON CONFLICT (hospital_id, prefix) DO UPDATE
+  SET
+    last_number = CASE
+      WHEN token_sequences.last_date = v_today THEN token_sequences.last_number + 1
+      ELSE 1
+    END,
+    last_date = v_today
+  RETURNING last_number INTO v_next;
+
+  v_token := p_prefix || '-' || v_today || '-' || lpad(v_next::text, 4, '0');
+  RETURN v_token;
+END;
+$$;

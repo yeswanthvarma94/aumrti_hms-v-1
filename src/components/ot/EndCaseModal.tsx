@@ -168,7 +168,11 @@ const EndCaseModal: React.FC<Props> = ({ schedule, onClose, onEnded }) => {
 
       // Server-side recalculation via DB trigger handles totals;
       // call RPC as fallback to ensure consistency
-      await (supabase as any).rpc("recalculate_bill_totals", { p_bill_id: billId });
+      try {
+        await (supabase as any).rpc("recalculate_bill_totals", { p_bill_id: billId });
+      } catch (e) {
+        console.error("recalculate_bill_totals RPC failed (trigger should handle):", e);
+      }
 
       // Re-fetch updated bill total for journal entry
       const { data: updatedBill } = await supabase.from("bills").select("total_amount").eq("id", billId).maybeSingle();

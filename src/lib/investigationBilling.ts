@@ -83,8 +83,12 @@ export async function autoBillOpdInvestigation(opts: {
         });
       }
 
-      // Server-side recalculation
-      await (supabase as any).rpc("recalculate_bill_totals", { p_bill_id: existingBill.id });
+      // Server-side recalculation (trigger also handles this)
+      try {
+        await (supabase as any).rpc("recalculate_bill_totals", { p_bill_id: existingBill.id });
+      } catch (e) {
+        console.error("recalculate_bill_totals RPC failed (trigger should handle):", e);
+      }
 
       return { billId: existingBill.id, total: grandTotal };
     } else {

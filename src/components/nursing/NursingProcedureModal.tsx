@@ -86,8 +86,12 @@ export default function NursingProcedureModal({ open, onClose, hospitalId, defau
             gst_percent: gstPct, gst_amount: gstAmt, total_amount: grandTotal,
             source_module: "nursing",
           });
-          // Server-side recalculation
-          await (supabase as any).rpc("recalculate_bill_totals", { p_bill_id: billId! });
+          // Server-side recalculation (trigger also handles this)
+          try {
+            await (supabase as any).rpc("recalculate_bill_totals", { p_bill_id: billId! });
+          } catch (e) {
+            console.error("recalculate_bill_totals RPC failed (trigger should handle):", e);
+          }
         } else {
           // Create new IPD bill
           const billNumber = await generateBillNumber(hospitalId, "NURS");
