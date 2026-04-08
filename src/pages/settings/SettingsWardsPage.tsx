@@ -34,7 +34,7 @@ const SettingsWardsPage: React.FC = () => {
   const { data: wards, isLoading } = useQuery({
     queryKey: ["settings-wards"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("wards").select("id, name, type, total_beds, is_active, rate_per_day").order("name");
+      const { data, error } = await (supabase as any).from("wards").select("id, name, type, total_beds, is_active, rate_per_day").order("name");
       if (error) throw error;
       return data;
     },
