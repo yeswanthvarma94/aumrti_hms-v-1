@@ -34,7 +34,7 @@ const SettingsWardsPage: React.FC = () => {
   const { data: wards, isLoading } = useQuery({
     queryKey: ["settings-wards"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("wards").select("id, name, type, total_beds, is_active").order("name");
+      const { data, error } = await supabase.from("wards").select("id, name, type, total_beds, is_active, rate_per_day").order("name");
       if (error) throw error;
       return data;
     },
@@ -96,8 +96,7 @@ const SettingsWardsPage: React.FC = () => {
       const beds = parseInt(form.total_beds) || 10;
       const rate = parseFloat(form.rate_per_day) || 0;
       if (editingId) {
-        const updatePayload: any = { name: form.name, type: form.type as any, total_beds: beds };
-        if (rate > 0) updatePayload.rate_per_day = rate;
+        const updatePayload: any = { name: form.name, type: form.type as any, total_beds: beds, rate_per_day: rate };
         const { error } = await supabase.from("wards").update(updatePayload).eq("id", editingId);
         if (error) throw error;
       } else {

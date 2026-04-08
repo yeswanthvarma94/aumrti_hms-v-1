@@ -319,7 +319,7 @@ const BillingPage: React.FC = () => {
     // Room charges
     const { data: admission } = await supabase
       .from("admissions")
-      .select("admitted_at, discharged_at, ward_id, wards(name, ward_type), beds(bed_number)")
+      .select("admitted_at, discharged_at, ward_id, wards(name, ward_type, rate_per_day), beds(bed_number)")
       .eq("id", admissionId)
       .maybeSingle();
 
@@ -341,7 +341,8 @@ const BillingPage: React.FC = () => {
         .limit(1)
         .maybeSingle();
 
-      const ratePerDay = roomRate?.fee ? Number(roomRate.fee) : 500;
+      const wardDbRate = Number((admission as any).wards?.rate_per_day) || 0;
+      const ratePerDay = wardDbRate > 0 ? wardDbRate : (roomRate?.fee ? Number(roomRate.fee) : 500);
       const roomGstPct = roomRate?.gst_applicable ? (Number(roomRate.gst_percent) || 0) : 0;
       const roomTotal = ratePerDay * days;
       const roomGst = calcGST(roomTotal, roomGstPct);
