@@ -146,15 +146,26 @@ const SettingsWardsPage: React.FC = () => {
     mutationFn: async (count: number) => {
       if (!managingWard) return;
       const hid = await getHospitalId();
-      const existing = wardBeds?.length ?? 0;
-      const code = managingWard.name.replace(/[^A-Za-z]/g, "").substring(0, 3).toUpperCase();
+      const existing = wardBeds || [];
+      // Detect existing pattern from last bed number
+      let prefix = managingWard.name.replace(/[^A-Za-z]/g, "").substring(0, 3).toUpperCase();
+      let nextNum = existing.length + 1;
+      if (existing.length > 0) {
+        const lastBed = existing[existing.length - 1].bed_number;
+        const match = lastBed.match(/^(.+?)[-]?(\d+)$/);
+        if (match) {
+          prefix = match[1];
+          nextNum = parseInt(match[2]) + 1;
+        }
+      }
+      const padLen = String(nextNum + count - 1).length < 2 ? 2 : String(nextNum + count - 1).length;
       const rows = Array.from({ length: count }, (_, i) => ({
         hospital_id: hid, ward_id: managingWard.id,
-        bed_number: `${code}-${String(existing + i + 1).padStart(2, "0")}`,
+        bed_number: `${prefix}-${String(nextNum + i).padStart(padLen, "0")}`,
         status: "available" as const,
       }));
       await supabase.from("beds").insert(rows);
-      await supabase.from("wards").update({ total_beds: existing + count }).eq("id", managingWard.id);
+      await supabase.from("wards").update({ total_beds: existing.length + count }).eq("id", managingWard.id);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["settings-ward-beds"] });
