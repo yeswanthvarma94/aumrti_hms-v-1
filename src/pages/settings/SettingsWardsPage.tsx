@@ -27,7 +27,7 @@ const SettingsWardsPage: React.FC = () => {
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: "", type: "general", total_beds: "10" });
+  const [form, setForm] = useState({ name: "", type: "general", total_beds: "10", rate_per_day: "", bed_prefix: "", bed_start: "1" });
   const [selectedTemplates, setSelectedTemplates] = useState<Set<number>>(new Set());
   const [managingWard, setManagingWard] = useState<{ id: string; name: string } | null>(null);
 
@@ -73,15 +73,17 @@ const SettingsWardsPage: React.FC = () => {
     return data.hospital_id;
   };
 
-  const createWardWithBeds = async (hid: string, name: string, type: string, bedCount: number) => {
-    const { data: ward, error } = await supabase.from("wards").insert({
-      hospital_id: hid, name, type: type as any, total_beds: bedCount,
-    }).select("id").maybeSingle();
+  const createWardWithBeds = async (hid: string, name: string, type: string, bedCount: number, ratePerDay?: number, bedPrefix?: string, bedStart?: number) => {
+    const wardPayload: any = { hospital_id: hid, name, type: type as any, total_beds: bedCount };
+    if (ratePerDay && ratePerDay > 0) wardPayload.rate_per_day = ratePerDay;
+    const { data: ward, error } = await supabase.from("wards").insert(wardPayload).select("id").maybeSingle();
     if (error) throw error;
-    const code = name.replace(/[^A-Za-z]/g, "").substring(0, 3).toUpperCase();
+    const prefix = bedPrefix?.trim() || name.replace(/[^A-Za-z]/g, "").substring(0, 3).toUpperCase();
+    const start = bedStart || 1;
+    const padLen = String(start + bedCount - 1).length < 2 ? 2 : String(start + bedCount - 1).length;
     const bedRows = Array.from({ length: bedCount }, (_, i) => ({
       hospital_id: hid, ward_id: ward.id,
-      bed_number: `${code}-${String(i + 1).padStart(2, "0")}`,
+      bed_number: `${prefix}-${String(start + i).padStart(padLen, "0")}`,
       status: "available" as const,
     }));
     await supabase.from("beds").insert(bedRows);
@@ -92,13 +94,14 @@ const SettingsWardsPage: React.FC = () => {
     mutationFn: async () => {
       const hid = await getHospitalId();
       const beds = parseInt(form.total_beds) || 10;
+      const rate = parseFloat(form.rate_per_day) || 0;
       if (editingId) {
-        const { error } = await supabase.from("wards").update({
-          name: form.name, type: form.type as any, total_beds: beds,
-        }).eq("id", editingId);
+        const updatePayload: any = { name: form.name, type: form.type as any, total_beds: beds };
+        if (rate > 0) updatePayload.rate_per_day = rate;
+        const { error } = await supabase.from("wards").update(updatePayload).eq("id", editingId);
         if (error) throw error;
       } else {
-        await createWardWithBeds(hid, form.name, form.type, beds);
+        await createWardWithBeds(hid, form.name, form.type, beds, rate, form.bed_prefix, parseInt(form.bed_start) || 1);
       }
     },
     onSuccess: () => {
@@ -164,10 +167,10 @@ const SettingsWardsPage: React.FC = () => {
   const openDrawer = (ward?: any) => {
     if (ward) {
       setEditingId(ward.id);
-      setForm({ name: ward.name, type: ward.type, total_beds: String(ward.total_beds) });
+      setForm({ name: ward.name, type: ward.type, total_beds: String(ward.total_beds), rate_per_day: ward.rate_per_day ? String(ward.rate_per_day) : "", bed_prefix: "", bed_start: "1" });
     } else {
       setEditingId(null);
-      setForm({ name: "", type: "general", total_beds: "10" });
+      setForm({ name: "", type: "general", total_beds: "10", rate_per_day: "", bed_prefix: "", bed_start: "1" });
     }
     setDrawerOpen(true);
   };
@@ -371,12 +374,37 @@ const SettingsWardsPage: React.FC = () => {
                   {wardTypes.map((t) => <option key={t} value={t}>{t.replace("_", " ")}</option>)}
                 </select>
               </div>
+              <div>
+                <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Rate Per Day (₹)</label>
+                <Input type="number" min={0} value={form.rate_per_day} onChange={(e) => setForm({ ...form, rate_per_day: e.target.value })} placeholder="e.g. 1500" className="h-10" />
+                <p className="text-[11px] text-muted-foreground mt-1">Per-day room charge for billing</p>
+              </div>
               {!editingId && (
-                <div>
-                  <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Number of Beds *</label>
-                  <Input type="number" min={1} max={200} value={form.total_beds} onChange={(e) => setForm({ ...form, total_beds: e.target.value })} className="h-10" />
-                  <p className="text-[11px] text-muted-foreground mt-1">Beds will be auto-numbered (e.g. GEN-01, GEN-02...)</p>
-                </div>
+                <>
+                  <div>
+                    <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Number of Beds *</label>
+                    <Input type="number" min={1} max={200} value={form.total_beds} onChange={(e) => setForm({ ...form, total_beds: e.target.value })} className="h-10" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Bed Prefix</label>
+                      <Input value={form.bed_prefix} onChange={(e) => setForm({ ...form, bed_prefix: e.target.value })} placeholder="e.g. G, 1, ICU" className="h-10" />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Start Number</label>
+                      <Input type="number" min={1} value={form.bed_start} onChange={(e) => setForm({ ...form, bed_start: e.target.value })} className="h-10" />
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground -mt-2">
+                    Preview: {(() => {
+                      const prefix = form.bed_prefix?.trim() || form.name.replace(/[^A-Za-z]/g, "").substring(0, 3).toUpperCase() || "BED";
+                      const start = parseInt(form.bed_start) || 1;
+                      const count = parseInt(form.total_beds) || 1;
+                      const padLen = String(start + count - 1).length < 2 ? 2 : String(start + count - 1).length;
+                      return `${prefix}-${String(start).padStart(padLen, "0")}, ${prefix}-${String(start + 1).padStart(padLen, "0")} ... ${prefix}-${String(start + count - 1).padStart(padLen, "0")}`;
+                    })()}
+                  </p>
+                </>
               )}
             </div>
             <div className="flex-shrink-0 px-6 py-4 border-t border-border flex gap-3">
