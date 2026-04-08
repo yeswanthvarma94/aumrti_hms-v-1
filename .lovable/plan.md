@@ -1,99 +1,62 @@
--- recalculate_bill_totals function
-CREATE OR REPLACE FUNCTION public.recalculate_bill_totals(p_bill_id UUID)
-RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-DECLARE
-  v_subtotal NUMERIC;
-  v_gst NUMERIC;
-  v_total NUMERIC;
-  v_advance NUMERIC;
-  v_insurance NUMERIC;
-  v_paid NUMERIC;
-BEGIN
-  SELECT
-    COALESCE(SUM(ROUND(taxable_amount::numeric, 2)), 0),
-    COALESCE(SUM(ROUND(gst_amount::numeric, 2)), 0)
-  INTO v_subtotal, v_gst
-  FROM bill_line_items
-  WHERE bill_id = p_bill_id
-    AND (is_deleted IS NULL OR is_deleted = false);
 
-  v_total := v_subtotal + v_gst;
 
-  SELECT
-    COALESCE(advance_received, 0),
-    COALESCE(insurance_amount, 0),
-    COALESCE(paid_amount, 0)
-  INTO v_advance, v_insurance, v_paid
-  FROM bills WHERE id = p_bill_id;
+## Fix: Ward Rate Sync + IPD Room Charge Auto-Calculation
 
-  UPDATE bills SET
-    subtotal = v_subtotal,
-    taxable_amount = v_subtotal,
-    gst_amount = v_gst,
-    total_amount = v_total,
-    patient_payable = GREATEST(v_total - v_advance - v_insurance, 0),
-    balance_due = GREATEST(v_total - v_advance - v_insurance - v_paid, 0),
-    updated_at = now()
-  WHERE id = p_bill_id;
-END;
-$$;
+### Problem 1: Rate Per Day not loading on Edit Ward
+The wards query in `SettingsWardsPage.tsx` (line 37) selects only `id, name, type, total_beds, is_active` — it does NOT include `rate_per_day`. When you click Edit Ward, the rate field is always empty even if it was saved previously.
 
--- Trigger function
-CREATE OR REPLACE FUNCTION public.trigger_recalculate_bill()
-RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER AS $$
-BEGIN
-  IF TG_OP = 'DELETE' THEN
-    PERFORM recalculate_bill_totals(OLD.bill_id);
-    RETURN OLD;
-  ELSE
-    PERFORM recalculate_bill_totals(NEW.bill_id);
-    RETURN NEW;
-  END IF;
-END;
-$$;
+### Problem 2: IPD billing ignores ward rate_per_day
+In `BillingPage.tsx` (line 344), room charges use a `service_master` lookup and fall back to a hardcoded ₹500/day. The ward's actual `rate_per_day` column is never queried.
 
-DROP TRIGGER IF EXISTS trg_bill_line_items_recalc ON bill_line_items;
-CREATE TRIGGER trg_bill_line_items_recalc
-AFTER INSERT OR UPDATE OR DELETE ON bill_line_items
-FOR EACH ROW EXECUTE FUNCTION public.trigger_recalculate_bill();
+---
 
--- Token sequences table
-CREATE TABLE IF NOT EXISTS token_sequences (
-  hospital_id UUID NOT NULL REFERENCES hospitals(id) ON DELETE CASCADE,
-  prefix TEXT NOT NULL,
-  last_number INTEGER NOT NULL DEFAULT 0,
-  last_date TEXT NOT NULL DEFAULT '',
-  PRIMARY KEY (hospital_id, prefix)
-);
+### Fix Plan
 
-ALTER TABLE token_sequences ENABLE ROW LEVEL SECURITY;
+#### File 1: `src/pages/settings/SettingsWardsPage.tsx`
 
-CREATE POLICY "token_sequences_hospital_isolation" ON token_sequences
-  FOR ALL TO authenticated
-  USING (hospital_id IN (SELECT hospital_id FROM users WHERE auth_user_id = auth.uid()));
+**Change A** (line 37): Add `rate_per_day` to the wards select query:
+```
+"id, name, type, total_beds, is_active, rate_per_day"
+```
 
--- generate_token_number RPC
-CREATE OR REPLACE FUNCTION public.generate_token_number(p_hospital_id UUID, p_prefix TEXT DEFAULT 'A')
-RETURNS TEXT LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-DECLARE
-  v_today TEXT;
-  v_next INTEGER;
-  v_token TEXT;
-BEGIN
-  v_today := to_char(now() AT TIME ZONE 'Asia/Kolkata', 'YYYYMMDD');
+**Change B** (line 100): When rate is 0 or cleared, explicitly set it to 0 instead of skipping:
+```typescript
+updatePayload.rate_per_day = rate;  // always sync, even if 0
+```
 
-  INSERT INTO token_sequences (hospital_id, prefix, last_number, last_date)
-  VALUES (p_hospital_id, p_prefix, 1, v_today)
-  ON CONFLICT (hospital_id, prefix) DO UPDATE
-  SET
-    last_number = CASE
-      WHEN token_sequences.last_date = v_today THEN token_sequences.last_number + 1
-      ELSE 1
-    END,
-    last_date = v_today
-  RETURNING last_number INTO v_next;
+#### File 2: `src/pages/billing/BillingPage.tsx`
 
-  v_token := p_prefix || '-' || v_today || '-' || lpad(v_next::text, 4, '0');
-  RETURN v_token;
-END;
-$$;
+**Change** (lines 320-357): After fetching the admission with ward data, also fetch `rate_per_day` from the ward. Use it as the primary rate, falling back to `service_master` and then ₹500.
+
+Updated logic:
+```
+1. Fetch admission with ward join (add rate_per_day to wards select)
+2. wardRate = ward.rate_per_day (from DB)
+3. If wardRate > 0, use it as ratePerDay
+4. Else, try service_master lookup
+5. Else, fallback to ₹500
+```
+
+Specifically, change the wards join at line 322 from:
+```
+wards(name, ward_type)
+```
+to:
+```
+wards(name, ward_type, rate_per_day)
+```
+
+Then at line 344, change the rate logic:
+```typescript
+const wardDbRate = Number((admission as any).wards?.rate_per_day) || 0;
+const ratePerDay = wardDbRate > 0 ? wardDbRate : (roomRate?.fee ? Number(roomRate.fee) : 500);
+```
+
+This ensures the ward's configured rate is used first, service_master second, hardcoded last.
+
+---
+
+### Files Changed
+1. `src/pages/settings/SettingsWardsPage.tsx` — fetch `rate_per_day` in query + always sync on save
+2. `src/pages/billing/BillingPage.tsx` — use ward `rate_per_day` for IPD room charges
+
