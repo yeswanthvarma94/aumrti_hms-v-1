@@ -90,10 +90,12 @@ const BillingPage: React.FC = () => {
       .select("id")
       .eq("hospital_id", hospitalId)
       .eq("admission_id", admissionId)
+      .eq("bill_type", "ipd")
+      .order("created_at", { ascending: false })
       .limit(1);
 
     if (existing && existing.length > 0) {
-      // Select existing bill
+      await autoPullAdmissionCharges(existing[0].id, admissionId);
       await fetchBills();
       setSelectedBillId(existing[0].id);
       setSearchParams({});
@@ -142,6 +144,30 @@ const BillingPage: React.FC = () => {
   const autoPullAdmissionCharges = async (billId: string, admissionId: string) => {
     if (!hospitalId) return;
     const items: any[] = [];
+    const nursingProcedureIdsToMark: string[] = [];
+
+    const { data: existingLineItems } = await (supabase as any)
+      .from("bill_line_items")
+      .select("description, item_type, source_module, source_record_id")
+      .eq("bill_id", billId);
+
+    const toKey = (item: {
+      description?: string | null;
+      item_type?: string | null;
+      source_module?: string | null;
+      source_record_id?: string | null;
+    }) => `${item.source_module || "manual"}::${item.source_record_id || (item.description || "").trim().toLowerCase()}::${item.item_type || "other"}`;
+
+    const existingKeys = new Set<string>((existingLineItems || []).map((item: any) => toKey(item)));
+
+    const addUniqueItem = (item: any, nursingProcedureId?: string) => {
+      const key = toKey(item);
+      if (existingKeys.has(key)) return false;
+      existingKeys.add(key);
+      items.push(item);
+      if (nursingProcedureId) nursingProcedureIdsToMark.push(nursingProcedureId);
+      return true;
+    };
 
     // Helper: look up rate from service_master with fallback
     const getServiceRate = async (itemType: string, fallback: number) => {
@@ -192,13 +218,13 @@ const BillingPage: React.FC = () => {
         const finalRate = testRate?.fee ? Number(testRate.fee) : labRate.fee;
         const labGstPct = labRate.gstPct;
         const labGst = calcGST(finalRate, labGstPct);
-        items.push({
+         addUniqueItem({
           hospital_id: hospitalId, bill_id: billId,
           item_type: "lab", description: `Lab: ${(li as any).lab_test_master?.test_name || "Test"}`,
           quantity: 1, unit_rate: finalRate, taxable_amount: finalRate,
           gst_percent: labGstPct, gst_amount: labGst,
           total_amount: finalRate + labGst,
-          hsn_code: labRate.hsn || "998931", source_module: "lab",
+           hsn_code: labRate.hsn || "998931", source_module: "lab", source_record_id: li.id,
         });
       }
     }
@@ -206,7 +232,7 @@ const BillingPage: React.FC = () => {
     // Radiology charges
     const { data: radOrders } = await supabase
       .from("radiology_orders")
-      .select("study_name, accession_number")
+      .select("id, study_name, accession_number")
       .eq("hospital_id", hospitalId)
       .eq("admission_id", admissionId);
 
@@ -222,13 +248,13 @@ const BillingPage: React.FC = () => {
       const radFee = studyRate?.fee ? Number(studyRate.fee) : radRate.fee;
       const radGstPct = studyRate?.gst_applicable ? (Number(studyRate.gst_percent) || 0) : radRate.gstPct;
       const radGst = calcGST(radFee, radGstPct);
-      items.push({
+      addUniqueItem({
         hospital_id: hospitalId, bill_id: billId,
         item_type: "radiology", description: `Radiology: ${(ro as any).study_name}`,
         quantity: 1, unit_rate: radFee, taxable_amount: radFee,
         gst_percent: radGstPct, gst_amount: radGst,
         total_amount: radFee + radGst,
-        hsn_code: "998921", source_module: "radiology",
+        hsn_code: "998921", source_module: "radiology", source_record_id: ro.id,
       });
     }
 
@@ -243,12 +269,13 @@ const BillingPage: React.FC = () => {
     (pharma || []).forEach((pd: any) => {
       ((pd as any).pharmacy_dispensing_items || []).forEach((item: any) => {
         const total = Number(item.unit_price) * Number(item.quantity_dispensed);
-        items.push({
+        addUniqueItem({
           hospital_id: hospitalId, bill_id: billId,
           item_type: "pharmacy", description: `Pharmacy: ${item.drug_name}`,
           quantity: Number(item.quantity_dispensed), unit_rate: Number(item.unit_price),
           taxable_amount: total, gst_percent: 12, gst_amount: total * 0.12,
           total_amount: total * 1.12, source_module: "pharmacy",
+          source_record_id: item.id ? `dispense-item:${item.id}` : `dispense:${pd.id}:${item.drug_name}:${item.quantity_dispensed}`,
         });
       });
     });
@@ -278,17 +305,14 @@ const BillingPage: React.FC = () => {
         const total = fee * qty;
         const gstPct = procRate?.gst_applicable ? (Number(procRate.gst_percent) || 0) : nursingRate.gstPct;
         const gst = calcGST(total, gstPct);
-        items.push({
+        const inserted = addUniqueItem({
           hospital_id: hospitalId, bill_id: billId,
           item_type: "nursing_procedure", description: `Nursing: ${np.procedure_name}`,
           quantity: qty, unit_rate: fee, taxable_amount: total,
           gst_percent: gstPct, gst_amount: gst,
-          total_amount: total + gst, source_module: "nursing",
-        });
-        // Mark as billed
-        await (supabase as any).from("nursing_procedures").update({
-          billed: true, bill_id: billId,
-        }).eq("id", np.id);
+          total_amount: total + gst, source_module: "nursing", source_record_id: np.id,
+        }, np.id);
+        if (!inserted) continue;
       }
     }
 
@@ -322,18 +346,98 @@ const BillingPage: React.FC = () => {
       const roomTotal = ratePerDay * days;
       const roomGst = calcGST(roomTotal, roomGstPct);
 
-      items.push({
+      addUniqueItem({
         hospital_id: hospitalId, bill_id: billId,
         item_type: "room_charge", description: `Room: ${wardName} - Bed ${bedNum} (${days} days)`,
         quantity: days, unit_rate: ratePerDay, taxable_amount: roomTotal,
         gst_percent: roomGstPct, gst_amount: roomGst,
         total_amount: roomTotal + roomGst,
-        hsn_code: "999272", source_module: "ipd",
+        hsn_code: "999272", source_module: "ipd", source_record_id: `room:${admissionId}`,
+      });
+    }
+
+    const { data: relatedBills } = await supabase
+      .from("bills")
+      .select("id, bill_number, bill_type, subtotal, gst_amount, total_amount, notes")
+      .eq("hospital_id", hospitalId)
+      .eq("admission_id", admissionId)
+      .neq("id", billId);
+
+    if (relatedBills?.length) {
+      const relatedBillMap = new Map(relatedBills.map((relatedBill) => [relatedBill.id, relatedBill]));
+      const relatedBillIds = relatedBills.map((relatedBill) => relatedBill.id);
+      const lineItemCountByBill = new Map<string, number>();
+
+      const { data: relatedBillItems } = await (supabase as any)
+        .from("bill_line_items")
+        .select("id, bill_id, description, item_type, quantity, unit_rate, taxable_amount, gst_percent, gst_amount, total_amount, hsn_code, service_id, service_date, ordered_by, source_module, source_record_id")
+        .in("bill_id", relatedBillIds);
+
+      (relatedBillItems || []).forEach((item: any) => {
+        lineItemCountByBill.set(item.bill_id, (lineItemCountByBill.get(item.bill_id) || 0) + 1);
+        const sourceBill = relatedBillMap.get(item.bill_id);
+        addUniqueItem({
+          hospital_id: hospitalId,
+          bill_id: billId,
+          description: item.description,
+          item_type: item.item_type,
+          quantity: item.quantity,
+          unit_rate: item.unit_rate,
+          taxable_amount: item.taxable_amount,
+          gst_percent: item.gst_percent,
+          gst_amount: item.gst_amount,
+          total_amount: item.total_amount,
+          hsn_code: item.hsn_code,
+          service_id: item.service_id,
+          service_date: item.service_date,
+          ordered_by: item.ordered_by,
+          source_module: item.source_module || sourceBill?.bill_type || "billing",
+          source_record_id: item.source_record_id || `bill-line:${item.id}`,
+        });
+      });
+
+      relatedBills.forEach((relatedBill) => {
+        if ((lineItemCountByBill.get(relatedBill.id) || 0) > 0) return;
+
+        const subtotal = Number(relatedBill.subtotal || relatedBill.total_amount || 0);
+        const gstAmount = Number(relatedBill.gst_amount || 0);
+        const totalAmount = Number(relatedBill.total_amount || subtotal + gstAmount);
+        if (totalAmount <= 0) return;
+
+        const derivedGstPercent = subtotal > 0 ? Number(((gstAmount / subtotal) * 100).toFixed(2)) : 0;
+        addUniqueItem({
+          hospital_id: hospitalId,
+          bill_id: billId,
+          item_type: relatedBill.bill_type === "daycare" ? "procedure" : (relatedBill.bill_type || "other"),
+          description: `${(relatedBill.bill_type || "service").toUpperCase()} Charges — ${relatedBill.bill_number}`,
+          quantity: 1,
+          unit_rate: subtotal || totalAmount,
+          taxable_amount: subtotal || totalAmount,
+          gst_percent: derivedGstPercent,
+          gst_amount: gstAmount,
+          total_amount: totalAmount,
+          source_module: relatedBill.bill_type || "billing",
+          source_record_id: `bill-summary:${relatedBill.id}`,
+          hsn_code: null,
+        });
       });
     }
 
     if (items.length > 0) {
-      await supabase.from("bill_line_items").insert(items);
+      const { error: insertError } = await supabase.from("bill_line_items").insert(items);
+      if (insertError) {
+        console.error("Discharge bill line item insert failed:", insertError.message);
+        toast({ title: "Failed to pull some admission charges", description: insertError.message, variant: "destructive" });
+        return;
+      }
+
+      if (nursingProcedureIdsToMark.length > 0) {
+        await (supabase as any)
+          .from("nursing_procedures")
+          .update({ billed: true, bill_id: billId })
+          .in("id", nursingProcedureIdsToMark);
+      }
+
       const result = await recalculateBillTotalsSafe(billId);
       if (!result.ok) {
         console.error("Discharge bill recalculation failed:", result.error);
