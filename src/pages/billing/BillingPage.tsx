@@ -232,7 +232,7 @@ const BillingPage: React.FC = () => {
     // Radiology charges
     const { data: radOrders } = await supabase
       .from("radiology_orders")
-      .select("study_name, accession_number")
+      .select("id, study_name, accession_number")
       .eq("hospital_id", hospitalId)
       .eq("admission_id", admissionId);
 
