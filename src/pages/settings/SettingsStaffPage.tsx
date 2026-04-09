@@ -180,7 +180,6 @@ const SettingsStaffPage: React.FC = () => {
 
   // Only send department_id for roles that actually use the departments dropdown
   const getSafeDepartmentId = () => {
-    if (form.role !== "doctor") return null;
     return form.department_id && form.department_id.trim() !== "" ? form.department_id : null;
   };
 
