@@ -114,39 +114,40 @@ const AppSidebar: React.FC = () => {
         collapsed ? "w-16" : "w-56"
       )}
     >
-      {/* Top items */}
-      <nav className="flex flex-col gap-1 px-2 pt-3">
+      {/* Top items — fixed */}
+      <nav className="flex-shrink-0 flex flex-col gap-1 px-2 pt-3">
         {topItems.map(renderItem)}
       </nav>
 
-      {/* Quick Access divider */}
-      <div className="px-4 pt-5 pb-1">
-        {!collapsed && (
-          <span className="text-[10px] font-bold uppercase tracking-wider text-sidebar-foreground/40">
-            Quick Access
-          </span>
-        )}
+      {/* Scrollable middle section */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-sidebar-border [&::-webkit-scrollbar-thumb]:rounded-full">
+        {/* Quick Access divider */}
+        <div className="px-4 pt-5 pb-1">
+          {!collapsed && (
+            <span className="text-[10px] font-bold uppercase tracking-wider text-sidebar-foreground/40">
+              Quick Access
+            </span>
+          )}
+        </div>
+        <nav className="flex flex-col gap-1 px-2">
+          {quickAccessItems.map(renderItem)}
+        </nav>
+
+        {/* Records & Compliance */}
+        <div className="px-4 pt-4 pb-1">
+          {!collapsed && (
+            <span className="text-[10px] font-bold uppercase tracking-wider text-sidebar-foreground/40">
+              Records
+            </span>
+          )}
+        </div>
+        <nav className="flex flex-col gap-1 px-2 pb-2">
+          {recordsItems.map(renderItem)}
+        </nav>
       </div>
 
-      {/* Quick access items */}
-      <nav className="flex flex-col gap-1 px-2">
-        {quickAccessItems.map(renderItem)}
-      </nav>
-
-      {/* Records & Compliance */}
-      <div className="px-4 pt-4 pb-1">
-        {!collapsed && (
-          <span className="text-[10px] font-bold uppercase tracking-wider text-sidebar-foreground/40">
-            Records
-          </span>
-        )}
-      </div>
-      <nav className="flex-1 flex flex-col gap-1 px-2">
-        {recordsItems.map(renderItem)}
-      </nav>
-
-      {/* Bottom items */}
-      <nav className="flex flex-col gap-1 px-2 pb-2">
+      {/* Bottom items — fixed */}
+      <nav className="flex-shrink-0 flex flex-col gap-1 px-2 pb-2">
         {bottomItems.map(renderItem)}
       </nav>
 
