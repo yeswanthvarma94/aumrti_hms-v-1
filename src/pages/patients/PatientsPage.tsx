@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Search, UserPlus, Eye, Users } from "lucide-react";
+import { Search, UserPlus, Eye, Users, EyeOff } from "lucide-react";
 import PatientRegistrationModal from "@/components/patients/PatientRegistrationModal";
 import PatientDetailDrawer from "@/components/patients/PatientDetailDrawer";
 
@@ -31,6 +31,7 @@ type Patient = {
   emergency_contact_name: string | null;
   emergency_contact_phone: string | null;
   created_at: string;
+  is_active?: boolean;
 };
 
 type FilterPeriod = "all" | "today" | "week" | "month";
@@ -61,6 +62,7 @@ const PatientsPage: React.FC = () => {
   const [filter, setFilter] = useState<FilterPeriod>("all");
   const [showRegister, setShowRegister] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const [showInactive, setShowInactive] = useState(false);
   const [page, setPage] = useState(0);
   const PAGE_SIZE = 50;
 
@@ -84,6 +86,11 @@ const PatientsPage: React.FC = () => {
       .select("*", { count: "exact" })
       .eq("hospital_id", hospitalId)
       .order("created_at", { ascending: false });
+
+    // Filter active/inactive
+    if (!showInactive) {
+      query = query.neq("is_active", false);
+    }
 
     if (debouncedSearch.trim()) {
       const trimmed = debouncedSearch.trim();
@@ -117,12 +124,12 @@ const PatientsPage: React.FC = () => {
       setTotalCount(count ?? 0);
     }
     setLoading(false);
-  }, [debouncedSearch, filter, toast, hospitalId, page]);
+  }, [debouncedSearch, filter, toast, hospitalId, page, showInactive]);
 
   useEffect(() => {
     setPage(0);
     fetchPatients();
-  }, [debouncedSearch, filter, hospitalId]);
+  }, [debouncedSearch, filter, hospitalId, showInactive]);
 
   const loadMore = () => {
     const nextPage = page + 1;
@@ -162,6 +169,14 @@ const PatientsPage: React.FC = () => {
             </button>
           ))}
         </div>
+        <button
+          onClick={() => setShowInactive(!showInactive)}
+          className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-colors ${showInactive ? "bg-amber-100 text-amber-700" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+          title={showInactive ? "Showing all patients including inactive" : "Click to show inactive patients"}
+        >
+          {showInactive ? <EyeOff size={12} /> : <Eye size={12} />}
+          {showInactive ? "Showing Inactive" : "Show Inactive"}
+        </button>
       </div>
 
       <div className="flex-1 overflow-auto">
@@ -190,9 +205,12 @@ const PatientsPage: React.FC = () => {
               </TableRow>
             ) : (
               patients.map((p) => (
-                <TableRow key={p.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setSelectedPatient(p)}>
+                <TableRow key={p.id} className={`cursor-pointer hover:bg-muted/50 ${p.is_active === false ? "opacity-50" : ""}`} onClick={() => setSelectedPatient(p)}>
                   <TableCell className="font-mono text-xs">{p.uhid}</TableCell>
-                  <TableCell className="font-medium">{p.full_name}</TableCell>
+                  <TableCell className="font-medium">
+                    {p.full_name}
+                    {p.is_active === false && <Badge variant="outline" className="ml-2 text-[9px] text-amber-600 border-amber-300">Inactive</Badge>}
+                  </TableCell>
                   <TableCell className="text-xs text-muted-foreground">{getAge(p.dob)} {p.gender ? `/ ${p.gender.charAt(0).toUpperCase()}` : ""}</TableCell>
                   <TableCell className="text-sm">{p.phone || "—"}</TableCell>
                   <TableCell>
@@ -219,7 +237,14 @@ const PatientsPage: React.FC = () => {
       </div>
 
       {showRegister && <PatientRegistrationModal onClose={() => setShowRegister(false)} onSuccess={() => { setShowRegister(false); fetchPatients(); }} />}
-      {selectedPatient && <PatientDetailDrawer patient={selectedPatient} onClose={() => setSelectedPatient(null)} />}
+      {selectedPatient && (
+        <PatientDetailDrawer
+          patient={selectedPatient}
+          onClose={() => setSelectedPatient(null)}
+          onUpdated={() => { setSelectedPatient(null); fetchPatients(); }}
+          onDeleted={() => { setSelectedPatient(null); fetchPatients(); }}
+        />
+      )}
     </div>
   );
 };
