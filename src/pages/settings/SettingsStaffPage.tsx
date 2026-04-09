@@ -70,8 +70,8 @@ const DEFAULT_ROLE_CARDS: { role: AppRole; icon: React.ElementType; label: strin
 ];
 
 /* ─── Bulk doctor row ─── */
-interface BulkRow { name: string; speciality: string; phone: string; dept_id: string }
-const EMPTY_BULK: BulkRow = { name: "", speciality: "", phone: "", dept_id: "" };
+interface BulkRow { name: string; speciality: string; phone: string; dept_id: string; fee: string }
+const EMPTY_BULK: BulkRow = { name: "", speciality: "", phone: "", dept_id: "", fee: "" };
 
 /* ─── Page ─── */
 const SettingsStaffPage: React.FC = () => {
@@ -648,7 +648,28 @@ const SettingsStaffPage: React.FC = () => {
                 </div>
               )}
 
-              {/* Employment & Salary */}
+              {/* Consultation Pricing — doctor only */}
+              {form.role === "doctor" && (
+                <div className="space-y-3">
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Consultation Pricing</label>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Consultation Fee (₹)</label>
+                      <Input type="number" value={form.consultation_fee} onChange={(e) => setForm({ ...form, consultation_fee: e.target.value })} placeholder="500" className="h-10" />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Follow-up Fee (₹)</label>
+                      <Input type="number" value={form.follow_up_fee} onChange={(e) => setForm({ ...form, follow_up_fee: e.target.value })} placeholder="200" className="h-10" />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Validity (days)</label>
+                      <Input type="number" value={form.validity_days} onChange={(e) => setForm({ ...form, validity_days: e.target.value })} placeholder="7" className="h-10" />
+                      <p className="text-[10px] text-muted-foreground mt-0.5">Follow-up valid within these many days</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-3">
                 <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Employment & Salary</label>
                 <div className="grid grid-cols-2 gap-3">
