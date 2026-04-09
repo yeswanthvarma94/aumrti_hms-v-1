@@ -1,21 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
-  Home,
-  LayoutGrid,
-  UserPlus,
-  Stethoscope,
-  BedDouble,
-  FlaskConical,
-  Pill,
-  Receipt,
-  BarChart3,
-  Inbox,
-  Settings,
-  LogOut,
-  HeartPulse,
-  Activity,
-  FolderOpen,
+  Home, LayoutGrid, UserPlus, Stethoscope, BedDouble,
+  FlaskConical, Pill, Receipt, BarChart3, Inbox, Settings,
+  LogOut, HeartPulse, Activity, FolderOpen, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "./SidebarContext";
@@ -35,7 +23,6 @@ const topItems: SidebarItem[] = [
   { label: "Patients", path: "/patients", icon: UserPlus },
 ];
 
-// Default quick-access for super_admin / generic
 const quickAccessItems: SidebarItem[] = [
   { label: "OPD Queue", path: "/opd", icon: Stethoscope },
   { label: "IPD / Wards", path: "/ipd", icon: BedDouble },
@@ -54,7 +41,12 @@ const bottomItems: SidebarItem[] = [
   { label: "Settings", path: "/settings", icon: Settings },
 ];
 
-const AppSidebar: React.FC = () => {
+interface AppSidebarProps {
+  isMobileOverlay?: boolean;
+  onClose?: () => void;
+}
+
+const AppSidebar: React.FC<AppSidebarProps> = ({ isMobileOverlay, onClose }) => {
   const { collapsed } = useSidebar();
   const location = useLocation();
   const navigate = useNavigate();
@@ -62,6 +54,8 @@ const AppSidebar: React.FC = () => {
   const [userName, setUserName] = useState("User");
   const [userRole, setUserRole] = useState("");
   const [userInitials, setUserInitials] = useState("U");
+
+  const isCollapsed = isMobileOverlay ? false : collapsed;
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -84,6 +78,11 @@ const AppSidebar: React.FC = () => {
     navigate("/login", { replace: true });
   };
 
+  const handleNav = (path: string) => {
+    navigate(path);
+    if (onClose) onClose();
+  };
+
   const renderItem = (item: SidebarItem) => {
     const Icon = item.icon;
     const active = location.pathname === item.path;
@@ -92,9 +91,9 @@ const AppSidebar: React.FC = () => {
     return (
       <button
         key={item.path}
-        onClick={() => navigate(item.path)}
+        onClick={() => handleNav(item.path)}
         className={cn(
-          "flex items-center gap-3 h-10 w-full rounded-lg px-3 text-sm font-medium transition-colors text-left",
+          "flex items-center gap-3 min-h-[44px] w-full rounded-lg px-3 text-sm font-medium transition-colors text-left",
           active
             ? "bg-sidebar-accent text-white"
             : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-white",
@@ -102,28 +101,38 @@ const AppSidebar: React.FC = () => {
         )}
       >
         <Icon size={18} className="shrink-0" />
-        {!collapsed && <span>{item.label}</span>}
+        {!isCollapsed && <span>{item.label}</span>}
       </button>
     );
   };
 
   return (
-    <aside
+    <div
       className={cn(
-        "fixed left-0 top-[56px] bottom-0 z-40 flex flex-col bg-sidebar text-sidebar-foreground transition-[width] duration-200",
-        collapsed ? "w-16" : "w-56"
+        "flex flex-col bg-sidebar text-sidebar-foreground h-full",
+        isMobileOverlay ? "w-full" : "fixed left-0 top-[56px] bottom-0 z-40 transition-[width] duration-200",
+        !isMobileOverlay && (isCollapsed ? "w-16" : "w-56")
       )}
     >
-      {/* Top items — fixed */}
+      {/* Mobile close button */}
+      {isMobileOverlay && (
+        <div className="flex items-center justify-between px-3 pt-3 pb-1">
+          <span className="text-sm font-bold text-sidebar-foreground">Menu</span>
+          <button onClick={onClose} className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg hover:bg-sidebar-accent/50 text-sidebar-foreground">
+            <X size={20} />
+          </button>
+        </div>
+      )}
+
+      {/* Top items */}
       <nav className="flex-shrink-0 flex flex-col gap-1 px-2 pt-3">
         {topItems.map(renderItem)}
       </nav>
 
-      {/* Scrollable middle section */}
+      {/* Scrollable middle */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-sidebar-border [&::-webkit-scrollbar-thumb]:rounded-full">
-        {/* Quick Access divider */}
         <div className="px-4 pt-5 pb-1">
-          {!collapsed && (
+          {!isCollapsed && (
             <span className="text-[10px] font-bold uppercase tracking-wider text-sidebar-foreground/40">
               Quick Access
             </span>
@@ -133,9 +142,8 @@ const AppSidebar: React.FC = () => {
           {quickAccessItems.map(renderItem)}
         </nav>
 
-        {/* Records & Compliance */}
         <div className="px-4 pt-4 pb-1">
-          {!collapsed && (
+          {!isCollapsed && (
             <span className="text-[10px] font-bold uppercase tracking-wider text-sidebar-foreground/40">
               Records
             </span>
@@ -146,7 +154,7 @@ const AppSidebar: React.FC = () => {
         </nav>
       </div>
 
-      {/* Bottom items — fixed */}
+      {/* Bottom items */}
       <nav className="flex-shrink-0 flex flex-col gap-1 px-2 pb-2">
         {bottomItems.map(renderItem)}
       </nav>
@@ -158,7 +166,7 @@ const AppSidebar: React.FC = () => {
             {userInitials}
           </AvatarFallback>
         </Avatar>
-        {!collapsed && (
+        {!isCollapsed && (
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-sidebar-foreground truncate">{userName}</p>
             <p className="text-[11px] text-sidebar-foreground/60 truncate">{userRole.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}</p>
@@ -166,13 +174,13 @@ const AppSidebar: React.FC = () => {
         )}
         <button
           onClick={handleSignOut}
-          className="text-sidebar-foreground/60 hover:text-white transition-colors p-1 active:scale-95"
+          className="text-sidebar-foreground/60 hover:text-white transition-colors p-2 min-h-[44px] min-w-[44px] flex items-center justify-center active:scale-95"
           title="Sign out"
         >
           <LogOut size={16} />
         </button>
       </div>
-    </aside>
+    </div>
   );
 };
 

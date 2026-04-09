@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Menu, Search, Wifi, WifiOff, Moon, Sun } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "./SidebarContext";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -42,7 +43,8 @@ const routeLabels: Record<string, string> = {
 };
 
 const AppHeader: React.FC = () => {
-  const { toggle } = useSidebar();
+  const { toggle, setMobileOpen } = useSidebar();
+  const isMobile = useIsMobile();
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -66,7 +68,6 @@ const AppHeader: React.FC = () => {
     }
   }, [darkMode]);
 
-  // Get hospital ID for notification centre
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) return;
@@ -98,24 +99,30 @@ const AppHeader: React.FC = () => {
     };
   }, []);
 
-  // Cmd+K is now handled by CommandPalette component
+  const handleMenuClick = () => {
+    if (isMobile) {
+      setMobileOpen(true);
+    } else {
+      toggle();
+    }
+  };
 
   const currentLabel = routeLabels[location.pathname] || "Page";
   const isHome = location.pathname === "/";
 
   return (
-    <>
-      <header className="fixed top-0 left-0 right-0 z-50 h-14 bg-card border-b border-border flex items-center px-4 gap-4">
-        {/* Left: hamburger + breadcrumb */}
-        <div className="flex items-center gap-3 min-w-0">
-          <button
-            onClick={toggle}
-            className="p-2 rounded-md hover:bg-muted transition-colors active:scale-95"
-            aria-label="Toggle sidebar"
-          >
-            <Menu size={20} />
-          </button>
+    <header className="fixed top-0 left-0 right-0 z-50 h-14 bg-card border-b border-border flex items-center px-3 gap-2 sm:px-4 sm:gap-4">
+      {/* Left: hamburger + breadcrumb */}
+      <div className="flex items-center gap-2 min-w-0">
+        <button
+          onClick={handleMenuClick}
+          className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md hover:bg-muted transition-colors active:scale-95"
+          aria-label="Toggle sidebar"
+        >
+          <Menu size={20} />
+        </button>
 
+        {!isMobile && (
           <Breadcrumb>
             <BreadcrumbList>
               {!isHome && (
@@ -131,9 +138,15 @@ const AppHeader: React.FC = () => {
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
-        </div>
+        )}
 
-        {/* Center: search — triggers Cmd+K palette */}
+        {isMobile && (
+          <span className="text-sm font-semibold text-foreground truncate">{currentLabel}</span>
+        )}
+      </div>
+
+      {/* Center: search — triggers Cmd+K palette (hidden on mobile) */}
+      {!isMobile && (
         <div className="flex-1 flex justify-center max-w-md mx-auto">
           <button
             onClick={() => {
@@ -148,22 +161,25 @@ const AppHeader: React.FC = () => {
             </kbd>
           </button>
         </div>
+      )}
 
-        {/* Right: status + notifications + user */}
-        <div className="flex items-center gap-2">
-          {/* Dark mode toggle */}
-          <button
-            onClick={() => setDarkMode((prev) => !prev)}
-            className="p-2 rounded-md hover:bg-muted transition-colors"
-            aria-label="Toggle dark mode"
-          >
-            {darkMode ? <Sun size={18} /> : <Moon size={18} />}
-          </button>
+      {/* Spacer on mobile */}
+      {isMobile && <div className="flex-1" />}
 
-          {/* Online/offline pill */}
+      {/* Right: status + notifications + user */}
+      <div className="flex items-center gap-1 sm:gap-2">
+        <button
+          onClick={() => setDarkMode((prev) => !prev)}
+          className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md hover:bg-muted transition-colors"
+          aria-label="Toggle dark mode"
+        >
+          {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+        </button>
+
+        {!isMobile && (
           <div
             className={cn(
-              "hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium",
+              "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium",
               online
                 ? "bg-[hsl(var(--success))]/10 text-[hsl(var(--success))]"
                 : "bg-destructive/10 text-destructive"
@@ -172,37 +188,34 @@ const AppHeader: React.FC = () => {
             {online ? <Wifi size={12} /> : <WifiOff size={12} />}
             {online ? "Online" : "Offline"}
           </div>
+        )}
 
-          {/* Notification centre */}
-          <NotificationCentre hospitalId={hospitalId} />
+        <NotificationCentre hospitalId={hospitalId} />
 
-          {/* User menu */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="p-1 rounded-full hover:ring-2 hover:ring-ring/20 transition-shadow">
-                <Avatar className="h-8 w-8">
-                  <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
-                    {userInitials}
-                  </AvatarFallback>
-                </Avatar>
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem onClick={() => navigate("/settings/profile")}>
-                Profile
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate("/settings")}>
-                Hospital Settings
-              </DropdownMenuItem>
-              <DropdownMenuItem className="text-destructive" onClick={handleSignOut}>
-                Sign Out
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </header>
-
-    </>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="p-1 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full hover:ring-2 hover:ring-ring/20 transition-shadow">
+              <Avatar className="h-8 w-8">
+                <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
+                  {userInitials}
+                </AvatarFallback>
+              </Avatar>
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuItem onClick={() => navigate("/settings/profile")}>
+              Profile
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate("/settings")}>
+              Hospital Settings
+            </DropdownMenuItem>
+            <DropdownMenuItem className="text-destructive" onClick={handleSignOut}>
+              Sign Out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </header>
   );
 };
 
