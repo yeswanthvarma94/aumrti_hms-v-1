@@ -32,6 +32,10 @@ interface StaffForm {
   pf_applicable: boolean;
   esic_applicable: boolean;
   license_expiry_date: string;
+  // Doctor pricing
+  consultation_fee: string;
+  follow_up_fee: string;
+  validity_days: string;
 }
 
 const EMPTY_FORM: StaffForm = {
@@ -40,6 +44,7 @@ const EMPTY_FORM: StaffForm = {
   employee_id: "", employment_type: "permanent", basic_salary: "",
   hra_percent: "20", da_percent: "10", conveyance: "1600", medical_allowance: "1250",
   pf_applicable: true, esic_applicable: false, license_expiry_date: "",
+  consultation_fee: "", follow_up_fee: "", validity_days: "7",
 };
 
 /* ─── Role config ─── */
@@ -65,8 +70,8 @@ const DEFAULT_ROLE_CARDS: { role: AppRole; icon: React.ElementType; label: strin
 ];
 
 /* ─── Bulk doctor row ─── */
-interface BulkRow { name: string; speciality: string; phone: string; dept_id: string }
-const EMPTY_BULK: BulkRow = { name: "", speciality: "", phone: "", dept_id: "" };
+interface BulkRow { name: string; speciality: string; phone: string; dept_id: string; fee: string }
+const EMPTY_BULK: BulkRow = { name: "", speciality: "", phone: "", dept_id: "", fee: "" };
 
 /* ─── Page ─── */
 const SettingsStaffPage: React.FC = () => {
@@ -241,6 +246,40 @@ const SettingsStaffPage: React.FC = () => {
 
         // Create staff_profiles row with salary data
         await (supabase as any).from("staff_profiles").insert(buildProfilePayload(newId, hid, deptId));
+
+        // Create service_master row for doctor consultation fee
+        if (form.role === "doctor" && form.consultation_fee) {
+          await (supabase as any).from("service_master").upsert({
+            hospital_id: hid,
+            name: `Consultation - Dr. ${form.full_name}`,
+            category: "consultation",
+            item_type: "consultation",
+            doctor_id: newId,
+            department_id: deptId,
+            fee: parseFloat(form.consultation_fee),
+            follow_up_fee: form.follow_up_fee ? parseFloat(form.follow_up_fee) : null,
+            validity_days: parseInt(form.validity_days) || 7,
+            is_active: true,
+          }, { onConflict: "hospital_id,doctor_id,item_type", ignoreDuplicates: false });
+        }
+      }
+
+      // Upsert service_master for doctor on edit too
+      if (editingId && form.role === "doctor" && form.consultation_fee) {
+        const hid2 = await getHospitalId();
+        const deptId2 = getSafeDepartmentId();
+        await (supabase as any).from("service_master").upsert({
+          hospital_id: hid2,
+          name: `Consultation - Dr. ${form.full_name}`,
+          category: "consultation",
+          item_type: "consultation",
+          doctor_id: editingId,
+          department_id: deptId2,
+          fee: parseFloat(form.consultation_fee),
+          follow_up_fee: form.follow_up_fee ? parseFloat(form.follow_up_fee) : null,
+          validity_days: parseInt(form.validity_days) || 7,
+          is_active: true,
+        }, { onConflict: "hospital_id,doctor_id,item_type", ignoreDuplicates: false });
       }
     },
     onSuccess: () => {
@@ -289,6 +328,24 @@ const SettingsStaffPage: React.FC = () => {
         is_active: true,
       }));
       await (supabase as any).from("staff_profiles").insert(profileRows);
+
+      // Create service_master rows for doctors with fees
+      const svcRows = valid
+        .map((v, i) => ({ ...v, id: rows[i].id, dept_id: rows[i].department_id }))
+        .filter((v) => v.fee && parseFloat(v.fee) > 0)
+        .map((v) => ({
+          hospital_id: hid,
+          name: `Consultation - ${v.name}`,
+          category: "consultation",
+          item_type: "consultation",
+          doctor_id: v.id,
+          department_id: v.dept_id,
+          fee: parseFloat(v.fee),
+          is_active: true,
+        }));
+      if (svcRows.length > 0) {
+        await (supabase as any).from("service_master").insert(svcRows);
+      }
       return valid.length;
     },
     onSuccess: (count) => {
@@ -339,6 +396,16 @@ const SettingsStaffPage: React.FC = () => {
       // Fetch staff_profiles data for salary fields
       const { data: profile } = await (supabase as any)
         .from("staff_profiles").select("*").eq("user_id", user.id).maybeSingle();
+      // Fetch service_master for doctor consultation pricing
+      let svcRow: any = null;
+      if (user.role === "doctor") {
+        const hid = await getHospitalId();
+        const { data } = await (supabase as any).from("service_master")
+          .select("fee, follow_up_fee, validity_days")
+          .eq("hospital_id", hid).eq("doctor_id", user.id)
+          .eq("item_type", "consultation").maybeSingle();
+        svcRow = data;
+      }
       setForm({
         full_name: user.full_name, phone: user.phone ?? "", email: user.email,
         role: user.role, department_id: user.department_id ?? "", registration_number: user.registration_number ?? "", ward_id: "",
@@ -352,6 +419,9 @@ const SettingsStaffPage: React.FC = () => {
         pf_applicable: profile?.pf_applicable ?? true,
         esic_applicable: profile?.esic_applicable ?? false,
         license_expiry_date: profile?.license_expiry_date ?? "",
+        consultation_fee: svcRow?.fee?.toString() ?? "",
+        follow_up_fee: svcRow?.follow_up_fee?.toString() ?? "",
+        validity_days: svcRow?.validity_days?.toString() ?? "7",
       });
     } else {
       setEditingId(null);
@@ -596,7 +666,28 @@ const SettingsStaffPage: React.FC = () => {
                 </div>
               )}
 
-              {/* Employment & Salary */}
+              {/* Consultation Pricing — doctor only */}
+              {form.role === "doctor" && (
+                <div className="space-y-3">
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Consultation Pricing</label>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Consultation Fee (₹)</label>
+                      <Input type="number" value={form.consultation_fee} onChange={(e) => setForm({ ...form, consultation_fee: e.target.value })} placeholder="500" className="h-10" />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Follow-up Fee (₹)</label>
+                      <Input type="number" value={form.follow_up_fee} onChange={(e) => setForm({ ...form, follow_up_fee: e.target.value })} placeholder="200" className="h-10" />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Validity (days)</label>
+                      <Input type="number" value={form.validity_days} onChange={(e) => setForm({ ...form, validity_days: e.target.value })} placeholder="7" className="h-10" />
+                      <p className="text-[10px] text-muted-foreground mt-0.5">Follow-up valid within these many days</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-3">
                 <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Employment & Salary</label>
                 <div className="grid grid-cols-2 gap-3">
@@ -687,11 +778,11 @@ const SettingsStaffPage: React.FC = () => {
               </div>
 
               <div className="flex-1 overflow-y-auto px-6 py-4 space-y-2">
-                <div className="grid grid-cols-[2fr_2fr_1.5fr_1.5fr_28px] gap-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide px-1">
-                  <span>Full Name</span><span>Speciality</span><span>Phone</span><span>Department</span><span />
+                <div className="grid grid-cols-[2fr_1.5fr_1fr_1.5fr_1fr_28px] gap-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide px-1">
+                  <span>Full Name</span><span>Speciality</span><span>Phone</span><span>Department</span><span>Fee (₹)</span><span />
                 </div>
                 {bulkRows.map((row, i) => (
-                  <div key={i} className="grid grid-cols-[2fr_2fr_1.5fr_1.5fr_28px] gap-2 items-center">
+                  <div key={i} className="grid grid-cols-[2fr_1.5fr_1fr_1.5fr_1fr_28px] gap-2 items-center">
                     <Input value={row.name} onChange={(e) => {
                       const r = [...bulkRows]; r[i] = { ...r[i], name: e.target.value }; setBulkRows(r);
                     }} placeholder="Dr. Example" className="h-9" />
@@ -707,6 +798,9 @@ const SettingsStaffPage: React.FC = () => {
                       <option value="">Dept</option>
                       {departments?.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
                     </select>
+                    <Input type="number" value={row.fee} onChange={(e) => {
+                      const r = [...bulkRows]; r[i] = { ...r[i], fee: e.target.value }; setBulkRows(r);
+                    }} placeholder="500" className="h-9" />
                     <button onClick={() => setBulkRows((r) => r.filter((_, idx) => idx !== i))} className="text-muted-foreground hover:text-destructive">
                       <Trash2 size={14} />
                     </button>

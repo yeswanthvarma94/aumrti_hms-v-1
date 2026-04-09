@@ -10,6 +10,8 @@ interface ManualDoc {
   speciality: string;
   regNo: string;
   mobile: string;
+  fee: string;
+  followUpFee: string;
 }
 
 interface Props {
@@ -25,7 +27,7 @@ const Step4Doctors: React.FC<Props> = ({ hospitalId, onComplete }) => {
   const [invited, setInvited] = useState(false);
 
   const [doctors, setDoctors] = useState<ManualDoc[]>([
-    { name: "", speciality: "", regNo: "", mobile: "" },
+    { name: "", speciality: "", regNo: "", mobile: "", fee: "", followUpFee: "" },
   ]);
   const [saving, setSaving] = useState(false);
 
@@ -70,6 +72,7 @@ const Step4Doctors: React.FC<Props> = ({ hospitalId, onComplete }) => {
     if (valid.length === 0) { onComplete(); return; }
     setSaving(true);
     const rows = valid.map((d) => ({
+      id: crypto.randomUUID(),
       hospital_id: hospitalId,
       full_name: d.name,
       email: `${d.name.toLowerCase().replace(/\s/g, ".")}@hospital.local`,
@@ -81,6 +84,25 @@ const Step4Doctors: React.FC<Props> = ({ hospitalId, onComplete }) => {
     const { error } = await supabase.from("users").insert(rows as any);
     if (error) {
       toast({ title: "Error adding doctors", description: error.message, variant: "destructive" });
+    } else {
+      // Create service_master rows for doctors with fees
+      const svcRows = valid
+        .map((v, i) => ({ ...v, doctorId: rows[i].id }))
+        .filter((v) => v.fee && parseFloat(v.fee) > 0)
+        .map((v) => ({
+          hospital_id: hospitalId,
+          name: `Consultation - ${v.name}`,
+          category: "consultation",
+          item_type: "consultation",
+          doctor_id: v.doctorId,
+          fee: parseFloat(v.fee) || 500,
+          follow_up_fee: v.followUpFee ? parseFloat(v.followUpFee) : 200,
+          validity_days: 7,
+          is_active: true,
+        }));
+      if (svcRows.length > 0) {
+        await (supabase as any).from("service_master").insert(svcRows);
+      }
     }
     setSaving(false);
     onComplete();
@@ -129,22 +151,24 @@ const Step4Doctors: React.FC<Props> = ({ hospitalId, onComplete }) => {
         </TabsContent>
 
         <TabsContent value="manual" className="space-y-3">
-          <div className="grid grid-cols-[2fr_2fr_1.5fr_1.5fr_32px] gap-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide px-1">
-            <span>Full Name</span><span>Speciality</span><span>Reg. No</span><span>Mobile</span><span />
+          <div className="grid grid-cols-[2fr_1.5fr_1fr_1fr_1fr_1fr_32px] gap-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide px-1">
+            <span>Full Name</span><span>Speciality</span><span>Reg. No</span><span>Mobile</span><span>Fee (₹)</span><span>Follow-up</span><span />
           </div>
           {doctors.map((d, i) => (
-            <div key={i} className="grid grid-cols-[2fr_2fr_1.5fr_1.5fr_32px] gap-2 items-center">
+            <div key={i} className="grid grid-cols-[2fr_1.5fr_1fr_1fr_1fr_1fr_32px] gap-2 items-center">
               <Input value={d.name} onChange={(e) => updateDoc(i, "name", e.target.value)} placeholder="Dr. Example" />
               <Input value={d.speciality} onChange={(e) => updateDoc(i, "speciality", e.target.value)} placeholder="General Medicine" />
               <Input value={d.regNo} onChange={(e) => updateDoc(i, "regNo", e.target.value)} placeholder="MH-12345" />
               <Input value={d.mobile} onChange={(e) => updateDoc(i, "mobile", e.target.value)} placeholder="9876543210" />
+              <Input type="number" value={d.fee} onChange={(e) => updateDoc(i, "fee", e.target.value)} placeholder="500" />
+              <Input type="number" value={d.followUpFee} onChange={(e) => updateDoc(i, "followUpFee", e.target.value)} placeholder="200" />
               <button onClick={() => setDoctors((prev) => prev.filter((_, idx) => idx !== i))} className="text-muted-foreground hover:text-destructive">
                 <Trash2 size={14} />
               </button>
             </div>
           ))}
           {doctors.length < 5 && (
-            <button onClick={() => setDoctors((prev) => [...prev, { name: "", speciality: "", regNo: "", mobile: "" }])} className="flex items-center gap-1.5 text-sm text-primary font-medium hover:underline">
+            <button onClick={() => setDoctors((prev) => [...prev, { name: "", speciality: "", regNo: "", mobile: "", fee: "", followUpFee: "" }])} className="flex items-center gap-1.5 text-sm text-primary font-medium hover:underline">
               <Plus size={14} /> Add Row
             </button>
           )}
