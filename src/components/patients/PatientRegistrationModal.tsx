@@ -9,34 +9,49 @@ import AddReferralDoctorModal from "@/components/shared/AddReferralDoctorModal";
 interface Props {
   onClose: () => void;
   onSuccess: () => void;
+  editPatient?: {
+    id: string;
+    full_name: string;
+    phone: string | null;
+    gender: string | null;
+    dob: string | null;
+    blood_group: string | null;
+    address: string | null;
+    allergies: string | null;
+    chronic_conditions: string[] | null;
+    insurance_id: string | null;
+    abha_id: string | null;
+    emergency_contact_name: string | null;
+    emergency_contact_phone: string | null;
+  };
 }
 
 const bloodGroups = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
 const genders = ["male", "female", "other"] as const;
 
-const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess }) => {
+const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess, editPatient }) => {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
   const [showReferralModal, setShowReferralModal] = useState(false);
   const [referralDoctorId, setReferralDoctorId] = useState<string | null>(null);
-  const [dpdpConsent, setDpdpConsent] = useState(false);
+  const [dpdpConsent, setDpdpConsent] = useState(!!editPatient);
   const [hospitalName, setHospitalName] = useState("Hospital");
   const [hospitalIdState, setHospitalIdState] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [form, setForm] = useState({
-    full_name: "",
-    phone: "",
+    full_name: editPatient?.full_name || "",
+    phone: editPatient?.phone || "",
     age: "",
-    gender: "" as string,
-    dob: "",
-    blood_group: "",
-    address: "",
-    allergies: "",
-    chronic_conditions: "",
-    insurance_id: "",
-    abha_id: "",
-    emergency_contact_name: "",
-    emergency_contact_phone: "",
+    gender: (editPatient?.gender || "") as string,
+    dob: editPatient?.dob || "",
+    blood_group: editPatient?.blood_group || "",
+    address: editPatient?.address || "",
+    allergies: editPatient?.allergies || "",
+    chronic_conditions: editPatient?.chronic_conditions?.join(", ") || "",
+    insurance_id: editPatient?.insurance_id || "",
+    abha_id: editPatient?.abha_id || "",
+    emergency_contact_name: editPatient?.emergency_contact_name || "",
+    emergency_contact_phone: editPatient?.emergency_contact_phone || "",
     referral_source: "",
   });
 
@@ -88,14 +103,6 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess }) => {
     }
     const hospitalId = userData.hospital_id;
 
-    const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-    const { count } = await supabase
-      .from("patients")
-      .select("*", { count: "exact", head: true })
-      .eq("hospital_id", hospitalId);
-    const seq = String((count ?? 0) + 1).padStart(4, "0");
-    const uhid = `UHID-${dateStr}-${seq}`;
-
     let dob = form.dob || null;
     if (!dob && form.age) {
       const d = new Date();
@@ -108,9 +115,7 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess }) => {
       .map((s) => s.trim())
       .filter(Boolean);
 
-    const { error } = await supabase.from("patients").insert({
-      hospital_id: hospitalId,
-      uhid,
+    const patientFields = {
       full_name: form.full_name.trim(),
       phone: form.phone || null,
       gender: (form.gender as "male" | "female" | "other") || null,
@@ -123,6 +128,34 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess }) => {
       abha_id: form.abha_id || null,
       emergency_contact_name: form.emergency_contact_name || null,
       emergency_contact_phone: form.emergency_contact_phone || null,
+    };
+
+    if (editPatient) {
+      // UPDATE existing patient
+      const { error } = await supabase.from("patients").update(patientFields as any).eq("id", editPatient.id);
+      setSaving(false);
+      if (error) {
+        toast({ title: "Update failed", description: error.message, variant: "destructive" });
+      } else {
+        toast({ title: "Patient details updated" });
+        onSuccess();
+      }
+      return;
+    }
+
+    // INSERT new patient
+    const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+    const { count } = await supabase
+      .from("patients")
+      .select("*", { count: "exact", head: true })
+      .eq("hospital_id", hospitalId);
+    const seq = String((count ?? 0) + 1).padStart(4, "0");
+    const uhid = `UHID-${dateStr}-${seq}`;
+
+    const { error } = await supabase.from("patients").insert({
+      hospital_id: hospitalId,
+      uhid,
+      ...patientFields,
       referral_source: form.referral_source || null,
     } as any);
 
@@ -130,9 +163,7 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess }) => {
     if (error) {
       toast({ title: "Registration failed", description: error.message, variant: "destructive" });
     } else {
-      // Log DPDP consent
       const consentText = getDPDPConsentText(hospitalName);
-      // Get the patient id for consent record
       const { data: newPatient } = await supabase.from("patients").select("id").eq("hospital_id", hospitalId).eq("uhid", uhid).maybeSingle();
       if (newPatient) {
         await supabase.from("patient_consents").insert({
@@ -143,7 +174,6 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess }) => {
           consent_text: consentText,
         } as any);
 
-        // Sync referral to CRM
         if (referralDoctorId) {
           await supabase.from("patient_acquisition").insert({
             hospital_id: hospitalId,
@@ -184,8 +214,8 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess }) => {
         {/* Header */}
         <div className="flex items-center justify-between px-7 pt-5 pb-3 flex-shrink-0">
           <div>
-            <h2 className="text-lg font-bold text-foreground">Register New Patient</h2>
-            <p className="text-[12px] text-muted-foreground">Fill in patient details below</p>
+            <h2 className="text-lg font-bold text-foreground">{editPatient ? "Edit Patient" : "Register New Patient"}</h2>
+            <p className="text-[12px] text-muted-foreground">{editPatient ? "Update patient details" : "Fill in patient details below"}</p>
           </div>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground p-1">
             <X size={18} />
@@ -322,7 +352,8 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess }) => {
           </div>
         </div>
 
-        {/* DPDP Consent */}
+        {/* DPDP Consent — only for new registrations */}
+        {!editPatient && (
         <div className="px-7 pb-2">
           <label className="flex items-start gap-2.5 cursor-pointer">
             <input
@@ -336,6 +367,7 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess }) => {
             </span>
           </label>
         </div>
+        )}
 
         {/* Footer */}
         <div className="px-7 py-4 flex-shrink-0 border-t border-border">
@@ -344,7 +376,7 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess }) => {
             disabled={saving || !dpdpConsent}
             className="w-full h-[44px] bg-[hsl(222,55%,23%)] text-white rounded-lg text-[14px] font-semibold hover:bg-[hsl(222,55%,18%)] active:scale-[0.98] transition-all disabled:opacity-60"
           >
-            {saving ? "Registering…" : "Register Patient →"}
+            {saving ? (editPatient ? "Updating…" : "Registering…") : (editPatient ? "Update Patient →" : "Register Patient →")}
           </button>
         </div>
       </div>
