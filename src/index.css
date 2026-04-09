@@ -98,6 +98,8 @@
   html {
     font-size: 14px;
     line-height: 1.6;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
   }
 
   body {
