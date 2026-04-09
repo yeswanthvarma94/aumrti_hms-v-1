@@ -72,7 +72,7 @@ const AdmitPatientModal: React.FC<Props> = ({ open, onClose, hospitalId, presele
     if (!hospitalId) return;
     supabase.from("departments").select("id, name").eq("hospital_id", hospitalId).eq("is_active", true)
       .then(({ data }) => setDepartments(data || []));
-    supabase.from("users").select("id, full_name").eq("hospital_id", hospitalId).eq("role", "doctor").eq("is_active", true)
+    supabase.from("users").select("id, full_name, department_id").eq("hospital_id", hospitalId).eq("role", "doctor").eq("is_active", true)
       .then(({ data }) => setDoctors(data || []));
 
     if (!preselectedBedId) {
