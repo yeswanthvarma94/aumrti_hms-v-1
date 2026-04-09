@@ -89,7 +89,7 @@ export interface RegistrationData {
   nabhAccredited: boolean;
   nabhNumber: string;
   website: string;
-  plan: "" as "starter" | "professional" | "enterprise";
+  plan: "starter" | "professional" | "enterprise" | "";
   termsAccepted: boolean;
   verificationMethod: "email" | "phone";
 }
