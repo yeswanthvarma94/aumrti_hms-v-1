@@ -365,7 +365,7 @@ const AdmitPatientModal: React.FC<Props> = ({ open, onClose, hospitalId, presele
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="text-xs font-bold text-slate-600 block mb-1">Department</label>
-                <select value={deptId} onChange={(e) => setDeptId(e.target.value)} className="w-full h-9 text-sm border rounded-md px-2 bg-white">
+                <select value={deptId} onChange={(e) => { setDeptId(e.target.value); const newDept = e.target.value; const currentDoc = doctors.find(d => d.id === doctorId); if (newDept && currentDoc?.department_id !== newDept) setDoctorId(""); }} className="w-full h-9 text-sm border rounded-md px-2 bg-white">
                   <option value="">Select...</option>
                   {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
                 </select>
@@ -373,8 +373,8 @@ const AdmitPatientModal: React.FC<Props> = ({ open, onClose, hospitalId, presele
               <div>
                 <label className="text-xs font-bold text-slate-600 block mb-1">Admitting Doctor *</label>
                 <select value={doctorId} onChange={(e) => setDoctorId(e.target.value)} className="w-full h-9 text-sm border rounded-md px-2 bg-white">
-                  <option value="">Select...</option>
-                  {doctors.map((d) => <option key={d.id} value={d.id}>{d.full_name}</option>)}
+                  <option value="">{deptId ? "Select doctor..." : "Select department first"}</option>
+                  {(deptId ? doctors.filter(d => d.department_id === deptId) : doctors).map((d) => <option key={d.id} value={d.id}>{d.full_name}</option>)}
                 </select>
                 {doctors.length === 0 && (
                   <a href="/settings/staff" className="text-[10px] text-amber-600 hover:underline mt-0.5 block">No doctors — add in Settings →</a>
