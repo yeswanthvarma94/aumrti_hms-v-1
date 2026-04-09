@@ -378,12 +378,25 @@ const SettingsStaffPage: React.FC = () => {
         throw new Error(data?.error || error?.message || "Failed to create login");
       }
       toast({ title: `Login created for ${loginModal.userName}`, description: "They can now sign in with their email and password." });
+      // Sync email back to users table if it changed
+      if (loginEmail !== loginModal.email) {
+        await supabase.from("users").update({ email: loginEmail } as any).eq("id", loginModal.userId);
+      }
       qc.invalidateQueries({ queryKey: ["settings-staff"] });
       setLoginModal(null);
       setLoginPassword("");
       setLoginEmail("");
     } catch (err: any) {
-      toast({ title: "Failed to create login", description: err.message, variant: "destructive" });
+      const msg = err.message?.toLowerCase() || "";
+      let userMessage = "Failed to create login";
+      if (msg.includes("already") || msg.includes("exists") || msg.includes("duplicate")) {
+        userMessage = "This email is already registered. Please use a different email address.";
+      } else if (msg.includes("invalid") && msg.includes("email")) {
+        userMessage = "Please enter a valid email address.";
+      } else if (msg.includes("rate") || msg.includes("limit")) {
+        userMessage = "Too many attempts. Please wait a moment and try again.";
+      }
+      toast({ title: userMessage, description: err.message, variant: "destructive" });
     } finally {
       setCreatingLogin(false);
     }
@@ -550,8 +563,8 @@ const SettingsStaffPage: React.FC = () => {
                            <button
                              onClick={() => {
                                setLoginModal({ open: true, userId: u.id, userName: u.full_name, email: u.email });
-                               setLoginEmail(u.email);
-                               setLoginPassword("");
+                                setLoginEmail(u.email?.includes("@placeholder.local") ? "" : u.email);
+                                setLoginPassword("");
                              }}
                              className="text-xs text-primary hover:text-primary/80 px-2 py-1 rounded hover:bg-primary/10 font-medium"
                            >
@@ -847,7 +860,11 @@ const SettingsStaffPage: React.FC = () => {
                   placeholder="staff@hospital.com"
                   className="h-10"
                 />
-                <p className="text-[11px] text-muted-foreground mt-1">Must be a valid, unique email address</p>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  {loginModal.email?.includes("@placeholder.local")
+                    ? "Enter the staff member's real email address for login"
+                    : "Must be a valid, unique email address"}
+                </p>
               </div>
               <div>
                 <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Password</label>
