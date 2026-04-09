@@ -328,6 +328,24 @@ const SettingsStaffPage: React.FC = () => {
         is_active: true,
       }));
       await (supabase as any).from("staff_profiles").insert(profileRows);
+
+      // Create service_master rows for doctors with fees
+      const svcRows = valid
+        .map((v, i) => ({ ...v, id: rows[i].id, dept_id: rows[i].department_id }))
+        .filter((v) => v.fee && parseFloat(v.fee) > 0)
+        .map((v) => ({
+          hospital_id: hid,
+          name: `Consultation - ${v.name}`,
+          category: "consultation",
+          item_type: "consultation",
+          doctor_id: v.id,
+          department_id: v.dept_id,
+          fee: parseFloat(v.fee),
+          is_active: true,
+        }));
+      if (svcRows.length > 0) {
+        await (supabase as any).from("service_master").insert(svcRows);
+      }
       return valid.length;
     },
     onSuccess: (count) => {
@@ -760,11 +778,11 @@ const SettingsStaffPage: React.FC = () => {
               </div>
 
               <div className="flex-1 overflow-y-auto px-6 py-4 space-y-2">
-                <div className="grid grid-cols-[2fr_2fr_1.5fr_1.5fr_28px] gap-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide px-1">
-                  <span>Full Name</span><span>Speciality</span><span>Phone</span><span>Department</span><span />
+                <div className="grid grid-cols-[2fr_1.5fr_1fr_1.5fr_1fr_28px] gap-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide px-1">
+                  <span>Full Name</span><span>Speciality</span><span>Phone</span><span>Department</span><span>Fee (₹)</span><span />
                 </div>
                 {bulkRows.map((row, i) => (
-                  <div key={i} className="grid grid-cols-[2fr_2fr_1.5fr_1.5fr_28px] gap-2 items-center">
+                  <div key={i} className="grid grid-cols-[2fr_1.5fr_1fr_1.5fr_1fr_28px] gap-2 items-center">
                     <Input value={row.name} onChange={(e) => {
                       const r = [...bulkRows]; r[i] = { ...r[i], name: e.target.value }; setBulkRows(r);
                     }} placeholder="Dr. Example" className="h-9" />
@@ -780,6 +798,9 @@ const SettingsStaffPage: React.FC = () => {
                       <option value="">Dept</option>
                       {departments?.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
                     </select>
+                    <Input type="number" value={row.fee} onChange={(e) => {
+                      const r = [...bulkRows]; r[i] = { ...r[i], fee: e.target.value }; setBulkRows(r);
+                    }} placeholder="500" className="h-9" />
                     <button onClick={() => setBulkRows((r) => r.filter((_, idx) => idx !== i))} className="text-muted-foreground hover:text-destructive">
                       <Trash2 size={14} />
                     </button>
