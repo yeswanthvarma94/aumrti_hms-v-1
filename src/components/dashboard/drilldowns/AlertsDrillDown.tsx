@@ -42,23 +42,36 @@ const AlertsDrillDown: React.FC = () => {
 
   const acknowledge = async (id: string) => {
     const { data: { user } } = await supabase.auth.getUser();
-    await supabase.from("clinical_alerts").update({
+    const { error } = await supabase.from("clinical_alerts").update({
       is_acknowledged: true,
       acknowledged_by: user?.id,
       acknowledged_at: new Date().toISOString(),
     }).eq("id", id);
+
+    if (error) {
+      console.error("Acknowledge failed:", error);
+      toast({ title: "Failed to acknowledge alert", description: error.message, variant: "destructive" });
+      return;
+    }
     setAlerts((prev) => prev.filter((a) => a.id !== id));
     toast({ title: "Alert acknowledged" });
   };
 
   const acknowledgeAll = async () => {
     const { data: { user } } = await supabase.auth.getUser();
+    let failCount = 0;
     for (const a of alerts) {
-      await supabase.from("clinical_alerts").update({
+      const { error } = await supabase.from("clinical_alerts").update({
         is_acknowledged: true,
         acknowledged_by: user?.id,
         acknowledged_at: new Date().toISOString(),
       }).eq("id", a.id);
+      if (error) failCount++;
+    }
+    if (failCount > 0) {
+      toast({ title: `${failCount} alert(s) failed to acknowledge`, variant: "destructive" });
+      fetch();
+      return;
     }
     setAlerts([]);
     toast({ title: "All alerts acknowledged" });
