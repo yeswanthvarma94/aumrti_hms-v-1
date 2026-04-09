@@ -23,7 +23,7 @@ Deno.serve(async (req) => {
     const { data: { user } } = await anonClient.auth.getUser();
     if (!user) throw new Error("Not authenticated");
 
-    const { data: userData } = await admin.from("users").select("hospital_id").eq("id", user.id).single();
+    const { data: userData } = await admin.from("users").select("hospital_id").eq("auth_user_id", user.id).single();
     if (!userData) throw new Error("User not found");
     const hid = userData.hospital_id;
 

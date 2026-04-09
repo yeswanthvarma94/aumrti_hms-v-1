@@ -42,7 +42,7 @@ const OnboardingWizard: React.FC = () => {
       const { data: user } = await supabase
         .from("users")
         .select("hospital_id")
-        .eq("id", session.user.id)
+        .eq("auth_user_id", session.user.id)
         .maybeSingle();
 
       if (!user?.hospital_id) { navigate("/", { replace: true }); return; }
