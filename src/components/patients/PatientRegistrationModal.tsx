@@ -352,7 +352,8 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess, editPat
           </div>
         </div>
 
-        {/* DPDP Consent */}
+        {/* DPDP Consent — only for new registrations */}
+        {!editPatient && (
         <div className="px-7 pb-2">
           <label className="flex items-start gap-2.5 cursor-pointer">
             <input
@@ -366,6 +367,7 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess, editPat
             </span>
           </label>
         </div>
+        )}
 
         {/* Footer */}
         <div className="px-7 py-4 flex-shrink-0 border-t border-border">
