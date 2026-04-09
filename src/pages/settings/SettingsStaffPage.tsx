@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 /* ─── Types ─── */
-type AppRole = "super_admin" | "hospital_admin" | "doctor" | "nurse" | "receptionist" | "pharmacist" | "lab_tech" | "accountant";
+type AppRole = string;
 
 interface StaffForm {
   full_name: string;
@@ -35,7 +35,7 @@ interface StaffForm {
 }
 
 const EMPTY_FORM: StaffForm = {
-  full_name: "", phone: "", email: "", role: "doctor",
+  full_name: "", phone: "", email: "", role: "" as AppRole,
   department_id: "", registration_number: "", ward_id: "",
   employee_id: "", employment_type: "permanent", basic_salary: "",
   hra_percent: "20", da_percent: "10", conveyance: "1600", medical_allowance: "1250",
@@ -54,7 +54,7 @@ const ROLE_META: Record<string, { icon: React.ElementType; label: string; color:
   super_admin:    { icon: Shield,        label: "Super Admin", color: "bg-[hsl(222,55%,23%)] text-white border-transparent" },
 };
 
-const ROLE_CARDS: { role: AppRole; icon: React.ElementType; label: string }[] = [
+const DEFAULT_ROLE_CARDS: { role: AppRole; icon: React.ElementType; label: string }[] = [
   { role: "doctor",         icon: Stethoscope,   label: "Doctor" },
   { role: "nurse",          icon: HeartPulse,     label: "Nurse" },
   { role: "accountant",     icon: Receipt,        label: "Billing" },
@@ -62,17 +62,6 @@ const ROLE_CARDS: { role: AppRole; icon: React.ElementType; label: string }[] = 
   { role: "lab_tech",       icon: TestTube,       label: "Lab Tech" },
   { role: "receptionist",   icon: ClipboardList,  label: "Reception" },
   { role: "hospital_admin", icon: Shield,         label: "Admin / CEO" },
-];
-
-const FILTER_TABS = [
-  { key: "all",          label: "All" },
-  { key: "doctor",       label: "Doctors" },
-  { key: "nurse",        label: "Nurses" },
-  { key: "accountant",   label: "Billing" },
-  { key: "pharmacist",   label: "Pharmacist" },
-  { key: "lab_tech",     label: "Lab" },
-  { key: "receptionist", label: "Reception" },
-  { key: "admin",        label: "Admin" },
 ];
 
 /* ─── Bulk doctor row ─── */
@@ -127,6 +116,31 @@ const SettingsStaffPage: React.FC = () => {
     },
   });
 
+  const { data: customRoles } = useQuery({
+    queryKey: ["settings-custom-roles"],
+    queryFn: async () => {
+      const { data } = await (supabase as any).from("role_permissions")
+        .select("role_name, role_label, is_system_role")
+        .order("role_label");
+      return data ?? [];
+    },
+  });
+
+  /* ─── Dynamic role cards + filter tabs ─── */
+  const ROLE_CARDS = useMemo(() => {
+    if (customRoles && customRoles.length > 0) {
+      return customRoles.map((r: any) => {
+        const meta = ROLE_META[r.role_name];
+        return {
+          role: r.role_name as AppRole,
+          icon: meta?.icon ?? Users,
+          label: r.role_label || meta?.label || r.role_name,
+        };
+      });
+    }
+    return DEFAULT_ROLE_CARDS;
+  }, [customRoles]);
+
   /* ─── Computed ─── */
   const filtered = useMemo(() => {
     if (!users) return [];
@@ -134,6 +148,26 @@ const SettingsStaffPage: React.FC = () => {
     if (filter === "admin") return users.filter((u) => u.role === "hospital_admin" || u.role === "super_admin");
     return users.filter((u) => u.role === filter);
   }, [users, filter]);
+
+  const FILTER_TABS = useMemo(() => {
+    const tabs: { key: string; label: string }[] = [{ key: "all", label: "All" }];
+    if (!users) return tabs;
+    const roleCounts = new Map<string, number>();
+    users.forEach((u) => {
+      const r = u.role;
+      roleCounts.set(r, (roleCounts.get(r) || 0) + 1);
+    });
+    roleCounts.forEach((_, role) => {
+      if (role === "hospital_admin" || role === "super_admin") {
+        if (!tabs.find((t) => t.key === "admin")) tabs.push({ key: "admin", label: "Admin" });
+      } else {
+        const meta = ROLE_META[role];
+        const customRole = customRoles?.find((cr: any) => cr.role_name === role);
+        tabs.push({ key: role, label: customRole?.role_label || meta?.label || role });
+      }
+    });
+    return tabs;
+  }, [users, customRoles]);
 
   const doctorCount = useMemo(() => users?.filter((u) => u.role === "doctor").length ?? 0, [users]);
 
@@ -146,7 +180,6 @@ const SettingsStaffPage: React.FC = () => {
 
   // Only send department_id for roles that actually use the departments dropdown
   const getSafeDepartmentId = () => {
-    if (form.role !== "doctor") return null;
     return form.department_id && form.department_id.trim() !== "" ? form.department_id : null;
   };
 
@@ -522,24 +555,28 @@ const SettingsStaffPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Role-specific fields */}
-              {form.role === "doctor" && (
-                <div className="space-y-3">
-                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Doctor Details</label>
-                  <div>
-                    <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Department *</label>
-                    <select value={form.department_id} onChange={(e) => setForm({ ...form, department_id: e.target.value })}
-                      className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
-                      <option value="">Select department</option>
-                      {departments?.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-                    </select>
-                  </div>
+              {/* Department — shown for all roles */}
+              <div className="space-y-3">
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  {form.role === "doctor" ? "Doctor Details" : "Assignment"}
+                </label>
+                <div>
+                  <label className="text-[11px] font-medium text-muted-foreground mb-1 block">
+                    {form.role === "doctor" ? "Department *" : "Assigned Department"} {form.role !== "doctor" && <span className="text-muted-foreground/60">(optional)</span>}
+                  </label>
+                  <select value={form.department_id} onChange={(e) => setForm({ ...form, department_id: e.target.value })}
+                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                    <option value="">Select department</option>
+                    {departments?.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                  </select>
+                </div>
+                {form.role === "doctor" && (
                   <div>
                     <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Registration No (MCI/NMC)</label>
                     <Input value={form.registration_number} onChange={(e) => setForm({ ...form, registration_number: e.target.value })} placeholder="MH-12345" className="h-10" />
                   </div>
-                </div>
-              )}
+                )}
+              </div>
 
               {form.role === "nurse" && (
                 <div className="space-y-3">
