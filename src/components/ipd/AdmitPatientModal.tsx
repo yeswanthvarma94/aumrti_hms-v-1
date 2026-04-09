@@ -43,7 +43,7 @@ const AdmitPatientModal: React.FC<Props> = ({ open, onClose, hospitalId, presele
   // Step 2 fields
   const [admissionType, setAdmissionType] = useState<string>("elective");
   const [departments, setDepartments] = useState<{ id: string; name: string }[]>([]);
-  const [doctors, setDoctors] = useState<{ id: string; full_name: string }[]>([]);
+  const [doctors, setDoctors] = useState<{ id: string; full_name: string; department_id: string | null }[]>([]);
   const [deptId, setDeptId] = useState("");
   const [doctorId, setDoctorId] = useState("");
   const [diagnosis, setDiagnosis] = useState("");
