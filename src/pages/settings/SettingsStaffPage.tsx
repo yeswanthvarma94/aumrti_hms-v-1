@@ -116,6 +116,31 @@ const SettingsStaffPage: React.FC = () => {
     },
   });
 
+  const { data: customRoles } = useQuery({
+    queryKey: ["settings-custom-roles"],
+    queryFn: async () => {
+      const { data } = await (supabase as any).from("role_permissions")
+        .select("role_name, role_label, is_system_role")
+        .order("role_label");
+      return data ?? [];
+    },
+  });
+
+  /* ─── Dynamic role cards + filter tabs ─── */
+  const ROLE_CARDS = useMemo(() => {
+    if (customRoles && customRoles.length > 0) {
+      return customRoles.map((r: any) => {
+        const meta = ROLE_META[r.role_name];
+        return {
+          role: r.role_name as AppRole,
+          icon: meta?.icon ?? Users,
+          label: r.role_label || meta?.label || r.role_name,
+        };
+      });
+    }
+    return DEFAULT_ROLE_CARDS;
+  }, [customRoles]);
+
   /* ─── Computed ─── */
   const filtered = useMemo(() => {
     if (!users) return [];
@@ -123,6 +148,26 @@ const SettingsStaffPage: React.FC = () => {
     if (filter === "admin") return users.filter((u) => u.role === "hospital_admin" || u.role === "super_admin");
     return users.filter((u) => u.role === filter);
   }, [users, filter]);
+
+  const FILTER_TABS = useMemo(() => {
+    const tabs: { key: string; label: string }[] = [{ key: "all", label: "All" }];
+    if (!users) return tabs;
+    const roleCounts = new Map<string, number>();
+    users.forEach((u) => {
+      const r = u.role;
+      roleCounts.set(r, (roleCounts.get(r) || 0) + 1);
+    });
+    roleCounts.forEach((_, role) => {
+      if (role === "hospital_admin" || role === "super_admin") {
+        if (!tabs.find((t) => t.key === "admin")) tabs.push({ key: "admin", label: "Admin" });
+      } else {
+        const meta = ROLE_META[role];
+        const customRole = customRoles?.find((cr: any) => cr.role_name === role);
+        tabs.push({ key: role, label: customRole?.role_label || meta?.label || role });
+      }
+    });
+    return tabs;
+  }, [users, customRoles]);
 
   const doctorCount = useMemo(() => users?.filter((u) => u.role === "doctor").length ?? 0, [users]);
 
