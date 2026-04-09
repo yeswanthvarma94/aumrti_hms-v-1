@@ -555,24 +555,28 @@ const SettingsStaffPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Role-specific fields */}
-              {form.role === "doctor" && (
-                <div className="space-y-3">
-                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Doctor Details</label>
-                  <div>
-                    <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Department *</label>
-                    <select value={form.department_id} onChange={(e) => setForm({ ...form, department_id: e.target.value })}
-                      className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
-                      <option value="">Select department</option>
-                      {departments?.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-                    </select>
-                  </div>
+              {/* Department — shown for all roles */}
+              <div className="space-y-3">
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  {form.role === "doctor" ? "Doctor Details" : "Assignment"}
+                </label>
+                <div>
+                  <label className="text-[11px] font-medium text-muted-foreground mb-1 block">
+                    {form.role === "doctor" ? "Department *" : "Assigned Department"} {form.role !== "doctor" && <span className="text-muted-foreground/60">(optional)</span>}
+                  </label>
+                  <select value={form.department_id} onChange={(e) => setForm({ ...form, department_id: e.target.value })}
+                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                    <option value="">Select department</option>
+                    {departments?.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                  </select>
+                </div>
+                {form.role === "doctor" && (
                   <div>
                     <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Registration No (MCI/NMC)</label>
                     <Input value={form.registration_number} onChange={(e) => setForm({ ...form, registration_number: e.target.value })} placeholder="MH-12345" className="h-10" />
                   </div>
-                </div>
-              )}
+                )}
+              </div>
 
               {form.role === "nurse" && (
                 <div className="space-y-3">
