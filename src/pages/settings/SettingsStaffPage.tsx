@@ -378,6 +378,16 @@ const SettingsStaffPage: React.FC = () => {
       // Fetch staff_profiles data for salary fields
       const { data: profile } = await (supabase as any)
         .from("staff_profiles").select("*").eq("user_id", user.id).maybeSingle();
+      // Fetch service_master for doctor consultation pricing
+      let svcRow: any = null;
+      if (user.role === "doctor") {
+        const hid = await getHospitalId();
+        const { data } = await (supabase as any).from("service_master")
+          .select("fee, follow_up_fee, validity_days")
+          .eq("hospital_id", hid).eq("doctor_id", user.id)
+          .eq("item_type", "consultation").maybeSingle();
+        svcRow = data;
+      }
       setForm({
         full_name: user.full_name, phone: user.phone ?? "", email: user.email,
         role: user.role, department_id: user.department_id ?? "", registration_number: user.registration_number ?? "", ward_id: "",
@@ -391,6 +401,9 @@ const SettingsStaffPage: React.FC = () => {
         pf_applicable: profile?.pf_applicable ?? true,
         esic_applicable: profile?.esic_applicable ?? false,
         license_expiry_date: profile?.license_expiry_date ?? "",
+        consultation_fee: svcRow?.fee?.toString() ?? "",
+        follow_up_fee: svcRow?.follow_up_fee?.toString() ?? "",
+        validity_days: svcRow?.validity_days?.toString() ?? "7",
       });
     } else {
       setEditingId(null);
