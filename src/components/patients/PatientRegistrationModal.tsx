@@ -214,8 +214,8 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess, editPat
         {/* Header */}
         <div className="flex items-center justify-between px-7 pt-5 pb-3 flex-shrink-0">
           <div>
-            <h2 className="text-lg font-bold text-foreground">Register New Patient</h2>
-            <p className="text-[12px] text-muted-foreground">Fill in patient details below</p>
+            <h2 className="text-lg font-bold text-foreground">{editPatient ? "Edit Patient" : "Register New Patient"}</h2>
+            <p className="text-[12px] text-muted-foreground">{editPatient ? "Update patient details" : "Fill in patient details below"}</p>
           </div>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground p-1">
             <X size={18} />
@@ -374,7 +374,7 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess, editPat
             disabled={saving || !dpdpConsent}
             className="w-full h-[44px] bg-[hsl(222,55%,23%)] text-white rounded-lg text-[14px] font-semibold hover:bg-[hsl(222,55%,18%)] active:scale-[0.98] transition-all disabled:opacity-60"
           >
-            {saving ? "Registering…" : "Register Patient →"}
+            {saving ? (editPatient ? "Updating…" : "Registering…") : (editPatient ? "Update Patient →" : "Register Patient →")}
           </button>
         </div>
       </div>
