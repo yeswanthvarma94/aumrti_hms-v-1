@@ -84,6 +84,9 @@ const ForgotPasswordModal: React.FC<Props> = ({ open, onClose }) => {
                   className="w-full h-12 pl-10 pr-4 text-[15px] bg-background border-[1.5px] border-border rounded-lg focus:outline-none focus:border-primary focus:ring-[3px] focus:ring-primary/10 text-foreground placeholder:text-muted-foreground"
                 />
               </div>
+              <p className="text-[11px] text-muted-foreground mt-1.5">
+                If you don't receive an email within 2 minutes, contact your hospital administrator.
+              </p>
               {error && (
                 <p className="text-[13px] text-destructive mt-2">{error}</p>
               )}
