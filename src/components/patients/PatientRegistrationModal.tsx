@@ -39,19 +39,19 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess, editPat
   const [hospitalIdState, setHospitalIdState] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [form, setForm] = useState({
-    full_name: "",
-    phone: "",
+    full_name: editPatient?.full_name || "",
+    phone: editPatient?.phone || "",
     age: "",
-    gender: "" as string,
-    dob: "",
-    blood_group: "",
-    address: "",
-    allergies: "",
-    chronic_conditions: "",
-    insurance_id: "",
-    abha_id: "",
-    emergency_contact_name: "",
-    emergency_contact_phone: "",
+    gender: (editPatient?.gender || "") as string,
+    dob: editPatient?.dob || "",
+    blood_group: editPatient?.blood_group || "",
+    address: editPatient?.address || "",
+    allergies: editPatient?.allergies || "",
+    chronic_conditions: editPatient?.chronic_conditions?.join(", ") || "",
+    insurance_id: editPatient?.insurance_id || "",
+    abha_id: editPatient?.abha_id || "",
+    emergency_contact_name: editPatient?.emergency_contact_name || "",
+    emergency_contact_phone: editPatient?.emergency_contact_phone || "",
     referral_source: "",
   });
 
