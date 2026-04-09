@@ -32,6 +32,10 @@ interface StaffForm {
   pf_applicable: boolean;
   esic_applicable: boolean;
   license_expiry_date: string;
+  // Doctor pricing
+  consultation_fee: string;
+  follow_up_fee: string;
+  validity_days: string;
 }
 
 const EMPTY_FORM: StaffForm = {
@@ -40,6 +44,7 @@ const EMPTY_FORM: StaffForm = {
   employee_id: "", employment_type: "permanent", basic_salary: "",
   hra_percent: "20", da_percent: "10", conveyance: "1600", medical_allowance: "1250",
   pf_applicable: true, esic_applicable: false, license_expiry_date: "",
+  consultation_fee: "", follow_up_fee: "", validity_days: "7",
 };
 
 /* ─── Role config ─── */
@@ -241,6 +246,40 @@ const SettingsStaffPage: React.FC = () => {
 
         // Create staff_profiles row with salary data
         await (supabase as any).from("staff_profiles").insert(buildProfilePayload(newId, hid, deptId));
+
+        // Create service_master row for doctor consultation fee
+        if (form.role === "doctor" && form.consultation_fee) {
+          await (supabase as any).from("service_master").upsert({
+            hospital_id: hid,
+            name: `Consultation - Dr. ${form.full_name}`,
+            category: "consultation",
+            item_type: "consultation",
+            doctor_id: newId,
+            department_id: deptId,
+            fee: parseFloat(form.consultation_fee),
+            follow_up_fee: form.follow_up_fee ? parseFloat(form.follow_up_fee) : null,
+            validity_days: parseInt(form.validity_days) || 7,
+            is_active: true,
+          }, { onConflict: "hospital_id,doctor_id,item_type", ignoreDuplicates: false });
+        }
+      }
+
+      // Upsert service_master for doctor on edit too
+      if (editingId && form.role === "doctor" && form.consultation_fee) {
+        const hid2 = await getHospitalId();
+        const deptId2 = getSafeDepartmentId();
+        await (supabase as any).from("service_master").upsert({
+          hospital_id: hid2,
+          name: `Consultation - Dr. ${form.full_name}`,
+          category: "consultation",
+          item_type: "consultation",
+          doctor_id: editingId,
+          department_id: deptId2,
+          fee: parseFloat(form.consultation_fee),
+          follow_up_fee: form.follow_up_fee ? parseFloat(form.follow_up_fee) : null,
+          validity_days: parseInt(form.validity_days) || 7,
+          is_active: true,
+        }, { onConflict: "hospital_id,doctor_id,item_type", ignoreDuplicates: false });
       }
     },
     onSuccess: () => {
