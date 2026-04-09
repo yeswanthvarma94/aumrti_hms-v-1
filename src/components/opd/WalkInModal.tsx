@@ -134,66 +134,63 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated, defaultD
 
   const [feeSource, setFeeSource] = useState<"doctor" | "dept" | "default" | "global">("default");
 
-  // Smart consultation fee lookup: doctor → dept → global → fallback
+  // Smart consultation fee lookup: doctor_id FK → department_id FK → global → fallback
   useEffect(() => {
     if (!hospitalId) return;
     (async () => {
-      const selectedDoctor = doctors.find(d => d.id === doctorId);
-      const selectedDept = departments.find(d => d.id === deptId);
-
-      // 1. Doctor-specific rate
-      if (doctorId && selectedDoctor) {
-        const { data: docService } = await supabase
+      // 1. Doctor-specific rate (by doctor_id FK)
+      if (doctorId) {
+        const { data } = await (supabase as any)
           .from("service_master")
-          .select("fee")
+          .select("fee, follow_up_fee")
           .eq("hospital_id", hospitalId)
+          .eq("doctor_id", doctorId)
           .eq("item_type", "consultation")
           .eq("is_active", true)
-          .ilike("name", `%${selectedDoctor.full_name}%`)
           .limit(1);
-        if (docService && docService.length > 0 && docService[0].fee) {
-          setConsultationFee(docService[0].fee);
+        if (data?.[0]?.fee) {
+          setConsultationFee(data[0].fee);
           setFeeSource("doctor");
           return;
         }
       }
-
-      // 2. Department-specific rate
-      if (deptId && selectedDept) {
-        const { data: deptService } = await supabase
+      // 2. Department-specific rate (by department_id FK, no doctor)
+      if (deptId) {
+        const { data } = await (supabase as any)
           .from("service_master")
-          .select("fee")
+          .select("fee, follow_up_fee")
           .eq("hospital_id", hospitalId)
+          .eq("department_id", deptId)
+          .is("doctor_id", null)
           .eq("item_type", "consultation")
           .eq("is_active", true)
-          .ilike("name", `%${selectedDept.name}%consultation%`)
           .limit(1);
-        if (deptService && deptService.length > 0 && deptService[0].fee) {
-          setConsultationFee(deptService[0].fee);
+        if (data?.[0]?.fee) {
+          setConsultationFee(data[0].fee);
           setFeeSource("dept");
           return;
         }
       }
-
-      // 3. Global consultation rate
-      const { data: globalService } = await supabase
+      // 3. Global consultation rate (no doctor, no dept)
+      const { data } = await (supabase as any)
         .from("service_master")
-        .select("fee")
+        .select("fee, follow_up_fee")
         .eq("hospital_id", hospitalId)
-        .ilike("name", "%consultation%")
+        .eq("item_type", "consultation")
+        .is("doctor_id", null)
+        .is("department_id", null)
         .eq("is_active", true)
         .limit(1);
-      if (globalService && globalService.length > 0 && globalService[0].fee) {
-        setConsultationFee(globalService[0].fee);
+      if (data?.[0]?.fee) {
+        setConsultationFee(data[0].fee);
         setFeeSource("global");
         return;
       }
-
       // 4. Hardcoded fallback
       setConsultationFee(DEFAULT_CONSULTATION_FEE);
       setFeeSource("default");
     })();
-  }, [hospitalId, doctorId, deptId, doctors, departments]);
+  }, [hospitalId, doctorId, deptId]);
 
   // Phone/name/UHID search
   const searchPatient = useCallback(async (val: string) => {
