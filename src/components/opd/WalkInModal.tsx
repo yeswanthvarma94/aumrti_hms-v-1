@@ -140,11 +140,11 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated, defaultD
     (async () => {
       // 1. Doctor-specific rate (by doctor_id FK)
       if (doctorId) {
-        const { data } = await supabase
+        const { data } = await (supabase as any)
           .from("service_master")
           .select("fee, follow_up_fee")
           .eq("hospital_id", hospitalId)
-          .eq("doctor_id", doctorId as any)
+          .eq("doctor_id", doctorId)
           .eq("item_type", "consultation")
           .eq("is_active", true)
           .limit(1);
@@ -156,12 +156,12 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated, defaultD
       }
       // 2. Department-specific rate (by department_id FK, no doctor)
       if (deptId) {
-        const { data } = await supabase
+        const { data } = await (supabase as any)
           .from("service_master")
           .select("fee, follow_up_fee")
           .eq("hospital_id", hospitalId)
-          .eq("department_id", deptId as any)
-          .is("doctor_id" as any, null)
+          .eq("department_id", deptId)
+          .is("doctor_id", null)
           .eq("item_type", "consultation")
           .eq("is_active", true)
           .limit(1);
@@ -172,13 +172,13 @@ const WalkInModal: React.FC<Props> = ({ hospitalId, onClose, onCreated, defaultD
         }
       }
       // 3. Global consultation rate (no doctor, no dept)
-      const { data } = await supabase
+      const { data } = await (supabase as any)
         .from("service_master")
         .select("fee, follow_up_fee")
         .eq("hospital_id", hospitalId)
         .eq("item_type", "consultation")
-        .is("doctor_id" as any, null)
-        .is("department_id" as any, null)
+        .is("doctor_id", null)
+        .is("department_id", null)
         .eq("is_active", true)
         .limit(1);
       if (data?.[0]?.fee) {

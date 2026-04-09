@@ -496,21 +496,21 @@ const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onT
           // Smart fee lookup: doctor_id FK → department_id FK → global → fallback
           let fee = 500;
           if (token.doctor_id) {
-            const { data: docSvc } = await supabase.from("service_master").select("fee")
+            const { data: docSvc } = await (supabase as any).from("service_master").select("fee")
               .eq("hospital_id", hospitalId).eq("item_type", "consultation").eq("is_active", true)
-              .eq("doctor_id", token.doctor_id as any).limit(1);
+              .eq("doctor_id", token.doctor_id).limit(1);
             if (docSvc?.[0]?.fee) fee = docSvc[0].fee;
           }
           if (fee === 500 && token.department_id) {
-            const { data: deptSvc } = await supabase.from("service_master").select("fee")
+            const { data: deptSvc } = await (supabase as any).from("service_master").select("fee")
               .eq("hospital_id", hospitalId).eq("item_type", "consultation").eq("is_active", true)
-              .eq("department_id", token.department_id as any).is("doctor_id" as any, null).limit(1);
+              .eq("department_id", token.department_id).is("doctor_id", null).limit(1);
             if (deptSvc?.[0]?.fee) fee = deptSvc[0].fee;
           }
           if (fee === 500) {
-            const { data: globalSvc } = await supabase.from("service_master").select("fee")
+            const { data: globalSvc } = await (supabase as any).from("service_master").select("fee")
               .eq("hospital_id", hospitalId).eq("item_type", "consultation").eq("is_active", true)
-              .is("doctor_id" as any, null).is("department_id" as any, null).limit(1);
+              .is("doctor_id", null).is("department_id", null).limit(1);
             if (globalSvc?.[0]?.fee) fee = globalSvc[0].fee;
           }
 
