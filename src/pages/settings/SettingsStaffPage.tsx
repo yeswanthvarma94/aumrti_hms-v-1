@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 /* ─── Types ─── */
-type AppRole = "super_admin" | "hospital_admin" | "doctor" | "nurse" | "receptionist" | "pharmacist" | "lab_tech" | "accountant";
+type AppRole = string;
 
 interface StaffForm {
   full_name: string;
@@ -35,7 +35,7 @@ interface StaffForm {
 }
 
 const EMPTY_FORM: StaffForm = {
-  full_name: "", phone: "", email: "", role: "doctor",
+  full_name: "", phone: "", email: "", role: "" as AppRole,
   department_id: "", registration_number: "", ward_id: "",
   employee_id: "", employment_type: "permanent", basic_salary: "",
   hra_percent: "20", da_percent: "10", conveyance: "1600", medical_allowance: "1250",
@@ -54,7 +54,7 @@ const ROLE_META: Record<string, { icon: React.ElementType; label: string; color:
   super_admin:    { icon: Shield,        label: "Super Admin", color: "bg-[hsl(222,55%,23%)] text-white border-transparent" },
 };
 
-const ROLE_CARDS: { role: AppRole; icon: React.ElementType; label: string }[] = [
+const DEFAULT_ROLE_CARDS: { role: AppRole; icon: React.ElementType; label: string }[] = [
   { role: "doctor",         icon: Stethoscope,   label: "Doctor" },
   { role: "nurse",          icon: HeartPulse,     label: "Nurse" },
   { role: "accountant",     icon: Receipt,        label: "Billing" },
@@ -62,17 +62,6 @@ const ROLE_CARDS: { role: AppRole; icon: React.ElementType; label: string }[] = 
   { role: "lab_tech",       icon: TestTube,       label: "Lab Tech" },
   { role: "receptionist",   icon: ClipboardList,  label: "Reception" },
   { role: "hospital_admin", icon: Shield,         label: "Admin / CEO" },
-];
-
-const FILTER_TABS = [
-  { key: "all",          label: "All" },
-  { key: "doctor",       label: "Doctors" },
-  { key: "nurse",        label: "Nurses" },
-  { key: "accountant",   label: "Billing" },
-  { key: "pharmacist",   label: "Pharmacist" },
-  { key: "lab_tech",     label: "Lab" },
-  { key: "receptionist", label: "Reception" },
-  { key: "admin",        label: "Admin" },
 ];
 
 /* ─── Bulk doctor row ─── */
