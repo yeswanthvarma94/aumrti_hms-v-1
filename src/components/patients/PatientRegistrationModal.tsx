@@ -9,12 +9,27 @@ import AddReferralDoctorModal from "@/components/shared/AddReferralDoctorModal";
 interface Props {
   onClose: () => void;
   onSuccess: () => void;
+  editPatient?: {
+    id: string;
+    full_name: string;
+    phone: string | null;
+    gender: string | null;
+    dob: string | null;
+    blood_group: string | null;
+    address: string | null;
+    allergies: string | null;
+    chronic_conditions: string[] | null;
+    insurance_id: string | null;
+    abha_id: string | null;
+    emergency_contact_name: string | null;
+    emergency_contact_phone: string | null;
+  };
 }
 
 const bloodGroups = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
 const genders = ["male", "female", "other"] as const;
 
-const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess }) => {
+const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess, editPatient }) => {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
   const [showReferralModal, setShowReferralModal] = useState(false);
