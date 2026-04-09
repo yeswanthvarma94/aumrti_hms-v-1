@@ -103,14 +103,6 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess, editPat
     }
     const hospitalId = userData.hospital_id;
 
-    const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-    const { count } = await supabase
-      .from("patients")
-      .select("*", { count: "exact", head: true })
-      .eq("hospital_id", hospitalId);
-    const seq = String((count ?? 0) + 1).padStart(4, "0");
-    const uhid = `UHID-${dateStr}-${seq}`;
-
     let dob = form.dob || null;
     if (!dob && form.age) {
       const d = new Date();
@@ -123,9 +115,7 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess, editPat
       .map((s) => s.trim())
       .filter(Boolean);
 
-    const { error } = await supabase.from("patients").insert({
-      hospital_id: hospitalId,
-      uhid,
+    const patientFields = {
       full_name: form.full_name.trim(),
       phone: form.phone || null,
       gender: (form.gender as "male" | "female" | "other") || null,
@@ -138,6 +128,34 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess, editPat
       abha_id: form.abha_id || null,
       emergency_contact_name: form.emergency_contact_name || null,
       emergency_contact_phone: form.emergency_contact_phone || null,
+    };
+
+    if (editPatient) {
+      // UPDATE existing patient
+      const { error } = await supabase.from("patients").update(patientFields as any).eq("id", editPatient.id);
+      setSaving(false);
+      if (error) {
+        toast({ title: "Update failed", description: error.message, variant: "destructive" });
+      } else {
+        toast({ title: "Patient details updated" });
+        onSuccess();
+      }
+      return;
+    }
+
+    // INSERT new patient
+    const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+    const { count } = await supabase
+      .from("patients")
+      .select("*", { count: "exact", head: true })
+      .eq("hospital_id", hospitalId);
+    const seq = String((count ?? 0) + 1).padStart(4, "0");
+    const uhid = `UHID-${dateStr}-${seq}`;
+
+    const { error } = await supabase.from("patients").insert({
+      hospital_id: hospitalId,
+      uhid,
+      ...patientFields,
       referral_source: form.referral_source || null,
     } as any);
 
@@ -145,9 +163,7 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess, editPat
     if (error) {
       toast({ title: "Registration failed", description: error.message, variant: "destructive" });
     } else {
-      // Log DPDP consent
       const consentText = getDPDPConsentText(hospitalName);
-      // Get the patient id for consent record
       const { data: newPatient } = await supabase.from("patients").select("id").eq("hospital_id", hospitalId).eq("uhid", uhid).maybeSingle();
       if (newPatient) {
         await supabase.from("patient_consents").insert({
@@ -158,7 +174,6 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess, editPat
           consent_text: consentText,
         } as any);
 
-        // Sync referral to CRM
         if (referralDoctorId) {
           await supabase.from("patient_acquisition").insert({
             hospital_id: hospitalId,
