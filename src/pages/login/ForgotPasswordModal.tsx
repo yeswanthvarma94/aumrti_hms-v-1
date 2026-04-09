@@ -16,18 +16,30 @@ const ForgotPasswordModal: React.FC<Props> = ({ open, onClose }) => {
   if (!open) return null;
 
   const handleSubmit = async () => {
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    const trimmedEmail = email.trim().toLowerCase();
+    if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
       setError("Please enter a valid email address.");
       return;
     }
     setLoading(true);
     setError("");
     try {
-      const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+      const { error: err } = await supabase.auth.resetPasswordForEmail(trimmedEmail, {
+        redirectTo: `${window.location.origin}/login`,
       });
-      if (err) throw err;
-      setSent(true);
+      if (err) {
+        const msg = err.message?.toLowerCase() || "";
+        if (msg.includes("rate") || msg.includes("limit")) {
+          setError("Too many reset attempts. Please wait a few minutes and try again.");
+        } else if (msg.includes("invalid") || msg.includes("not found")) {
+          // Security: don't reveal if email exists
+          setSent(true);
+        } else {
+          setError(err.message || "Something went wrong. Try again.");
+        }
+      } else {
+        setSent(true);
+      }
     } catch (err: any) {
       setError(err.message || "Something went wrong. Try again.");
     } finally {
@@ -72,6 +84,9 @@ const ForgotPasswordModal: React.FC<Props> = ({ open, onClose }) => {
                   className="w-full h-12 pl-10 pr-4 text-[15px] bg-background border-[1.5px] border-border rounded-lg focus:outline-none focus:border-primary focus:ring-[3px] focus:ring-primary/10 text-foreground placeholder:text-muted-foreground"
                 />
               </div>
+              <p className="text-[11px] text-muted-foreground mt-1.5">
+                If you don't receive an email within 2 minutes, contact your hospital administrator.
+              </p>
               {error && (
                 <p className="text-[13px] text-destructive mt-2">{error}</p>
               )}
