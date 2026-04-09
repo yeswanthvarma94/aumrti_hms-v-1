@@ -56,6 +56,11 @@ const CountUpValue: React.FC<{ value: number; className?: string }> = ({ value, 
   return <span className={className}>{animated.toLocaleString("en-IN")}</span>;
 };
 
+const RevenueCountUp: React.FC<{ value: number }> = ({ value }) => {
+  const animated = useCountUp(value);
+  return <span>{formatRevenue(animated)}</span>;
+};
+
 function useLastUpdated(loading: boolean) {
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [label, setLabel] = useState("just now");
@@ -319,7 +324,7 @@ const Dashboard: React.FC = () => {
               <CardContent className="p-3 pt-0">
                 {loading ? <Skeleton className="h-6 w-16" /> : (
                   <>
-                    <div className="text-lg font-bold text-foreground">{formatRevenue(kpis.revenueMTD)}</div>
+                    <div className="text-lg font-bold text-foreground"><RevenueCountUp value={kpis.revenueMTD || 0} /></div>
                     <p className={cn("text-[10px]", revChange.positive ? "text-[hsl(var(--success))]" : "text-destructive")}>{revChange.text}</p>
                   </>
                 )}
