@@ -30,24 +30,32 @@ const OPDPage: React.FC = () => {
   const [selectedTokenId, setSelectedTokenId] = useState<string | null>(null);
   const [hospitalId, setHospitalId] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   const fetchTokens = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return; }
-    const { data: userData, error: userErr } = await supabase.from("users").select("id, hospital_id").eq("auth_user_id", user.id).maybeSingle();
+    const { data: userData, error: userErr } = await supabase.from("users").select("id, hospital_id, role").eq("auth_user_id", user.id).maybeSingle();
     if (userErr || !userData) { console.error("OPD user fetch error:", userErr?.message); setLoading(false); return; }
     setUserId(userData.id);
     setHospitalId(userData.hospital_id);
+    setUserRole(userData.role);
 
     const today = new Date().toISOString().split("T")[0];
-    const { data, error } = await supabase
+    let query = supabase
       .from("opd_tokens")
       .select("*, patient:patients(full_name, phone, uhid, gender, dob, blood_group, allergies, chronic_conditions, insurance_id, address), doctor:users!opd_tokens_doctor_id_fkey(full_name), department:departments(name)")
       .eq("hospital_id", userData.hospital_id)
       .eq("visit_date", today)
       .order("created_at", { ascending: true });
+
+    if (userData.role === "doctor") {
+      query = query.eq("doctor_id", userData.id);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error("Error fetching tokens:", error);
