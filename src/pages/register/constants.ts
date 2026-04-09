@@ -89,7 +89,7 @@ export interface RegistrationData {
   nabhAccredited: boolean;
   nabhNumber: string;
   website: string;
-  plan: "starter" | "professional" | "enterprise";
+  plan: "" as "starter" | "professional" | "enterprise";
   termsAccepted: boolean;
   verificationMethod: "email" | "phone";
 }
@@ -114,7 +114,7 @@ export const initialData: RegistrationData = {
   nabhAccredited: false,
   nabhNumber: "",
   website: "",
-  plan: "professional",
+  plan: "" as any,
   termsAccepted: false,
   verificationMethod: "email",
 };
