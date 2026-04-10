@@ -92,7 +92,7 @@ const emptyPrescription: PrescriptionData = {
 
 const BASE_TABS = ["Complaint", "Vitals", "Examination", "Rx & Orders", "History"] as const;
 
-const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onTokenUpdate }) => {
+const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onTokenUpdate, showPatientDetails, onTogglePatientDetails }) => {
   const { toast } = useToast();
   const { registerScreen, unregisterScreen } = useVoiceScribe();
   const [activeTab, setActiveTab] = useState(0);
