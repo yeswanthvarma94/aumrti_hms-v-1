@@ -458,17 +458,16 @@ const VoiceDictationButton: React.FC<Props> = ({ sessionType, className, size = 
       <button
         onClick={isRecording ? stopRecording : startRecording}
         className={cn(
-          "rounded-md font-medium flex items-center gap-1.5 transition-all active:scale-[0.97]",
-          btnSize,
+          "rounded-full font-semibold flex items-center justify-center transition-all active:scale-[0.93] shadow-lg",
           isRecording
-            ? "bg-destructive text-destructive-foreground hover:bg-destructive/90 animate-pulse"
-            : "bg-[hsl(var(--primary))] text-primary-foreground hover:bg-primary/90"
+            ? "bg-destructive text-destructive-foreground hover:bg-destructive/90 animate-pulse h-12 w-auto px-4 gap-2"
+            : "bg-[hsl(var(--primary))] text-primary-foreground hover:bg-primary/90 h-12 w-12 shadow-[0_4px_20px_-4px_hsl(var(--primary)/0.5)]"
         )}
       >
         {isRecording ? (
-          <><MicOff className={iconSize} /> Stop {formatTime(recordingSeconds)}</>
+          <><MicOff className="h-5 w-5" /> Stop {formatTime(recordingSeconds)}</>
         ) : (
-          <><Mic className={iconSize} /> {currentLang.flag} Voice</>
+          <Mic className="h-5 w-5" />
         )}
       </button>
     </div>
