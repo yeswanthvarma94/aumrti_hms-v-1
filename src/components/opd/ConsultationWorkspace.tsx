@@ -646,17 +646,12 @@ const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onT
               ✓ Complete
             </button>
           )}
-         {token && onTogglePatientDetails && (
+         {token && onTogglePatientDetails && !showPatientDetails && (
             <button
               onClick={onTogglePatientDetails}
-              className={cn(
-                "text-xs px-3 py-1.5 rounded-md font-medium flex items-center gap-1.5 active:scale-[0.97] transition-all",
-                showPatientDetails
-                  ? "bg-slate-200 text-slate-700 hover:bg-slate-300"
-                  : "border border-slate-200 text-slate-600 hover:bg-slate-50"
-              )}
+              className="text-xs border border-slate-200 text-slate-600 hover:bg-slate-50 px-3 py-1.5 rounded-md font-medium flex items-center gap-1.5 active:scale-[0.97] transition-all"
             >
-              {showPatientDetails ? <><X className="h-3 w-3" /> Close</> : <><User className="h-3 w-3" /> Patient Details</>}
+              <User className="h-3 w-3" /> Patient Details
             </button>
           )}
          </div>

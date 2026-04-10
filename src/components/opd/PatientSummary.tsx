@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
-import { Stethoscope, Phone, ExternalLink } from "lucide-react";
+import { Stethoscope, Phone, ExternalLink, X } from "lucide-react";
 import type { OpdToken } from "@/pages/opd/OPDPage";
 
 interface Props {
   token: OpdToken | null;
   hospitalId: string | null;
+  onClose?: () => void;
 }
 
 interface VitalRow {
@@ -14,7 +15,7 @@ interface VitalRow {
   vitals: Record<string, unknown> | null;
 }
 
-const PatientSummary: React.FC<Props> = ({ token, hospitalId }) => {
+const PatientSummary: React.FC<Props> = ({ token, hospitalId, onClose }) => {
   const navigate = useNavigate();
   const [pastVitals, setPastVitals] = useState<VitalRow[]>([]);
   const [pendingLabs, setPendingLabs] = useState<string[]>([]);
@@ -74,10 +75,15 @@ const PatientSummary: React.FC<Props> = ({ token, hospitalId }) => {
           <div className="w-11 h-11 rounded-full bg-[#1A2F5A] text-white flex items-center justify-center text-sm font-bold flex-shrink-0">
             {initials}
           </div>
-          <div>
+          <div className="flex-1 min-w-0">
             <p className="text-[15px] font-bold text-slate-900">{token.patient?.full_name}</p>
             <span className="text-[11px] bg-slate-100 text-slate-600 px-1.5 py-px rounded">{token.patient?.uhid}</span>
           </div>
+          {onClose && (
+            <button onClick={onClose} className="flex-shrink-0 p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors" title="Close">
+              <X className="h-4 w-4" />
+            </button>
+          )}
         </div>
         <div className="mt-3 space-y-1 text-xs text-slate-600">
           <p>{patientAge !== null ? `${patientAge}y` : "—"} · {token.patient?.gender || "—"}{token.patient?.blood_group ? ` · ${token.patient.blood_group}` : ""}</p>
