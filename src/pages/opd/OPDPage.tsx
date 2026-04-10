@@ -28,6 +28,7 @@ export interface OpdToken {
 const OPDPage: React.FC = () => {
   const [tokens, setTokens] = useState<OpdToken[]>([]);
   const [selectedTokenId, setSelectedTokenId] = useState<string | null>(null);
+  const [showPatientDetails, setShowPatientDetails] = useState(false);
   const [hospitalId, setHospitalId] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
@@ -82,9 +83,9 @@ const OPDPage: React.FC = () => {
 
   return (
     <div className="flex flex-row h-full overflow-hidden">
-      <TokenQueue tokens={tokens} selectedTokenId={selectedTokenId} onSelectToken={setSelectedTokenId} hospitalId={hospitalId} loading={loading} onTokenCreated={fetchTokens} />
-      <ConsultationWorkspace token={selectedToken} hospitalId={hospitalId} userId={userId} onTokenUpdate={fetchTokens} />
-      <PatientSummary token={selectedToken} hospitalId={hospitalId} />
+      <TokenQueue tokens={tokens} selectedTokenId={selectedTokenId} onSelectToken={(id) => { setSelectedTokenId(id); setShowPatientDetails(false); }} hospitalId={hospitalId} loading={loading} onTokenCreated={fetchTokens} />
+      <ConsultationWorkspace token={selectedToken} hospitalId={hospitalId} userId={userId} onTokenUpdate={fetchTokens} showPatientDetails={showPatientDetails} onTogglePatientDetails={() => setShowPatientDetails((p) => !p)} />
+      {showPatientDetails && <PatientSummary token={selectedToken} hospitalId={hospitalId} />}
     </div>
   );
 };
