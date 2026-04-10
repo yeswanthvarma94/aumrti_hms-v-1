@@ -85,7 +85,7 @@ const OPDPage: React.FC = () => {
     <div className="flex flex-row h-full overflow-hidden">
       <TokenQueue tokens={tokens} selectedTokenId={selectedTokenId} onSelectToken={(id) => { setSelectedTokenId(id); setShowPatientDetails(false); }} hospitalId={hospitalId} loading={loading} onTokenCreated={fetchTokens} />
       <ConsultationWorkspace token={selectedToken} hospitalId={hospitalId} userId={userId} onTokenUpdate={fetchTokens} showPatientDetails={showPatientDetails} onTogglePatientDetails={() => setShowPatientDetails((p) => !p)} />
-      {showPatientDetails && <PatientSummary token={selectedToken} hospitalId={hospitalId} />}
+      {showPatientDetails && <PatientSummary token={selectedToken} hospitalId={hospitalId} onClose={() => setShowPatientDetails(false)} />}
     </div>
   );
 };
