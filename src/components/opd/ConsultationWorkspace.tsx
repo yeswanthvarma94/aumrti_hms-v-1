@@ -24,6 +24,8 @@ interface Props {
   hospitalId: string | null;
   userId: string | null;
   onTokenUpdate: () => void;
+  showPatientDetails?: boolean;
+  onTogglePatientDetails?: () => void;
 }
 
 export interface EncounterData {
