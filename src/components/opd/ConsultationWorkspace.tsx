@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from "react"
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { Stethoscope, Mic, Save, CheckCircle, FlaskConical, Building2, Smartphone, ArrowUpRight } from "lucide-react";
+import { Stethoscope, Mic, Save, CheckCircle, FlaskConical, Building2, Smartphone, ArrowUpRight, User, X } from "lucide-react";
 import AdmitPatientModal from "@/components/ipd/AdmitPatientModal";
 import type { OpdToken } from "@/pages/opd/OPDPage";
 import VoiceDictationButton from "@/components/voice/VoiceDictationButton";
@@ -646,7 +646,20 @@ const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onT
               ✓ Complete
             </button>
           )}
-        </div>
+         {token && onTogglePatientDetails && (
+            <button
+              onClick={onTogglePatientDetails}
+              className={cn(
+                "text-xs px-3 py-1.5 rounded-md font-medium flex items-center gap-1.5 active:scale-[0.97] transition-all",
+                showPatientDetails
+                  ? "bg-slate-200 text-slate-700 hover:bg-slate-300"
+                  : "border border-slate-200 text-slate-600 hover:bg-slate-50"
+              )}
+            >
+              {showPatientDetails ? <><X className="h-3 w-3" /> Close</> : <><User className="h-3 w-3" /> Patient Details</>}
+            </button>
+          )}
+         </div>
       </div>
 
       {/* Tab strip */}
