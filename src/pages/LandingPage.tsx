@@ -86,11 +86,6 @@ const LandingPage: React.FC = () => {
         {/* Left Half */}
         <div className="flex-1 flex flex-col justify-center px-6 md:px-12 lg:px-12 py-8 lg:py-16">
           {/* Trust Badge */}
-          <div className="mb-4">
-            <span className="inline-block bg-[hsl(220,54%,92%)] text-primary text-xs font-medium px-3 py-1 rounded-full">
-              ✦ Trusted by 200+ hospitals across India
-            </span>
-          </div>
 
           {/* Headline */}
           <h1 className="text-4xl md:text-[48px] font-bold text-[#0F172A] leading-[1.15] tracking-tight">
