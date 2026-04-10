@@ -461,7 +461,7 @@ const VoiceDictationButton: React.FC<Props> = ({ sessionType, className, size = 
           "rounded-full font-semibold flex items-center justify-center transition-all active:scale-[0.90]",
           isRecording
             ? "bg-red-500 text-white hover:bg-red-600 animate-pulse h-14 w-auto px-5 gap-2 shadow-[0_0_24px_-2px_rgba(239,68,68,0.6)]"
-            : "bg-gradient-to-br from-violet-500 via-fuchsia-500 to-pink-500 text-white hover:from-violet-600 hover:via-fuchsia-600 hover:to-pink-600 h-14 w-14 shadow-[0_0_28px_-4px_rgba(168,85,247,0.65)] hover:shadow-[0_0_36px_-2px_rgba(168,85,247,0.8)]"
+            : "bg-gradient-to-br from-blue-500 via-indigo-500 to-cyan-400 text-white hover:from-blue-600 hover:via-indigo-600 hover:to-cyan-500 h-14 w-14 shadow-[0_0_28px_-4px_rgba(59,130,246,0.65)] hover:shadow-[0_0_36px_-2px_rgba(59,130,246,0.8)]"
         )}
       >
         {isRecording ? (
