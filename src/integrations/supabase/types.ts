@@ -1381,6 +1381,38 @@ export type Database = {
           },
         ]
       }
+      bill_number_sequences: {
+        Row: {
+          date_key: string
+          hospital_id: string
+          id: string
+          prefix: string
+          sequence_number: number
+        }
+        Insert: {
+          date_key: string
+          hospital_id: string
+          id?: string
+          prefix?: string
+          sequence_number?: number
+        }
+        Update: {
+          date_key?: string
+          hospital_id?: string
+          id?: string
+          prefix?: string
+          sequence_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bill_number_sequences_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bill_payments: {
         Row: {
           amount: number
@@ -14068,6 +14100,8 @@ export type Database = {
         Row: {
           category: string
           created_at: string
+          department_id: string | null
+          doctor_id: string | null
           fee: number
           follow_up_fee: number | null
           gst_applicable: boolean
@@ -14078,10 +14112,13 @@ export type Database = {
           is_active: boolean
           item_type: string | null
           name: string
+          validity_days: number | null
         }
         Insert: {
           category?: string
           created_at?: string
+          department_id?: string | null
+          doctor_id?: string | null
           fee?: number
           follow_up_fee?: number | null
           gst_applicable?: boolean
@@ -14092,10 +14129,13 @@ export type Database = {
           is_active?: boolean
           item_type?: string | null
           name: string
+          validity_days?: number | null
         }
         Update: {
           category?: string
           created_at?: string
+          department_id?: string | null
+          doctor_id?: string | null
           fee?: number
           follow_up_fee?: number | null
           gst_applicable?: boolean
@@ -14106,8 +14146,23 @@ export type Database = {
           is_active?: boolean
           item_type?: string | null
           name?: string
+          validity_days?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "service_master_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_master_doctor_id_fkey"
+            columns: ["doctor_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "service_master_hospital_id_fkey"
             columns: ["hospital_id"]
@@ -14707,6 +14762,7 @@ export type Database = {
         Row: {
           actual_duration: number | null
           bill_generated: boolean | null
+          bill_id: string | null
           created_at: string | null
           doctor_id: string
           doctor_joined_at: string | null
@@ -14727,6 +14783,7 @@ export type Database = {
         Insert: {
           actual_duration?: number | null
           bill_generated?: boolean | null
+          bill_id?: string | null
           created_at?: string | null
           doctor_id: string
           doctor_joined_at?: string | null
@@ -14747,6 +14804,7 @@ export type Database = {
         Update: {
           actual_duration?: number | null
           bill_generated?: boolean | null
+          bill_id?: string | null
           created_at?: string | null
           doctor_id?: string
           doctor_joined_at?: string | null
@@ -14765,6 +14823,13 @@ export type Database = {
           status?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "teleconsult_sessions_bill_id_fkey"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "bills"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "teleconsult_sessions_doctor_id_fkey"
             columns: ["doctor_id"]
@@ -15648,6 +15713,7 @@ export type Database = {
           id: string
           is_active: boolean
           name: string
+          rate_per_day: number | null
           total_beds: number
           type: Database["public"]["Enums"]["ward_type"]
         }
@@ -15657,6 +15723,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name: string
+          rate_per_day?: number | null
           total_beds?: number
           type?: Database["public"]["Enums"]["ward_type"]
         }
@@ -15666,6 +15733,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
+          rate_per_day?: number | null
           total_beds?: number
           type?: Database["public"]["Enums"]["ward_type"]
         }
@@ -15787,6 +15855,10 @@ export type Database = {
         Returns: undefined
       }
       generate_bill_number: {
+        Args: { p_hospital_id: string; p_prefix?: string }
+        Returns: string
+      }
+      generate_token_number: {
         Args: { p_hospital_id: string; p_prefix?: string }
         Returns: string
       }
