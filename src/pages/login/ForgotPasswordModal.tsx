@@ -24,26 +24,16 @@ const ForgotPasswordModal: React.FC<Props> = ({ open, onClose }) => {
     setLoading(true);
     setError("");
     try {
-      const { error: err } = await supabase.auth.resetPasswordForEmail(trimmedEmail, {
+      await supabase.auth.resetPasswordForEmail(trimmedEmail, {
         redirectTo: `${window.location.origin}/login`,
       });
-      if (err) {
-        const msg = err.message?.toLowerCase() || "";
-        if (msg.includes("rate") || msg.includes("limit")) {
-          setError("Too many reset attempts. Please wait a few minutes and try again.");
-        } else if (msg.includes("invalid") || msg.includes("not found")) {
-          // Security: don't reveal if email exists
-          setSent(true);
-        } else {
-          setError(err.message || "Something went wrong. Try again.");
-        }
-      } else {
-        setSent(true);
-      }
-    } catch (err: any) {
-      setError(err.message || "Something went wrong. Try again.");
+    } catch (err) {
+      // Silently ignore — show same message either way
+      console.error("Reset password error (non-blocking):", err);
     } finally {
       setLoading(false);
+      // ALWAYS show the same generic message — never reveal if email exists
+      setSent(true);
     }
   };
 
