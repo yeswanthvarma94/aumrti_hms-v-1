@@ -249,7 +249,7 @@ const SettingsStaffPage: React.FC = () => {
 
         // Create service_master row for doctor consultation fee
         if (form.role === "doctor" && form.consultation_fee) {
-          await (supabase as any).from("service_master").upsert({
+          const { error: feeErr } = await (supabase as any).from("service_master").insert({
             hospital_id: hid,
             name: `Consultation - Dr. ${form.full_name}`,
             category: "consultation",
@@ -260,16 +260,24 @@ const SettingsStaffPage: React.FC = () => {
             follow_up_fee: form.follow_up_fee ? parseFloat(form.follow_up_fee) : null,
             validity_days: parseInt(form.validity_days) || 7,
             is_active: true,
-          }, { onConflict: "hospital_id,doctor_id,item_type", ignoreDuplicates: false });
+          });
+          if (feeErr) console.error("Fee save error:", feeErr);
         }
       }
 
-      // Upsert service_master for doctor on edit too
+      // Save/update service_master for doctor on edit
       if (editingId && form.role === "doctor" && form.consultation_fee) {
-        const hid2 = await getHospitalId();
         const deptId2 = getSafeDepartmentId();
-        await (supabase as any).from("service_master").upsert({
-          hospital_id: hid2,
+        // Check if fee row already exists
+        const { data: existingFee } = await (supabase as any).from("service_master")
+          .select("id")
+          .eq("hospital_id", hid)
+          .eq("doctor_id", editingId)
+          .eq("item_type", "consultation")
+          .maybeSingle();
+        
+        const feePayload = {
+          hospital_id: hid,
           name: `Consultation - Dr. ${form.full_name}`,
           category: "consultation",
           item_type: "consultation",
@@ -279,7 +287,17 @@ const SettingsStaffPage: React.FC = () => {
           follow_up_fee: form.follow_up_fee ? parseFloat(form.follow_up_fee) : null,
           validity_days: parseInt(form.validity_days) || 7,
           is_active: true,
-        }, { onConflict: "hospital_id,doctor_id,item_type", ignoreDuplicates: false });
+        };
+
+        if (existingFee?.id) {
+          const { error: feeErr } = await (supabase as any).from("service_master")
+            .update(feePayload).eq("id", existingFee.id);
+          if (feeErr) console.error("Fee update error:", feeErr);
+        } else {
+          const { error: feeErr } = await (supabase as any).from("service_master")
+            .insert(feePayload);
+          if (feeErr) console.error("Fee insert error:", feeErr);
+        }
       }
     },
     onSuccess: () => {
