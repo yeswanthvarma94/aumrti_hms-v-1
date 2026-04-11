@@ -17,12 +17,8 @@ const ForgotPasswordModal: React.FC<Props> = ({ open, onClose }) => {
 
   const handleSubmit = async () => {
     const trimmedEmail = email.trim().toLowerCase();
-    if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
-      setError("Please enter a valid email address.");
-      return;
-    }
+    if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) return;
     setLoading(true);
-    setError("");
     try {
       await supabase.auth.resetPasswordForEmail(trimmedEmail, {
         redirectTo: `${window.location.origin}/login`,
