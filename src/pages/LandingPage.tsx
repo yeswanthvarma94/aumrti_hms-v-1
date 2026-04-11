@@ -7,7 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import LoginModal from "@/components/auth/LoginModal";
+
 
 const trustPills = [
   "NABH Ready",
@@ -36,7 +36,7 @@ const floatingBadges = [
 const LandingPage: React.FC = () => {
   const navigate = useNavigate();
   const [demoOpen, setDemoOpen] = useState(false);
-  const [loginOpen, setLoginOpen] = useState(false);
+  
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
@@ -67,7 +67,7 @@ const LandingPage: React.FC = () => {
         </div>
         <div className="flex items-center gap-3">
           <button
-            onClick={() => setLoginOpen(true)}
+            onClick={() => navigate("/login")}
             className="border-[1.5px] border-primary text-primary bg-transparent px-5 py-2 rounded-md text-sm font-medium hover:bg-primary hover:text-primary-foreground transition-colors active:scale-[0.97]"
           >
             Sign In
@@ -208,7 +208,7 @@ const LandingPage: React.FC = () => {
       </Dialog>
 
       {/* Login Modal */}
-      <LoginModal open={loginOpen} onOpenChange={setLoginOpen} />
+      
     </div>
   );
 };
