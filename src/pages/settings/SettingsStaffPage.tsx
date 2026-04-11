@@ -382,12 +382,29 @@ const SettingsStaffPage: React.FC = () => {
       toast({ title: "Password must be at least 8 characters", variant: "destructive" });
       return;
     }
+    // Pre-check if email already exists in users table
+    const { data: existingUser } = await supabase
+      .from("users")
+      .select("id, full_name")
+      .eq("email", loginEmail.trim().toLowerCase())
+      .neq("id", loginModal.userId)
+      .limit(1);
+
+    if (existingUser && existingUser.length > 0) {
+      toast({
+        title: "Email already in use",
+        description: `This email is already assigned to ${existingUser[0].full_name}. Please use a different email.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     setCreatingLogin(true);
     try {
       const { data, error } = await supabase.functions.invoke("create-staff-login", {
         body: {
           user_id: loginModal.userId,
-          email: loginEmail,
+          email: loginEmail.trim().toLowerCase(),
           password: loginPassword,
           full_name: loginModal.userName,
         },
@@ -397,24 +414,28 @@ const SettingsStaffPage: React.FC = () => {
       }
       toast({ title: `Login created for ${loginModal.userName}`, description: "They can now sign in with their email and password." });
       // Sync email back to users table if it changed
-      if (loginEmail !== loginModal.email) {
-        await supabase.from("users").update({ email: loginEmail } as any).eq("id", loginModal.userId);
+      const normalizedEmail = loginEmail.trim().toLowerCase();
+      if (normalizedEmail !== loginModal.email) {
+        await supabase.from("users").update({ email: normalizedEmail } as any).eq("id", loginModal.userId);
       }
       qc.invalidateQueries({ queryKey: ["settings-staff"] });
       setLoginModal(null);
       setLoginPassword("");
       setLoginEmail("");
     } catch (err: any) {
-      const msg = err.message?.toLowerCase() || "";
-      let userMessage = "Failed to create login";
-      if (msg.includes("already") || msg.includes("exists") || msg.includes("duplicate")) {
-        userMessage = "This email is already registered. Please use a different email address.";
+      const msg = (err.message || "").toLowerCase();
+      let title = "Failed to create login";
+      let description = err.message;
+      if (msg.includes("already") || msg.includes("exists") || msg.includes("duplicate") || msg.includes("unique")) {
+        title = "Email already registered";
+        description = "This email already has a login account. Please use a different email address.";
       } else if (msg.includes("invalid") && msg.includes("email")) {
-        userMessage = "Please enter a valid email address.";
+        title = "Invalid email";
+        description = "Please enter a valid email address.";
       } else if (msg.includes("rate") || msg.includes("limit")) {
-        userMessage = "Too many attempts. Please wait a moment and try again.";
+        title = "Too many attempts. Please wait a moment and try again.";
       }
-      toast({ title: userMessage, description: err.message, variant: "destructive" });
+      toast({ title, description, variant: "destructive" });
     } finally {
       setCreatingLogin(false);
     }
