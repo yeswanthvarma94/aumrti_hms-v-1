@@ -11,7 +11,7 @@ const ForgotPasswordModal: React.FC<Props> = ({ open, onClose }) => {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
-  const [error, setError] = useState("");
+  
 
   if (!open) return null;
 
@@ -40,7 +40,6 @@ const ForgotPasswordModal: React.FC<Props> = ({ open, onClose }) => {
   const handleClose = () => {
     setEmail("");
     setSent(false);
-    setError("");
     onClose();
   };
 
@@ -92,8 +91,7 @@ const ForgotPasswordModal: React.FC<Props> = ({ open, onClose }) => {
             <CheckCircle size={40} className="text-success mx-auto mb-3" />
             <h3 className="text-lg font-bold text-foreground">Check your email</h3>
             <p className="text-[13px] text-muted-foreground mt-2 leading-relaxed">
-              We sent a reset link to{" "}
-              <strong className="text-foreground">{email}</strong>.
+              If an account with this email exists, we've sent a password reset link.
               <br />
               Check your inbox and spam folder.
             </p>
