@@ -109,8 +109,8 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ isMobileOverlay, onClose }) => 
   return (
     <div
       className={cn(
-        "flex flex-col bg-sidebar text-sidebar-foreground h-full",
-        isMobileOverlay ? "w-full" : "fixed left-0 top-[56px] bottom-0 z-40 transition-[width] duration-200",
+        "flex flex-col bg-sidebar text-sidebar-foreground",
+        isMobileOverlay ? "w-full h-full" : "fixed left-0 top-[56px] bottom-0 z-40 transition-[width] duration-200",
         !isMobileOverlay && (isCollapsed ? "w-16" : "w-56")
       )}
     >
