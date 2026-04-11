@@ -426,9 +426,13 @@ const SettingsStaffPage: React.FC = () => {
       const msg = (err.message || "").toLowerCase();
       let title = "Failed to create login";
       let description = err.message;
-      if (msg.includes("already") || msg.includes("exists") || msg.includes("duplicate") || msg.includes("unique")) {
+      if (msg.includes("already") || msg.includes("exists") || msg.includes("duplicate") || msg.includes("unique") || msg.includes("registered")) {
         title = "Email already registered";
         description = "This email already has a login account. Please use a different email address.";
+      } else if (msg.includes("non-2xx") || msg.includes("status code")) {
+        // Edge function returned an error — most likely duplicate email in Supabase Auth
+        title = "Email already registered";
+        description = "This email is already in use. Please use a different email address.";
       } else if (msg.includes("invalid") && msg.includes("email")) {
         title = "Invalid email";
         description = "Please enter a valid email address.";
