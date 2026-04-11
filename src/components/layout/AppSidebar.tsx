@@ -130,7 +130,7 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ isMobileOverlay, onClose }) => 
       </nav>
 
       {/* Scrollable middle */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-sidebar-border [&::-webkit-scrollbar-thumb]:rounded-full">
+      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-sidebar-border [&::-webkit-scrollbar-thumb]:rounded-full">
         <div className="px-4 pt-5 pb-1">
           {!isCollapsed && (
             <span className="text-[10px] font-bold uppercase tracking-wider text-sidebar-foreground/40">
@@ -155,12 +155,12 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ isMobileOverlay, onClose }) => 
       </div>
 
       {/* Bottom items */}
-      <nav className="flex-shrink-0 flex flex-col gap-1 px-2 pb-2">
+      <nav className="flex-shrink-0 flex flex-col gap-1 px-2 pb-2 border-t border-sidebar-border pt-2">
         {bottomItems.map(renderItem)}
       </nav>
 
       {/* User section */}
-      <div className="border-t border-sidebar-border px-3 py-3 flex items-center gap-3">
+      <div className="flex-shrink-0 border-t border-sidebar-border px-3 py-3 flex items-center gap-3">
         <Avatar className="h-8 w-8">
           <AvatarFallback className="bg-sidebar-accent text-white text-xs font-semibold">
             {userInitials}
