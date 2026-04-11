@@ -800,7 +800,7 @@ const SettingsStaffPage: React.FC = () => {
             </div>
 
             {/* Footer */}
-            <div className="flex-shrink-0 px-6 py-4 border-t border-border flex gap-3">
+            <div className="flex-shrink-0 px-6 py-4 border-t border-border flex gap-3 pb-[env(safe-area-inset-bottom,16px)]">
               <button onClick={closeDrawer} className="flex-1 h-12 rounded-lg border border-border text-sm font-medium text-muted-foreground hover:bg-muted active:scale-[0.98]">
                 Cancel
               </button>
