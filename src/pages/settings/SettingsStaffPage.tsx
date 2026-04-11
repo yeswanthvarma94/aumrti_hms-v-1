@@ -627,13 +627,13 @@ const SettingsStaffPage: React.FC = () => {
       {drawerOpen && (
         <>
           <div className="fixed inset-0 bg-black/20 z-40" onClick={closeDrawer} />
-          <div className="fixed right-0 top-0 bottom-0 w-[420px] bg-card border-l border-border z-50 flex flex-col shadow-xl animate-in slide-in-from-right duration-200">
+          <div className="fixed right-0 top-0 bottom-0 w-full sm:w-[420px] bg-card border-l border-border z-50 flex flex-col shadow-xl animate-in slide-in-from-right duration-200">
             <div className="flex-shrink-0 px-6 py-4 border-b border-border flex items-center justify-between">
               <h2 className="text-lg font-bold text-foreground">{editingId ? "Edit Staff Member" : "Add Staff Member"}</h2>
               <button onClick={closeDrawer} className="text-muted-foreground hover:text-foreground active:scale-95"><X size={18} /></button>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+            <div className="flex-1 overflow-y-auto min-h-0 px-6 py-5 space-y-5">
               {/* Role selection */}
               <div>
                 <label className="text-xs font-semibold text-muted-foreground mb-2 block uppercase tracking-wide">Role *</label>
