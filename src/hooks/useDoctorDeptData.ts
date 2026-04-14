@@ -47,7 +47,7 @@ export function useDoctorScores(range: DateRange) {
       const doctorIds = doctors.map(d => d.id);
 
       // Parallel queries
-      const [opdRes, admRes, otRes, billsOpdRes, billsIpdRes] = await Promise.all([
+      const [opdRes, admRes, otRes, billsOpdRes, billsIpdRes, tokensRes] = await Promise.all([
         supabase.from("opd_encounters").select("id, doctor_id")
           .eq("hospital_id", hospitalId)
           .in("doctor_id", doctorIds)
@@ -76,6 +76,13 @@ export function useDoctorScores(range: DateRange) {
           .eq("hospital_id", hospitalId)
           .eq("bill_type", "ipd")
           .gte("bill_date", range.from).lte("bill_date", range.to)
+          .limit(5000),
+        // Fallback: get tokens to map bills without encounter_id to doctors
+        supabase.from("opd_tokens").select("id, doctor_id, patient_id, visit_date")
+          .eq("hospital_id", hospitalId)
+          .in("doctor_id", doctorIds)
+          .gte("visit_date", range.from)
+          .lte("visit_date", range.to)
           .limit(5000),
       ]);
 
