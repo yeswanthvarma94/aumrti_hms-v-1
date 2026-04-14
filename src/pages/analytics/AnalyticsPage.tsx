@@ -80,7 +80,12 @@ const AnalyticsPage: React.FC = () => {
   }, [quickRange, customFrom, customTo]);
 
   const handleRefresh = () => {
-    queryClient.invalidateQueries({ queryKey: ["analytics"] });
+    queryClient.invalidateQueries({
+      predicate: (query) => {
+        const key = String(query.queryKey[0] || "");
+        return key.startsWith("analytics");
+      },
+    });
     setLastUpdated(new Date());
     toast({ title: "Data refreshed" });
   };
