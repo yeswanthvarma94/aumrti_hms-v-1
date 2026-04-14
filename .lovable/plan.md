@@ -1,62 +1,63 @@
 
 
-## Fix: Ward Rate Sync + IPD Room Charge Auto-Calculation
+## Analytics Not Syncing — Root Cause Analysis & Fix Plan
 
-### Problem 1: Rate Per Day not loading on Edit Ward
-The wards query in `SettingsWardsPage.tsx` (line 37) selects only `id, name, type, total_beds, is_active` — it does NOT include `rate_per_day`. When you click Edit Ward, the rate field is always empty even if it was saved previously.
+### What I Found
 
-### Problem 2: IPD billing ignores ward rate_per_day
-In `BillingPage.tsx` (line 344), room charges use a `service_master` lookup and fall back to a hardcoded ₹500/day. The ward's actual `rate_per_day` column is never queried.
+After reviewing the code and database:
 
----
+**The data IS there** — 54 bills (₹15.11L this month), 21 OPD encounters, 14 admissions, 7 doctors, 24 departments, 107 lab items. The analytics hooks (`useAnalyticsData.ts`, `useDoctorDeptData.ts`) query real Supabase tables with correct `hospital_id` filtering and RLS policies are properly configured.
 
-### Fix Plan
+### Identified Issues
 
-#### File 1: `src/pages/settings/SettingsWardsPage.tsx`
-
-**Change A** (line 37): Add `rate_per_day` to the wards select query:
+**1. Refresh Button is Broken**
+The "Force Refresh" and refresh icon button calls:
 ```
-"id, name, type, total_beds, is_active, rate_per_day"
+queryClient.invalidateQueries({ queryKey: ["analytics"] })
 ```
+But query keys are `["analytics-revenue-kpis", range]`, `["analytics-clinical-kpis", range]`, etc. TanStack Query's prefix matching requires the first array element to match exactly — `"analytics"` does not equal `"analytics-revenue-kpis"`, so **no queries are ever invalidated**. Data stays stale until the 5-minute `refetchInterval` fires.
 
-**Change B** (line 100): When rate is 0 or cleared, explicitly set it to 0 instead of skipping:
+**Fix:** Change to `queryClient.invalidateQueries({ predicate: (query) => String(query.queryKey[0]).startsWith("analytics") })`.
+
+**2. AI Digest Tab Doesn't Receive Date Range**
+`AIDigestTab` is rendered without the `range` prop — it manages its own date internally. This is intentional (date navigation), but the KPI snapshot panel title says "Today's Key Numbers" regardless of which date is selected. Minor issue.
+
+**3. Custom Report Builder Missing Lab/Pharmacy Queries**
+The `runQuery` function handles `revenue`, `opd`, `ipd`, and `quality` sources but has no implementation for `lab` or `pharmacy` data sources — clicking "Preview Report" for those returns empty results.
+
+**Fix:** Add query implementations for `lab` and `pharmacy` sources.
+
+**4. Doctors Tab Shows Only `role='doctor'` Users**
+The doctor scorecard queries `users` table with `.eq("role", "doctor")`. If doctors were added with slightly different role values (e.g., `"Doctor"` capitalized), they won't appear.
+
+**Fix:** Verify role values are consistent; no code change needed if roles are stored correctly (they are — confirmed 7 doctors with `role='doctor'`).
+
+### Implementation Plan
+
+| Step | File | Change |
+|------|------|--------|
+| 1 | `src/pages/analytics/AnalyticsPage.tsx` | Fix `handleRefresh` to use predicate-based invalidation matching all `analytics-*` query keys |
+| 2 | `src/components/analytics/CustomReportBuilder.tsx` | Add real query implementations for `lab` and `pharmacy` data sources |
+| 3 | `src/components/analytics/AIDigestTab.tsx` | No change needed — already queries real data |
+| 4 | All analytics hooks | Already query real data — no changes needed |
+
+### Technical Details
+
+**Fix 1 — Refresh invalidation (AnalyticsPage.tsx):**
 ```typescript
-updatePayload.rate_per_day = rate;  // always sync, even if 0
+const handleRefresh = () => {
+  queryClient.invalidateQueries({
+    predicate: (query) => {
+      const key = String(query.queryKey[0] || "");
+      return key.startsWith("analytics");
+    },
+  });
+  setLastUpdated(new Date());
+  toast({ title: "Data refreshed" });
+};
 ```
 
-#### File 2: `src/pages/billing/BillingPage.tsx`
-
-**Change** (lines 320-357): After fetching the admission with ward data, also fetch `rate_per_day` from the ward. Use it as the primary rate, falling back to `service_master` and then ₹500.
-
-Updated logic:
-```
-1. Fetch admission with ward join (add rate_per_day to wards select)
-2. wardRate = ward.rate_per_day (from DB)
-3. If wardRate > 0, use it as ratePerDay
-4. Else, try service_master lookup
-5. Else, fallback to ₹500
-```
-
-Specifically, change the wards join at line 322 from:
-```
-wards(name, ward_type)
-```
-to:
-```
-wards(name, ward_type, rate_per_day)
-```
-
-Then at line 344, change the rate logic:
-```typescript
-const wardDbRate = Number((admission as any).wards?.rate_per_day) || 0;
-const ratePerDay = wardDbRate > 0 ? wardDbRate : (roomRate?.fee ? Number(roomRate.fee) : 500);
-```
-
-This ensures the ward's configured rate is used first, service_master second, hardcoded last.
-
----
-
-### Files Changed
-1. `src/pages/settings/SettingsWardsPage.tsx` — fetch `rate_per_day` in query + always sync on save
-2. `src/pages/billing/BillingPage.tsx` — use ward `rate_per_day` for IPD room charges
+**Fix 2 — Lab/Pharmacy in CustomReportBuilder:**
+- `lab` source: query `lab_order_items` grouped by day/status, showing test counts, pending, reported
+- `pharmacy` source: query `bills` where `bill_type='pharmacy'`, showing sales totals, counts by retail vs IP
 
