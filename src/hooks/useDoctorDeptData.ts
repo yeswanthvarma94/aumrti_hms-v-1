@@ -93,6 +93,12 @@ export function useDoctorScores(range: DateRange) {
         opdByDoctor[e.doctor_id].push(e.id);
       });
 
+      // Also count tokens per doctor (more reliable for OPD count)
+      const tokenCountByDoctor: Record<string, number> = {};
+      (tokensRes.data || []).forEach(t => {
+        tokenCountByDoctor[t.doctor_id] = (tokenCountByDoctor[t.doctor_id] || 0) + 1;
+      });
+
       // Map admissions to doctors
       const admByDoctor: Record<string, any[]> = {};
       (admRes.data || []).forEach(a => {
