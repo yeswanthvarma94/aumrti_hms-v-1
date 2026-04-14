@@ -262,7 +262,7 @@ const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onT
         hospital_id: hospitalId,
         token_id: token.id,
         patient_id: token.patient_id,
-        doctor_id: userId,
+        doctor_id: token.doctor_id || userId,
         visit_date: new Date().toISOString().split("T")[0],
         chief_complaint: data.chief_complaint || null,
         history_of_present_illness: data.history_of_present_illness || null,
@@ -283,7 +283,17 @@ const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onT
         await supabase.from("opd_encounters").update(payload as never).eq("id", encounterId);
       } else {
         const { data: newEnc } = await supabase.from("opd_encounters").insert([payload] as never).select("id").maybeSingle();
-        if (newEnc) setEncounterId(newEnc.id);
+        if (newEnc) {
+          setEncounterId(newEnc.id);
+          // Backfill encounter_id into the OPD bill created at walk-in
+          await supabase.from("bills")
+            .update({ encounter_id: newEnc.id } as never)
+            .eq("patient_id", token.patient_id)
+            .eq("bill_type", "opd")
+            .eq("hospital_id", hospitalId)
+            .eq("bill_date", new Date().toISOString().split("T")[0])
+            .is("encounter_id", null);
+        }
       }
       setSaved(true);
       isDirtyRef.current = false;
