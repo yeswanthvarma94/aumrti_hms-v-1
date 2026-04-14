@@ -163,10 +163,11 @@ export function useDoctorScores(range: DateRange) {
             }, 0) / discharged.length
           : null;
 
-        // Revenue = OPD encounter bills + IPD admission bills
+        // Revenue = OPD encounter bills + IPD admission bills + token-fallback revenue
         let revenue = 0;
         docOpd.forEach(encId => { revenue += opdBillMap[encId] || 0; });
         docAdm.forEach(a => { revenue += ipdBillMap[a.id] || 0; });
+        revenue += tokenRevByDoctor[doc.id] || 0;
 
         return {
           id: doc.id,
