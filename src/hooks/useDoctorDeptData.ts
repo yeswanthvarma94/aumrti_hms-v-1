@@ -108,14 +108,48 @@ export function useDoctorScores(range: DateRange) {
 
       // Map encounter_id to paid_amount for OPD bills
       const opdBillMap: Record<string, number> = {};
+      const unlinkedOpdBills: { patient_id?: string; bill_date?: string; paid_amount: number }[] = [];
       (billsOpdRes.data || []).forEach(b => {
-        if (b.encounter_id) opdBillMap[b.encounter_id] = (opdBillMap[b.encounter_id] || 0) + (Number(b.paid_amount) || 0);
+        if (b.encounter_id) {
+          opdBillMap[b.encounter_id] = (opdBillMap[b.encounter_id] || 0) + (Number(b.paid_amount) || 0);
+        } else {
+          // Collect unlinked bills for token-based fallback
+          unlinkedOpdBills.push(b as any);
+        }
       });
 
       // Map admission_id to paid_amount for IPD bills
       const ipdBillMap: Record<string, number> = {};
       (billsIpdRes.data || []).forEach(b => {
         if (b.admission_id) ipdBillMap[b.admission_id] = (ipdBillMap[b.admission_id] || 0) + (Number(b.paid_amount) || 0);
+      });
+
+      // Build token lookup: patient_id+visit_date → doctor_id for fallback revenue
+      const tokenDoctorMap: Record<string, string> = {};
+      (tokensRes.data || []).forEach(t => {
+        const key = `${t.patient_id}::${t.visit_date}`;
+        tokenDoctorMap[key] = t.doctor_id;
+      });
+
+      // Map unlinked OPD bills to doctors via tokens
+      const tokenRevByDoctor: Record<string, number> = {};
+      // We need patient_id and bill_date from unlinked bills - re-query with those fields
+      // Actually billsOpdRes already has those if we select them. Let's use a separate approach:
+      // Query OPD bills that have no encounter_id, with patient_id and bill_date
+      const { data: unlinkedBills } = await supabase.from("bills")
+        .select("paid_amount, patient_id, bill_date")
+        .eq("hospital_id", hospitalId)
+        .eq("bill_type", "opd")
+        .is("encounter_id", null)
+        .gte("bill_date", range.from).lte("bill_date", range.to)
+        .limit(5000);
+
+      (unlinkedBills || []).forEach(b => {
+        const key = `${b.patient_id}::${b.bill_date}`;
+        const docId = tokenDoctorMap[key];
+        if (docId) {
+          tokenRevByDoctor[docId] = (tokenRevByDoctor[docId] || 0) + (Number(b.paid_amount) || 0);
+        }
       });
 
       return doctors.map(doc => {
