@@ -47,7 +47,7 @@ export function useDoctorScores(range: DateRange) {
       const doctorIds = doctors.map(d => d.id);
 
       // Parallel queries
-      const [opdRes, admRes, otRes, billsOpdRes, billsIpdRes] = await Promise.all([
+      const [opdRes, admRes, otRes, billsOpdRes, billsIpdRes, tokensRes] = await Promise.all([
         supabase.from("opd_encounters").select("id, doctor_id")
           .eq("hospital_id", hospitalId)
           .in("doctor_id", doctorIds)
@@ -77,6 +77,13 @@ export function useDoctorScores(range: DateRange) {
           .eq("bill_type", "ipd")
           .gte("bill_date", range.from).lte("bill_date", range.to)
           .limit(5000),
+        // Fallback: get tokens to map bills without encounter_id to doctors
+        supabase.from("opd_tokens").select("id, doctor_id, patient_id, visit_date")
+          .eq("hospital_id", hospitalId)
+          .in("doctor_id", doctorIds)
+          .gte("visit_date", range.from)
+          .lte("visit_date", range.to)
+          .limit(5000),
       ]);
 
       // Map OPD encounters to doctors
@@ -84,6 +91,12 @@ export function useDoctorScores(range: DateRange) {
       (opdRes.data || []).forEach(e => {
         if (!opdByDoctor[e.doctor_id]) opdByDoctor[e.doctor_id] = [];
         opdByDoctor[e.doctor_id].push(e.id);
+      });
+
+      // Also count tokens per doctor (more reliable for OPD count)
+      const tokenCountByDoctor: Record<string, number> = {};
+      (tokensRes.data || []).forEach(t => {
+        tokenCountByDoctor[t.doctor_id] = (tokenCountByDoctor[t.doctor_id] || 0) + 1;
       });
 
       // Map admissions to doctors
@@ -101,14 +114,48 @@ export function useDoctorScores(range: DateRange) {
 
       // Map encounter_id to paid_amount for OPD bills
       const opdBillMap: Record<string, number> = {};
+      const unlinkedOpdBills: { patient_id?: string; bill_date?: string; paid_amount: number }[] = [];
       (billsOpdRes.data || []).forEach(b => {
-        if (b.encounter_id) opdBillMap[b.encounter_id] = (opdBillMap[b.encounter_id] || 0) + (Number(b.paid_amount) || 0);
+        if (b.encounter_id) {
+          opdBillMap[b.encounter_id] = (opdBillMap[b.encounter_id] || 0) + (Number(b.paid_amount) || 0);
+        } else {
+          // Collect unlinked bills for token-based fallback
+          unlinkedOpdBills.push(b as any);
+        }
       });
 
       // Map admission_id to paid_amount for IPD bills
       const ipdBillMap: Record<string, number> = {};
       (billsIpdRes.data || []).forEach(b => {
         if (b.admission_id) ipdBillMap[b.admission_id] = (ipdBillMap[b.admission_id] || 0) + (Number(b.paid_amount) || 0);
+      });
+
+      // Build token lookup: patient_id+visit_date → doctor_id for fallback revenue
+      const tokenDoctorMap: Record<string, string> = {};
+      (tokensRes.data || []).forEach(t => {
+        const key = `${t.patient_id}::${t.visit_date}`;
+        tokenDoctorMap[key] = t.doctor_id;
+      });
+
+      // Map unlinked OPD bills to doctors via tokens
+      const tokenRevByDoctor: Record<string, number> = {};
+      // We need patient_id and bill_date from unlinked bills - re-query with those fields
+      // Actually billsOpdRes already has those if we select them. Let's use a separate approach:
+      // Query OPD bills that have no encounter_id, with patient_id and bill_date
+      const { data: unlinkedBills } = await supabase.from("bills")
+        .select("paid_amount, patient_id, bill_date")
+        .eq("hospital_id", hospitalId)
+        .eq("bill_type", "opd")
+        .is("encounter_id", null)
+        .gte("bill_date", range.from).lte("bill_date", range.to)
+        .limit(5000);
+
+      (unlinkedBills || []).forEach(b => {
+        const key = `${b.patient_id}::${b.bill_date}`;
+        const docId = tokenDoctorMap[key];
+        if (docId) {
+          tokenRevByDoctor[docId] = (tokenRevByDoctor[docId] || 0) + (Number(b.paid_amount) || 0);
+        }
       });
 
       return doctors.map(doc => {
@@ -122,10 +169,11 @@ export function useDoctorScores(range: DateRange) {
             }, 0) / discharged.length
           : null;
 
-        // Revenue = OPD encounter bills + IPD admission bills
+        // Revenue = OPD encounter bills + IPD admission bills + token-fallback revenue
         let revenue = 0;
         docOpd.forEach(encId => { revenue += opdBillMap[encId] || 0; });
         docAdm.forEach(a => { revenue += ipdBillMap[a.id] || 0; });
+        revenue += tokenRevByDoctor[doc.id] || 0;
 
         return {
           id: doc.id,
@@ -133,7 +181,7 @@ export function useDoctorScores(range: DateRange) {
           role: doc.role,
           department_id: doc.department_id,
           department_name: doc.department_id ? (deptMap[doc.department_id] || "Unassigned") : "Unassigned",
-          opdCount: docOpd.length,
+          opdCount: Math.max(docOpd.length, tokenCountByDoctor[doc.id] || 0),
           ipdCount: docAdm.length,
           otCases: otByDoctor[doc.id] || 0,
           revenue,
