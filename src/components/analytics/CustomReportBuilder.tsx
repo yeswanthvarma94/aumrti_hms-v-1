@@ -120,6 +120,43 @@ const CustomReportBuilder: React.FC<{ range: DateRange }> = ({ range }) => {
               .reduce((s, a) => s + (new Date(a.discharged_at!).getTime() - new Date(a.admitted_at!).getTime()) / 86400000, 0) / discharges.length * 10) / 10
             : 0,
         }];
+      } else if (source === "lab") {
+        const { data } = await supabase.from("lab_order_items")
+          .select("status, created_at, hospital_id")
+          .eq("hospital_id", hospitalId)
+          .gte("created_at", range.from)
+          .lte("created_at", range.to + "T23:59:59");
+
+        const grouped: Record<string, { total: number; pending: number; reported: number }> = {};
+        (data || []).forEach(item => {
+          const key = groupBy === "Month" ? (item.created_at?.slice(0, 7) || "") : (item.created_at?.split("T")[0] || "");
+          if (!grouped[key]) grouped[key] = { total: 0, pending: 0, reported: 0 };
+          grouped[key].total++;
+          if (["ordered", "sample_collected", "in_process"].includes(item.status)) grouped[key].pending++;
+          if (item.status === "completed") grouped[key].reported++;
+        });
+        result = Object.entries(grouped).map(([date, v]) => ({
+          name: date, "Test Count": v.total, Pending: v.pending, Reported: v.reported,
+        }));
+      } else if (source === "pharmacy") {
+        const { data } = await supabase.from("bills")
+          .select("bill_date, total_amount, bill_type")
+          .eq("hospital_id", hospitalId)
+          .eq("bill_type", "pharmacy")
+          .gte("bill_date", range.from)
+          .lte("bill_date", range.to)
+          .order("bill_date");
+
+        const grouped: Record<string, { sales: number; retail: number; ip: number }> = {};
+        (data || []).forEach(b => {
+          const key = groupBy === "Month" ? b.bill_date.slice(0, 7) : b.bill_date;
+          if (!grouped[key]) grouped[key] = { sales: 0, retail: 0, ip: 0 };
+          grouped[key].sales += Number(b.total_amount) || 0;
+          grouped[key].retail++;
+        });
+        result = Object.entries(grouped).map(([date, v]) => ({
+          name: date, "Total Sales": v.sales, "Retail Count": v.retail, "IP Count": v.ip,
+        }));
       } else if (source === "quality") {
         const { data } = await supabase.from("quality_indicators")
           .select("indicator_name, value, target, unit, category")
