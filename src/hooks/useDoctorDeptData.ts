@@ -181,7 +181,7 @@ export function useDoctorScores(range: DateRange) {
           role: doc.role,
           department_id: doc.department_id,
           department_name: doc.department_id ? (deptMap[doc.department_id] || "Unassigned") : "Unassigned",
-          opdCount: docOpd.length,
+          opdCount: Math.max(docOpd.length, tokenCountByDoctor[doc.id] || 0),
           ipdCount: docAdm.length,
           otCases: otByDoctor[doc.id] || 0,
           revenue,
