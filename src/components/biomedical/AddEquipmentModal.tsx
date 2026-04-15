@@ -27,16 +27,22 @@ const AddEquipmentModal: React.FC<Props> = ({ open, onClose, onSaved }) => {
 
   useEffect(() => {
     const genCode = async () => {
-      const { count } = await supabase.from("equipment_master").select("id", { count: "exact", head: true }).eq("hospital_id", hospitalId);
-      const seq = String((count || 0) + 1).padStart(3, "0");
+      // Find max existing code number to avoid duplicates
+      const { data: existing } = await supabase.from("equipment_master").select("equipment_code").eq("hospital_id", hospitalId).like("equipment_code", `EQ-${new Date().getFullYear()}-%`);
+      const maxSeq = (existing || []).reduce((max, e) => {
+        const parts = e.equipment_code?.split("-");
+        const num = parts?.length === 3 ? parseInt(parts[2], 10) : 0;
+        return num > max ? num : max;
+      }, 0);
+      const seq = String(maxSeq + 1).padStart(3, "0");
       setForm((f) => ({ ...f, equipment_code: `EQ-${new Date().getFullYear()}-${seq}` }));
     };
     const loadDepts = async () => {
       const { data } = await supabase.from("departments").select("id, name").eq("hospital_id", hospitalId).eq("is_active", true);
       setDepartments(data || []);
     };
-    if (open) { genCode(); loadDepts(); }
-  }, [open]);
+    if (open && hospitalId) { genCode(); loadDepts(); }
+  }, [open, hospitalId]);
 
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -85,7 +91,7 @@ const AddEquipmentModal: React.FC<Props> = ({ open, onClose, onSaved }) => {
           <div className="grid grid-cols-2 gap-3">
             <div><Label>Serial Number</Label><Input value={form.serial_number} onChange={(e) => set("serial_number", e.target.value)} /></div>
             <div><Label>Department</Label>
-              <Select value={form.department_id} onValueChange={(v) => set("department_id", v)}>
+              <Select value={form.department_id || undefined} onValueChange={(v) => set("department_id", v)}>
                 <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
                 <SelectContent>{departments.map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}</SelectContent>
               </Select>
