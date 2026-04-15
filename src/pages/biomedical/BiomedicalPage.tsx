@@ -25,6 +25,7 @@ const BiomedicalPage: React.FC = () => {
   const refresh = () => setRefreshKey((k) => k + 1);
 
   useEffect(() => {
+    if (!hospitalId) return;
     const load = async () => {
       const [eqRes, pmRes, amcRes] = await Promise.all([
         supabase.from("equipment_master").select("id, status", { count: "exact" }).eq("hospital_id", hospitalId).eq("is_active", true),
@@ -41,7 +42,7 @@ const BiomedicalPage: React.FC = () => {
       });
     };
     load();
-  }, [refreshKey]);
+  }, [refreshKey, hospitalId]);
 
   const kpiCards = [
     { label: "Total Equipment", value: kpis.total, color: "text-foreground" },

@@ -33,6 +33,7 @@ const EquipmentTab: React.FC<Props> = ({ onRefresh }) => {
   const [calibrationHistory, setCalibrationHistory] = useState<any[]>([]);
 
   useEffect(() => {
+    if (!hospitalId) return;
     const load = async () => {
       const [eqRes, deptRes] = await Promise.all([
         supabase.from("equipment_master").select("*").eq("hospital_id", hospitalId).eq("is_active", true).order("equipment_code"),
@@ -42,7 +43,7 @@ const EquipmentTab: React.FC<Props> = ({ onRefresh }) => {
       setDepartments(deptRes.data || []);
     };
     load();
-  }, []);
+  }, [hospitalId]);
 
   const filtered = equipment.filter((e) => {
     if (search && !e.equipment_name.toLowerCase().includes(search.toLowerCase()) && !e.equipment_code.toLowerCase().includes(search.toLowerCase())) return false;
