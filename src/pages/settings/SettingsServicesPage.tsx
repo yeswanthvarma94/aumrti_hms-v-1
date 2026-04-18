@@ -13,6 +13,17 @@ const TABS = [
   { key: "package", label: "Packages" },
   { key: "lab", label: "Lab Tests" },
   { key: "radiology", label: "Radiology" },
+  { key: "rates", label: "Default Rates" },
+];
+
+// Common item codes used by modules (OT, Dialysis, IPD, etc.) for fallback billing rates.
+const DEFAULT_RATE_SEEDS: { item_code: string; item_name: string; item_type: string; default_rate: number }[] = [
+  { item_code: "consultation",     item_name: "OPD Consultation",     item_type: "consultation", default_rate: 500 },
+  { item_code: "anaesthesia_fee",  item_name: "Anaesthesia Fee",      item_type: "procedure",    default_rate: 1500 },
+  { item_code: "surgery_fee",      item_name: "Surgery / Surgeon Fee", item_type: "procedure",   default_rate: 5000 },
+  { item_code: "dialysis_session", item_name: "Dialysis Session",     item_type: "procedure",    default_rate: 2500 },
+  { item_code: "icu_per_day",      item_name: "ICU Bed (per day)",    item_type: "ward",         default_rate: 5000 },
+  { item_code: "ward_per_day",     item_name: "General Ward (per day)", item_type: "ward",       default_rate: 1500 },
 ];
 
 const DEFAULT_PROCEDURES = [
