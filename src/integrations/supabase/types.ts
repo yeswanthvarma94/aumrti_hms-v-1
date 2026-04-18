@@ -11741,6 +11741,8 @@ export type Database = {
       patients: {
         Row: {
           abha_id: string | null
+          abha_verified: boolean | null
+          abha_verified_at: string | null
           address: string | null
           allergies: string | null
           blood_group: string | null
@@ -11763,6 +11765,8 @@ export type Database = {
         }
         Insert: {
           abha_id?: string | null
+          abha_verified?: boolean | null
+          abha_verified_at?: string | null
           address?: string | null
           allergies?: string | null
           blood_group?: string | null
@@ -11785,6 +11789,8 @@ export type Database = {
         }
         Update: {
           abha_id?: string | null
+          abha_verified?: boolean | null
+          abha_verified_at?: string | null
           address?: string | null
           allergies?: string | null
           blood_group?: string | null
