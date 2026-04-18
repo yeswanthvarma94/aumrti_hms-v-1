@@ -404,7 +404,7 @@ const APIConfigHubPage: React.FC = () => {
                   <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="env">Environment Variable</SelectItem>
-                    {KNOWN_SERVICES.filter(s => ["anthropic", "openai", "gemini", "perplexity"].includes(s.service_key)).map(s => (
+                    {KNOWN_SERVICES.filter(s => ["anthropic", "openai", "azure_openai", "gemini", "perplexity"].includes(s.service_key)).map(s => (
                       <SelectItem key={s.service_key} value={s.service_key}>{s.emoji} {s.service_name}</SelectItem>
                     ))}
                   </SelectContent>
