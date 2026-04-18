@@ -5,6 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import EmptyState from "@/components/EmptyState";
 import WalkInModal from "./WalkInModal";
 import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/shared";
 import { predictNoShow, type NoShowPrediction } from "@/lib/clinicalPredictions";
 import { sendWhatsApp } from "@/lib/whatsapp-send";
 import type { OpdToken } from "@/pages/opd/OPDPage";
@@ -41,12 +42,6 @@ const statusStyles: Record<string, string> = {
   completed: "bg-green-50 border-green-200 opacity-70",
   no_show: "bg-slate-50 border-slate-200 opacity-50",
   cancelled: "bg-slate-50 border-slate-200 opacity-50",
-};
-
-const statusPill: Record<string, { label: string; bg: string }> = {
-  called: { label: "📢 Called", bg: "bg-amber-100 text-amber-800" },
-  in_consultation: { label: "👨‍⚕️ With Doctor", bg: "bg-blue-100 text-blue-800" },
-  completed: { label: "✓ Completed", bg: "bg-green-100 text-green-800" },
 };
 
 function getWaitMinutes(createdAt: string): string {
@@ -219,11 +214,9 @@ const TokenQueue: React.FC<Props> = ({ tokens, selectedTokenId, onSelectToken, h
                     <span className="text-[11px] text-slate-400 truncate max-w-[120px]">{token.department?.name || "—"}</span>
                     <span className="text-[11px] text-slate-500">{token.doctor?.full_name ? `Dr. ${token.doctor.full_name.split(" ")[0]}` : "—"}</span>
                   </div>
-                  {token.status !== "waiting" && statusPill[token.status] && (
+                  {token.status !== "waiting" && (
                     <div className="mt-1.5">
-                      <span className={cn("text-[10px] px-2 py-0.5 rounded-full", statusPill[token.status].bg)}>
-                        {statusPill[token.status].label}
-                      </span>
+                      <StatusBadge status={token.status} />
                     </div>
                   )}
                   {/* Send Reminder button for high-risk */}
