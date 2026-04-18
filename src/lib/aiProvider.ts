@@ -241,6 +241,77 @@ const callPerplexity = async (params: ProviderCallParams): Promise<AIResponse> =
   };
 };
 
+// ── Azure OpenAI (India Central — DPDP compliant) ─────
+interface AzureConfig {
+  endpoint: string;
+  deployment: string;
+  apiKey: string;
+  apiVersion: string;
+}
+
+const getAzureConfigFromEnv = (): AzureConfig | null => {
+  const env = import.meta.env as Record<string, string | undefined>;
+  const endpoint = env.VITE_AZURE_OPENAI_ENDPOINT;
+  const deployment = env.VITE_AZURE_OPENAI_DEPLOYMENT;
+  const apiKey = env.VITE_AZURE_OPENAI_API_KEY;
+  const apiVersion = env.VITE_AZURE_OPENAI_API_VERSION || "2024-02-01";
+  if (!endpoint || !deployment || !apiKey) return null;
+  return { endpoint: endpoint.replace(/\/$/, ""), deployment, apiKey, apiVersion };
+};
+
+const getAzureConfigFromDB = async (hospitalId: string): Promise<AzureConfig | null> => {
+  const { data } = await supabase
+    .from("api_configurations")
+    .select("config")
+    .eq("hospital_id", hospitalId)
+    .eq("service_key", "azure_openai")
+    .eq("is_active", true)
+    .maybeSingle();
+  const cfg = data?.config as Record<string, string> | undefined;
+  if (!cfg?.api_key || !cfg?.endpoint || !cfg?.deployment) return null;
+  return {
+    endpoint: cfg.endpoint.replace(/\/$/, ""),
+    deployment: cfg.deployment,
+    apiKey: cfg.api_key,
+    apiVersion: cfg.api_version || "2024-02-01",
+  };
+};
+
+const callAzureOpenAI = async (
+  cfg: AzureConfig,
+  request: AIRequest,
+  temperature = 0.3,
+): Promise<AIResponse> => {
+  const url = `${cfg.endpoint}/openai/deployments/${cfg.deployment}/chat/completions?api-version=${cfg.apiVersion}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "api-key": cfg.apiKey },
+    body: JSON.stringify({
+      messages: [
+        ...(request.systemPrompt ? [{ role: "system", content: request.systemPrompt }] : []),
+        { role: "user", content: request.prompt },
+      ],
+      max_tokens: request.maxTokens || 500,
+      temperature,
+    }),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    return {
+      text: "",
+      provider: "azure_openai",
+      model: cfg.deployment,
+      error: data?.error?.message || "Azure OpenAI error",
+    };
+  }
+  return {
+    text: data.choices?.[0]?.message?.content || "",
+    provider: "azure_openai",
+    model: cfg.deployment,
+    tokens_used: data.usage?.total_tokens,
+  };
+};
+
 // ── ENV fallback keys ──────────────────────────
 
 const ENV_KEYS: Record<string, string> = {
