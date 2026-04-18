@@ -210,6 +210,21 @@ const LineItemsTab: React.FC<Props> = ({ bill, hospitalId, lineItems, loading, o
         </div>
       )}
 
+      {/* Empty-state CTA for IPD drafts with 0 items */}
+      {bill.bill_type === "ipd" && bill.admission_id && lineItems.length === 0 && !loading && (
+        <div className="m-4 p-6 border-2 border-dashed border-accent/40 rounded-lg bg-accent/5 text-center flex-shrink-0">
+          <Sparkles className="h-8 w-8 text-accent mx-auto mb-2" />
+          <p className="text-sm font-bold text-foreground mb-1">No charges yet on this IPD bill</p>
+          <p className="text-xs text-muted-foreground mb-3">
+            Pull room/bed days, doctor visits, lab orders, radiology, pharmacy dispenses and nursing procedures linked to this admission.
+          </p>
+          <Button size="sm" className="gap-1.5 text-xs bg-accent hover:bg-accent/90 text-accent-foreground" onClick={handleRecalcIPD} disabled={recalculating}>
+            <RefreshCw size={14} className={recalculating ? "animate-spin" : ""} />
+            {recalculating ? "Recalculating..." : "Recalculate IPD Charges"}
+          </Button>
+        </div>
+      )}
+
       {/* Table */}
       <div className="flex-1 overflow-auto">
         <table className="w-full text-sm">
