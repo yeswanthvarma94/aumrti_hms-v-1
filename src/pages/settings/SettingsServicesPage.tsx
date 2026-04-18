@@ -13,6 +13,17 @@ const TABS = [
   { key: "package", label: "Packages" },
   { key: "lab", label: "Lab Tests" },
   { key: "radiology", label: "Radiology" },
+  { key: "rates", label: "Default Rates" },
+];
+
+// Common item codes used by modules (OT, Dialysis, IPD, etc.) for fallback billing rates.
+const DEFAULT_RATE_SEEDS: { item_code: string; item_name: string; item_type: string; default_rate: number }[] = [
+  { item_code: "consultation",     item_name: "OPD Consultation",     item_type: "consultation", default_rate: 500 },
+  { item_code: "anaesthesia_fee",  item_name: "Anaesthesia Fee",      item_type: "procedure",    default_rate: 1500 },
+  { item_code: "surgery_fee",      item_name: "Surgery / Surgeon Fee", item_type: "procedure",   default_rate: 5000 },
+  { item_code: "dialysis_session", item_name: "Dialysis Session",     item_type: "procedure",    default_rate: 2500 },
+  { item_code: "icu_per_day",      item_name: "ICU Bed (per day)",    item_type: "ward",         default_rate: 5000 },
+  { item_code: "ward_per_day",     item_name: "General Ward (per day)", item_type: "ward",       default_rate: 1500 },
 ];
 
 const DEFAULT_PROCEDURES = [
@@ -64,10 +75,47 @@ const SettingsServicesPage: React.FC = () => {
     },
   });
 
+  const { data: serviceRates } = useQuery({
+    queryKey: ["settings-service-rates"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("service_rates")
+        .select("id, item_code, item_name, item_type, default_rate, gst_rate, is_active")
+        .order("item_code");
+      if (error) throw error;
+      return (data ?? []) as Array<{ id: string; item_code: string; item_name: string; item_type: string; default_rate: number; gst_rate: number; is_active: boolean }>;
+    },
+  });
+
   const getHospitalId = async () => {
     const { data } = await supabase.from("users").select("hospital_id").limit(1).maybeSingle();
     if (!data) throw new Error("No hospital context");
     return data.hospital_id;
+  };
+
+  const seedRates = useMutation({
+    mutationFn: async () => {
+      const hid = await getHospitalId();
+      const existing = new Set((serviceRates ?? []).map((r) => r.item_code));
+      const rows = DEFAULT_RATE_SEEDS.filter((s) => !existing.has(s.item_code))
+        .map((s) => ({ ...s, hospital_id: hid, gst_rate: 0, is_active: true }));
+      if (rows.length === 0) return 0;
+      const { error } = await (supabase as any).from("service_rates").insert(rows);
+      if (error) throw error;
+      return rows.length;
+    },
+    onSuccess: (count) => {
+      toast({ title: count ? `${count} default rates seeded` : "All defaults already present" });
+      qc.invalidateQueries({ queryKey: ["settings-service-rates"] });
+    },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  const inlineUpdateRate = async (id: string, field: "default_rate" | "gst_rate", value: string) => {
+    const numVal = parseFloat(value);
+    if (isNaN(numVal)) return;
+    await (supabase as any).from("service_rates").update({ [field]: numVal }).eq("id", id);
+    qc.invalidateQueries({ queryKey: ["settings-service-rates"] });
   };
 
   const filtered = services?.filter((s) => {
@@ -229,6 +277,63 @@ const SettingsServicesPage: React.FC = () => {
         </div>
       )}
 
+      {/* DEFAULT RATES TAB */}
+      {tab === "rates" ? (
+        <div className="flex-1 overflow-y-auto px-6 py-4">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h2 className="text-sm font-semibold text-foreground">Module Default Rates</h2>
+              <p className="text-xs text-muted-foreground">Used as fallback fees by OT, Dialysis, IPD and other modules. Each hospital can set its own.</p>
+            </div>
+            <button
+              onClick={() => seedRates.mutate()}
+              disabled={seedRates.isPending}
+              className="text-xs font-medium text-primary border border-input rounded-lg px-3 py-1.5 hover:bg-muted active:scale-[0.97] disabled:opacity-40"
+            >
+              {seedRates.isPending ? "Seeding…" : "Seed Common Codes"}
+            </button>
+          </div>
+          <table className="w-full text-sm border border-border rounded-lg overflow-hidden">
+            <thead className="bg-muted/50">
+              <tr className="text-left text-[11px] text-muted-foreground uppercase tracking-wider">
+                <th className="px-4 py-2.5 font-medium">Item Code</th>
+                <th className="px-4 py-2.5 font-medium">Display Name</th>
+                <th className="px-4 py-2.5 font-medium">Type</th>
+                <th className="px-4 py-2.5 font-medium text-right">Default Rate (₹)</th>
+                <th className="px-4 py-2.5 font-medium text-right">GST %</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(serviceRates ?? []).length === 0 ? (
+                <tr><td colSpan={5} className="px-4 py-10 text-center text-muted-foreground text-xs">No rates configured. Click <span className="font-medium">Seed Common Codes</span> to start.</td></tr>
+              ) : (serviceRates ?? []).map((r) => (
+                <tr key={r.id} className="border-t border-border/50 hover:bg-muted/20">
+                  <td className="px-4 py-2.5 font-mono text-xs text-foreground">{r.item_code}</td>
+                  <td className="px-4 py-2.5 text-foreground">{r.item_name}</td>
+                  <td className="px-4 py-2.5"><span className="text-[11px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground capitalize">{r.item_type}</span></td>
+                  <td className="px-4 py-2.5 text-right">
+                    <input
+                      type="number"
+                      defaultValue={Number(r.default_rate)}
+                      onBlur={(e) => inlineUpdateRate(r.id, "default_rate", e.target.value)}
+                      className="w-24 h-7 text-right text-sm font-medium tabular-nums bg-transparent border border-transparent hover:border-input focus:border-input rounded px-1 outline-none"
+                    />
+                  </td>
+                  <td className="px-4 py-2.5 text-right">
+                    <input
+                      type="number"
+                      defaultValue={Number(r.gst_rate ?? 0)}
+                      onBlur={(e) => inlineUpdateRate(r.id, "gst_rate", e.target.value)}
+                      className="w-16 h-7 text-right text-sm tabular-nums text-muted-foreground bg-transparent border border-transparent hover:border-input focus:border-input rounded px-1 outline-none"
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+      <>
       {/* TABLE */}
       <div className="flex-1 overflow-y-auto">
         {!isLoading && filtered.length === 0 ? (
@@ -288,6 +393,8 @@ const SettingsServicesPage: React.FC = () => {
           </table>
         )}
       </div>
+      </>
+      )}
 
       {/* DRAWER */}
       {drawerOpen && (

@@ -5,6 +5,7 @@ import { generateBillNumber } from "@/hooks/useBillNumber";
 import { autoPostJournalEntry } from "@/lib/accounting";
 import { calcGST, roundCurrency } from "@/lib/currency";
 import { recalculateBillTotalsSafe } from "@/lib/billTotals";
+import { getRate, SERVICE_RATE_CODES } from "@/lib/serviceRates";
 import { useToast } from "@/hooks/use-toast";
 import type { OTSchedule } from "@/pages/ot/OTPage";
 
@@ -70,8 +71,8 @@ const EndCaseModal: React.FC<Props> = ({ schedule, onClose, onEnded }) => {
 
     if (!billId) return;
 
-    // Fetch rates from service_master
-    const getRate = async (itemType: string, fallback: number) => {
+    // Fetch rates from service_master (per-procedure overrides)
+    const getServiceMasterRate = async (itemType: string, fallback: number) => {
       const { data } = await supabase
         .from("service_master")
         .select("fee, gst_percent, gst_applicable, hsn_code")
@@ -86,9 +87,13 @@ const EndCaseModal: React.FC<Props> = ({ schedule, onClose, onEnded }) => {
       return { fee, gstPct, gst: calcGST(fee, gstPct), hsn: data.hsn_code || "" };
     };
 
-    const otRate = await getRate("ot_charge", 2000);
-    const surgRate = await getRate("surgeon_fee", 3000);
-    const anaesRate = await getRate("anaesthesia_fee", 1500);
+    // Hospital-configurable fallbacks from service_rates (no hardcoded amounts)
+    const anaesFallback = await getRate(hospitalId, SERVICE_RATE_CODES.ANAESTHESIA_FEE, 1500);
+    const surgeryFallback = await getRate(hospitalId, SERVICE_RATE_CODES.SURGERY_FEE, 5000);
+
+    const otRate = await getServiceMasterRate("ot_charge", 2000);
+    const surgRate = await getServiceMasterRate("surgeon_fee", surgeryFallback);
+    const anaesRate = await getServiceMasterRate("anaesthesia_fee", anaesFallback);
 
     // Calculate OT time charge
     const actualDuration =
