@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import {
   Home, LayoutGrid, UserPlus, Stethoscope, BedDouble,
   FlaskConical, Pill, Receipt, BarChart3, Inbox, Settings,
-  LogOut, HeartPulse, Activity, FolderOpen, X,
+  LogOut, HeartPulse, Activity, FolderOpen, X, CalendarDays,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "./SidebarContext";
@@ -24,6 +24,7 @@ const topItems: SidebarItem[] = [
 ];
 
 const quickAccessItems: SidebarItem[] = [
+  { label: "Scheduling", path: "/schedule", icon: CalendarDays },
   { label: "OPD Queue", path: "/opd", icon: Stethoscope },
   { label: "IPD / Wards", path: "/ipd", icon: BedDouble },
   { label: "Billing", path: "/billing", icon: Receipt },

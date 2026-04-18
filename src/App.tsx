@@ -99,6 +99,7 @@ const AyushPage = lazy(() => import("./pages/ayush/AyushPage"));
 const PackagesPage = lazy(() => import("./pages/packages/PackagesPage"));
 const IVFPage = lazy(() => import("./pages/ivf/IVFPage"));
 const SettingsRadiologyPage = lazy(() => import("./pages/settings/SettingsRadiologyPage"));
+const SchedulingPage = lazy(() => import("./pages/schedule/SchedulingPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -156,6 +157,7 @@ const App = () => (
             <Route path="/modules" element={<RG path="/modules"><SM name="Modules"><ModulesPage /></SM></RG>} />
             <Route path="/patients" element={<RG path="/patients"><SM name="Patients"><PatientsPage /></SM></RG>} />
             <Route path="/opd" element={<RG path="/opd"><SM name="OPD"><OPDPage /></SM></RG>} />
+            <Route path="/schedule" element={<RG path="/schedule"><SM name="Scheduling"><SchedulingPage /></SM></RG>} />
             <Route path="/ipd" element={<RG path="/ipd"><SM name="IPD"><IPDPage /></SM></RG>} />
             <Route path="/emergency" element={<RG path="/emergency"><SM name="Emergency"><EmergencyPage /></SM></RG>} />
             <Route path="/ot" element={<RG path="/ot"><SM name="Operation Theatre"><OTPage /></SM></RG>} />

@@ -28,4 +28,5 @@ ROUTE_ROLES['/dashboard'] = [
 ];
 ROUTE_ROLES['/patients'] = ['doctor', 'nurse', 'receptionist', 'super_admin', 'hospital_admin'];
 ROUTE_ROLES['/modules'] = ['super_admin', 'hospital_admin'];
+ROUTE_ROLES['/schedule'] = ['receptionist', 'doctor', 'nurse', 'super_admin', 'hospital_admin'];
 
