@@ -75,10 +75,47 @@ const SettingsServicesPage: React.FC = () => {
     },
   });
 
+  const { data: serviceRates } = useQuery({
+    queryKey: ["settings-service-rates"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("service_rates")
+        .select("id, item_code, item_name, item_type, default_rate, gst_rate, is_active")
+        .order("item_code");
+      if (error) throw error;
+      return (data ?? []) as Array<{ id: string; item_code: string; item_name: string; item_type: string; default_rate: number; gst_rate: number; is_active: boolean }>;
+    },
+  });
+
   const getHospitalId = async () => {
     const { data } = await supabase.from("users").select("hospital_id").limit(1).maybeSingle();
     if (!data) throw new Error("No hospital context");
     return data.hospital_id;
+  };
+
+  const seedRates = useMutation({
+    mutationFn: async () => {
+      const hid = await getHospitalId();
+      const existing = new Set((serviceRates ?? []).map((r) => r.item_code));
+      const rows = DEFAULT_RATE_SEEDS.filter((s) => !existing.has(s.item_code))
+        .map((s) => ({ ...s, hospital_id: hid, gst_rate: 0, is_active: true }));
+      if (rows.length === 0) return 0;
+      const { error } = await (supabase as any).from("service_rates").insert(rows);
+      if (error) throw error;
+      return rows.length;
+    },
+    onSuccess: (count) => {
+      toast({ title: count ? `${count} default rates seeded` : "All defaults already present" });
+      qc.invalidateQueries({ queryKey: ["settings-service-rates"] });
+    },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  const inlineUpdateRate = async (id: string, field: "default_rate" | "gst_rate", value: string) => {
+    const numVal = parseFloat(value);
+    if (isNaN(numVal)) return;
+    await (supabase as any).from("service_rates").update({ [field]: numVal }).eq("id", id);
+    qc.invalidateQueries({ queryKey: ["settings-service-rates"] });
   };
 
   const filtered = services?.filter((s) => {
