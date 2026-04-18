@@ -129,6 +129,7 @@ export function getMergedModels(provider: string): { label: string; value: strin
 export const KNOWN_SERVICES = [
   { service_key: "anthropic", service_name: "Anthropic (Claude)", emoji: "🤖", endpoint: "api.anthropic.com" },
   { service_key: "openai", service_name: "OpenAI", emoji: "💡", endpoint: "api.openai.com" },
+  { service_key: "azure_openai", service_name: "Azure OpenAI (India Central — DPDP)", emoji: "🇮🇳", endpoint: "*.openai.azure.com" },
   { service_key: "gemini", service_name: "Google Gemini", emoji: "✨", endpoint: "generativelanguage.googleapis.com" },
   { service_key: "perplexity", service_name: "Perplexity AI", emoji: "🔍", endpoint: "api.perplexity.ai" },
   { service_key: "razorpay", service_name: "Razorpay", emoji: "💳", endpoint: "api.razorpay.com" },
