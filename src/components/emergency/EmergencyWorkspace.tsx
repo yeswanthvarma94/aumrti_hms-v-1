@@ -15,6 +15,8 @@ import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, A
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import AdmitPatientModal from "@/components/ipd/AdmitPatientModal";
 import NewLabOrderModal from "@/components/lab/NewLabOrderModal";
+import BookOTModal from "@/components/ot/BookOTModal";
+import type { OTRoom } from "@/pages/ot/OTPage";
 import type { EDVisit } from "@/pages/emergency/EmergencyPage";
 
 interface Props {
@@ -45,6 +47,8 @@ const EmergencyWorkspace: React.FC<Props> = ({ visit, hospitalId, userId, onRefr
   const [showSpecialistDialog, setShowSpecialistDialog] = useState(false);
   const [showDischargeConfirm, setShowDischargeConfirm] = useState(false);
   const [showMlcDialog, setShowMlcDialog] = useState(false);
+  const [showOTModal, setShowOTModal] = useState(false);
+  const [otRooms, setOtRooms] = useState<OTRoom[]>([]);
 
   // Blood request state
   const [bloodGroup, setBloodGroup] = useState("");
@@ -64,6 +68,13 @@ const EmergencyWorkspace: React.FC<Props> = ({ visit, hospitalId, userId, onRefr
     if (!hospitalId) return;
     supabase.from("departments").select("id, name").eq("hospital_id", hospitalId).eq("is_active", true).order("name")
       .then(({ data }) => setDepartments(data || []));
+  }, [hospitalId]);
+
+  // Load OT rooms for refer-to-OT modal
+  useEffect(() => {
+    if (!hospitalId) return;
+    supabase.from("ot_rooms").select("id, name, type").eq("hospital_id", hospitalId).eq("is_active", true).order("name")
+      .then(({ data }) => setOtRooms((data as OTRoom[]) || []));
   }, [hospitalId]);
 
   // Load data when visit changes
@@ -391,6 +402,9 @@ const EmergencyWorkspace: React.FC<Props> = ({ visit, hospitalId, userId, onRefr
         <ActionBtn label="🔬 STAT Lab" bg="#8B5CF6" onClick={() => { if (hospitalId) setShowLabModal(true); }} />
         <ActionBtn label="🩸 Blood Request" bg="#EF4444" onClick={() => setShowBloodDialog(true)} />
         <ActionBtn label="📟 Call Specialist" bg="#F59E0B" onClick={() => setShowSpecialistDialog(true)} />
+        {visit.triage_category !== "red" && visit.triage_category !== "critical" && visit.disposition !== "discharged" && visit.disposition !== "expired" && (
+          <ActionBtn label="🏥 Refer to OT" bg="#0E7B7B" onClick={() => setShowOTModal(true)} />
+        )}
         <ActionBtn label="🏠 Discharge" bg="#10B981" onClick={() => setShowDischargeConfirm(true)} />
         {mlc && <ActionBtn label="📄 MLC Register" bg="#7C3AED" onClick={() => setShowMlcDialog(true)} />}
         {mlc && (
@@ -463,6 +477,26 @@ const EmergencyWorkspace: React.FC<Props> = ({ visit, hospitalId, userId, onRefr
           onCreated={() => {
             setShowLabModal(false);
             toast({ title: "✓ STAT lab order created from ED" });
+          }}
+        />
+      )}
+
+      {/* Refer to OT */}
+      {showOTModal && (
+        <BookOTModal
+          rooms={otRooms}
+          selectedRoomId={otRooms[0]?.id || ""}
+          selectedDate={new Date().toISOString().slice(0, 10)}
+          prefillTime={null}
+          initialPatientId={visit.patient_id}
+          initialPatientName={visit.patient_name}
+          initialDiagnosis={diagnosis || complaint || ""}
+          initialUrgency="emergency"
+          initialSurgeonId={visit.doctor_id || undefined}
+          onClose={() => setShowOTModal(false)}
+          onBooked={() => {
+            setShowOTModal(false);
+            toast({ title: `OT referral raised for ${visit.patient_name}` });
           }}
         />
       )}
