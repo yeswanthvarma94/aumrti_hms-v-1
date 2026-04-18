@@ -193,7 +193,7 @@ const SettingsDoctorSchedulesPage: React.FC = () => {
                   className={`w-full text-left px-3 py-2.5 rounded-lg transition-colors ${selected === d.id ? "bg-accent text-accent-foreground" : "hover:bg-muted"}`}>
                   <p className="text-sm font-medium text-foreground">{d.full_name}</p>
                   <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-xs text-muted-foreground">{d.department || d.role}</span>
+                    <span className="text-xs text-muted-foreground">{d.department_name || d.role}</span>
                     <Badge variant={d.hasSchedule ? "default" : "destructive"} className="text-[10px] h-4">{d.hasSchedule ? "Set" : "Not set"}</Badge>
                   </div>
                 </button>
