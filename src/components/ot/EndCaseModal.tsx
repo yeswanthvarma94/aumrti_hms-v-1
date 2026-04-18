@@ -87,9 +87,13 @@ const EndCaseModal: React.FC<Props> = ({ schedule, onClose, onEnded }) => {
       return { fee, gstPct, gst: calcGST(fee, gstPct), hsn: data.hsn_code || "" };
     };
 
-    const otRate = await getRate("ot_charge", 2000);
-    const surgRate = await getRate("surgeon_fee", 3000);
-    const anaesRate = await getRate("anaesthesia_fee", 1500);
+    // Hospital-configurable fallbacks from service_rates (no hardcoded amounts)
+    const anaesFallback = await getRate(hospitalId, SERVICE_RATE_CODES.ANAESTHESIA_FEE, 1500);
+    const surgeryFallback = await getRate(hospitalId, SERVICE_RATE_CODES.SURGERY_FEE, 5000);
+
+    const otRate = await getRate2("ot_charge", 2000);
+    const surgRate = await getRate2("surgeon_fee", surgeryFallback);
+    const anaesRate = await getRate2("anaesthesia_fee", anaesFallback);
 
     // Calculate OT time charge
     const actualDuration =
