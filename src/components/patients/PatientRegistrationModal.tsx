@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { X, UserPlus } from "lucide-react";
+import { X, UserPlus, Loader2, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getDPDPConsentText } from "@/lib/compliance-checks";
 import AddReferralDoctorModal from "@/components/shared/AddReferralDoctorModal";
@@ -38,6 +38,12 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess, editPat
   const [hospitalName, setHospitalName] = useState("Hospital");
   const [hospitalIdState, setHospitalIdState] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [abhaVerified, setAbhaVerified] = useState<boolean>(false);
+  const [abhaVerifying, setAbhaVerifying] = useState(false);
+  const [abhaStatus, setAbhaStatus] = useState<{
+    state: "idle" | "verified" | "invalid" | "sandbox";
+    message?: string;
+  }>({ state: "idle" });
   const [form, setForm] = useState({
     full_name: editPatient?.full_name || "",
     phone: editPatient?.phone || "",
@@ -126,6 +132,8 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess, editPat
       chronic_conditions: chronic.length ? chronic : null,
       insurance_id: form.insurance_id || null,
       abha_id: form.abha_id || null,
+      abha_verified: !!form.abha_id && abhaVerified,
+      abha_verified_at: !!form.abha_id && abhaVerified ? new Date().toISOString() : null,
       emergency_contact_name: form.emergency_contact_name || null,
       emergency_contact_phone: form.emergency_contact_phone || null,
     };
@@ -320,8 +328,67 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess, editPat
             </div>
             <div>
               <label className="text-[14px] font-medium text-muted-foreground mb-1 block">ABHA ID <span className="text-muted-foreground/60">(Optional)</span></label>
-              <input value={form.abha_id} onChange={(e) => set("abha_id", e.target.value)}
-                placeholder="ABHA number" className={inputClass} />
+              <div className="flex gap-2">
+                <input
+                  value={form.abha_id}
+                  onChange={(e) => {
+                    set("abha_id", e.target.value);
+                    setAbhaVerified(false);
+                    setAbhaStatus({ state: "idle" });
+                  }}
+                  placeholder="14-digit ABHA number"
+                  className={inputClass}
+                />
+                <button
+                  type="button"
+                  disabled={!form.abha_id || abhaVerifying}
+                  onClick={async () => {
+                    setAbhaVerifying(true);
+                    setAbhaStatus({ state: "idle" });
+                    try {
+                      const { data, error } = await supabase.functions.invoke(
+                        "abdm-abha-verify",
+                        { body: { abha_number: form.abha_id } }
+                      );
+                      if (error) throw error;
+                      if (data?.verified && data?.mode === "live") {
+                        setAbhaVerified(true);
+                        setAbhaStatus({ state: "verified", message: "Verified" });
+                      } else if (data?.verified && data?.mode === "sandbox_format_only") {
+                        setAbhaVerified(true);
+                        setAbhaStatus({ state: "sandbox", message: data.message || "Format Valid (Sandbox)" });
+                      } else {
+                        setAbhaVerified(false);
+                        setAbhaStatus({ state: "invalid", message: data?.message || data?.error || "Invalid ABHA" });
+                      }
+                    } catch (e: any) {
+                      setAbhaVerified(false);
+                      setAbhaStatus({ state: "invalid", message: e?.message || "Verification failed" });
+                    } finally {
+                      setAbhaVerifying(false);
+                    }
+                  }}
+                  className="px-3 py-2 text-[13px] font-medium rounded-md border border-border bg-card hover:bg-accent/10 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                >
+                  {abhaVerifying ? <Loader2 size={14} className="animate-spin" /> : null}
+                  Verify
+                </button>
+              </div>
+              {abhaStatus.state === "verified" && (
+                <div className="mt-1.5 inline-flex items-center gap-1.5 text-[11px] font-medium px-2 py-0.5 rounded bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300">
+                  <CheckCircle2 size={12} /> Verified ✓
+                </div>
+              )}
+              {abhaStatus.state === "sandbox" && (
+                <div className="mt-1.5 inline-flex items-center gap-1.5 text-[11px] font-medium px-2 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                  <AlertTriangle size={12} /> Format Valid (Sandbox)
+                </div>
+              )}
+              {abhaStatus.state === "invalid" && (
+                <div className="mt-1.5 inline-flex items-center gap-1.5 text-[11px] font-medium px-2 py-0.5 rounded bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300">
+                  <XCircle size={12} /> {abhaStatus.message || "Invalid ABHA"}
+                </div>
+              )}
             </div>
           </div>
 
