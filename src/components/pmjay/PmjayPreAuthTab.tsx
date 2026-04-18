@@ -553,7 +553,92 @@ Return ONLY JSON:
               )}
             </div>
 
-            {/* Package */}
+            {/* PMJAY Card Eligibility Verification */}
+            <div className="border border-border rounded-lg p-3 bg-muted/30 space-y-2">
+              <Label className="text-[11px] flex items-center gap-1.5">
+                <ShieldCheck size={13} className="text-primary" /> Verify PMJAY Card Eligibility
+              </Label>
+              <div className="flex gap-2">
+                <Input
+                  className="flex-1"
+                  placeholder="PMJAY card number (e.g. 12345678901234)"
+                  value={pmjayCard}
+                  onChange={e => setPmjayCard(e.target.value)}
+                />
+                <Button size="sm" type="button" onClick={verifyEligibility} disabled={eligibilityLoading || pmjayCard.length < 8} className="gap-1.5">
+                  {eligibilityLoading ? <Loader2 size={13} className="animate-spin" /> : <ShieldCheck size={13} />}
+                  {eligibilityLoading ? "Checking..." : "Verify"}
+                </Button>
+              </div>
+              {eligibility && (
+                <div className={cn(
+                  "rounded-md border p-2.5 text-xs space-y-1",
+                  eligibility.error || !eligibility.eligible ? "bg-red-50 border-red-200 text-red-700" :
+                  eligibility.mode === "sandbox" ? "bg-amber-50 border-amber-200 text-amber-800" :
+                  "bg-emerald-50 border-emerald-200 text-emerald-800"
+                )}>
+                  <div className="flex items-center gap-1.5 font-semibold">
+                    {eligibility.error || !eligibility.eligible ? <AlertCircle size={13} /> : <CheckCircle2 size={13} />}
+                    {eligibility.error
+                      ? "Verification failed"
+                      : !eligibility.eligible
+                      ? "Not eligible"
+                      : eligibility.mode === "sandbox"
+                      ? "Eligible (Sandbox mode)"
+                      : "Eligible (Live verification)"}
+                  </div>
+                  {eligibility.beneficiary && (
+                    <div className="grid grid-cols-2 gap-1 mt-1">
+                      <div><span className="opacity-70">Name:</span> {eligibility.beneficiary.name}</div>
+                      <div><span className="opacity-70">Scheme:</span> {eligibility.beneficiary.scheme}</div>
+                      <div><span className="opacity-70">Family ID:</span> {eligibility.beneficiary.family_id}</div>
+                      <div><span className="opacity-70">Balance:</span> ₹{Number(eligibility.beneficiary.balance_amount || 0).toLocaleString("en-IN")}</div>
+                    </div>
+                  )}
+                  {eligibility.message && <div className="opacity-80 italic">{eligibility.message}</div>}
+                  {eligibility.error && <div>{eligibility.error}</div>}
+                </div>
+              )}
+            </div>
+
+            {/* Diagnosis → Auto-match PMJAY Packages */}
+            <div className="border border-border rounded-lg p-3 bg-muted/30 space-y-2">
+              <Label className="text-[11px]">Diagnosis / ICD-10 keyword (auto-matches PMJAY packages)</Label>
+              <Input
+                placeholder="e.g. Cataract, CABG, Appendicitis, Knee Replacement..."
+                value={diagnosisQuery}
+                onChange={e => matchPackagesFromDiagnosis(e.target.value)}
+              />
+              {matchedPkgs.length > 0 && (
+                <div className="grid grid-cols-1 gap-1.5 mt-1.5">
+                  {matchedPkgs.map(pkg => (
+                    <button
+                      type="button"
+                      key={pkg.id}
+                      onClick={() => selectMatchedPkg(pkg)}
+                      className={cn(
+                        "text-left p-2 rounded-md border transition-colors",
+                        newForm.package_id === pkg.id
+                          ? "bg-primary/5 border-primary"
+                          : "border-border hover:bg-muted/50 bg-background"
+                      )}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-mono text-muted-foreground">{pkg.package_code}</span>
+                        <span className="text-[10px] text-muted-foreground">{pkg.specialty}</span>
+                      </div>
+                      <div className="text-xs font-medium text-foreground">{pkg.package_name}</div>
+                      <div className="text-sm font-bold text-foreground mt-0.5">₹{pkg.package_rate.toLocaleString("en-IN")}</div>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {diagnosisQuery.length >= 3 && matchedPkgs.length === 0 && (
+                <p className="text-[11px] text-muted-foreground italic">No matching packages — try a different keyword or use search below.</p>
+              )}
+            </div>
+
+            {/* Package — manual select or search */}
             <div>
               <Label className="text-[11px]">Package *</Label>
               <Select value={newForm.package_id} onValueChange={selectPackage}>
@@ -567,8 +652,40 @@ Return ONLY JSON:
                 </SelectContent>
               </Select>
               {selectedPkg && (
-                <p className="text-xs font-mono mt-1 text-primary">₹{selectedPkg.package_rate.toLocaleString("en-IN")}</p>
+                <p className="text-xs font-mono mt-1 text-primary">Selected: ₹{selectedPkg.package_rate.toLocaleString("en-IN")}</p>
               )}
+
+              {/* Manual PMJAY package search */}
+              <div className="mt-2 space-y-1.5">
+                <div className="relative">
+                  <Search size={12} className="absolute left-2 top-2.5 text-muted-foreground" />
+                  <Input
+                    className="pl-7 text-xs h-8"
+                    placeholder="Search PMJAY Packages by name, specialty or code..."
+                    value={pkgSearch}
+                    onChange={e => searchPackages(e.target.value)}
+                  />
+                </div>
+                {pkgSearchResults.length > 0 && (
+                  <div className="border border-border rounded-md bg-background max-h-40 overflow-y-auto divide-y divide-border">
+                    {pkgSearchResults.map(p => (
+                      <button
+                        type="button"
+                        key={p.id}
+                        onClick={() => { selectMatchedPkg(p); setPkgSearchResults([]); setPkgSearch(""); }}
+                        className="w-full text-left px-2 py-1.5 text-xs hover:bg-muted"
+                      >
+                        <div className="flex justify-between">
+                          <span className="font-mono text-[10px] text-muted-foreground">{p.package_code}</span>
+                          <span className="font-bold">₹{p.package_rate.toLocaleString("en-IN")}</span>
+                        </div>
+                        <div>{p.package_name}</div>
+                        <div className="text-[10px] text-muted-foreground">{p.specialty}</div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Admission (optional) */}
