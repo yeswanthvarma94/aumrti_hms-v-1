@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { X, Phone, MapPin, Shield, Heart, Pencil, Trash2 } from "lucide-react";
+import { X, Phone, MapPin, Shield, Heart, Pencil, Trash2, FileJson, Loader2, Info } from "lucide-react";
 import ChronicDiseaseSection from "@/components/clinical/ChronicDiseaseSection";
 import PatientDocuments from "@/components/clinical/PatientDocuments";
 import {
