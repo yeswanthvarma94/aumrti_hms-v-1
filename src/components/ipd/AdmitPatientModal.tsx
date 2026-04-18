@@ -516,6 +516,25 @@ const AdmitPatientModal: React.FC<Props> = ({ open, onClose, hospitalId, presele
               </div>
             )}
 
+            {/* Nursing Handover Notes (auto-filled from OPD if available) */}
+            <div>
+              <label className="text-xs font-bold text-slate-600 block mb-1">Handover Notes for Nursing</label>
+              {handoverPrefilled && (
+                <div className="flex items-start gap-2 p-2 mb-1.5 rounded-md bg-sky-50 border border-sky-200">
+                  <Info className="h-3.5 w-3.5 text-sky-600 mt-0.5 flex-shrink-0" />
+                  <span className="text-[11px] text-sky-800 leading-snug">
+                    Pre-filled from OPD consultation — please review and update
+                  </span>
+                </div>
+              )}
+              <Textarea
+                value={handoverNotes}
+                onChange={(e) => setHandoverNotes(e.target.value)}
+                placeholder="Clinical handover information for the nursing team..."
+                className="text-sm min-h-[110px]"
+              />
+            </div>
+
             {/* Expected discharge */}
             <div>
               <label className="text-xs font-bold text-slate-600 block mb-1">Expected Discharge (optional)</label>
