@@ -1,66 +1,63 @@
 
+## Diagnosis (confirmed against your DB)
 
-## Root Cause
+Looking at your two screenshots side-by-side:
 
-When clicking "Clear Billing" from IPD Overview, the system *does* run an auto-pull (`autoPullAdmissionCharges` in `src/pages/billing/BillingPage.tsx`) that includes:
-- Room/bed charges (per ward × days)
-- Lab orders (via `lab_orders.admission_id`)
-- Radiology orders (via `radiology_orders.admission_id`)
-- Pharmacy IP dispenses (via `pharmacy_dispensing.admission_id`)
-- Nursing procedures
-- Other sibling bills linked to the admission
+- **Screenshot 1 (Billing):** the bill you opened — `BILL-20260418-0001` — is Yeswanth's **OPD bill** (`bill_type='opd'`, `admission_id=NULL`, status=Paid/Settled). It will never auto-pull IPD charges because it isn't an IPD bill. The other bill `BILL-20260418-0002` (₹1,814.4) belongs to **Siva**, not Yeswanth.
+- **Screenshot 2 (IPD):** Yeswanth's Day-11 admission `IPD-20260407-6350` is real and active, but **no IPD bill row exists for it in the `bills` table.** Auto-pull cannot run on a bill that doesn't exist yet.
 
-But it has **three real gaps**:
+So the IPD billing isn't "not calculating" — there is literally no IPD bill object for Yeswanth's stay. The system today only creates one when you click **"Clear Billing →"** on the Discharge stepper (which navigates to `/billing?action=new&admission_id=X&type=ipd`). Since you haven't clicked that for Yeswanth yet, no bill, no charges.
 
-1. **Doctor consultation / visit charges are NEVER pulled.** No code reads `ward_round_notes` (or any doctor-visit table) to bill per-visit consultant fees. The screenshot patient has been admitted 11 days — zero consultation charges currently get added.
-
-2. **Auto-pull only triggers from the URL deep-link** (`/billing?action=new&admission_id=X&type=ipd`). If the user opens an existing IPD bill, or creates an IPD bill via "+ New Bill" in the billing queue, **no auto-pull runs at all** — the bill stays empty until manually populated.
-
-3. **No "Refresh / Re-pull charges" button on an existing IPD bill.** New lab/radiology/pharmacy items added after the bill was first created never flow in unless the user opens the existing "Add Unbilled Services" modal (which only covers pharmacy/lab/radiology, not room or doctor visits).
+This is a UX gap: nothing in the IPD workspace shows the admin "this admission has no live bill yet" or lets them open a running bill mid-stay. The discharge stepper is the only entry point, which is wrong for an 11-day stay where you want to see the running tab today.
 
 ## Fix Plan
 
-### Change 1 — Add doctor visit / consultation charges to the auto-pull
-File: `src/pages/billing/BillingPage.tsx` (`autoPullAdmissionCharges`)
+### Change 1 — "Open Live IPD Bill" available any time during the stay
+File: `src/components/ipd/tabs/IPDOverviewTab.tsx`
 
-- Query `ward_round_notes` for the admission, group by `doctor_id` + `created_at::date` to get one chargeable visit per doctor per day.
-- Look up rate from `service_master` where `item_type = 'consultation'` (filtered by doctor's specialty/department if available; fallback to a generic IPD visit rate).
-- Insert one `bill_line_items` row per visit-day with `item_type: 'consultation'`, `source_module: 'ipd_visit'`, `source_record_id: 'visit:{doctor_id}:{date}'` so the `addUniqueItem` dedupe key prevents double-billing on re-pull.
+- Add a new always-visible button in the Overview header area (next to the discharge stepper): **"View / Update IPD Bill"**.
+- Behaviour: navigate to `/billing?action=new&admission_id=X&type=ipd` exactly like the existing Clear Billing button. The existing `createDischargeBill` flow already handles both "create new" and "open existing + re-pull", so this single route works for both Day-1 and Day-11.
+- Rename the stepper's existing button from "Clear Billing →" to "Finalise Billing →" so it's distinct from the live-bill action.
 
-### Change 2 — Run auto-pull whenever an IPD bill is opened, not just from the discharge URL
-File: `src/components/billing/BillEditor.tsx` + `src/pages/billing/BillingPage.tsx`
+### Change 2 — Auto-create a draft IPD bill on admission
+File: `src/components/ipd/AdmitPatientModal.tsx` (and any other place admissions are created)
 
-- Export `autoPullAdmissionCharges` from `BillingPage` (or move it to `src/lib/ipdBilling.ts` as a shared util).
-- In `BillEditor`, when `bill.bill_type === 'ipd'` and `bill.admission_id` is set and `bill.bill_status === 'draft'`, run the pull on first load. The dedupe logic already prevents duplicates on subsequent opens.
+- Right after the `admissions` insert succeeds, automatically insert a matching `bills` row:
+  - `bill_type='ipd'`, `bill_status='draft'`, `payment_status='unpaid'`
+  - `admission_id`, `patient_id`, `hospital_id` populated
+  - `bill_number` from `generateBillNumber(hospitalId, 'BILL')`
+- This guarantees every admission has a running tab from Day 1, not just at discharge.
 
-### Change 3 — Add a manual "Recalculate IPD Charges" button
-File: `src/components/billing/tabs/LineItemsTab.tsx`
-
-- For IPD bills (`bill.admission_id` truthy), show a "Recalculate IPD Charges" button next to the existing "Add Unbilled Services" button.
-- Button calls the shared `autoPullAdmissionCharges(bill.id, bill.admission_id)` then `recalculateBillTotalsSafe(bill.id)` and refreshes line items.
-- Toast: "Pulled X new charges (room, doctor visits, lab, radiology, pharmacy, nursing)".
-
-### Change 4 — Make sure room charges always recompute on re-pull
+### Change 3 — Make the billing queue surface admissions without bills
 File: `src/pages/billing/BillingPage.tsx`
 
-The current dedupe key for room is `room:{admissionId}`, which means if the patient stays longer the room days don't update. Fix:
-- Before re-inserting room, delete the previous room line item (`source_record_id = room:{admissionId}`) and insert a fresh one with the latest day count.
+- In `fetchBills`, after loading bills, also query `admissions` where `status='active'` and there is no matching IPD bill, and render them as virtual "Pending IPD" rows in the bill list with a "Create Bill" button that calls the same `createDischargeBill(admissionId)` path.
+- This way the billing team sees Yeswanth (Day 11, no bill) directly in their queue.
 
-### Change 5 — Seed default service_master rates if missing
-The pull falls back to hard-coded rates (₹500 room, ₹200 lab, ₹500 rad, ₹150 nursing) only when `service_master` has no matching row. Add a one-line toast warning when fallback rates are used so the admin knows to configure rates in Settings → Service Rates.
+### Change 4 — Auto-pull on every open of a draft IPD bill (already half-done)
+File: `src/components/billing/BillEditor.tsx`
 
-### Files Touched
+The auto-pull `useEffect` (lines 128-147) already exists and looks correct. We will:
+- Verify it actually fires by adding a one-shot toast on mount when `bill_type==='ipd'` and `admission_id` is set, confirming the pull ran (even if 0 inserted).
+- Also re-run the pull whenever the user switches back to the Line Items tab if the bill is still `draft` and IPD — handles the "I added a new lab after opening the bill" case without needing the manual button.
+
+### Change 5 — Cosmetic: clearer empty state on an IPD draft with 0 items
+File: `src/components/billing/tabs/LineItemsTab.tsx`
+
+- When `bill.bill_type==='ipd'`, `bill.admission_id` set, and `lineItems.length===0`, show a prominent "Recalculate IPD Charges" CTA in the empty area (instead of just the "+ Add Service" button) explaining what it pulls.
+
+## Files Touched
 
 | File | Change |
 |------|--------|
-| `src/pages/billing/BillingPage.tsx` | Add doctor visit pull; fix room re-pull; export pull function |
-| `src/lib/ipdBilling.ts` (new) | Shared `autoPullAdmissionCharges` util |
-| `src/components/billing/BillEditor.tsx` | Auto-run pull when opening a draft IPD bill |
-| `src/components/billing/tabs/LineItemsTab.tsx` | Add "Recalculate IPD Charges" button |
+| `src/components/ipd/tabs/IPDOverviewTab.tsx` | Add "View / Update IPD Bill" button; rename stepper button |
+| `src/components/ipd/AdmitPatientModal.tsx` | Auto-create draft IPD bill on admission |
+| `src/pages/billing/BillingPage.tsx` | Surface admissions without bills in the queue |
+| `src/components/billing/BillEditor.tsx` | Confirm pull ran; re-pull on tab switch for IPD drafts |
+| `src/components/billing/tabs/LineItemsTab.tsx` | Empty-state CTA for IPD drafts with 0 items |
 
-### Expected Result
+## Expected Result
 
-- Opening the IPD bill (whether from "Clear Billing" or from the billing queue) auto-fills: room × days, every doctor visit per day, all lab orders, all radiology orders, all IP pharmacy dispenses, all nursing procedures, and any sibling bills linked to the admission.
-- "Recalculate IPD Charges" button lets staff re-pull at any time (e.g., after a new lab is ordered post-discharge clearance) without duplicates.
-- Room days always reflect the current length of stay.
-
+- For **existing** admissions like Yeswanth's Day-11 stay: open IPD → click new "View / Update IPD Bill" → bill is created on the fly with 11 days room + every doctor visit + every lab/rad/pharmacy item already pulled in.
+- For **new** admissions going forward: a draft IPD bill exists from the moment the patient is admitted, visible in the billing queue, auto-updating as charges accrue.
+- The billing team sees pending admissions directly in their queue, not just bills that already exist.
