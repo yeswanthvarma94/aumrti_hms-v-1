@@ -10,6 +10,7 @@ import { Printer, FileSpreadsheet, FileText, Bot, CheckCircle2, XCircle, Chevron
 import { Input } from "@/components/ui/input";
 import { callAI } from "@/lib/aiProvider";
 import * as XLSX from "xlsx";
+import TrialBalanceTab from "./TrialBalanceTab";
 
 interface Props {
   hospitalId: string | null;
@@ -687,64 +688,7 @@ ${vouchers}
 
         {/* ═══ TRIAL BALANCE ═══ */}
         <TabsContent value="tb">
-          <Card className="border-border mt-4">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Trial Balance</CardTitle>
-              <p className="text-xs text-muted-foreground">{dateRange.start} to {dateRange.end}</p>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="text-xs w-24">Code</TableHead>
-                    <TableHead className="text-xs">Account Name</TableHead>
-                    <TableHead className="text-xs w-20">Type</TableHead>
-                    <TableHead className="text-xs text-right w-32">Debit (₹)</TableHead>
-                    <TableHead className="text-xs text-right w-32">Credit (₹)</TableHead>
-                    <TableHead className="text-xs text-right w-32">Net Balance</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {accounts.filter(a => !a.is_control && !a.is_system).map(a => {
-                    const b = balanceById[a.id];
-                    if (!b) return null;
-                    const net = b.debit - b.credit;
-                    if (b.debit === 0 && b.credit === 0) return null;
-                    return (
-                      <TableRow key={a.id}>
-                        <TableCell className="text-xs font-mono">{a.code}</TableCell>
-                        <TableCell className="text-xs">{a.name}</TableCell>
-                        <TableCell><Badge variant="outline" className="text-[10px] capitalize">{a.account_type}</Badge></TableCell>
-                        <TableCell className="text-xs text-right font-mono">{b.debit > 0 ? fmt(b.debit) : "—"}</TableCell>
-                        <TableCell className="text-xs text-right font-mono">{b.credit > 0 ? fmt(b.credit) : "—"}</TableCell>
-                        <TableCell className={`text-xs text-right font-mono font-medium ${net > 0 ? "" : net < 0 ? "text-red-500" : ""}`}>
-                          {net > 0 ? fmt(net) : net < 0 ? `(${fmt(net)})` : "—"}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                  {/* Totals */}
-                  {(() => {
-                    let totalDr = 0, totalCr = 0;
-                    accounts.filter(a => !a.is_control && !a.is_system).forEach(a => {
-                      const b = balanceById[a.id];
-                      if (b) { totalDr += b.debit; totalCr += b.credit; }
-                    });
-                    return (
-                      <TableRow className="border-t-2 bg-muted/30 font-bold">
-                        <TableCell colSpan={3} className="text-xs font-bold">TOTALS</TableCell>
-                        <TableCell className="text-xs text-right font-mono">{fmt(totalDr)}</TableCell>
-                        <TableCell className="text-xs text-right font-mono">{fmt(totalCr)}</TableCell>
-                        <TableCell className={`text-xs text-right font-mono ${Math.abs(totalDr - totalCr) < 0.01 ? "text-emerald-700 dark:text-emerald-400" : "text-red-500"}`}>
-                          {Math.abs(totalDr - totalCr) < 0.01 ? "✓ Balanced" : fmt(totalDr - totalCr)}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })()}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+          <TrialBalanceTab hospitalId={hospitalId} />
         </TabsContent>
 
         {/* ═══ ACCOUNT STATEMENT ═══ */}
