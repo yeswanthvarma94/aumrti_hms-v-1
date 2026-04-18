@@ -4,11 +4,12 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Plus, X, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, X, ChevronDown, ChevronUp, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { BillRecord } from "@/pages/billing/BillingPage";
 import type { LineItem } from "@/components/billing/BillEditor";
 import LeakageScanner from "@/components/billing/LeakageScanner";
+import UnbilledServicesModal from "@/components/billing/UnbilledServicesModal";
 
 function numberToWords(n: number): string {
   if (n === 0) return "Zero";
@@ -50,6 +51,7 @@ const LineItemsTab: React.FC<Props> = ({ bill, hospitalId, lineItems, loading, o
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [showSearch, setShowSearch] = useState(false);
   const [showGst, setShowGst] = useState(false);
+  const [showUnbilled, setShowUnbilled] = useState(false);
 
   const isEditable = bill.bill_status === "draft" || bill.bill_status === "final";
 
@@ -299,9 +301,16 @@ const LineItemsTab: React.FC<Props> = ({ bill, hospitalId, lineItems, loading, o
                 </div>
               </div>
             ) : (
-              <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={() => { setShowSearch(true); loadInitialServices(); }}>
-                <Plus size={14} /> Add Service
-              </Button>
+              <div className="flex items-center gap-2 flex-wrap">
+                <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={() => { setShowSearch(true); loadInitialServices(); }}>
+                  <Plus size={14} /> Add Service
+                </Button>
+                {bill.admission_id && (
+                  <Button variant="outline" size="sm" className="gap-1 text-xs gap-1 border-primary/40 text-primary hover:bg-primary/5" onClick={() => setShowUnbilled(true)}>
+                    <Sparkles size={14} /> Add Unbilled Services
+                  </Button>
+                )}
+              </div>
             )}
           </div>
         )}
@@ -309,6 +318,16 @@ const LineItemsTab: React.FC<Props> = ({ bill, hospitalId, lineItems, loading, o
 
       {/* AI Leakage Scanner */}
       <LeakageScanner bill={bill} hospitalId={hospitalId} lineItems={lineItems} onRefresh={onRefresh} />
+
+      {/* Unbilled services modal — IPD only */}
+      {showUnbilled && bill.admission_id && hospitalId && (
+        <UnbilledServicesModal
+          bill={bill}
+          hospitalId={hospitalId}
+          onClose={() => setShowUnbilled(false)}
+          onAdded={onRefresh}
+        />
+      )}
 
       {/* Totals */}
       <div className="bg-card border-t-2 border-border px-5 py-4 flex-shrink-0">
