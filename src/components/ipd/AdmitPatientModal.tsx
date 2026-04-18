@@ -212,7 +212,8 @@ const AdmitPatientModal: React.FC<Props> = ({ open, onClose, hospitalId, presele
       insurance_type: insuranceType,
       insurance_id: insuranceType !== "self_pay" ? insuranceId : null,
       expected_discharge_date: expectedDischarge || null,
-    });
+      nursing_handover_notes: handoverNotes.trim() || null,
+    } as any);
 
     if (error) {
       toast({ title: "Admission failed", description: error.message, variant: "destructive" });
