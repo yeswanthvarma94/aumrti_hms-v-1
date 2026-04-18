@@ -90,6 +90,7 @@ const CaseBundleModal: React.FC<Props> = ({ open, onClose, record, hospitalId })
       { label: `Final Bill Summary (${billRes.count || 0})`, key: "bill", available: (billRes.count || 0) > 0, count: billRes.count || 0, checked: true },
       { label: "Pre-Auth Approval Letter", key: "preauth", available: admission?.insurance_type !== "self_pay", checked: true },
       { label: `ICD Coding Sheet (${icdRes.count || 0})`, key: "icd", available: (icdRes.count || 0) > 0, count: icdRes.count || 0, checked: true },
+      { label: "FHIR R4 Bundle (ABDM)", key: "fhir", available: !!record.patient_id, checked: false },
     ];
 
     setDocs(bundleDocs);
