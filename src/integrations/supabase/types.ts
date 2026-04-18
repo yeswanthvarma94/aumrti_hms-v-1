@@ -1291,6 +1291,7 @@ export type Database = {
           quantity: number | null
           service_date: string | null
           service_id: string | null
+          source_dedupe_key: string | null
           source_module: string | null
           source_record_id: string | null
           taxable_amount: number | null
@@ -1317,6 +1318,7 @@ export type Database = {
           quantity?: number | null
           service_date?: string | null
           service_id?: string | null
+          source_dedupe_key?: string | null
           source_module?: string | null
           source_record_id?: string | null
           taxable_amount?: number | null
@@ -1343,6 +1345,7 @@ export type Database = {
           quantity?: number | null
           service_date?: string | null
           service_id?: string | null
+          source_dedupe_key?: string | null
           source_module?: string | null
           source_record_id?: string | null
           taxable_amount?: number | null
