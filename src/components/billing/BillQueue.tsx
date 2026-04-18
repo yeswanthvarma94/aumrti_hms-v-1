@@ -120,7 +120,11 @@ const BillQueue: React.FC<Props> = ({
         />
       ) : (
         bills.map((bill) => {
+          const isPendingIPD = bill.bill_status === "pending_ipd";
           const sb = statusBadge[bill.payment_status] || statusBadge.unpaid;
+          const days = isPendingIPD
+            ? Math.max(1, Math.ceil((Date.now() - new Date(bill.bill_date).getTime()) / 86400000))
+            : 0;
           return (
             <button
               key={bill.id}
@@ -128,15 +132,21 @@ const BillQueue: React.FC<Props> = ({
               className={cn(
                 "w-full text-left p-2.5 rounded-lg border transition-all",
                 "border-l-[3px]",
-                statusBorder[bill.payment_status] || "border-l-muted-foreground",
+                isPendingIPD ? "border-l-accent" : (statusBorder[bill.payment_status] || "border-l-muted-foreground"),
                 selectedBillId === bill.id
                   ? "bg-primary/5 border-primary"
+                  : isPendingIPD
+                  ? "border-accent/40 bg-accent/5 hover:bg-accent/10"
                   : "border-border hover:bg-muted/50"
               )}
             >
               <div className="flex justify-between items-center">
                 <span className="text-[10px] font-mono text-muted-foreground">{bill.bill_number}</span>
-                <span className="text-[13px] font-bold text-foreground">₹{bill.total_amount.toLocaleString("en-IN")}</span>
+                {isPendingIPD ? (
+                  <span className="text-[11px] font-bold text-accent">Day {days}</span>
+                ) : (
+                  <span className="text-[13px] font-bold text-foreground">₹{bill.total_amount.toLocaleString("en-IN")}</span>
+                )}
               </div>
               <div className="flex items-center gap-2 mt-1">
                 <div className="w-5 h-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[9px] font-bold">
@@ -146,13 +156,21 @@ const BillQueue: React.FC<Props> = ({
               </div>
               <div className="flex justify-between mt-1">
                 <Badge variant="outline" className="text-[10px] h-5">{bill.bill_type.toUpperCase()}</Badge>
-                <span className={cn("text-[11px]", bill.balance_due > 0 ? "text-destructive" : "text-success")}>
-                  {bill.balance_due > 0 ? `₹${bill.balance_due.toLocaleString("en-IN")} due` : "Settled"}
-                </span>
+                {isPendingIPD ? (
+                  <span className="text-[11px] text-accent font-medium">Click to create bill →</span>
+                ) : (
+                  <span className={cn("text-[11px]", bill.balance_due > 0 ? "text-destructive" : "text-success")}>
+                    {bill.balance_due > 0 ? `₹${bill.balance_due.toLocaleString("en-IN")} due` : "Settled"}
+                  </span>
+                )}
               </div>
               <div className="flex justify-between mt-1">
                 <span className="text-[10px] text-muted-foreground">{bill.bill_date}</span>
-                <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-medium", sb.bg, sb.text)}>{sb.label}</span>
+                {isPendingIPD ? (
+                  <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-accent/10 text-accent">Pending IPD</span>
+                ) : (
+                  <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-medium", sb.bg, sb.text)}>{sb.label}</span>
+                )}
               </div>
             </button>
           );
