@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Activity, Pill, ClipboardList, CheckCircle2, Stethoscope, CreditCard, Package, FileText, Loader2 } from "lucide-react";
+import { Activity, Pill, ClipboardList, CheckCircle2, Stethoscope, CreditCard, Package, FileText, Loader2, Receipt } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import DischargeInstructions from "@/components/ipd/DischargeInstructions";
@@ -231,6 +231,16 @@ const IPDOverviewTab: React.FC<Props> = ({ admissionId, hospitalId, onTabChange,
             {currentStep === 4 && <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded ml-auto">Done</span>}
           </div>
 
+          {/* Live IPD Bill — always available during stay */}
+          <Button
+            size="sm"
+            variant="outline"
+            className="mb-3 h-7 text-[11px] gap-1 border-primary/40 text-primary hover:bg-primary/5"
+            onClick={() => navigate(`/billing?action=new&admission_id=${admissionId}&type=ipd`)}
+          >
+            <Receipt className="h-3 w-3" /> View / Update IPD Bill
+          </Button>
+
           {/* Stepper */}
           <div className="flex items-center gap-1 w-full mb-3">
             {steps.map((step, i) => {
@@ -275,7 +285,7 @@ const IPDOverviewTab: React.FC<Props> = ({ admissionId, hospitalId, onTabChange,
             {currentStep === 1 && (
               <Button size="sm" variant="outline" className="text-[11px] h-7 w-full border-amber-300 text-amber-700 hover:bg-amber-50"
                 onClick={() => navigate(`/billing?action=new&admission_id=${admissionId}&type=ipd`)}>
-                <CreditCard className="h-3 w-3 mr-1" /> Clear Billing →
+                <CreditCard className="h-3 w-3 mr-1" /> Finalise Billing →
               </Button>
             )}
             {currentStep === 2 && (
