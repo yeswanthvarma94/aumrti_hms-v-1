@@ -402,6 +402,9 @@ const EmergencyWorkspace: React.FC<Props> = ({ visit, hospitalId, userId, onRefr
         <ActionBtn label="🔬 STAT Lab" bg="#8B5CF6" onClick={() => { if (hospitalId) setShowLabModal(true); }} />
         <ActionBtn label="🩸 Blood Request" bg="#EF4444" onClick={() => setShowBloodDialog(true)} />
         <ActionBtn label="📟 Call Specialist" bg="#F59E0B" onClick={() => setShowSpecialistDialog(true)} />
+        {visit.triage_category !== "red" && visit.triage_category !== "critical" && visit.disposition !== "discharged" && visit.disposition !== "expired" && (
+          <ActionBtn label="🏥 Refer to OT" bg="#0E7B7B" onClick={() => setShowOTModal(true)} />
+        )}
         <ActionBtn label="🏠 Discharge" bg="#10B981" onClick={() => setShowDischargeConfirm(true)} />
         {mlc && <ActionBtn label="📄 MLC Register" bg="#7C3AED" onClick={() => setShowMlcDialog(true)} />}
         {mlc && (
