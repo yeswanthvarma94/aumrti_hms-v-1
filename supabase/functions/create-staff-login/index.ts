@@ -39,7 +39,7 @@ serve(async (req) => {
       .from("users")
       .select("role, hospital_id")
       .eq("auth_user_id", caller.id)
-      .single();
+      .maybeSingle();
 
     if (!callerProfile || !["hospital_admin", "super_admin"].includes(callerProfile.role)) {
       return new Response(JSON.stringify({ error: "Only admins can create login credentials" }), {
@@ -66,7 +66,7 @@ serve(async (req) => {
       .from("users")
       .select("id, hospital_id, auth_user_id")
       .eq("id", user_id)
-      .single();
+      .maybeSingle();
 
     if (!targetUser) {
       return new Response(JSON.stringify({ error: "Staff member not found" }), {

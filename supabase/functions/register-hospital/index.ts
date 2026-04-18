@@ -92,9 +92,9 @@ serve(async (req) => {
         is_active: true,
       })
       .select("id")
-      .single();
+      .maybeSingle();
 
-    if (hospitalError) {
+    if (hospitalError || !hospitalData) {
       // Cleanup: delete auth user
       await supabaseAdmin.auth.admin.deleteUser(userId);
       return new Response(

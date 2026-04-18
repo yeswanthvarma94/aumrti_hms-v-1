@@ -38,7 +38,7 @@ serve(async (req) => {
       .from("users")
       .select("hospital_id")
       .eq("id", user.id)
-      .single();
+      .maybeSingle();
 
     if (!inviter?.hospital_id) {
       return new Response(JSON.stringify({ error: "No hospital found" }), {

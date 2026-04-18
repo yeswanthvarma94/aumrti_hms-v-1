@@ -52,7 +52,7 @@ serve(async (req) => {
       .from("bills")
       .select("id, hospital_id, paid_amount, balance_due, total_amount")
       .eq("id", billId)
-      .single();
+      .maybeSingle();
 
     if (billError || !bill) {
       console.error("Bill not found:", billId);

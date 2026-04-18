@@ -72,7 +72,7 @@ Deno.serve(async (req) => {
     const { data: { user }, error: authErr } = await createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!).auth.getUser(token);
     if (authErr || !user) throw new Error("Unauthorized");
 
-    const { data: userData } = await supabase.from("users").select("hospital_id").eq("auth_user_id", user.id).single();
+    const { data: userData } = await supabase.from("users").select("hospital_id").eq("auth_user_id", user.id).maybeSingle();
     if (!userData) throw new Error("User not found");
 
     const hospitalId = userData.hospital_id;
