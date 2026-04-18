@@ -11,8 +11,14 @@ const ROLE_ROUTES: Record<string, string> = {
   doctor: "/opd",
   nurse: "/nursing",
   accountant: "/billing",
+  billing_executive: "/billing",
+  billing_staff: "/billing",
+  cfo: "/accounts",
   pharmacist: "/pharmacy",
   lab_tech: "/lab",
+  lab_technician: "/lab",
+  radiologist: "/radiology",
+  hr_manager: "/hr",
   receptionist: "/opd",
 };
 
