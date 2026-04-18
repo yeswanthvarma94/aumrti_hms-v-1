@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, AlertTriangle } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const SettingsABDMPage: React.FC = () => {

@@ -132,6 +132,8 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess, editPat
       chronic_conditions: chronic.length ? chronic : null,
       insurance_id: form.insurance_id || null,
       abha_id: form.abha_id || null,
+      abha_verified: !!form.abha_id && abhaVerified,
+      abha_verified_at: !!form.abha_id && abhaVerified ? new Date().toISOString() : null,
       emergency_contact_name: form.emergency_contact_name || null,
       emergency_contact_phone: form.emergency_contact_phone || null,
     };
