@@ -5,6 +5,7 @@ import { generateBillNumber } from "@/hooks/useBillNumber";
 import { autoPostJournalEntry } from "@/lib/accounting";
 import { calcGST, roundCurrency } from "@/lib/currency";
 import { recalculateBillTotalsSafe } from "@/lib/billTotals";
+import { getRate, SERVICE_RATE_CODES } from "@/lib/serviceRates";
 import { useToast } from "@/hooks/use-toast";
 import type { OTSchedule } from "@/pages/ot/OTPage";
 
