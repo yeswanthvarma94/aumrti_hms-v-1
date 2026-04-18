@@ -49,14 +49,20 @@ const EMPTY_FORM: StaffForm = {
 
 /* ─── Role config ─── */
 const ROLE_META: Record<string, { icon: React.ElementType; label: string; color: string }> = {
-  doctor:         { icon: Stethoscope,   label: "Doctor",      color: "bg-blue-50 text-blue-700 border-blue-200" },
-  nurse:          { icon: HeartPulse,    label: "Nurse",       color: "bg-emerald-50 text-emerald-700 border-emerald-200" },
-  accountant:     { icon: Receipt,       label: "Billing",     color: "bg-amber-50 text-amber-700 border-amber-200" },
-  pharmacist:     { icon: Pill,          label: "Pharmacist",  color: "bg-violet-50 text-violet-700 border-violet-200" },
-  lab_tech:       { icon: TestTube,      label: "Lab Tech",    color: "bg-rose-50 text-rose-700 border-rose-200" },
-  receptionist:   { icon: ClipboardList, label: "Reception",   color: "bg-green-50 text-green-700 border-green-200" },
-  hospital_admin: { icon: Shield,        label: "Admin",       color: "bg-[hsl(222,55%,23%)] text-white border-transparent" },
-  super_admin:    { icon: Shield,        label: "Super Admin", color: "bg-[hsl(222,55%,23%)] text-white border-transparent" },
+  doctor:            { icon: Stethoscope,   label: "Doctor",            color: "bg-blue-50 text-blue-700 border-blue-200" },
+  nurse:             { icon: HeartPulse,    label: "Nurse",             color: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+  accountant:        { icon: Receipt,       label: "Accountant",        color: "bg-amber-50 text-amber-700 border-amber-200" },
+  billing_executive: { icon: Receipt,       label: "Billing Executive", color: "bg-amber-50 text-amber-700 border-amber-200" },
+  billing_staff:     { icon: Receipt,       label: "Billing Staff",     color: "bg-amber-50 text-amber-700 border-amber-200" },
+  cfo:               { icon: Receipt,       label: "CFO",               color: "bg-amber-50 text-amber-700 border-amber-200" },
+  pharmacist:        { icon: Pill,          label: "Pharmacist",        color: "bg-violet-50 text-violet-700 border-violet-200" },
+  lab_tech:          { icon: TestTube,      label: "Lab Tech",          color: "bg-rose-50 text-rose-700 border-rose-200" },
+  lab_technician:    { icon: TestTube,      label: "Lab Technician",    color: "bg-rose-50 text-rose-700 border-rose-200" },
+  radiologist:       { icon: TestTube,      label: "Radiologist",       color: "bg-rose-50 text-rose-700 border-rose-200" },
+  receptionist:      { icon: ClipboardList, label: "Reception",         color: "bg-green-50 text-green-700 border-green-200" },
+  hr_manager:        { icon: Users,         label: "HR Manager",        color: "bg-cyan-50 text-cyan-700 border-cyan-200" },
+  hospital_admin:    { icon: Shield,        label: "Admin",             color: "bg-[hsl(222,55%,23%)] text-white border-transparent" },
+  super_admin:       { icon: Shield,        label: "Super Admin",       color: "bg-[hsl(222,55%,23%)] text-white border-transparent" },
 };
 
 const DEFAULT_ROLE_CARDS: { role: AppRole; icon: React.ElementType; label: string }[] = [
