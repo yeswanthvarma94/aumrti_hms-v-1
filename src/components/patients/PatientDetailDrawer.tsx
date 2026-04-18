@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { X, Phone, MapPin, Shield, Heart, Pencil, Trash2 } from "lucide-react";
+import { X, Phone, MapPin, Shield, Heart, Pencil, Trash2, FileJson, Loader2, Info } from "lucide-react";
 import ChronicDiseaseSection from "@/components/clinical/ChronicDiseaseSection";
 import PatientDocuments from "@/components/clinical/PatientDocuments";
 import {
@@ -67,6 +67,34 @@ const PatientDetailDrawer: React.FC<Props> = ({ patient, onClose, onUpdated, onD
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteError, setDeleteError] = useState("");
   const [deleting, setDeleting] = useState(false);
+  const [exportingFhir, setExportingFhir] = useState(false);
+  const [fhirBannerVisible, setFhirBannerVisible] = useState(false);
+
+  const handleExportFHIR = async () => {
+    setExportingFhir(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("fhir-export", {
+        body: { patient_id: patient.id },
+      });
+      if (error) throw error;
+      const bundle = typeof data === "string" ? JSON.parse(data) : data;
+      const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: "application/fhir+json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `patient_${patient.uhid || patient.id}_fhir_r4.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setFhirBannerVisible(true);
+      toast({ title: "FHIR R4 Bundle exported" });
+    } catch (e: any) {
+      toast({ title: "FHIR export failed", description: e?.message || "Unknown error", variant: "destructive" });
+    } finally {
+      setExportingFhir(false);
+    }
+  };
 
   const [editForm, setEditForm] = useState({
     full_name: patient.full_name,
@@ -296,6 +324,19 @@ const PatientDetailDrawer: React.FC<Props> = ({ patient, onClose, onUpdated, onD
           ) : (
             /* ====== VIEW MODE ====== */
             <>
+              <div className="space-y-2">
+                <Button size="sm" variant="outline" className="w-full" onClick={handleExportFHIR} disabled={exportingFhir}>
+                  {exportingFhir ? <Loader2 size={14} className="animate-spin mr-1" /> : <FileJson size={14} className="mr-1" />}
+                  Export FHIR R4
+                </Button>
+                {fhirBannerVisible && (
+                  <div className="flex items-start gap-2 rounded-md border border-primary/30 bg-primary/5 p-2 text-[11px] text-foreground">
+                    <Info size={12} className="text-primary mt-0.5 flex-shrink-0" />
+                    <span>FHIR R4 Bundle generated — contains Patient, Encounter, and Condition resources for ABDM Health Record sharing.</span>
+                  </div>
+                )}
+              </div>
+
               <Section title="Contact">
                 {patient.phone && (
                   <Row icon={<Phone size={14} />}>
