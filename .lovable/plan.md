@@ -1,53 +1,66 @@
 
-Root cause I found: the Add Staff drawer saves `form.role` directly into `users.role`, but `users.role` is backed by the `public.app_role` enum. The UI is loading roles from `role_permissions`, which already includes canonical roles like `billing_executive`, `hr_manager`, and `lab_technician`, while the enum/types still only allow legacy values like `accountant` and `lab_tech`. Your screenshot confirms the failure: `invalid input value for enum app_role: "billing_executive"`.
 
-There is also a broader consistency problem:
-- `src/pages/settings/SettingsStaffPage.tsx` builds role cards from `role_permissions` and inserts them into `users.role`
-- `src/integrations/supabase/types.ts` still shows the old enum
-- `src/pages/login/LoginPage.tsx`, `src/lib/routeRoles.ts`, and some labels still mix legacy and canonical role names
+## Root Cause
 
-Plan to fix:
+When clicking "Clear Billing" from IPD Overview, the system *does* run an auto-pull (`autoPullAdmissionCharges` in `src/pages/billing/BillingPage.tsx`) that includes:
+- Room/bed charges (per ward × days)
+- Lab orders (via `lab_orders.admission_id`)
+- Radiology orders (via `radiology_orders.admission_id`)
+- Pharmacy IP dispenses (via `pharmacy_dispensing.admission_id`)
+- Nursing procedures
+- Other sibling bills linked to the admission
 
-1. Align the database role enum
-- Add a Supabase migration to extend `public.app_role` with the canonical staff roles already used by the app, at minimum:
-  - `billing_executive`
-  - `hr_manager`
-  - `lab_technician`
-- If other currently-used canonical roles are already referenced in route/module access, include them in the same migration to prevent the same bug from recurring.
+But it has **three real gaps**:
 
-2. Sync generated Supabase types
-- Update `src/integrations/supabase/types.ts` so the frontend type-safe enum matches the database enum.
+1. **Doctor consultation / visit charges are NEVER pulled.** No code reads `ward_round_notes` (or any doctor-visit table) to bill per-visit consultant fees. The screenshot patient has been admitted 11 days — zero consultation charges currently get added.
 
-3. Fix the Add Staff page to use the right role source cleanly
-- Update `src/pages/settings/SettingsStaffPage.tsx` to:
-  - use the current authenticated hospital context via `useHospitalId()`
-  - filter `role_permissions` by `hospital_id`
-  - keep role cards/labels consistent with the canonical enum values
-- This prevents the page from offering invalid or cross-hospital role options.
+2. **Auto-pull only triggers from the URL deep-link** (`/billing?action=new&admission_id=X&type=ipd`). If the user opens an existing IPD bill, or creates an IPD bill via "+ New Bill" in the billing queue, **no auto-pull runs at all** — the bill stays empty until manually populated.
 
-4. Normalize downstream role usage
-- Update legacy aliases where they would break access after staff creation:
-  - `src/pages/login/LoginPage.tsx` role → landing route map
-  - `src/lib/routeRoles.ts` mismatches like `billing_staff` vs `billing_executive`
-  - role label/meta mappings in settings pages for `lab_tech` vs `lab_technician`, `accountant` vs billing-facing labels
+3. **No "Refresh / Re-pull charges" button on an existing IPD bill.** New lab/radiology/pharmacy items added after the bill was first created never flow in unless the user opens the existing "Add Unbilled Services" modal (which only covers pharmacy/lab/radiology, not room or doctor visits).
 
-5. Verify end-to-end
-- Test creating staff for the affected roles from `/settings/staff`
-- Confirm the insert succeeds with no enum error toast
-- Confirm the new user appears in the staff table with the correct role label
-- Confirm login redirect/module access works for at least Billing, HR, and Lab staff
+## Fix Plan
 
-Technical details:
-- Primary failing file: `src/pages/settings/SettingsStaffPage.tsx`
-- Schema mismatch evidence:
-  - `supabase/migrations/20260327032137_9056a817-66f9-469f-913b-c666dc2e3dc6.sql` seeds `role_permissions` with `billing_executive`, `hr_manager`, `lab_technician`
-  - `src/integrations/supabase/types.ts` still defines `app_role` as only `super_admin | hospital_admin | doctor | nurse | receptionist | pharmacist | lab_tech | accountant`
-- Secondary cleanup targets:
-  - `src/pages/settings/SettingsRolesPage.tsx`
-  - `src/pages/login/LoginPage.tsx`
-  - `src/lib/routeRoles.ts`
+### Change 1 — Add doctor visit / consultation charges to the auto-pull
+File: `src/pages/billing/BillingPage.tsx` (`autoPullAdmissionCharges`)
 
-Expected result after implementation:
-- Add Staff will no longer fail on billing/lab/hr role creation
-- The role shown in settings, used for login routing, and checked for route access will all use the same canonical values
-- Future staff creation won’t break when a role exists in `role_permissions` but not in the enum
+- Query `ward_round_notes` for the admission, group by `doctor_id` + `created_at::date` to get one chargeable visit per doctor per day.
+- Look up rate from `service_master` where `item_type = 'consultation'` (filtered by doctor's specialty/department if available; fallback to a generic IPD visit rate).
+- Insert one `bill_line_items` row per visit-day with `item_type: 'consultation'`, `source_module: 'ipd_visit'`, `source_record_id: 'visit:{doctor_id}:{date}'` so the `addUniqueItem` dedupe key prevents double-billing on re-pull.
+
+### Change 2 — Run auto-pull whenever an IPD bill is opened, not just from the discharge URL
+File: `src/components/billing/BillEditor.tsx` + `src/pages/billing/BillingPage.tsx`
+
+- Export `autoPullAdmissionCharges` from `BillingPage` (or move it to `src/lib/ipdBilling.ts` as a shared util).
+- In `BillEditor`, when `bill.bill_type === 'ipd'` and `bill.admission_id` is set and `bill.bill_status === 'draft'`, run the pull on first load. The dedupe logic already prevents duplicates on subsequent opens.
+
+### Change 3 — Add a manual "Recalculate IPD Charges" button
+File: `src/components/billing/tabs/LineItemsTab.tsx`
+
+- For IPD bills (`bill.admission_id` truthy), show a "Recalculate IPD Charges" button next to the existing "Add Unbilled Services" button.
+- Button calls the shared `autoPullAdmissionCharges(bill.id, bill.admission_id)` then `recalculateBillTotalsSafe(bill.id)` and refreshes line items.
+- Toast: "Pulled X new charges (room, doctor visits, lab, radiology, pharmacy, nursing)".
+
+### Change 4 — Make sure room charges always recompute on re-pull
+File: `src/pages/billing/BillingPage.tsx`
+
+The current dedupe key for room is `room:{admissionId}`, which means if the patient stays longer the room days don't update. Fix:
+- Before re-inserting room, delete the previous room line item (`source_record_id = room:{admissionId}`) and insert a fresh one with the latest day count.
+
+### Change 5 — Seed default service_master rates if missing
+The pull falls back to hard-coded rates (₹500 room, ₹200 lab, ₹500 rad, ₹150 nursing) only when `service_master` has no matching row. Add a one-line toast warning when fallback rates are used so the admin knows to configure rates in Settings → Service Rates.
+
+### Files Touched
+
+| File | Change |
+|------|--------|
+| `src/pages/billing/BillingPage.tsx` | Add doctor visit pull; fix room re-pull; export pull function |
+| `src/lib/ipdBilling.ts` (new) | Shared `autoPullAdmissionCharges` util |
+| `src/components/billing/BillEditor.tsx` | Auto-run pull when opening a draft IPD bill |
+| `src/components/billing/tabs/LineItemsTab.tsx` | Add "Recalculate IPD Charges" button |
+
+### Expected Result
+
+- Opening the IPD bill (whether from "Clear Billing" or from the billing queue) auto-fills: room × days, every doctor visit per day, all lab orders, all radiology orders, all IP pharmacy dispenses, all nursing procedures, and any sibling bills linked to the admission.
+- "Recalculate IPD Charges" button lets staff re-pull at any time (e.g., after a new lab is ordered post-discharge clearance) without duplicates.
+- Room days always reflect the current length of stay.
+
