@@ -71,8 +71,8 @@ const EndCaseModal: React.FC<Props> = ({ schedule, onClose, onEnded }) => {
 
     if (!billId) return;
 
-    // Fetch rates from service_master
-    const getRate = async (itemType: string, fallback: number) => {
+    // Fetch rates from service_master (per-procedure overrides)
+    const getServiceMasterRate = async (itemType: string, fallback: number) => {
       const { data } = await supabase
         .from("service_master")
         .select("fee, gst_percent, gst_applicable, hsn_code")
@@ -91,9 +91,9 @@ const EndCaseModal: React.FC<Props> = ({ schedule, onClose, onEnded }) => {
     const anaesFallback = await getRate(hospitalId, SERVICE_RATE_CODES.ANAESTHESIA_FEE, 1500);
     const surgeryFallback = await getRate(hospitalId, SERVICE_RATE_CODES.SURGERY_FEE, 5000);
 
-    const otRate = await getRate2("ot_charge", 2000);
-    const surgRate = await getRate2("surgeon_fee", surgeryFallback);
-    const anaesRate = await getRate2("anaesthesia_fee", anaesFallback);
+    const otRate = await getServiceMasterRate("ot_charge", 2000);
+    const surgRate = await getServiceMasterRate("surgeon_fee", surgeryFallback);
+    const anaesRate = await getServiceMasterRate("anaesthesia_fee", anaesFallback);
 
     // Calculate OT time charge
     const actualDuration =
