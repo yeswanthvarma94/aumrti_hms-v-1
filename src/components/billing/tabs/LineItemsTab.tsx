@@ -11,6 +11,7 @@ import type { LineItem } from "@/components/billing/BillEditor";
 import LeakageScanner from "@/components/billing/LeakageScanner";
 import UnbilledServicesModal from "@/components/billing/UnbilledServicesModal";
 import { autoPullAdmissionCharges } from "@/lib/ipdBilling";
+import { formatINR } from "@/lib/currency";
 
 function numberToWords(n: number): string {
   if (n === 0) return "Zero";
@@ -268,7 +269,7 @@ const LineItemsTab: React.FC<Props> = ({ bill, hospitalId, lineItems, loading, o
                       <Input type="number" min={0} value={item.unit_rate}
                         onChange={(e) => updateItem(item.id, "unit_rate", Number(e.target.value))}
                         className="h-7 w-20 text-center text-xs mx-auto" />
-                    ) : `₹${item.unit_rate}`}
+                    ) : formatINR(item.unit_rate)}
                   </td>
                   <td className="px-3 py-2 text-center">
                     {isEditable ? (
@@ -278,7 +279,7 @@ const LineItemsTab: React.FC<Props> = ({ bill, hospitalId, lineItems, loading, o
                     ) : `${item.discount_percent}%`}
                   </td>
                   <td className="px-3 py-2 text-center text-xs">{item.gst_percent}%</td>
-                  <td className="px-3 py-2 text-right font-bold text-[14px]">₹{amount.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</td>
+                  <td className="px-3 py-2 text-right font-bold text-[14px]">{formatINR(amount)}</td>
                   {isEditable && (
                     <td className="px-3 py-2">
                       <button onClick={() => deleteItem(item.id)} className="text-destructive hover:text-destructive/80">
@@ -313,7 +314,7 @@ const LineItemsTab: React.FC<Props> = ({ bill, hospitalId, lineItems, loading, o
                         className="w-full text-left px-3 py-2 hover:bg-muted/50 flex justify-between text-sm border-b border-border last:border-0"
                       >
                         <span>{svc.name}</span>
-                        <span className="text-muted-foreground">₹{svc.fee}</span>
+                        <span className="text-muted-foreground">{formatINR(Number(svc.fee) || 0)}</span>
                       </button>
                     ))}
                   </div>
@@ -379,13 +380,13 @@ const LineItemsTab: React.FC<Props> = ({ bill, hospitalId, lineItems, loading, o
           <div className="w-72 space-y-1.5 text-sm">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Subtotal</span>
-              <span>₹{subtotal.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</span>
+              <span>{formatINR(subtotal)}</span>
             </div>
 
             {bill.discount_amount > 0 && (
               <div className="flex justify-between text-destructive">
                 <span>Discount ({bill.discount_percent}%)</span>
-                <span>-₹{bill.discount_amount.toLocaleString("en-IN")}</span>
+                <span>-{formatINR(bill.discount_amount)}</span>
               </div>
             )}
 
@@ -396,36 +397,36 @@ const LineItemsTab: React.FC<Props> = ({ bill, hospitalId, lineItems, loading, o
               <span className="flex items-center gap-1">
                 GST {showGst ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
               </span>
-              <span>₹{totalGst.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</span>
+              <span>{formatINR(totalGst)}</span>
             </button>
             {showGst && Object.entries(gstBreakdown).filter(([, v]) => v > 0).map(([pct, amt]) => (
               <div key={pct} className="flex justify-between pl-4 text-xs text-muted-foreground">
                 <span>GST {pct}%</span>
-                <span>₹{amt.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</span>
+                <span>{formatINR(amt)}</span>
               </div>
             ))}
 
             <div className="flex justify-between font-bold text-base pt-1 border-t border-border">
               <span>Gross Total</span>
-              <span>₹{grossTotal.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</span>
+              <span>{formatINR(grossTotal)}</span>
             </div>
 
             {bill.advance_received > 0 && (
               <div className="flex justify-between text-success">
                 <span>Advance received</span>
-                <span>-₹{bill.advance_received.toLocaleString("en-IN")}</span>
+                <span>-{formatINR(bill.advance_received)}</span>
               </div>
             )}
             {bill.insurance_amount > 0 && (
               <div className="flex justify-between text-primary">
                 <span>Insurance covers</span>
-                <span>-₹{bill.insurance_amount.toLocaleString("en-IN")}</span>
+                <span>-{formatINR(bill.insurance_amount)}</span>
               </div>
             )}
 
             <div className="flex justify-between font-bold text-xl pt-1 border-t border-border">
               <span>Patient Payable</span>
-              <span>₹{Math.max(0, patientPayable).toLocaleString("en-IN", { maximumFractionDigits: 2 })}</span>
+              <span>{formatINR(Math.max(0, patientPayable))}</span>
             </div>
             <p className="text-[10px] text-muted-foreground">
               Rupees {numberToWords(Math.max(0, Math.round(patientPayable)))} Only
@@ -434,13 +435,13 @@ const LineItemsTab: React.FC<Props> = ({ bill, hospitalId, lineItems, loading, o
             {bill.paid_amount > 0 && (
               <div className="flex justify-between text-success">
                 <span>Paid</span>
-                <span>₹{bill.paid_amount.toLocaleString("en-IN")}</span>
+                <span>{formatINR(bill.paid_amount)}</span>
               </div>
             )}
             {balanceDue > 0 && (
               <div className="flex justify-between text-destructive font-bold">
                 <span>Balance Due</span>
-                <span>₹{balanceDue.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</span>
+                <span>{formatINR(balanceDue)}</span>
               </div>
             )}
           </div>
