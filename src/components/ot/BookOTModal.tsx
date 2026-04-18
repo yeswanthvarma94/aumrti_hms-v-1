@@ -12,30 +12,36 @@ interface Props {
   prefillTime: string | null;
   onClose: () => void;
   onBooked: (date?: string, roomId?: string) => void;
+  initialPatientId?: string;
+  initialPatientName?: string;
+  initialDiagnosis?: string;
+  initialUrgency?: "emergency" | "urgent" | "routine";
+  initialSurgeonId?: string;
 }
 
 const CATEGORIES = ["general", "orthopaedic", "gynaecology", "urology", "cardiothoracic", "neurosurgery", "ent", "ophthalmology", "paediatric", "plastic", "emergency", "endoscopy", "other"];
 const ANAESTHESIA = ["general", "spinal", "epidural", "regional", "local", "sedation", "none"];
 const DURATIONS = [30, 45, 60, 90, 120, 150, 180, 240];
 
-const BookOTModal: React.FC<Props> = ({ rooms, selectedRoomId, selectedDate, prefillTime, onClose, onBooked }) => {
+const BookOTModal: React.FC<Props> = ({ rooms, selectedRoomId, selectedDate, prefillTime, onClose, onBooked, initialPatientId, initialPatientName, initialDiagnosis, initialUrgency, initialSurgeonId }) => {
   const { hospitalId } = useHospitalId();
   const { toast } = useToast();
   const [patients, setPatients] = useState<any[]>([]);
   const [doctors, setDoctors] = useState<any[]>([]);
-  const [patientSearch, setPatientSearch] = useState("");
+  const [patientSearch, setPatientSearch] = useState(initialPatientName || "");
+  const isEmergencyReferral = initialUrgency === "emergency";
   const [form, setForm] = useState({
-    patientId: "",
-    surgeryName: "",
-    category: "general",
+    patientId: initialPatientId || "",
+    surgeryName: initialDiagnosis || "",
+    category: isEmergencyReferral ? "emergency" : "general",
     date: selectedDate,
     roomId: selectedRoomId || "",
-    startTime: prefillTime || "09:00",
+    startTime: prefillTime || (isEmergencyReferral ? new Date().toTimeString().slice(0, 5) : "09:00"),
     duration: 60,
-    surgeonId: "",
+    surgeonId: initialSurgeonId || "",
     anaesthetistId: "",
     anaesthesiaType: "general",
-    notes: "",
+    notes: isEmergencyReferral ? "Referred from Emergency Department" : "",
   });
   const [saving, setSaving] = useState(false);
   const [conflict, setConflict] = useState<string | null>(null);
