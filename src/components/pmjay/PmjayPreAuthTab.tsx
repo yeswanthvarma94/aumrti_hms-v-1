@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
-import { ClipboardList, Send, Bot, FileText, CheckCircle2, RefreshCw, Plus, X } from "lucide-react";
+import { ClipboardList, Send, Bot, FileText, CheckCircle2, RefreshCw, Plus, X, ShieldCheck, Loader2, AlertCircle, Search } from "lucide-react";
 import { callAI } from "@/lib/aiProvider";
 
 interface PreAuth {
