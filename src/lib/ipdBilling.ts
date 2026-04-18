@@ -325,7 +325,7 @@ export async function autoPullAdmissionCharges(
   const { data: admission } = await supabase
     .from("admissions")
     .select(
-      "admitted_at, discharged_at, ward_id, wards(name, ward_type, rate_per_day), beds(bed_number)"
+      "admitted_at, discharged_at, ward_id, wards(name, type, rate_per_day), beds(bed_number)"
     )
     .eq("id", admissionId)
     .maybeSingle();
@@ -340,7 +340,7 @@ export async function autoPullAdmissionCharges(
       Math.ceil((dischDate.getTime() - admitDate.getTime()) / 86400000)
     );
     const wardName = (admission as any).wards?.name || "Ward";
-    const wardType = (admission as any).wards?.ward_type || "general";
+    const wardType = (admission as any).wards?.type || "general";
     const bedNum = (admission as any).beds?.bed_number || "";
 
     const { data: roomRate } = await supabase
