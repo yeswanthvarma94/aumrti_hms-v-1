@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Printer, MessageSquare, Mail, Info, Lock, Sparkles, Loader2 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { printDocument, printHeader } from "@/lib/printUtils";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+
 import type { BillRecord } from "@/pages/billing/BillingPage";
 import type { LineItem } from "@/components/billing/BillEditor";
 

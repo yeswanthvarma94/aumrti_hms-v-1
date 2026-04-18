@@ -12,7 +12,7 @@ const SettingsGSTPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [config, setConfig] = useState({
     gstin: "", legalName: "", tradeName: "", stateCode: "", placeOfSupply: "",
-    irpUser: "", irpPassword: "", irpMode: "sandbox",
+    irpUser: "", irpPassword: "", irpClientId: "", irpClientSecret: "", irpBaseUrl: "https://einvoice1-uat.nic.in", irpMode: "sandbox",
   });
 
   const handleSave = () => { setSaving(true); setTimeout(() => { toast({ title: "GST config saved" }); setSaving(false); }, 500); };
@@ -38,8 +38,19 @@ const SettingsGSTPage: React.FC = () => {
         <section>
           <h2 className="text-sm font-semibold text-foreground mb-4">NIC IRP (e-Invoice)</h2>
           <div className="space-y-3">
-            <div><Label>IRP Username</Label><Input value={config.irpUser} onChange={(e) => setConfig({ ...config, irpUser: e.target.value })} className="mt-1" /></div>
-            <div><Label>IRP Password</Label><Input type="password" value={config.irpPassword} onChange={(e) => setConfig({ ...config, irpPassword: e.target.value })} className="mt-1" /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>IRP Username (GST_IRP_USERNAME)</Label><Input value={config.irpUser} onChange={(e) => setConfig({ ...config, irpUser: e.target.value })} className="mt-1" /></div>
+              <div><Label>IRP Password (GST_IRP_PASSWORD)</Label><Input type="password" value={config.irpPassword} onChange={(e) => setConfig({ ...config, irpPassword: e.target.value })} className="mt-1" /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Client ID (GST_IRP_CLIENT_ID)</Label><Input value={config.irpClientId} onChange={(e) => setConfig({ ...config, irpClientId: e.target.value })} className="mt-1" /></div>
+              <div><Label>Client Secret (GST_IRP_CLIENT_SECRET)</Label><Input type="password" value={config.irpClientSecret} onChange={(e) => setConfig({ ...config, irpClientSecret: e.target.value })} className="mt-1" /></div>
+            </div>
+            <div>
+              <Label>Base URL (GST_IRP_BASE_URL)</Label>
+              <Input value={config.irpBaseUrl} onChange={(e) => setConfig({ ...config, irpBaseUrl: e.target.value })} placeholder="https://einvoice1-uat.nic.in" className="mt-1 font-mono text-xs" />
+              <p className="text-[10px] text-muted-foreground mt-1">UAT (sandbox): https://einvoice1-uat.nic.in &nbsp;·&nbsp; Live: https://einvoice1.nic.in</p>
+            </div>
             <div>
               <Label>Mode</Label>
               <RadioGroup value={config.irpMode} onValueChange={(v) => setConfig({ ...config, irpMode: v })} className="flex gap-4 mt-1.5">
@@ -48,6 +59,9 @@ const SettingsGSTPage: React.FC = () => {
               </RadioGroup>
             </div>
             <Button variant="outline">Test IRN Generation</Button>
+            <p className="text-[11px] text-muted-foreground">
+              These credentials are used by the <code className="font-mono">gst-irn-generate</code> Edge Function. Without credentials, the system runs in sandbox mode (demo IRN).
+            </p>
           </div>
         </section>
 
