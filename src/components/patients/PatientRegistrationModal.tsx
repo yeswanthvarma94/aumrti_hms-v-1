@@ -328,7 +328,7 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess, editPat
           {/* ROW 6: Referral Source */}
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <label className="text-[11px] font-medium text-muted-foreground">Referral Source <span className="text-muted-foreground/60">(Optional)</span></label>
+              <label className="text-[14px] font-medium text-muted-foreground">Referral Source <span className="text-muted-foreground/60">(Optional)</span></label>
               <button type="button" onClick={() => setShowReferralModal(true)} className="text-[11px] text-accent font-medium hover:underline flex items-center gap-0.5">
                 <UserPlus size={12} /> + Referral Doctor
               </button>
