@@ -4541,6 +4541,60 @@ export type Database = {
           },
         ]
       }
+      doctor_schedules: {
+        Row: {
+          created_at: string | null
+          day_of_week: string
+          doctor_id: string
+          hospital_id: string
+          id: string
+          is_active: boolean | null
+          max_patients: number | null
+          session_end: string
+          session_start: string
+          slot_duration_minutes: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          day_of_week: string
+          doctor_id: string
+          hospital_id: string
+          id?: string
+          is_active?: boolean | null
+          max_patients?: number | null
+          session_end: string
+          session_start: string
+          slot_duration_minutes?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          day_of_week?: string
+          doctor_id?: string
+          hospital_id?: string
+          id?: string
+          is_active?: boolean | null
+          max_patients?: number | null
+          session_end?: string
+          session_start?: string
+          slot_duration_minutes?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "doctor_schedules_doctor_id_fkey"
+            columns: ["doctor_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "doctor_schedules_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       donors: {
         Row: {
           address: string | null
