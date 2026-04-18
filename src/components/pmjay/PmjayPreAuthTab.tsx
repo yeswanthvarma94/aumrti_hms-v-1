@@ -163,6 +163,69 @@ const PmjayPreAuthTab: React.FC<Props> = ({ showNewForm, onFormClosed }) => {
     setNewForm(f => ({ ...f, package_id: pkgId }));
   };
 
+  // Auto-match PMJAY packages from a diagnosis keyword (or ICD-10 code → keyword)
+  const matchPackagesFromDiagnosis = async (keyword: string) => {
+    setDiagnosisQuery(keyword);
+    const term = keyword.trim();
+    if (term.length < 3) { setMatchedPkgs([]); return; }
+    const { data } = await supabase
+      .from("pmjay_packages")
+      .select("id, package_code, package_name, rate_inr, specialty")
+      .ilike("package_name", `%${term}%`)
+      .eq("is_active", true)
+      .limit(5);
+    setMatchedPkgs(((data || []) as any[]).map((p: any) => ({
+      id: p.id, package_code: p.package_code, package_name: p.package_name,
+      package_rate: Number(p.rate_inr) || 0, specialty: p.specialty,
+    })));
+  };
+
+  const selectMatchedPkg = (pkg: { id: string; package_code: string; package_name: string; package_rate: number }) => {
+    setSelectedPkg({ package_code: pkg.package_code, package_name: pkg.package_name, package_rate: pkg.package_rate });
+    setNewForm(f => ({ ...f, package_id: pkg.id }));
+  };
+
+  // Manual package search
+  const searchPackages = async (q: string) => {
+    setPkgSearch(q);
+    const term = q.trim();
+    if (term.length < 2) { setPkgSearchResults([]); return; }
+    const { data } = await supabase
+      .from("pmjay_packages")
+      .select("id, package_code, package_name, rate_inr, specialty")
+      .or(`package_name.ilike.%${term}%,specialty.ilike.%${term}%,package_code.ilike.%${term}%`)
+      .eq("is_active", true)
+      .limit(10);
+    setPkgSearchResults(((data || []) as any[]).map((p: any) => ({
+      id: p.id, package_code: p.package_code, package_name: p.package_name,
+      package_rate: Number(p.rate_inr) || 0, specialty: p.specialty,
+    })));
+  };
+
+  // PMJAY Eligibility verification
+  const verifyEligibility = async () => {
+    if (!pmjayCard || pmjayCard.length < 8) {
+      toast({ title: "Enter a valid PMJAY card number", variant: "destructive" });
+      return;
+    }
+    setEligibilityLoading(true);
+    setEligibility(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("pmjay-eligibility", {
+        body: { pmjay_card_number: pmjayCard, patient_name: newForm.patient_name },
+      });
+      if (error) {
+        setEligibility({ eligible: false, error: error.message });
+      } else {
+        setEligibility(data);
+      }
+    } catch (err: any) {
+      setEligibility({ eligible: false, error: err?.message || "Verification failed" });
+    } finally {
+      setEligibilityLoading(false);
+    }
+  };
+
   const handleCreatePreAuth = async () => {
     if (!newForm.patient_id || !newForm.scheme_id || !newForm.package_id || !newForm.beneficiary_ref_id) {
       toast({ title: "Fill all required fields", variant: "destructive" });
