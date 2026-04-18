@@ -15893,6 +15893,12 @@ export type Database = {
         | "pharmacist"
         | "lab_tech"
         | "accountant"
+        | "billing_executive"
+        | "hr_manager"
+        | "lab_technician"
+        | "radiologist"
+        | "cfo"
+        | "billing_staff"
       bed_status:
         | "available"
         | "occupied"
@@ -16051,6 +16057,12 @@ export const Constants = {
         "pharmacist",
         "lab_tech",
         "accountant",
+        "billing_executive",
+        "hr_manager",
+        "lab_technician",
+        "radiologist",
+        "cfo",
+        "billing_staff",
       ],
       bed_status: [
         "available",
