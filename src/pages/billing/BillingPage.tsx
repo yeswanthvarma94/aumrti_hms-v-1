@@ -204,37 +204,91 @@ const BillingPage: React.FC = () => {
     const { data, error } = await query;
     if (error) {
       console.error(error);
-    } else {
-      setBills(
-        (data || []).map((b: any) => ({
-          id: b.id,
-          bill_number: b.bill_number,
-          patient_id: b.patient_id,
-          patient_name: b.patients?.full_name || "Unknown",
-          uhid: b.patients?.uhid || "",
-          encounter_id: b.encounter_id,
-          admission_id: b.admission_id,
-          bill_type: b.bill_type,
-          bill_date: b.bill_date,
-          bill_status: b.bill_status,
-          subtotal: Number(b.subtotal) || 0,
-          discount_percent: Number(b.discount_percent) || 0,
-          discount_amount: Number(b.discount_amount) || 0,
-          gst_amount: Number(b.gst_amount) || 0,
-          total_amount: Number(b.total_amount) || 0,
-          advance_received: Number(b.advance_received) || 0,
-          insurance_amount: Number(b.insurance_amount) || 0,
-          patient_payable: Number(b.patient_payable) || 0,
-          paid_amount: Number(b.paid_amount) || 0,
-          balance_due: Number(b.balance_due) || 0,
-          payment_status: b.payment_status,
-          notes: b.notes,
-          irn: b.irn || null,
-          irn_generated_at: b.irn_generated_at || null,
-          created_at: b.created_at,
-        }))
-      );
+      setLoading(false);
+      return;
     }
+
+    const realBills: BillRecord[] = (data || []).map((b: any) => ({
+      id: b.id,
+      bill_number: b.bill_number,
+      patient_id: b.patient_id,
+      patient_name: b.patients?.full_name || "Unknown",
+      uhid: b.patients?.uhid || "",
+      encounter_id: b.encounter_id,
+      admission_id: b.admission_id,
+      bill_type: b.bill_type,
+      bill_date: b.bill_date,
+      bill_status: b.bill_status,
+      subtotal: Number(b.subtotal) || 0,
+      discount_percent: Number(b.discount_percent) || 0,
+      discount_amount: Number(b.discount_amount) || 0,
+      gst_amount: Number(b.gst_amount) || 0,
+      total_amount: Number(b.total_amount) || 0,
+      advance_received: Number(b.advance_received) || 0,
+      insurance_amount: Number(b.insurance_amount) || 0,
+      patient_payable: Number(b.patient_payable) || 0,
+      paid_amount: Number(b.paid_amount) || 0,
+      balance_due: Number(b.balance_due) || 0,
+      payment_status: b.payment_status,
+      notes: b.notes,
+      irn: b.irn || null,
+      irn_generated_at: b.irn_generated_at || null,
+      created_at: b.created_at,
+    }));
+
+    // Find active admissions WITHOUT an IPD bill — surface as virtual "Pending IPD" rows
+    let virtualBills: BillRecord[] = [];
+    if (statusFilter === "all" || statusFilter === "unpaid") {
+      const { data: activeAdms } = await supabase
+        .from("admissions")
+        .select("id, admitted_at, admission_number, patient_id, patients!inner(full_name, uhid)")
+        .eq("hospital_id", hospitalId)
+        .eq("status", "active");
+
+      const admissionsWithBills = new Set(
+        realBills.filter((b) => b.bill_type === "ipd" && b.admission_id).map((b) => b.admission_id)
+      );
+      // Also check bills that fall outside the date filter
+      const { data: existingIpd } = await supabase
+        .from("bills")
+        .select("admission_id")
+        .eq("hospital_id", hospitalId)
+        .eq("bill_type", "ipd")
+        .not("admission_id", "is", null);
+      (existingIpd || []).forEach((b: any) => admissionsWithBills.add(b.admission_id));
+
+      virtualBills = (activeAdms || [])
+        .filter((a: any) => !admissionsWithBills.has(a.id))
+        .map((a: any) => ({
+          id: `pending:${a.id}`,
+          bill_number: `IPD-${a.admission_number || a.id.slice(0, 8)}`,
+          patient_id: a.patient_id,
+          patient_name: a.patients?.full_name || "Unknown",
+          uhid: a.patients?.uhid || "",
+          encounter_id: null,
+          admission_id: a.id,
+          bill_type: "ipd",
+          bill_date: (a.admitted_at || new Date().toISOString()).slice(0, 10),
+          bill_status: "pending_ipd",
+          subtotal: 0,
+          discount_percent: 0,
+          discount_amount: 0,
+          gst_amount: 0,
+          total_amount: 0,
+          advance_received: 0,
+          insurance_amount: 0,
+          patient_payable: 0,
+          paid_amount: 0,
+          balance_due: 0,
+          payment_status: "unpaid",
+          notes: null,
+          irn: null,
+          irn_generated_at: null,
+          created_at: a.admitted_at || new Date().toISOString(),
+        }));
+    }
+
+    setBills([...virtualBills, ...realBills]);
     setLoading(false);
   }, [hospitalId, statusFilter, dateFilter]);
 
