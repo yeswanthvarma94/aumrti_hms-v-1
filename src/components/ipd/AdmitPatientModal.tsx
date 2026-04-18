@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Info } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import { logAudit } from "@/lib/auditLog";
 import { generateBillNumber } from "@/hooks/useBillNumber";
 
@@ -60,6 +61,8 @@ const AdmitPatientModal: React.FC<Props> = ({ open, onClose, hospitalId, presele
   const [submitting, setSubmitting] = useState(false);
   const [allergyVerified, setAllergyVerified] = useState(false);
   const [patientAllergies, setPatientAllergies] = useState<string | null>(null);
+  const [handoverNotes, setHandoverNotes] = useState("");
+  const [handoverPrefilled, setHandoverPrefilled] = useState(false);
 
   // New patient fields
   const [showNewPatient, setShowNewPatient] = useState(false);
@@ -113,6 +116,7 @@ const AdmitPatientModal: React.FC<Props> = ({ open, onClose, hospitalId, presele
     setInsuranceType("self_pay"); setInsuranceId(""); setExpectedDischarge("");
     setShowNewPatient(false); setNewName(""); setNewPhone(""); setNewAge(""); setNewGender("male");
     setAllergyVerified(false); setPatientAllergies(null);
+    setHandoverNotes(""); setHandoverPrefilled(false);
   };
 
   // Fetch patient allergies when selected
