@@ -327,7 +327,15 @@ const BillingPage: React.FC = () => {
             bills={bills}
             loading={loading}
             selectedBillId={selectedBillId}
-            onSelectBill={setSelectedBillId}
+            onSelectBill={(id) => {
+              if (id.startsWith("pending:")) {
+                const admissionId = id.slice("pending:".length);
+                setDischargeBillCreated(false);
+                createDischargeBill(admissionId);
+              } else {
+                setSelectedBillId(id);
+              }
+            }}
             statusFilter={statusFilter}
             onStatusFilter={setStatusFilter}
             dateFilter={dateFilter}
