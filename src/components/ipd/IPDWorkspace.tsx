@@ -21,6 +21,8 @@ import ObstetricSheet from "@/components/specialty/ObstetricSheet";
 import NeonatalSheet from "@/components/specialty/NeonatalSheet";
 import AnaesthesiaSheet from "@/components/specialty/AnaesthesiaSheet";
 import OphthalmologySheet from "@/components/specialty/OphthalmologySheet";
+import { AlertTriangle } from "lucide-react";
+import { getNEWS2BadgeClasses, getNEWS2Level } from "@/lib/news2";
 
 interface Props {
   bed: BedData | null;
@@ -49,6 +51,7 @@ const IPDWorkspace: React.FC<Props> = ({ bed, hospitalId, onRefresh }) => {
   const [deptName, setDeptName] = useState<string | null>(null);
   const [showTransfer, setShowTransfer] = useState(false);
   const [highlightDischarge, setHighlightDischarge] = useState(false);
+  const [latestNews2, setLatestNews2] = useState<number | null>(null);
   const { show: showWaNotif, card: waCard } = useWhatsAppNotification();
 
   useEffect(() => {
@@ -78,6 +81,20 @@ const IPDWorkspace: React.FC<Props> = ({ bed, hospitalId, onRefresh }) => {
         if (data) setPatient(data as unknown as PatientDetails);
       });
   }, [bed]);
+
+  // Fetch latest NEWS2 score for the patient header badge
+  useEffect(() => {
+    if (!bed?.admission) { setLatestNews2(null); return; }
+    const admissionData = bed.admission as any;
+    supabase.from("ipd_vitals")
+      .select("news2_score")
+      .eq("admission_id", admissionData.id)
+      .order("recorded_at", { ascending: false })
+      .limit(1)
+      .then(({ data }) => {
+        setLatestNews2(data?.[0]?.news2_score ?? null);
+      });
+  }, [bed, activeTab]);
 
   if (!bed) {
     return (
@@ -167,6 +184,18 @@ const IPDWorkspace: React.FC<Props> = ({ bed, hospitalId, onRefresh }) => {
           <span className="text-[11px] bg-muted text-muted-foreground px-1.5 py-px rounded mt-0.5">Dr. {adm.doctor_name}</span>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
+          {latestNews2 !== null && (
+            <span
+              className={cn(
+                "text-[11px] font-semibold px-2 py-0.5 rounded-full inline-flex items-center gap-1",
+                getNEWS2BadgeClasses(latestNews2)
+              )}
+              title={`Latest NEWS2: ${latestNews2} (${getNEWS2Level(latestNews2)})`}
+            >
+              {getNEWS2Level(latestNews2) !== "low" && <AlertTriangle className="h-3 w-3" />}
+              NEWS2 {latestNews2}
+            </span>
+          )}
           <span className="text-[11px] text-muted-foreground">Day {adm.los_days}</span>
           <span className={cn("text-[11px] font-medium px-2 py-0.5 rounded-full", typeColors[adm.admission_type] || "bg-muted text-muted-foreground")}>{adm.admission_type}</span>
         </div>
