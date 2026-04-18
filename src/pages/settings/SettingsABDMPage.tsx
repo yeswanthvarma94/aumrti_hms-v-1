@@ -31,11 +31,13 @@ const SettingsABDMPage: React.FC = () => {
         <div className="flex items-start gap-3">
           <AlertTriangle className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-semibold text-blue-800 dark:text-blue-300">Configuration Mode</p>
+            <p className="text-sm font-semibold text-blue-800 dark:text-blue-300">Live ABHA Verification</p>
             <p className="text-xs text-blue-700 dark:text-blue-400 mt-1 leading-relaxed">
-              ABDM integration is currently in configuration mode. Live API connection to ABDM
-              sandbox/production will be available in a future update. ABHA IDs entered during
-              patient registration are stored locally and will be verified when API integration is active.
+              To enable live ABHA ID verification via the National Health Authority (NHA) sandbox/production
+              API, configure <code className="font-mono">ABDM_CLIENT_ID</code> and{" "}
+              <code className="font-mono">ABDM_CLIENT_SECRET</code> as edge function secrets. Without these,
+              the verifier runs in <strong>sandbox mode</strong> and only validates the 14-digit format —
+              no live lookup is performed.
             </p>
           </div>
         </div>
@@ -48,8 +50,16 @@ const SettingsABDMPage: React.FC = () => {
           <div className="space-y-3">
             <div><Label>HFR (Health Facility Registry) ID</Label><Input value={config.hfrId} onChange={(e) => setConfig({ ...config, hfrId: e.target.value })} className="mt-1" /></div>
             <div><Label>Facility Name (as per HFR)</Label><Input value={config.facilityName} onChange={(e) => setConfig({ ...config, facilityName: e.target.value })} className="mt-1" /></div>
-            <div><Label>ABDM Client ID</Label><Input value={config.clientId} onChange={(e) => setConfig({ ...config, clientId: e.target.value })} className="mt-1" /></div>
-            <div><Label>ABDM Client Secret</Label><Input type="password" value={config.clientSecret} onChange={(e) => setConfig({ ...config, clientSecret: e.target.value })} className="mt-1" /></div>
+            <div>
+              <Label>ABDM_CLIENT_ID <span className="text-destructive">*</span></Label>
+              <Input value={config.clientId} onChange={(e) => setConfig({ ...config, clientId: e.target.value })} className="mt-1" placeholder="Required for live verification" />
+              <p className="text-[11px] text-muted-foreground mt-1">Issued by NHA on the ABDM sandbox/production console.</p>
+            </div>
+            <div>
+              <Label>ABDM_CLIENT_SECRET <span className="text-destructive">*</span></Label>
+              <Input type="password" value={config.clientSecret} onChange={(e) => setConfig({ ...config, clientSecret: e.target.value })} className="mt-1" placeholder="Required for live verification" />
+              <p className="text-[11px] text-muted-foreground mt-1">Stored as an edge function secret. Never exposed to the browser.</p>
+            </div>
           </div>
         </section>
 
