@@ -13,7 +13,7 @@ import { useHospitalId } from "@/hooks/useHospitalId";
 const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 interface Session { start: string; end: string; maxPatients: number; slotDuration: number; }
-interface Doctor { id: string; full_name: string; department: string | null; role: string; hasSchedule?: boolean; }
+interface Doctor { id: string; full_name: string; specialization: string | null; role: string; hasSchedule?: boolean; }
 
 const SettingsDoctorSchedulesPage: React.FC = () => {
   const { toast } = useToast();
