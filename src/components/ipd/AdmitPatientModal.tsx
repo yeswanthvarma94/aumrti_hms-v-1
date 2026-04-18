@@ -126,6 +126,41 @@ const AdmitPatientModal: React.FC<Props> = ({ open, onClose, hospitalId, presele
       .then(({ data }: any) => setPatientAllergies(data?.allergies || null));
   }, [selectedPatient]);
 
+  // Pre-fill nursing handover notes from most recent OPD encounter
+  useEffect(() => {
+    if (!selectedPatient || !hospitalId) {
+      setHandoverNotes("");
+      setHandoverPrefilled(false);
+      return;
+    }
+    (supabase as any)
+      .from("opd_encounters")
+      .select("chief_complaint, diagnosis, icd10_code, soap_assessment, soap_plan, examination_notes, created_at")
+      .eq("patient_id", selectedPatient.id)
+      .eq("hospital_id", hospitalId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }: any) => {
+        if (!data) {
+          setHandoverNotes("");
+          setHandoverPrefilled(false);
+          return;
+        }
+        const today = new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+        const lines: string[] = [`Referred from OPD — ${today}`];
+        if (data.chief_complaint) lines.push(`Chief Complaint: ${data.chief_complaint}`);
+        if (data.diagnosis || data.icd10_code) {
+          lines.push(`Diagnosis: ${data.diagnosis || "—"}${data.icd10_code ? ` (${data.icd10_code})` : ""}`);
+        }
+        if (data.soap_assessment) lines.push(`Assessment: ${data.soap_assessment}`);
+        if (data.soap_plan) lines.push(`Plan: ${data.soap_plan}`);
+        if (data.examination_notes) lines.push(`Examination: ${data.examination_notes}`);
+        setHandoverNotes(lines.join("\n"));
+        setHandoverPrefilled(true);
+      });
+  }, [selectedPatient, hospitalId]);
+
   // Search patients
   useEffect(() => {
     if (search.length < 2 || !hospitalId) { setResults([]); return; }
