@@ -5,6 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import EmptyState from "@/components/EmptyState";
 import WalkInModal from "./WalkInModal";
 import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/shared";
 import { predictNoShow, type NoShowPrediction } from "@/lib/clinicalPredictions";
 import { sendWhatsApp } from "@/lib/whatsapp-send";
 import type { OpdToken } from "@/pages/opd/OPDPage";
@@ -219,11 +220,9 @@ const TokenQueue: React.FC<Props> = ({ tokens, selectedTokenId, onSelectToken, h
                     <span className="text-[11px] text-slate-400 truncate max-w-[120px]">{token.department?.name || "—"}</span>
                     <span className="text-[11px] text-slate-500">{token.doctor?.full_name ? `Dr. ${token.doctor.full_name.split(" ")[0]}` : "—"}</span>
                   </div>
-                  {token.status !== "waiting" && statusPill[token.status] && (
+                  {token.status !== "waiting" && (
                     <div className="mt-1.5">
-                      <span className={cn("text-[10px] px-2 py-0.5 rounded-full", statusPill[token.status].bg)}>
-                        {statusPill[token.status].label}
-                      </span>
+                      <StatusBadge status={token.status} />
                     </div>
                   )}
                   {/* Send Reminder button for high-risk */}
