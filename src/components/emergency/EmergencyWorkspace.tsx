@@ -481,6 +481,26 @@ const EmergencyWorkspace: React.FC<Props> = ({ visit, hospitalId, userId, onRefr
         />
       )}
 
+      {/* Refer to OT */}
+      {showOTModal && (
+        <BookOTModal
+          rooms={otRooms}
+          selectedRoomId={otRooms[0]?.id || ""}
+          selectedDate={new Date().toISOString().slice(0, 10)}
+          prefillTime={null}
+          initialPatientId={visit.patient_id}
+          initialPatientName={visit.patient_name}
+          initialDiagnosis={diagnosis || complaint || ""}
+          initialUrgency="emergency"
+          initialSurgeonId={visit.doctor_id || undefined}
+          onClose={() => setShowOTModal(false)}
+          onBooked={() => {
+            setShowOTModal(false);
+            toast({ title: `OT referral raised for ${visit.patient_name}` });
+          }}
+        />
+      )}
+
       {/* Discharge Confirmation */}
       <AlertDialog open={showDischargeConfirm} onOpenChange={setShowDischargeConfirm}>
         <AlertDialogContent>
