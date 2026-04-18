@@ -4,7 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Printer, MessageSquare, Mail, Info, Lock } from "lucide-react";
+import { Printer, MessageSquare, Mail, Info, Lock, Sparkles, Loader2 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { printDocument, printHeader } from "@/lib/printUtils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -26,9 +26,38 @@ const GSTInvoiceModal: React.FC<Props> = ({
 }) => {
   const { toast } = useToast();
   const [manualIrn, setManualIrn] = useState(initialIrn || "");
+  const [generatedIrn, setGeneratedIrn] = useState<string>("");
+  const [signedQr, setSignedQr] = useState<string>("");
+  const [irnMode, setIrnMode] = useState<"live" | "sandbox" | "manual" | "">(
+    (bill as any).irn_mode || "",
+  );
   const [lockingIrn, setLockingIrn] = useState(false);
-  const irn = initialIrn || manualIrn;
+  const [generatingIrn, setGeneratingIrn] = useState(false);
+  const irn = initialIrn || generatedIrn || manualIrn;
   const isLocked = bill.bill_status === "irn_locked";
+
+  const handleGenerateIrn = async () => {
+    setGeneratingIrn(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("gst-irn-generate", {
+        body: { bill_id: bill.id, hospital_id: (bill as any).hospital_id },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const result = data as { irn: string; signed_qr?: string; mode: "live" | "sandbox"; message?: string };
+      setGeneratedIrn(result.irn);
+      setSignedQr(result.signed_qr || "");
+      setIrnMode(result.mode);
+      toast({
+        title: result.mode === "live" ? "Live IRN generated" : "Sandbox IRN generated",
+        description: result.message || `IRN: ${result.irn}`,
+      });
+    } catch (e: any) {
+      toast({ title: "IRN generation failed", description: e?.message || "Try again", variant: "destructive" });
+    } finally {
+      setGeneratingIrn(false);
+    }
+  };
 
   const handleLockIrn = async () => {
     if (!manualIrn.trim()) return;
@@ -38,7 +67,9 @@ const GSTInvoiceModal: React.FC<Props> = ({
         irn: manualIrn.trim(),
         irn_generated_at: new Date().toISOString(),
         bill_status: "irn_locked",
+        irn_mode: "manual",
       }).eq("id", bill.id);
+      setIrnMode("manual");
       toast({ title: "IRN saved & bill locked", description: "This bill can no longer be edited." });
     } catch {
       toast({ title: "Failed to lock bill", variant: "destructive" });
