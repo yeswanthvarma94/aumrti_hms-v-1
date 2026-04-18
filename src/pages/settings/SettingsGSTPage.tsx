@@ -12,12 +12,68 @@ import { getHospitalId } from "@/lib/getHospitalId";
 const SettingsGSTPage: React.FC = () => {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{ ok: boolean; mode?: string; irn?: string; message?: string } | null>(null);
   const [config, setConfig] = useState({
     gstin: "", legalName: "", tradeName: "", stateCode: "", placeOfSupply: "",
     irpUser: "", irpPassword: "", irpClientId: "", irpClientSecret: "", irpBaseUrl: "https://einvoice1-uat.nic.in", irpMode: "sandbox",
   });
 
   const handleSave = () => { setSaving(true); setTimeout(() => { toast({ title: "GST config saved" }); setSaving(false); }, 500); };
+
+  const handleTestIrn = async () => {
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const hospitalId = await getHospitalId();
+      if (!hospitalId) {
+        toast({ title: "No hospital found", description: "Please log in first.", variant: "destructive" });
+        setTesting(false);
+        return;
+      }
+
+      const { data: bill, error: billErr } = await supabase
+        .from("bills")
+        .select("id, bill_number")
+        .eq("hospital_id", hospitalId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (billErr || !bill) {
+        toast({
+          title: "No bill available to test",
+          description: "Create at least one bill in /billing before testing IRN generation.",
+          variant: "destructive",
+        });
+        setTesting(false);
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke("gst-irn-generate", {
+        body: { bill_id: bill.id, hospital_id: hospitalId },
+      });
+
+      if (error) {
+        setTestResult({ ok: false, message: error.message });
+        toast({ title: "IRN test failed", description: error.message, variant: "destructive" });
+      } else if (data?.error) {
+        setTestResult({ ok: false, message: data.error });
+        toast({ title: "IRN test failed", description: data.error, variant: "destructive" });
+      } else {
+        setTestResult({ ok: true, mode: data?.mode, irn: data?.irn, message: data?.message });
+        toast({
+          title: `IRN generated (${data?.mode || "ok"})`,
+          description: `Bill ${bill.bill_number}: ${data?.irn}`,
+        });
+      }
+    } catch (e: any) {
+      setTestResult({ ok: false, message: e?.message || "Unexpected error" });
+      toast({ title: "IRN test failed", description: e?.message || "Unexpected error", variant: "destructive" });
+    } finally {
+      setTesting(false);
+    }
+  };
 
   return (
     <SettingsPageWrapper title="GST / NIC IRP" onSave={handleSave} saving={saving}>
