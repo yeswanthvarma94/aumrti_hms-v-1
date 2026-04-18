@@ -4,12 +4,13 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Plus, X, ChevronDown, ChevronUp, Sparkles } from "lucide-react";
+import { Plus, X, ChevronDown, ChevronUp, Sparkles, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { BillRecord } from "@/pages/billing/BillingPage";
 import type { LineItem } from "@/components/billing/BillEditor";
 import LeakageScanner from "@/components/billing/LeakageScanner";
 import UnbilledServicesModal from "@/components/billing/UnbilledServicesModal";
+import { autoPullAdmissionCharges } from "@/lib/ipdBilling";
 
 function numberToWords(n: number): string {
   if (n === 0) return "Zero";
@@ -52,6 +53,28 @@ const LineItemsTab: React.FC<Props> = ({ bill, hospitalId, lineItems, loading, o
   const [showSearch, setShowSearch] = useState(false);
   const [showGst, setShowGst] = useState(false);
   const [showUnbilled, setShowUnbilled] = useState(false);
+  const [recalculating, setRecalculating] = useState(false);
+
+  const handleRecalcIPD = async () => {
+    if (!hospitalId || !bill.admission_id) return;
+    setRecalculating(true);
+    const result = await autoPullAdmissionCharges(bill.id, bill.admission_id, hospitalId);
+    setRecalculating(false);
+    if (!result.ok) {
+      toast({ title: "Recalculation failed", description: result.error || "Try again", variant: "destructive" });
+      return;
+    }
+    toast({
+      title: result.insertedCount > 0
+        ? `Pulled ${result.insertedCount} new charges`
+        : "Already up to date",
+      description: "Room, doctor visits, lab, radiology, pharmacy, nursing.",
+    });
+    if (result.usedFallbackRate) {
+      toast({ title: "Using fallback rates", description: "Configure service rates in Settings → Service Rates." });
+    }
+    onRefresh();
+  };
 
   const isEditable = bill.bill_status === "draft" || bill.bill_status === "final";
 
@@ -306,9 +329,15 @@ const LineItemsTab: React.FC<Props> = ({ bill, hospitalId, lineItems, loading, o
                   <Plus size={14} /> Add Service
                 </Button>
                 {bill.admission_id && (
-                  <Button variant="outline" size="sm" className="gap-1 text-xs gap-1 border-primary/40 text-primary hover:bg-primary/5" onClick={() => setShowUnbilled(true)}>
-                    <Sparkles size={14} /> Add Unbilled Services
-                  </Button>
+                  <>
+                    <Button variant="outline" size="sm" className="gap-1 text-xs gap-1 border-primary/40 text-primary hover:bg-primary/5" onClick={() => setShowUnbilled(true)}>
+                      <Sparkles size={14} /> Add Unbilled Services
+                    </Button>
+                    <Button variant="outline" size="sm" className="gap-1 text-xs border-accent/40 text-accent hover:bg-accent/5" onClick={handleRecalcIPD} disabled={recalculating}>
+                      <RefreshCw size={14} className={recalculating ? "animate-spin" : ""} />
+                      {recalculating ? "Recalculating..." : "Recalculate IPD Charges"}
+                    </Button>
+                  </>
                 )}
               </div>
             )}

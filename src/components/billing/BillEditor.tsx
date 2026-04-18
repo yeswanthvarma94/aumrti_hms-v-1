@@ -19,6 +19,7 @@ import { validateGSTLineItems } from "@/lib/compliance-checks";
 import { autoPostJournalEntry } from "@/lib/accounting";
 import { logAudit } from "@/lib/auditLog";
 import { recalculateBillTotalsSafe } from "@/lib/billTotals";
+import { autoPullAdmissionCharges } from "@/lib/ipdBilling";
 import type { BillRecord } from "@/pages/billing/BillingPage";
 
 export interface LineItem {
@@ -123,6 +124,27 @@ const BillEditor: React.FC<Props> = ({ bill, hospitalId, onRefresh }) => {
     fetchLineItems();
     fetchPayments();
   }, [fetchLineItems, fetchPayments]);
+
+  // Auto-pull admission charges on first open of a draft IPD bill
+  const autoPulledRef = React.useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!bill || !hospitalId) return;
+    if (bill.bill_type !== "ipd" || !bill.admission_id) return;
+    if (bill.bill_status !== "draft") return;
+    if (autoPulledRef.current.has(bill.id)) return;
+    autoPulledRef.current.add(bill.id);
+    (async () => {
+      const result = await autoPullAdmissionCharges(bill.id, bill.admission_id!, hospitalId);
+      if (result.ok && result.insertedCount > 0) {
+        toast({ title: `Pulled ${result.insertedCount} IPD charges`, description: "Room, doctor visits, lab, radiology, pharmacy, nursing." });
+        fetchLineItems();
+        onRefresh();
+      }
+      if (result.usedFallbackRate) {
+        toast({ title: "Using fallback rates", description: "Configure service rates in Settings → Service Rates." });
+      }
+    })();
+  }, [bill, hospitalId, fetchLineItems, onRefresh, toast]);
 
   const handleFinalize = async () => {
     if (!bill || !hospitalId) return;
