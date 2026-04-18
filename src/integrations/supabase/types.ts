@@ -14298,6 +14298,53 @@ export type Database = {
           },
         ]
       }
+      service_rates: {
+        Row: {
+          created_at: string
+          default_rate: number
+          gst_rate: number | null
+          hospital_id: string
+          id: string
+          is_active: boolean | null
+          item_code: string
+          item_name: string
+          item_type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          default_rate?: number
+          gst_rate?: number | null
+          hospital_id: string
+          id?: string
+          is_active?: boolean | null
+          item_code: string
+          item_name: string
+          item_type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          default_rate?: number
+          gst_rate?: number | null
+          hospital_id?: string
+          id?: string
+          is_active?: boolean | null
+          item_code?: string
+          item_name?: string
+          item_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_rates_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       set_issues: {
         Row: {
           damaged_count: number | null
