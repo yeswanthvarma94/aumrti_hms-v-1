@@ -2,86 +2,79 @@
 
 ## Root Cause
 
-`bill_line_items.source_record_id` is a **`uuid`** column, but `src/lib/ipdBilling.ts` is inserting prefixed strings into it:
+In `src/lib/ipdBilling.ts` (line 328) the room-charge block selects:
 
-| Block | Value being inserted | Valid UUID? |
-|---|---|---|
-| Pharmacy | `dispense-item:<uuid>` or `dispense:<id>:<drug>:<qty>` | No |
-| Doctor visit | `visit:<doctorId>:<date>` | No |
-| Room | `room:<admissionId>` | No |
-| Sibling bill lines | `bill-line:<id>` | No |
-| Sibling bill summaries | `bill-summary:<id>` | No |
+```ts
+.select("admitted_at, discharged_at, ward_id, wards(name, ward_type, rate_per_day), beds(bed_number)")
+```
 
-That's why **Recalculate IPD Charges** fails with `invalid input syntax for type uuid: "dispense-item:..."`. The lab/radiology/nursing blocks happen to pass real UUIDs (`li.id`, `ro.id`, `np.id`), so they don't trigger the error — but as soon as a pharmacy item is in the mix, the whole insert is rejected.
+But the actual `wards` table has a column named **`type`** — not `ward_type`. Verified against schema:
+```
+wards: id, hospital_id, name, type, total_beds, is_active, created_at, rate_per_day
+```
 
-The dedupe logic was relying on these composite string keys, but the database can't store them.
+Effect: PostgREST silently nulls the embedded `wards` object (or returns `admission = null`), so:
+- `wardDbRate = Number(undefined) || 0` → falls through to fallback `₹500/day`
+- `wardName` becomes "Ward", `wardType` becomes "general" → service_master lookup useless
+
+That's why every existing room line in the DB is `unit_rate = 500` regardless of the ward's actual `rate_per_day` (e.g. General Ward = ₹1,500). The **per-day quantity logic is correct** (3 days × 500 = 1500); the rate itself is just stuck at the fallback.
 
 ## Fix
 
-Two clean options. Pick **Option A** (recommended) — keep the column as `uuid` (type-safe, no migration risk to existing rows) and change the code to:
+### Single change in `src/lib/ipdBilling.ts`
 
-1. Always pass a real UUID (or NULL) to `source_record_id`.
-2. Move the composite "logical key" into a new **text** column `source_dedupe_key` used purely for deduplication.
+Replace `ward_type` with `type` in the `select`, and update the destructure:
 
-### Step 1 — Migration: add `source_dedupe_key` to `bill_line_items`
+```ts
+// before
+"admitted_at, discharged_at, ward_id, wards(name, ward_type, rate_per_day), beds(bed_number)"
+const wardType = (admission as any).wards?.ward_type || "general";
 
-```sql
-ALTER TABLE public.bill_line_items
-  ADD COLUMN IF NOT EXISTS source_dedupe_key text;
-
-CREATE INDEX IF NOT EXISTS idx_bill_line_items_dedupe
-  ON public.bill_line_items (bill_id, source_dedupe_key);
+// after
+"admitted_at, discharged_at, ward_id, wards(name, type, rate_per_day), beds(bed_number)"
+const wardType = (admission as any).wards?.type || "general";
 ```
 
-No data loss; existing rows simply have `NULL` here.
+That's literally the only code change needed. After this, `wards.rate_per_day = 1500` will flow through and produce `quantity × 1500` line items.
 
-### Step 2 — Update `src/lib/ipdBilling.ts`
+### Backfill existing wrong room charges (one-time)
 
-For every block, split into two fields:
+Existing draft IPD bills already have ₹500/day room rows. The "Recalculate IPD Charges" button already deletes & re-inserts the room line each run (the `delete where source_dedupe_key = ipd:room:<admissionId>` block), so once the code is fixed:
 
-| Block | `source_record_id` (uuid or null) | `source_dedupe_key` (text) |
-|---|---|---|
-| Lab | `li.id` | `lab:${li.id}` |
-| Radiology | `ro.id` | `radiology:${ro.id}` |
-| Pharmacy (item-level) | `item.id` (real uuid) | `pharmacy:dispense-item:${item.id}` |
-| Pharmacy (header fallback) | `pd.id` | `pharmacy:dispense:${pd.id}:${drug}:${qty}` |
-| Nursing | `np.id` | `nursing:${np.id}` |
-| Doctor visit | `doctorId` (real uuid) | `ipd_visit:${doctorId}:${date}` |
-| Room | `admissionId` | `ipd:room:${admissionId}` |
-| Sibling bill line | `item.id` | `bill-line:${item.id}` |
-| Sibling bill summary | `rb.id` | `bill-summary:${rb.id}` |
+- For new bills: correct from the first auto-pull.
+- For existing draft bills: clicking **Recalculate IPD Charges** once will replace the ₹500 row with the correct `rate_per_day` row.
 
-Update `toKey()` and the `existingKeys` set to read `source_dedupe_key` instead of building from `source_record_id`. Update the room-charge delete block to filter on `source_dedupe_key = 'ipd:room:<admissionId>'` instead of source_record_id.
-
-Update the existing-items SELECT to fetch `source_dedupe_key` too.
-
-### Step 3 — Backfill existing rows (optional, safe)
+No SQL migration required — but I will additionally run a one-time UPDATE to fix existing rows in-place so users don't have to click the button on every old bill:
 
 ```sql
-UPDATE public.bill_line_items
-SET source_dedupe_key = source_module || ':' || source_record_id::text
-WHERE source_dedupe_key IS NULL
-  AND source_record_id IS NOT NULL
-  AND source_module IS NOT NULL;
+UPDATE bill_line_items bli
+SET unit_rate = w.rate_per_day,
+    taxable_amount = w.rate_per_day * bli.quantity,
+    total_amount = (w.rate_per_day * bli.quantity) +
+                   ROUND((w.rate_per_day * bli.quantity) * (bli.gst_percent / 100.0), 2)
+FROM bills b
+JOIN admissions a ON a.id = b.admission_id
+JOIN wards w ON w.id = a.ward_id
+WHERE bli.bill_id = b.id
+  AND bli.item_type = 'room_charge'
+  AND b.bill_status = 'draft'
+  AND w.rate_per_day > 0
+  AND bli.unit_rate = 500;
 ```
 
-This prevents accidental duplicates on the next re-pull for bills that already have items.
-
-### Step 4 — Verify
-
-After the fix:
-- Open Siva's IPD bill → click **Recalculate IPD Charges** → no error, totals refresh.
-- Re-click → no duplicates added (dedupe via `source_dedupe_key` works).
-- Room charge updates day-count correctly when re-pulled.
+Then the existing `recalculate_bill_totals` trigger on `bill_line_items` will refresh subtotals.
 
 ## Files Touched
 
 | File | Change |
 |---|---|
-| `supabase/migrations/<new>.sql` | Add `source_dedupe_key text` + index + backfill |
-| `src/lib/ipdBilling.ts` | Use real UUIDs in `source_record_id`; move composite keys to `source_dedupe_key`; update dedupe + room-delete logic |
+| `src/lib/ipdBilling.ts` | `ward_type` → `type` in select + destructure (2 lines) |
+| New migration | One-time UPDATE to fix `unit_rate` on existing draft IPD room rows where ward's `rate_per_day` differs |
 
-## Why not just change the column to text?
+## Expected Result
 
-That would also work, but `source_record_id` is referenced across many modules (auto-pull, leakage scanner, audit trails) as a UUID FK-style pointer. Keeping it `uuid` preserves type safety and the ability to JOIN it back to source tables. Adding a sibling text key is the smaller, safer change.
+- General Ward (rate 1500) × 3 days → ₹4,500 (was ₹1,500)
+- ICU (whatever rate) × N days → correct
+- Private Rooms (rate set in wards) × N days → correct
+- "Recalculate IPD Charges" continues to work and now produces the right rate.
 
