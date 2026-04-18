@@ -218,6 +218,29 @@ const CaseBundleModal: React.FC<Props> = ({ open, onClose, record, hospitalId })
       setTimeout(() => printWindow.print(), 500);
     }
 
+    // FHIR R4 Bundle download (separate file)
+    if (checkedDocs.find(d => d.key === "fhir") && record.patient_id) {
+      try {
+        const { data: fhirData, error: fhirErr } = await supabase.functions.invoke("fhir-export", {
+          body: { patient_id: record.patient_id },
+        });
+        if (fhirErr) throw fhirErr;
+        const fhirBundle = typeof fhirData === "string" ? JSON.parse(fhirData) : fhirData;
+        const blob = new Blob([JSON.stringify(fhirBundle, null, 2)], { type: "application/fhir+json" });
+        const fhirUrl = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = fhirUrl;
+        a.download = `patient_${record.patients?.uhid || record.patient_id}_fhir_r4.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(fhirUrl);
+        toast.success("FHIR R4 Bundle downloaded — ABDM ready");
+      } catch (e: any) {
+        toast.error(`FHIR export failed: ${e?.message || "unknown"}`);
+      }
+    }
+
     setGenerating(false);
     toast.success("Case bundle generated — print or save as PDF");
   };
