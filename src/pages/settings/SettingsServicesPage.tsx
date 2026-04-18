@@ -277,6 +277,63 @@ const SettingsServicesPage: React.FC = () => {
         </div>
       )}
 
+      {/* DEFAULT RATES TAB */}
+      {tab === "rates" ? (
+        <div className="flex-1 overflow-y-auto px-6 py-4">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h2 className="text-sm font-semibold text-foreground">Module Default Rates</h2>
+              <p className="text-xs text-muted-foreground">Used as fallback fees by OT, Dialysis, IPD and other modules. Each hospital can set its own.</p>
+            </div>
+            <button
+              onClick={() => seedRates.mutate()}
+              disabled={seedRates.isPending}
+              className="text-xs font-medium text-primary border border-input rounded-lg px-3 py-1.5 hover:bg-muted active:scale-[0.97] disabled:opacity-40"
+            >
+              {seedRates.isPending ? "Seeding…" : "Seed Common Codes"}
+            </button>
+          </div>
+          <table className="w-full text-sm border border-border rounded-lg overflow-hidden">
+            <thead className="bg-muted/50">
+              <tr className="text-left text-[11px] text-muted-foreground uppercase tracking-wider">
+                <th className="px-4 py-2.5 font-medium">Item Code</th>
+                <th className="px-4 py-2.5 font-medium">Display Name</th>
+                <th className="px-4 py-2.5 font-medium">Type</th>
+                <th className="px-4 py-2.5 font-medium text-right">Default Rate (₹)</th>
+                <th className="px-4 py-2.5 font-medium text-right">GST %</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(serviceRates ?? []).length === 0 ? (
+                <tr><td colSpan={5} className="px-4 py-10 text-center text-muted-foreground text-xs">No rates configured. Click <span className="font-medium">Seed Common Codes</span> to start.</td></tr>
+              ) : (serviceRates ?? []).map((r) => (
+                <tr key={r.id} className="border-t border-border/50 hover:bg-muted/20">
+                  <td className="px-4 py-2.5 font-mono text-xs text-foreground">{r.item_code}</td>
+                  <td className="px-4 py-2.5 text-foreground">{r.item_name}</td>
+                  <td className="px-4 py-2.5"><span className="text-[11px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground capitalize">{r.item_type}</span></td>
+                  <td className="px-4 py-2.5 text-right">
+                    <input
+                      type="number"
+                      defaultValue={Number(r.default_rate)}
+                      onBlur={(e) => inlineUpdateRate(r.id, "default_rate", e.target.value)}
+                      className="w-24 h-7 text-right text-sm font-medium tabular-nums bg-transparent border border-transparent hover:border-input focus:border-input rounded px-1 outline-none"
+                    />
+                  </td>
+                  <td className="px-4 py-2.5 text-right">
+                    <input
+                      type="number"
+                      defaultValue={Number(r.gst_rate ?? 0)}
+                      onBlur={(e) => inlineUpdateRate(r.id, "gst_rate", e.target.value)}
+                      className="w-16 h-7 text-right text-sm tabular-nums text-muted-foreground bg-transparent border border-transparent hover:border-input focus:border-input rounded px-1 outline-none"
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+      <>
       {/* TABLE */}
       <div className="flex-1 overflow-y-auto">
         {!isLoading && filtered.length === 0 ? (
