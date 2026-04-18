@@ -44,12 +44,6 @@ const statusStyles: Record<string, string> = {
   cancelled: "bg-slate-50 border-slate-200 opacity-50",
 };
 
-const statusPill: Record<string, { label: string; bg: string }> = {
-  called: { label: "📢 Called", bg: "bg-amber-100 text-amber-800" },
-  in_consultation: { label: "👨‍⚕️ With Doctor", bg: "bg-blue-100 text-blue-800" },
-  completed: { label: "✓ Completed", bg: "bg-green-100 text-green-800" },
-};
-
 function getWaitMinutes(createdAt: string): string {
   const diff = Math.floor((Date.now() - new Date(createdAt).getTime()) / 60000);
   if (diff < 1) return "< 1 min";
