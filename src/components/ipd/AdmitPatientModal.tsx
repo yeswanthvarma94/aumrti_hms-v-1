@@ -7,6 +7,7 @@ import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { AlertTriangle } from "lucide-react";
 import { logAudit } from "@/lib/auditLog";
+import { generateBillNumber } from "@/hooks/useBillNumber";
 
 interface Props {
   open: boolean;
@@ -206,6 +207,30 @@ const AdmitPatientModal: React.FC<Props> = ({ open, onClose, hospitalId, presele
         visit_id: newAdm.id,
         status: "pending",
       }, { onConflict: "hospital_id,visit_type,visit_id" }).then(() => {});
+
+      // Auto-create a draft IPD bill so the running tab is visible from Day 1
+      try {
+        const { data: existingIpdBill } = await supabase.from("bills")
+          .select("id")
+          .eq("hospital_id", hospitalId)
+          .eq("admission_id", newAdm.id)
+          .eq("bill_type", "ipd")
+          .maybeSingle();
+        if (!existingIpdBill) {
+          const billNumber = await generateBillNumber(hospitalId, "BILL");
+          await supabase.from("bills").insert({
+            hospital_id: hospitalId,
+            bill_number: billNumber,
+            patient_id: selectedPatient.id,
+            admission_id: newAdm.id,
+            bill_type: "ipd",
+            bill_status: "draft",
+            payment_status: "unpaid",
+          });
+        }
+      } catch (e: any) {
+        console.error("Failed to auto-create draft IPD bill:", e?.message || e);
+      }
 
       // Auto-create insurance pre-auth if insurance patient
       if (insuranceType !== "self_pay") {
