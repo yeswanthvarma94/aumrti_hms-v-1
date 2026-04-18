@@ -116,7 +116,25 @@ const SettingsGSTPage: React.FC = () => {
                 <div className="flex items-center gap-2"><RadioGroupItem value="production" id="irp-prod" /><Label htmlFor="irp-prod" className="font-normal">Production</Label></div>
               </RadioGroup>
             </div>
-            <Button variant="outline">Test IRN Generation</Button>
+            <Button variant="outline" onClick={handleTestIrn} disabled={testing}>
+              {testing ? (<><Loader2 size={14} className="mr-1.5 animate-spin" /> Testing…</>) : "Test IRN Generation"}
+            </Button>
+            {testResult && (
+              <div className={`flex items-start gap-2 rounded-md border p-2.5 text-xs ${testResult.ok ? "border-emerald-500/30 bg-emerald-500/5 text-emerald-700 dark:text-emerald-400" : "border-destructive/30 bg-destructive/5 text-destructive"}`}>
+                {testResult.ok ? <CheckCircle2 size={14} className="mt-0.5 flex-shrink-0" /> : <XCircle size={14} className="mt-0.5 flex-shrink-0" />}
+                <div className="space-y-0.5">
+                  {testResult.ok ? (
+                    <>
+                      <div className="font-medium">IRN generated ({testResult.mode || "ok"})</div>
+                      {testResult.irn && <div className="font-mono text-[11px] break-all">{testResult.irn}</div>}
+                      {testResult.message && <div className="text-[11px] opacity-80">{testResult.message}</div>}
+                    </>
+                  ) : (
+                    <div>{testResult.message || "Unknown error"}</div>
+                  )}
+                </div>
+              </div>
+            )}
             <p className="text-[11px] text-muted-foreground">
               These credentials are used by the <code className="font-mono">gst-irn-generate</code> Edge Function. Without credentials, the system runs in sandbox mode (demo IRN).
             </p>
