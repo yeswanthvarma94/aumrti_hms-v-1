@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { X, UserPlus } from "lucide-react";
+import { X, UserPlus, Loader2, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getDPDPConsentText } from "@/lib/compliance-checks";
 import AddReferralDoctorModal from "@/components/shared/AddReferralDoctorModal";
