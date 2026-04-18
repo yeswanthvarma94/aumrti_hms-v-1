@@ -89,9 +89,9 @@ serve(async (req) => {
         is_active: true,
       })
       .select("id")
-      .single();
+      .maybeSingle();
 
-    if (hospitalError) {
+    if (hospitalError || !hospitalData) {
       return new Response(
         JSON.stringify({ error: hospitalError.message }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }

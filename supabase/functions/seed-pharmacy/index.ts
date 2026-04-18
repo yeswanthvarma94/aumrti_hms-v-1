@@ -47,7 +47,7 @@ Deno.serve(async () => {
       if (existing) {
         ids.push(existing);
       } else {
-        const { data: ins } = await supabase.from("drug_master").insert(d).select("id, drug_name").single();
+        const { data: ins } = await supabase.from("drug_master").insert(d).select("id, drug_name").maybeSingle();
         if (ins) ids.push(ins);
       }
     }

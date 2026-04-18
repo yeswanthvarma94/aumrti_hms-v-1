@@ -34,7 +34,10 @@ serve(async (req) => {
     if (visit_type === "opd") {
       const { data: enc } = await sb.from("opd_encounters")
         .select("chief_complaint, soap_notes, diagnosis, history_of_present_illness, soap_assessment, soap_plan, examination_notes")
-        .eq("id", visit_id).single();
+        .eq("id", visit_id).maybeSingle();
+      if (!enc) {
+        console.warn("ai-icd-suggest: opd_encounters not found for visit_id", visit_id);
+      }
       if (enc) {
         clinicalText = [
           enc.chief_complaint, enc.history_of_present_illness,
@@ -45,7 +48,10 @@ serve(async (req) => {
     } else if (visit_type === "ipd") {
       const { data: adm } = await sb.from("admissions")
         .select("admitting_diagnosis, discharge_type, status")
-        .eq("id", visit_id).single();
+        .eq("id", visit_id).maybeSingle();
+      if (!adm) {
+        console.warn("ai-icd-suggest: admissions not found for visit_id", visit_id);
+      }
 
       // Also fetch ward round notes for richer clinical context
       const { data: rounds } = await sb.from("ward_round_notes")
