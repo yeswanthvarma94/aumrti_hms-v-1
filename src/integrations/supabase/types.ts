@@ -1605,6 +1605,7 @@ export type Database = {
           insurance_amount: number | null
           irn: string | null
           irn_generated_at: string | null
+          irn_mode: string | null
           notes: string | null
           paid_amount: number | null
           patient_id: string
@@ -1640,6 +1641,7 @@ export type Database = {
           insurance_amount?: number | null
           irn?: string | null
           irn_generated_at?: string | null
+          irn_mode?: string | null
           notes?: string | null
           paid_amount?: number | null
           patient_id: string
@@ -1675,6 +1677,7 @@ export type Database = {
           insurance_amount?: number | null
           irn?: string | null
           irn_generated_at?: string | null
+          irn_mode?: string | null
           notes?: string | null
           paid_amount?: number | null
           patient_id?: string
