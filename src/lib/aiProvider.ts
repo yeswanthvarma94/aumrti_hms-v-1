@@ -52,6 +52,7 @@ export const FEATURE_LABELS: Record<string, string> = {
 export const PROVIDER_TO_SERVICE_KEY: Record<string, string> = {
   claude: "anthropic",
   openai: "openai",
+  azure_openai: "azure_openai",
   gemini: "gemini",
   perplexity: "perplexity",
 };
@@ -128,6 +129,7 @@ export function getMergedModels(provider: string): { label: string; value: strin
 export const KNOWN_SERVICES = [
   { service_key: "anthropic", service_name: "Anthropic (Claude)", emoji: "🤖", endpoint: "api.anthropic.com" },
   { service_key: "openai", service_name: "OpenAI", emoji: "💡", endpoint: "api.openai.com" },
+  { service_key: "azure_openai", service_name: "Azure OpenAI (India Central — DPDP)", emoji: "🇮🇳", endpoint: "*.openai.azure.com" },
   { service_key: "gemini", service_name: "Google Gemini", emoji: "✨", endpoint: "generativelanguage.googleapis.com" },
   { service_key: "perplexity", service_name: "Perplexity AI", emoji: "🔍", endpoint: "api.perplexity.ai" },
   { service_key: "razorpay", service_name: "Razorpay", emoji: "💳", endpoint: "api.razorpay.com" },
@@ -239,11 +241,83 @@ const callPerplexity = async (params: ProviderCallParams): Promise<AIResponse> =
   };
 };
 
+// ── Azure OpenAI (India Central — DPDP compliant) ─────
+interface AzureConfig {
+  endpoint: string;
+  deployment: string;
+  apiKey: string;
+  apiVersion: string;
+}
+
+const getAzureConfigFromEnv = (): AzureConfig | null => {
+  const env = import.meta.env as Record<string, string | undefined>;
+  const endpoint = env.VITE_AZURE_OPENAI_ENDPOINT;
+  const deployment = env.VITE_AZURE_OPENAI_DEPLOYMENT;
+  const apiKey = env.VITE_AZURE_OPENAI_API_KEY;
+  const apiVersion = env.VITE_AZURE_OPENAI_API_VERSION || "2024-02-01";
+  if (!endpoint || !deployment || !apiKey) return null;
+  return { endpoint: endpoint.replace(/\/$/, ""), deployment, apiKey, apiVersion };
+};
+
+const getAzureConfigFromDB = async (hospitalId: string): Promise<AzureConfig | null> => {
+  const { data } = await supabase
+    .from("api_configurations")
+    .select("config")
+    .eq("hospital_id", hospitalId)
+    .eq("service_key", "azure_openai")
+    .eq("is_active", true)
+    .maybeSingle();
+  const cfg = data?.config as Record<string, string> | undefined;
+  if (!cfg?.api_key || !cfg?.endpoint || !cfg?.deployment) return null;
+  return {
+    endpoint: cfg.endpoint.replace(/\/$/, ""),
+    deployment: cfg.deployment,
+    apiKey: cfg.api_key,
+    apiVersion: cfg.api_version || "2024-02-01",
+  };
+};
+
+const callAzureOpenAI = async (
+  cfg: AzureConfig,
+  request: AIRequest,
+  temperature = 0.3,
+): Promise<AIResponse> => {
+  const url = `${cfg.endpoint}/openai/deployments/${cfg.deployment}/chat/completions?api-version=${cfg.apiVersion}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "api-key": cfg.apiKey },
+    body: JSON.stringify({
+      messages: [
+        ...(request.systemPrompt ? [{ role: "system", content: request.systemPrompt }] : []),
+        { role: "user", content: request.prompt },
+      ],
+      max_tokens: request.maxTokens || 500,
+      temperature,
+    }),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    return {
+      text: "",
+      provider: "azure_openai",
+      model: cfg.deployment,
+      error: data?.error?.message || "Azure OpenAI error",
+    };
+  }
+  return {
+    text: data.choices?.[0]?.message?.content || "",
+    provider: "azure_openai",
+    model: cfg.deployment,
+    tokens_used: data.usage?.total_tokens,
+  };
+};
+
 // ── ENV fallback keys ──────────────────────────
 
 const ENV_KEYS: Record<string, string> = {
   claude: "VITE_ANTHROPIC_KEY",
   openai: "VITE_OPENAI_KEY",
+  azure_openai: "VITE_AZURE_OPENAI_API_KEY",
   gemini: "VITE_GEMINI_KEY",
   perplexity: "VITE_PERPLEXITY_KEY",
   sarvam: "VITE_SARVAM_KEY",
@@ -260,6 +334,11 @@ const getEnvKey = (provider: string): string | undefined => {
 
 export const callAI = async (request: AIRequest): Promise<AIResponse> => {
   try {
+    // Step 0: Azure OpenAI takes priority for DPDP data residency.
+    // Try DB-stored Azure config first, then env vars.
+    const azureCfg =
+      (await getAzureConfigFromDB(request.hospitalId)) || getAzureConfigFromEnv();
+
     // Step 1: Look up feature-specific config
     const { data: featureConfig } = await supabase
       .from("ai_provider_config")
@@ -282,11 +361,28 @@ export const callAI = async (request: AIRequest): Promise<AIResponse> => {
       activeConfig = defaultConfig;
     }
 
+    // If feature is explicitly configured for azure_openai, honour it.
+    // Otherwise, when Azure is available, prefer Azure over generic OpenAI for DPDP compliance.
+    if (azureCfg && (!activeConfig || activeConfig.provider === "azure_openai" || activeConfig.provider === "openai")) {
+      const temp = Number(activeConfig?.temperature) || 0.3;
+      return await callAzureOpenAI(azureCfg, request, temp);
+    }
+
     if (!activeConfig) {
       return { text: "", provider: "none", model: "none", error: "No AI provider configured" };
     }
 
     const { provider, model_name, temperature, max_tokens } = activeConfig;
+
+    // Explicit azure_openai provider but no config available
+    if (provider === "azure_openai") {
+      return {
+        text: "",
+        provider,
+        model: model_name,
+        error: "Azure OpenAI selected but endpoint/deployment/key not configured. Set in Settings → API Hub.",
+      };
+    }
 
     // Step 2: Resolve API key — DB first (api_key_ref or provider mapping), then env fallback
     let apiKey: string | undefined;
