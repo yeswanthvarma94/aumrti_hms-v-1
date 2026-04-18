@@ -15,6 +15,8 @@ import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, A
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import AdmitPatientModal from "@/components/ipd/AdmitPatientModal";
 import NewLabOrderModal from "@/components/lab/NewLabOrderModal";
+import BookOTModal from "@/components/ot/BookOTModal";
+import type { OTRoom } from "@/pages/ot/OTPage";
 import type { EDVisit } from "@/pages/emergency/EmergencyPage";
 
 interface Props {
@@ -45,6 +47,8 @@ const EmergencyWorkspace: React.FC<Props> = ({ visit, hospitalId, userId, onRefr
   const [showSpecialistDialog, setShowSpecialistDialog] = useState(false);
   const [showDischargeConfirm, setShowDischargeConfirm] = useState(false);
   const [showMlcDialog, setShowMlcDialog] = useState(false);
+  const [showOTModal, setShowOTModal] = useState(false);
+  const [otRooms, setOtRooms] = useState<OTRoom[]>([]);
 
   // Blood request state
   const [bloodGroup, setBloodGroup] = useState("");
@@ -64,6 +68,13 @@ const EmergencyWorkspace: React.FC<Props> = ({ visit, hospitalId, userId, onRefr
     if (!hospitalId) return;
     supabase.from("departments").select("id, name").eq("hospital_id", hospitalId).eq("is_active", true).order("name")
       .then(({ data }) => setDepartments(data || []));
+  }, [hospitalId]);
+
+  // Load OT rooms for refer-to-OT modal
+  useEffect(() => {
+    if (!hospitalId) return;
+    supabase.from("ot_rooms").select("id, name, type").eq("hospital_id", hospitalId).eq("is_active", true).order("name")
+      .then(({ data }) => setOtRooms((data as OTRoom[]) || []));
   }, [hospitalId]);
 
   // Load data when visit changes
