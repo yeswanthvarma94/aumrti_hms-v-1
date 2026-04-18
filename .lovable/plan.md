@@ -1,43 +1,53 @@
 
+Root cause I found: the Add Staff drawer saves `form.role` directly into `users.role`, but `users.role` is backed by the `public.app_role` enum. The UI is loading roles from `role_permissions`, which already includes canonical roles like `billing_executive`, `hr_manager`, and `lab_technician`, while the enum/types still only allow legacy values like `accountant` and `lab_tech`. Your screenshot confirms the failure: `invalid input value for enum app_role: "billing_executive"`.
 
-## Biomedical Equipment — Two Bugs
+There is also a broader consistency problem:
+- `src/pages/settings/SettingsStaffPage.tsx` builds role cards from `role_permissions` and inserts them into `users.role`
+- `src/integrations/supabase/types.ts` still shows the old enum
+- `src/pages/login/LoginPage.tsx`, `src/lib/routeRoles.ts`, and some labels still mix legacy and canonical role names
 
-### Issue 1: Equipment Table Shows Empty ("No equipment found")
+Plan to fix:
 
-**Root Cause:** `EquipmentTab.tsx` line 45 — the `useEffect` has an empty dependency array `[]`. When the component mounts, `hospitalId` from `useHospitalId()` is likely still `null` (loading). The query runs with `null`, returns nothing, and never re-runs when `hospitalId` becomes available.
+1. Align the database role enum
+- Add a Supabase migration to extend `public.app_role` with the canonical staff roles already used by the app, at minimum:
+  - `billing_executive`
+  - `hr_manager`
+  - `lab_technician`
+- If other currently-used canonical roles are already referenced in route/module access, include them in the same migration to prevent the same bug from recurring.
 
-**Fix:** Add `hospitalId` to the dependency array and guard the fetch:
+2. Sync generated Supabase types
+- Update `src/integrations/supabase/types.ts` so the frontend type-safe enum matches the database enum.
 
-```typescript
-// EquipmentTab.tsx line 35-45
-useEffect(() => {
-  if (!hospitalId) return;
-  const load = async () => { ... };
-  load();
-}, [hospitalId]);
-```
+3. Fix the Add Staff page to use the right role source cleanly
+- Update `src/pages/settings/SettingsStaffPage.tsx` to:
+  - use the current authenticated hospital context via `useHospitalId()`
+  - filter `role_permissions` by `hospital_id`
+  - keep role cards/labels consistent with the canonical enum values
+- This prevents the page from offering invalid or cross-hospital role options.
 
-Same issue exists in `BiomedicalPage.tsx` — the KPI `useEffect` depends on `[refreshKey]` but not `hospitalId`. When it runs before `hospitalId` is available, the KPI queries return wrong data.
+4. Normalize downstream role usage
+- Update legacy aliases where they would break access after staff creation:
+  - `src/pages/login/LoginPage.tsx` role → landing route map
+  - `src/lib/routeRoles.ts` mismatches like `billing_staff` vs `billing_executive`
+  - role label/meta mappings in settings pages for `lab_tech` vs `lab_technician`, `accountant` vs billing-facing labels
 
-**Fix:** Add `hospitalId` to deps and guard:
-```typescript
-useEffect(() => {
-  if (!hospitalId) return;
-  const load = async () => { ... };
-  load();
-}, [refreshKey, hospitalId]);
-```
+5. Verify end-to-end
+- Test creating staff for the affected roles from `/settings/staff`
+- Confirm the insert succeeds with no enum error toast
+- Confirm the new user appears in the staff table with the correct role label
+- Confirm login redirect/module access works for at least Billing, HR, and Lab staff
 
-### Issue 2: Equipment Code Shows Wrong Number (EQ-2026-018)
+Technical details:
+- Primary failing file: `src/pages/settings/SettingsStaffPage.tsx`
+- Schema mismatch evidence:
+  - `supabase/migrations/20260327032137_9056a817-66f9-469f-913b-c666dc2e3dc6.sql` seeds `role_permissions` with `billing_executive`, `hr_manager`, `lab_technician`
+  - `src/integrations/supabase/types.ts` still defines `app_role` as only `super_admin | hospital_admin | doctor | nurse | receptionist | pharmacist | lab_tech | accountant`
+- Secondary cleanup targets:
+  - `src/pages/settings/SettingsRolesPage.tsx`
+  - `src/pages/login/LoginPage.tsx`
+  - `src/lib/routeRoles.ts`
 
-**Root Cause:** The code generation in `AddEquipmentModal.tsx` scans only codes matching `EQ-{year}-*` pattern. There are 3 such codes in the DB (EQ-2026-001, EQ-2026-016, EQ-2026-017), so max = 17, next = 018. But total equipment is 18 — the mismatch is because 15 older records use `EQ-001` to `EQ-015` format (no year). The code generation is actually correct for the new format, but the total count (18) doesn't match the sequence (018) by coincidence. The "wrong name" the user sees is that the code says 018 when there are only 18 total items — this is actually fine.
-
-However, there's a UX issue: the code is generated on modal open, so if the user opens the modal, closes without saving, and opens again, it stays the same. This is acceptable. No code change needed here unless user clarifies a different issue.
-
-### Changes
-
-| File | Change |
-|------|--------|
-| `src/components/biomedical/EquipmentTab.tsx` | Add `hospitalId` to useEffect deps + guard |
-| `src/pages/biomedical/BiomedicalPage.tsx` | Add `hospitalId` to KPI useEffect deps + guard |
-
+Expected result after implementation:
+- Add Staff will no longer fail on billing/lab/hr role creation
+- The role shown in settings, used for login routing, and checked for route access will all use the same canonical values
+- Future staff creation won’t break when a role exists in `role_permissions` but not in the enum
