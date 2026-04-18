@@ -674,15 +674,15 @@ const SettingsStaffPage: React.FC = () => {
               <div className="space-y-3">
                 <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Basic Details</label>
                 <div>
-                  <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Full Name *</label>
+                  <label className="text-[14px] font-medium text-muted-foreground mb-1 block">Full Name *</label>
                   <Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} placeholder="Dr. Priya Sharma" className="h-10" />
                 </div>
                 <div>
-                  <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Phone Number *</label>
+                  <label className="text-[14px] font-medium text-muted-foreground mb-1 block">Phone Number *</label>
                   <Input type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="9876543210" className="h-10" />
                 </div>
                 <div>
-                  <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Email Address <span className="text-muted-foreground/60">(optional)</span></label>
+                  <label className="text-[14px] font-medium text-muted-foreground mb-1 block">Email Address <span className="text-muted-foreground/60">(optional)</span></label>
                   <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="priya@hospital.com" className="h-10" />
                 </div>
               </div>
@@ -693,7 +693,7 @@ const SettingsStaffPage: React.FC = () => {
                   {form.role === "doctor" ? "Doctor Details" : "Assignment"}
                 </label>
                 <div>
-                  <label className="text-[11px] font-medium text-muted-foreground mb-1 block">
+                  <label className="text-[14px] font-medium text-muted-foreground mb-1 block">
                     {form.role === "doctor" ? "Department *" : "Assigned Department"} {form.role !== "doctor" && <span className="text-muted-foreground/60">(optional)</span>}
                   </label>
                   <select value={form.department_id} onChange={(e) => setForm({ ...form, department_id: e.target.value })}
@@ -704,7 +704,7 @@ const SettingsStaffPage: React.FC = () => {
                 </div>
                 {form.role === "doctor" && (
                   <div>
-                    <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Registration No (MCI/NMC)</label>
+                    <label className="text-[14px] font-medium text-muted-foreground mb-1 block">Registration No (MCI/NMC)</label>
                     <Input value={form.registration_number} onChange={(e) => setForm({ ...form, registration_number: e.target.value })} placeholder="MH-12345" className="h-10" />
                   </div>
                 )}
@@ -714,7 +714,7 @@ const SettingsStaffPage: React.FC = () => {
                 <div className="space-y-3">
                   <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Nurse Details</label>
                   <div>
-                    <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Ward Assignment <span className="text-muted-foreground/60">(display only)</span></label>
+                    <label className="text-[14px] font-medium text-muted-foreground mb-1 block">Ward Assignment <span className="text-muted-foreground/60">(display only)</span></label>
                     <select value={form.ward_id} onChange={(e) => setForm({ ...form, ward_id: e.target.value })}
                       className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
                       <option value="">Select ward</option>
@@ -722,7 +722,7 @@ const SettingsStaffPage: React.FC = () => {
                     </select>
                   </div>
                   <div>
-                    <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Nursing Registration No</label>
+                    <label className="text-[14px] font-medium text-muted-foreground mb-1 block">Nursing Registration No</label>
                     <Input value={form.registration_number} onChange={(e) => setForm({ ...form, registration_number: e.target.value })} placeholder="Optional" className="h-10" />
                   </div>
                 </div>
@@ -734,15 +734,15 @@ const SettingsStaffPage: React.FC = () => {
                   <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Consultation Pricing</label>
                   <div className="grid grid-cols-3 gap-3">
                     <div>
-                      <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Consultation Fee (₹)</label>
+                      <label className="text-[14px] font-medium text-muted-foreground mb-1 block">Consultation Fee (₹)</label>
                       <Input type="number" value={form.consultation_fee} onChange={(e) => setForm({ ...form, consultation_fee: e.target.value })} placeholder="500" className="h-10" />
                     </div>
                     <div>
-                      <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Follow-up Fee (₹)</label>
+                      <label className="text-[14px] font-medium text-muted-foreground mb-1 block">Follow-up Fee (₹)</label>
                       <Input type="number" value={form.follow_up_fee} onChange={(e) => setForm({ ...form, follow_up_fee: e.target.value })} placeholder="200" className="h-10" />
                     </div>
                     <div>
-                      <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Validity (days)</label>
+                      <label className="text-[14px] font-medium text-muted-foreground mb-1 block">Validity (days)</label>
                       <Input type="number" value={form.validity_days} onChange={(e) => setForm({ ...form, validity_days: e.target.value })} placeholder="7" className="h-10" />
                       <p className="text-[10px] text-muted-foreground mt-0.5">Follow-up valid within these many days</p>
                     </div>
@@ -754,11 +754,11 @@ const SettingsStaffPage: React.FC = () => {
                 <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Employment & Salary</label>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Employee ID</label>
+                    <label className="text-[14px] font-medium text-muted-foreground mb-1 block">Employee ID</label>
                     <Input value={form.employee_id} onChange={(e) => setForm({ ...form, employee_id: e.target.value })} placeholder="EMP-001" className="h-10" />
                   </div>
                   <div>
-                    <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Employment Type</label>
+                    <label className="text-[14px] font-medium text-muted-foreground mb-1 block">Employment Type</label>
                     <select value={form.employment_type} onChange={(e) => setForm({ ...form, employment_type: e.target.value })}
                       className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
                       <option value="permanent">Permanent</option>
@@ -769,26 +769,26 @@ const SettingsStaffPage: React.FC = () => {
                   </div>
                 </div>
                 <div>
-                  <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Basic Salary (₹/month)</label>
+                  <label className="text-[14px] font-medium text-muted-foreground mb-1 block">Basic Salary (₹/month)</label>
                   <Input type="number" value={form.basic_salary} onChange={(e) => setForm({ ...form, basic_salary: e.target.value })} placeholder="25000" className="h-10" />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[11px] font-medium text-muted-foreground mb-1 block">HRA %</label>
+                    <label className="text-[14px] font-medium text-muted-foreground mb-1 block">HRA %</label>
                     <Input type="number" value={form.hra_percent} onChange={(e) => setForm({ ...form, hra_percent: e.target.value })} className="h-10" />
                   </div>
                   <div>
-                    <label className="text-[11px] font-medium text-muted-foreground mb-1 block">DA %</label>
+                    <label className="text-[14px] font-medium text-muted-foreground mb-1 block">DA %</label>
                     <Input type="number" value={form.da_percent} onChange={(e) => setForm({ ...form, da_percent: e.target.value })} className="h-10" />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Conveyance (₹)</label>
+                    <label className="text-[14px] font-medium text-muted-foreground mb-1 block">Conveyance (₹)</label>
                     <Input type="number" value={form.conveyance} onChange={(e) => setForm({ ...form, conveyance: e.target.value })} className="h-10" />
                   </div>
                   <div>
-                    <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Medical Allow. (₹)</label>
+                    <label className="text-[14px] font-medium text-muted-foreground mb-1 block">Medical Allow. (₹)</label>
                     <Input type="number" value={form.medical_allowance} onChange={(e) => setForm({ ...form, medical_allowance: e.target.value })} className="h-10" />
                   </div>
                 </div>
@@ -803,7 +803,7 @@ const SettingsStaffPage: React.FC = () => {
                   </label>
                 </div>
                 <div>
-                  <label className="text-[11px] font-medium text-muted-foreground mb-1 block">License Expiry Date</label>
+                  <label className="text-[14px] font-medium text-muted-foreground mb-1 block">License Expiry Date</label>
                   <Input type="date" value={form.license_expiry_date} onChange={(e) => setForm({ ...form, license_expiry_date: e.target.value })} className="h-10" />
                 </div>
               </div>
@@ -901,7 +901,7 @@ const SettingsStaffPage: React.FC = () => {
 
             <div className="space-y-4">
               <div>
-                <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Email</label>
+                <label className="text-[14px] font-medium text-muted-foreground mb-1 block">Email</label>
                 <Input
                   type="email"
                   value={loginEmail}
@@ -916,7 +916,7 @@ const SettingsStaffPage: React.FC = () => {
                 </p>
               </div>
               <div>
-                <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Password</label>
+                <label className="text-[14px] font-medium text-muted-foreground mb-1 block">Password</label>
                 <Input
                   type="password"
                   value={loginPassword}

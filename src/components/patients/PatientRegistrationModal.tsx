@@ -228,19 +228,19 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess, editPat
           {/* ROW 1: Name + Phone + DOB */}
           <div className="flex gap-3">
             <div className="flex-[2] min-w-0">
-              <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Full Name *</label>
+              <label className="text-[14px] font-medium text-muted-foreground mb-1 block">Full Name *</label>
               <input value={form.full_name} onChange={(e) => { set("full_name", e.target.value); setFieldErrors(prev => ({ ...prev, full_name: "" })); }}
                 placeholder="Patient's full name" className={cn(inputClass, fieldErrors.full_name && "border-destructive")} />
               {fieldErrors.full_name && <p className="text-destructive text-[11px] mt-0.5">{fieldErrors.full_name}</p>}
             </div>
             <div className="flex-1 min-w-0">
-              <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Phone</label>
+              <label className="text-[14px] font-medium text-muted-foreground mb-1 block">Phone</label>
               <input type="tel" value={form.phone} onChange={(e) => { set("phone", e.target.value); setFieldErrors(prev => ({ ...prev, phone: "" })); }}
                 placeholder="Mobile number" className={cn(inputClass, fieldErrors.phone && "border-destructive")} />
               {fieldErrors.phone && <p className="text-destructive text-[11px] mt-0.5">{fieldErrors.phone}</p>}
             </div>
             <div className="flex-1 min-w-0">
-              <label className="text-[11px] font-medium text-muted-foreground mb-1 block">DOB</label>
+              <label className="text-[14px] font-medium text-muted-foreground mb-1 block">DOB</label>
               <input type="date" value={form.dob} onChange={(e) => { set("dob", e.target.value); setFieldErrors(prev => ({ ...prev, dob: "" })); }}
                 max={new Date().toISOString().split("T")[0]}
                 className={cn(inputClass, fieldErrors.dob && "border-destructive")} />
@@ -251,12 +251,12 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess, editPat
           {/* ROW 2: Age + Gender + Blood Group */}
           <div className="flex gap-4 items-end">
             <div className="w-[72px] flex-shrink-0">
-              <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Age</label>
+              <label className="text-[14px] font-medium text-muted-foreground mb-1 block">Age</label>
               <input type="number" min={0} max={120} value={form.age} onChange={(e) => set("age", e.target.value)}
                 placeholder="—" className={inputClass} />
             </div>
             <div className="flex-shrink-0">
-              <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Gender</label>
+              <label className="text-[14px] font-medium text-muted-foreground mb-1 block">Gender</label>
               <div className="flex gap-1">
                 {genders.map((g) => (
                   <button key={g} type="button" onClick={() => set("gender", g)}
@@ -272,7 +272,7 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess, editPat
               </div>
             </div>
             <div className="flex-1 min-w-0">
-              <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Blood Group</label>
+              <label className="text-[14px] font-medium text-muted-foreground mb-1 block">Blood Group</label>
               <div className="flex gap-1 flex-wrap">
                 {bloodGroups.map((bg) => (
                   <button key={bg} type="button"
@@ -292,7 +292,7 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess, editPat
 
           {/* ROW 3: Address (single line) */}
           <div>
-            <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Address</label>
+            <label className="text-[14px] font-medium text-muted-foreground mb-1 block">Address</label>
             <input value={form.address} onChange={(e) => set("address", e.target.value)}
               placeholder="Door no, Street, Area, City, Pincode" className={inputClass} />
           </div>
@@ -300,12 +300,12 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess, editPat
           {/* ROW 4: Allergies + Chronic Conditions */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Allergies</label>
+              <label className="text-[14px] font-medium text-muted-foreground mb-1 block">Allergies</label>
               <input value={form.allergies} onChange={(e) => set("allergies", e.target.value)}
                 placeholder="e.g. Penicillin" className={inputClass} />
             </div>
             <div>
-              <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Chronic Conditions</label>
+              <label className="text-[14px] font-medium text-muted-foreground mb-1 block">Chronic Conditions</label>
               <input value={form.chronic_conditions} onChange={(e) => set("chronic_conditions", e.target.value)}
                 placeholder="DM, HTN (comma-separated)" className={inputClass} />
             </div>
@@ -314,12 +314,12 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess, editPat
           {/* ROW 5: Insurance + ABHA */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Insurance / TPA ID <span className="text-muted-foreground/60">(Optional)</span></label>
+              <label className="text-[14px] font-medium text-muted-foreground mb-1 block">Insurance / TPA ID <span className="text-muted-foreground/60">(Optional)</span></label>
               <input value={form.insurance_id} onChange={(e) => set("insurance_id", e.target.value)}
                 placeholder="Insurance / TPA ID" className={inputClass} />
             </div>
             <div>
-              <label className="text-[11px] font-medium text-muted-foreground mb-1 block">ABHA ID <span className="text-muted-foreground/60">(Optional)</span></label>
+              <label className="text-[14px] font-medium text-muted-foreground mb-1 block">ABHA ID <span className="text-muted-foreground/60">(Optional)</span></label>
               <input value={form.abha_id} onChange={(e) => set("abha_id", e.target.value)}
                 placeholder="ABHA number" className={inputClass} />
             </div>
@@ -340,12 +340,12 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess, editPat
           {/* ROW 7: Emergency Contact */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Emergency Contact Name</label>
+              <label className="text-[14px] font-medium text-muted-foreground mb-1 block">Emergency Contact Name</label>
               <input value={form.emergency_contact_name} onChange={(e) => set("emergency_contact_name", e.target.value)}
                 placeholder="Contact name" className={inputClass} />
             </div>
             <div>
-              <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Emergency Contact Phone</label>
+              <label className="text-[14px] font-medium text-muted-foreground mb-1 block">Emergency Contact Phone</label>
               <input type="tel" value={form.emergency_contact_phone} onChange={(e) => set("emergency_contact_phone", e.target.value)}
                 placeholder="Contact phone" className={inputClass} />
             </div>
