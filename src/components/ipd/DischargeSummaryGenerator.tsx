@@ -7,6 +7,7 @@ import { callAI } from "@/lib/aiProvider";
 import { toast } from "sonner";
 import { logNABHEvidence } from "@/lib/nabh-evidence";
 import { logAudit } from "@/lib/auditLog";
+import { formatDateIST } from "@/lib/dateUtils";
 
 interface Props {
   admissionId: string;
@@ -75,7 +76,7 @@ const DischargeSummaryGenerator: React.FC<Props> = ({ admissionId, hospitalId, b
         .maybeSingle();
 
       const patient = admission.patients as any;
-      const admittedDate = admission.admitted_at ? new Date(admission.admitted_at).toLocaleDateString("en-IN") : "Unknown";
+      const admittedDate = admission.admitted_at ? formatDateIST(admission.admitted_at) : "Unknown";
       const los = admission.admitted_at
         ? Math.ceil((Date.now() - new Date(admission.admitted_at).getTime()) / 86400000)
         : 0;
@@ -226,7 +227,7 @@ Use formal medical language. Keep factual. Do not invent details not provided. M
       const phone = patient?.phone;
       if (phone && summary) {
         const shortSummary = summary.slice(0, 300).replace(/\n/g, " ");
-        const msg = `🏥 Discharge Summary\n\nPatient: ${patient.full_name} (${patient.uhid})\nDate: ${new Date().toLocaleDateString("en-IN")}\n\n${shortSummary}...\n\nPlease follow your doctor's instructions. For emergencies, contact the hospital.`;
+        const msg = `🏥 Discharge Summary\n\nPatient: ${patient.full_name} (${patient.uhid})\nDate: ${formatDateIST(new Date().toISOString())}\n\n${shortSummary}...\n\nPlease follow your doctor's instructions. For emergencies, contact the hospital.`;
         const clean = phone.replace(/\D/g, "");
         const intl = clean.startsWith("91") ? clean : `91${clean}`;
         window.open(`https://wa.me/${intl}?text=${encodeURIComponent(msg)}`, "_blank", "noopener,noreferrer");

@@ -6,6 +6,7 @@ import { Download, FileSpreadsheet, Users, Receipt, Info, Loader2 } from "lucide
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useHospitalId } from "@/hooks/useHospitalId";
+import { formatDateTimeIST } from "@/lib/dateUtils";
 
 interface AuditEntry {
   id: string;
@@ -64,11 +65,7 @@ const SettingsBackupPage: React.FC = () => {
     query.then(({ data }: any) => { setLogs(data || []); setLoading(false); });
   }, [hospitalId, dateFilter]);
 
-  const formatDate = (iso: string) => {
-    const d = new Date(iso);
-    return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) + ", " +
-      d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
-  };
+  const formatDate = (iso: string) => formatDateTimeIST(iso);
 
   const exportAuditLog = () => {
     if (!logs.length) { toast({ title: "No audit data to export" }); return; }
