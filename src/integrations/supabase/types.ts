@@ -36,6 +36,7 @@ export type Database = {
           insurance_id: string | null
           insurance_type: string
           medical_cleared: boolean | null
+          nursing_handover_notes: string | null
           patient_id: string
           pharmacy_cleared: boolean | null
           status: string
@@ -62,6 +63,7 @@ export type Database = {
           insurance_id?: string | null
           insurance_type?: string
           medical_cleared?: boolean | null
+          nursing_handover_notes?: string | null
           patient_id: string
           pharmacy_cleared?: boolean | null
           status?: string
@@ -88,6 +90,7 @@ export type Database = {
           insurance_id?: string | null
           insurance_type?: string
           medical_cleared?: boolean | null
+          nursing_handover_notes?: string | null
           patient_id?: string
           pharmacy_cleared?: boolean | null
           status?: string

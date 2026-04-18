@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Info } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import { logAudit } from "@/lib/auditLog";
 import { generateBillNumber } from "@/hooks/useBillNumber";
 
@@ -60,6 +61,8 @@ const AdmitPatientModal: React.FC<Props> = ({ open, onClose, hospitalId, presele
   const [submitting, setSubmitting] = useState(false);
   const [allergyVerified, setAllergyVerified] = useState(false);
   const [patientAllergies, setPatientAllergies] = useState<string | null>(null);
+  const [handoverNotes, setHandoverNotes] = useState("");
+  const [handoverPrefilled, setHandoverPrefilled] = useState(false);
 
   // New patient fields
   const [showNewPatient, setShowNewPatient] = useState(false);
@@ -113,6 +116,7 @@ const AdmitPatientModal: React.FC<Props> = ({ open, onClose, hospitalId, presele
     setInsuranceType("self_pay"); setInsuranceId(""); setExpectedDischarge("");
     setShowNewPatient(false); setNewName(""); setNewPhone(""); setNewAge(""); setNewGender("male");
     setAllergyVerified(false); setPatientAllergies(null);
+    setHandoverNotes(""); setHandoverPrefilled(false);
   };
 
   // Fetch patient allergies when selected
@@ -121,6 +125,41 @@ const AdmitPatientModal: React.FC<Props> = ({ open, onClose, hospitalId, presele
     (supabase as any).from("patients").select("allergies").eq("id", selectedPatient.id).maybeSingle()
       .then(({ data }: any) => setPatientAllergies(data?.allergies || null));
   }, [selectedPatient]);
+
+  // Pre-fill nursing handover notes from most recent OPD encounter
+  useEffect(() => {
+    if (!selectedPatient || !hospitalId) {
+      setHandoverNotes("");
+      setHandoverPrefilled(false);
+      return;
+    }
+    (supabase as any)
+      .from("opd_encounters")
+      .select("chief_complaint, diagnosis, icd10_code, soap_assessment, soap_plan, examination_notes, created_at")
+      .eq("patient_id", selectedPatient.id)
+      .eq("hospital_id", hospitalId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }: any) => {
+        if (!data) {
+          setHandoverNotes("");
+          setHandoverPrefilled(false);
+          return;
+        }
+        const today = new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+        const lines: string[] = [`Referred from OPD — ${today}`];
+        if (data.chief_complaint) lines.push(`Chief Complaint: ${data.chief_complaint}`);
+        if (data.diagnosis || data.icd10_code) {
+          lines.push(`Diagnosis: ${data.diagnosis || "—"}${data.icd10_code ? ` (${data.icd10_code})` : ""}`);
+        }
+        if (data.soap_assessment) lines.push(`Assessment: ${data.soap_assessment}`);
+        if (data.soap_plan) lines.push(`Plan: ${data.soap_plan}`);
+        if (data.examination_notes) lines.push(`Examination: ${data.examination_notes}`);
+        setHandoverNotes(lines.join("\n"));
+        setHandoverPrefilled(true);
+      });
+  }, [selectedPatient, hospitalId]);
 
   // Search patients
   useEffect(() => {
@@ -173,7 +212,8 @@ const AdmitPatientModal: React.FC<Props> = ({ open, onClose, hospitalId, presele
       insurance_type: insuranceType,
       insurance_id: insuranceType !== "self_pay" ? insuranceId : null,
       expected_discharge_date: expectedDischarge || null,
-    });
+      nursing_handover_notes: handoverNotes.trim() || null,
+    } as any);
 
     if (error) {
       toast({ title: "Admission failed", description: error.message, variant: "destructive" });
@@ -475,6 +515,25 @@ const AdmitPatientModal: React.FC<Props> = ({ open, onClose, hospitalId, presele
                 </label>
               </div>
             )}
+
+            {/* Nursing Handover Notes (auto-filled from OPD if available) */}
+            <div>
+              <label className="text-xs font-bold text-slate-600 block mb-1">Handover Notes for Nursing</label>
+              {handoverPrefilled && (
+                <div className="flex items-start gap-2 p-2 mb-1.5 rounded-md bg-sky-50 border border-sky-200">
+                  <Info className="h-3.5 w-3.5 text-sky-600 mt-0.5 flex-shrink-0" />
+                  <span className="text-[11px] text-sky-800 leading-snug">
+                    Pre-filled from OPD consultation — please review and update
+                  </span>
+                </div>
+              )}
+              <Textarea
+                value={handoverNotes}
+                onChange={(e) => setHandoverNotes(e.target.value)}
+                placeholder="Clinical handover information for the nursing team..."
+                className="text-sm min-h-[110px]"
+              />
+            </div>
 
             {/* Expected discharge */}
             <div>
