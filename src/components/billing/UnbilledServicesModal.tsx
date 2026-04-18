@@ -116,7 +116,7 @@ const UnbilledServicesModal: React.FC<Props> = ({ bill, hospitalId, onClose, onA
       const { data: modalities } = modalityIds.length
         ? await (supabase as any).from("modalities").select("id, fee").in("id", modalityIds)
         : { data: [] as any[] };
-      const modMap = new Map((modalities || []).map((m: any) => [m.id, Number(m.fee) || 0]));
+      const modMap = new Map<string, number>((modalities || []).map((m: any) => [m.id as string, Number(m.fee) || 0]));
       const radRows: RadRow[] = (radOrders || []).map((r: any) => ({
         id: r.id,
         study_name: r.study_name,
