@@ -40,9 +40,9 @@ const SettingsDoctorSchedulesPage: React.FC = () => {
       try {
         const { data, error } = await supabase
           .from("users")
-          .select("id, full_name, department, role")
+          .select("id, full_name, specialization, role")
           .eq("hospital_id", hospitalId)
-          .in("role", ["doctor", "consultant", "specialist"])
+          .eq("role", "doctor")
           .order("full_name");
         if (error) throw error;
 
