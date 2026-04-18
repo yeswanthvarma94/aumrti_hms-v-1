@@ -317,6 +317,7 @@ const callAzureOpenAI = async (
 const ENV_KEYS: Record<string, string> = {
   claude: "VITE_ANTHROPIC_KEY",
   openai: "VITE_OPENAI_KEY",
+  azure_openai: "VITE_AZURE_OPENAI_API_KEY",
   gemini: "VITE_GEMINI_KEY",
   perplexity: "VITE_PERPLEXITY_KEY",
   sarvam: "VITE_SARVAM_KEY",
