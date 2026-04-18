@@ -393,6 +393,8 @@ const SettingsServicesPage: React.FC = () => {
           </table>
         )}
       </div>
+      </>
+      )}
 
       {/* DRAWER */}
       {drawerOpen && (
