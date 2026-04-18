@@ -12956,7 +12956,7 @@ export type Database = {
       pmjay_packages: {
         Row: {
           created_at: string | null
-          hospital_id: string
+          hospital_id: string | null
           id: string
           includes: string[] | null
           is_active: boolean | null
@@ -12971,7 +12971,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
-          hospital_id: string
+          hospital_id?: string | null
           id?: string
           includes?: string[] | null
           is_active?: boolean | null
@@ -12986,7 +12986,7 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
-          hospital_id?: string
+          hospital_id?: string | null
           id?: string
           includes?: string[] | null
           is_active?: boolean | null
