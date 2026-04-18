@@ -67,6 +67,34 @@ const PatientDetailDrawer: React.FC<Props> = ({ patient, onClose, onUpdated, onD
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteError, setDeleteError] = useState("");
   const [deleting, setDeleting] = useState(false);
+  const [exportingFhir, setExportingFhir] = useState(false);
+  const [fhirBannerVisible, setFhirBannerVisible] = useState(false);
+
+  const handleExportFHIR = async () => {
+    setExportingFhir(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("fhir-export", {
+        body: { patient_id: patient.id },
+      });
+      if (error) throw error;
+      const bundle = typeof data === "string" ? JSON.parse(data) : data;
+      const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: "application/fhir+json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `patient_${patient.uhid || patient.id}_fhir_r4.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setFhirBannerVisible(true);
+      toast({ title: "FHIR R4 Bundle exported" });
+    } catch (e: any) {
+      toast({ title: "FHIR export failed", description: e?.message || "Unknown error", variant: "destructive" });
+    } finally {
+      setExportingFhir(false);
+    }
+  };
 
   const [editForm, setEditForm] = useState({
     full_name: patient.full_name,
