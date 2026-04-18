@@ -75,6 +75,13 @@ const PmjayPackagesTab: React.FC = () => {
 
   return (
     <div className="h-full overflow-y-auto p-4">
+      <div className="mb-3 rounded-md border border-border bg-muted/40 px-3 py-2 text-[11px] text-muted-foreground flex items-start gap-2">
+        <Package size={14} className="mt-0.5 shrink-0 text-primary" />
+        <span>
+          Showing <strong>{packages.length}</strong> packages (system + hospital-custom). The full PMJAY HBP catalog (1,929 packages) can be bulk-imported via{" "}
+          <strong>Settings → Data Migration → PMJAY Packages</strong>.
+        </span>
+      </div>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <div className="relative">
