@@ -52,6 +52,7 @@ export const FEATURE_LABELS: Record<string, string> = {
 export const PROVIDER_TO_SERVICE_KEY: Record<string, string> = {
   claude: "anthropic",
   openai: "openai",
+  azure_openai: "azure_openai",
   gemini: "gemini",
   perplexity: "perplexity",
 };
