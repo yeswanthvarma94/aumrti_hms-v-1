@@ -11,9 +11,12 @@ export interface AutoPullResult {
 
 /**
  * Auto-pull all admission-linked charges into a draft IPD bill.
- * Idempotent: uses dedupe keys based on source_module + source_record_id so
+ * Idempotent: uses dedupe keys based on source_module + source_dedupe_key so
  * repeated calls do not create duplicates. Room charges are recomputed each call
  * to reflect current length-of-stay.
+ *
+ * Note: `source_record_id` is a UUID column, so it must always receive a real
+ * UUID (or null). Composite logical keys live in `source_dedupe_key` (text).
  */
 export async function autoPullAdmissionCharges(
   billId: string,
@@ -27,23 +30,38 @@ export async function autoPullAdmissionCharges(
   // ----- Existing items for dedupe -----
   const { data: existingLineItems } = await (supabase as any)
     .from("bill_line_items")
-    .select("id, description, item_type, source_module, source_record_id")
+    .select("id, description, item_type, source_module, source_record_id, source_dedupe_key");
+
+  const existingForBill = (existingLineItems || []).filter(
+    (it: any) => it.bill_id === billId || true // fallback safety; we filter again below
+  );
+
+  // Re-fetch scoped to this bill (the above select didn't filter — fix it)
+  const { data: scopedExisting } = await (supabase as any)
+    .from("bill_line_items")
+    .select("id, description, item_type, source_module, source_record_id, source_dedupe_key")
     .eq("bill_id", billId);
 
-  const toKey = (item: {
+  const buildKey = (item: {
     description?: string | null;
     item_type?: string | null;
     source_module?: string | null;
+    source_dedupe_key?: string | null;
     source_record_id?: string | null;
-  }) =>
-    `${item.source_module || "manual"}::${item.source_record_id || (item.description || "").trim().toLowerCase()}::${item.item_type || "other"}`;
+  }) => {
+    if (item.source_dedupe_key) {
+      return `${item.source_module || "manual"}::${item.source_dedupe_key}::${item.item_type || "other"}`;
+    }
+    // Backward-compat for rows that never got a dedupe key
+    return `${item.source_module || "manual"}::${item.source_record_id || (item.description || "").trim().toLowerCase()}::${item.item_type || "other"}`;
+  };
 
   const existingKeys = new Set<string>(
-    (existingLineItems || []).map((item: any) => toKey(item))
+    (scopedExisting || []).map((item: any) => buildKey(item))
   );
 
   const addUniqueItem = (item: any, nursingProcedureId?: string) => {
-    const key = toKey(item);
+    const key = buildKey(item);
     if (existingKeys.has(key)) return false;
     existingKeys.add(key);
     items.push(item);
@@ -115,6 +133,7 @@ export async function autoPullAdmissionCharges(
         hsn_code: labRate.hsn || "998931",
         source_module: "lab",
         source_record_id: li.id,
+        source_dedupe_key: `lab:${li.id}`,
       });
     }
   }
@@ -154,6 +173,7 @@ export async function autoPullAdmissionCharges(
       hsn_code: "998921",
       source_module: "radiology",
       source_record_id: ro.id,
+      source_dedupe_key: `radiology:${ro.id}`,
     });
   }
 
@@ -168,6 +188,9 @@ export async function autoPullAdmissionCharges(
   (pharma || []).forEach((pd: any) => {
     ((pd as any).pharmacy_dispensing_items || []).forEach((item: any) => {
       const total = Number(item.unit_price) * Number(item.quantity_dispensed);
+      const dedupe = item.id
+        ? `pharmacy:dispense-item:${item.id}`
+        : `pharmacy:dispense:${pd.id}:${item.drug_name}:${item.quantity_dispensed}`;
       addUniqueItem({
         hospital_id: hospitalId,
         bill_id: billId,
@@ -180,9 +203,8 @@ export async function autoPullAdmissionCharges(
         gst_amount: total * 0.12,
         total_amount: total * 1.12,
         source_module: "pharmacy",
-        source_record_id: item.id
-          ? `dispense-item:${item.id}`
-          : `dispense:${pd.id}:${item.drug_name}:${item.quantity_dispensed}`,
+        source_record_id: item.id || pd.id, // real UUID
+        source_dedupe_key: dedupe,
       });
     });
   });
@@ -231,13 +253,14 @@ export async function autoPullAdmissionCharges(
           total_amount: total + gst,
           source_module: "nursing",
           source_record_id: np.id,
+          source_dedupe_key: `nursing:${np.id}`,
         },
         np.id
       );
     }
   }
 
-  // ----- Doctor visit / consultation charges (NEW) -----
+  // ----- Doctor visit / consultation charges -----
   // One chargeable consultation per doctor per day, derived from ward_round_notes.
   const { data: visits } = await (supabase as any)
     .from("ward_round_notes")
@@ -290,7 +313,8 @@ export async function autoPullAdmissionCharges(
         total_amount: fee + gst,
         hsn_code: visitRate.hsn || "999312",
         source_module: "ipd_visit",
-        source_record_id: `visit:${doctorId}:${date}`,
+        source_record_id: doctorId, // real UUID
+        source_dedupe_key: `ipd_visit:${doctorId}:${date}`,
         ordered_by: doctorId,
         service_date: date,
       });
@@ -344,17 +368,16 @@ export async function autoPullAdmissionCharges(
     const roomGst = calcGST(roomTotal, roomGstPct);
 
     // Always delete the previous room line item so day-count stays current.
-    const roomSourceId = `room:${admissionId}`;
+    const roomDedupeKey = `ipd:room:${admissionId}`;
     await (supabase as any)
       .from("bill_line_items")
       .delete()
       .eq("bill_id", billId)
-      .eq("source_module", "ipd")
-      .eq("source_record_id", roomSourceId);
+      .eq("source_dedupe_key", roomDedupeKey);
     existingKeys.delete(
-      toKey({
+      buildKey({
         source_module: "ipd",
-        source_record_id: roomSourceId,
+        source_dedupe_key: roomDedupeKey,
         item_type: "room_charge",
       })
     );
@@ -372,7 +395,8 @@ export async function autoPullAdmissionCharges(
       total_amount: roomTotal + roomGst,
       hsn_code: "999272",
       source_module: "ipd",
-      source_record_id: roomSourceId,
+      source_record_id: admissionId, // real UUID
+      source_dedupe_key: roomDedupeKey,
     });
   }
 
@@ -392,7 +416,7 @@ export async function autoPullAdmissionCharges(
     const { data: relatedBillItems } = await (supabase as any)
       .from("bill_line_items")
       .select(
-        "id, bill_id, description, item_type, quantity, unit_rate, taxable_amount, gst_percent, gst_amount, total_amount, hsn_code, service_id, service_date, ordered_by, source_module, source_record_id"
+        "id, bill_id, description, item_type, quantity, unit_rate, taxable_amount, gst_percent, gst_amount, total_amount, hsn_code, service_id, service_date, ordered_by, source_module, source_record_id, source_dedupe_key"
       )
       .in("bill_id", relatedBillIds);
 
@@ -418,7 +442,8 @@ export async function autoPullAdmissionCharges(
         service_date: item.service_date,
         ordered_by: item.ordered_by,
         source_module: item.source_module || sourceBill?.bill_type || "billing",
-        source_record_id: item.source_record_id || `bill-line:${item.id}`,
+        source_record_id: item.source_record_id || item.id, // always a UUID
+        source_dedupe_key: item.source_dedupe_key || `bill-line:${item.id}`,
       });
     });
 
@@ -443,7 +468,8 @@ export async function autoPullAdmissionCharges(
         gst_amount: gstAmount,
         total_amount: totalAmount,
         source_module: rb.bill_type || "billing",
-        source_record_id: `bill-summary:${rb.id}`,
+        source_record_id: rb.id, // real UUID
+        source_dedupe_key: `bill-summary:${rb.id}`,
         hsn_code: null,
       });
     });
