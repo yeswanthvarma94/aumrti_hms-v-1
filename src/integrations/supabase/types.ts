@@ -7915,6 +7915,7 @@ export type Database = {
       lab_orders: {
         Row: {
           admission_id: string | null
+          billed: boolean
           clinical_notes: string | null
           created_at: string | null
           encounter_id: string | null
@@ -7929,6 +7930,7 @@ export type Database = {
         }
         Insert: {
           admission_id?: string | null
+          billed?: boolean
           clinical_notes?: string | null
           created_at?: string | null
           encounter_id?: string | null
@@ -7943,6 +7945,7 @@ export type Database = {
         }
         Update: {
           admission_id?: string | null
+          billed?: boolean
           clinical_notes?: string | null
           created_at?: string | null
           encounter_id?: string | null
@@ -12143,6 +12146,7 @@ export type Database = {
         Row: {
           admission_id: string | null
           bill_linked: boolean | null
+          billed: boolean
           created_at: string | null
           discount_amount: number | null
           discount_percent: number | null
@@ -12165,6 +12169,7 @@ export type Database = {
         Insert: {
           admission_id?: string | null
           bill_linked?: boolean | null
+          billed?: boolean
           created_at?: string | null
           discount_amount?: number | null
           discount_percent?: number | null
@@ -12187,6 +12192,7 @@ export type Database = {
         Update: {
           admission_id?: string | null
           bill_linked?: boolean | null
+          billed?: boolean
           created_at?: string | null
           discount_amount?: number | null
           discount_percent?: number | null
@@ -13457,6 +13463,7 @@ export type Database = {
         Row: {
           accession_number: string | null
           admission_id: string | null
+          billed: boolean
           body_part: string | null
           clinical_history: string | null
           created_at: string | null
@@ -13481,6 +13488,7 @@ export type Database = {
         Insert: {
           accession_number?: string | null
           admission_id?: string | null
+          billed?: boolean
           body_part?: string | null
           clinical_history?: string | null
           created_at?: string | null
@@ -13505,6 +13513,7 @@ export type Database = {
         Update: {
           accession_number?: string | null
           admission_id?: string | null
+          billed?: boolean
           body_part?: string | null
           clinical_history?: string | null
           created_at?: string | null
