@@ -742,6 +742,92 @@ export type Database = {
           },
         ]
       }
+      appointments: {
+        Row: {
+          appointment_date: string
+          appointment_id: string | null
+          booked_by: string | null
+          booked_via: string
+          chief_complaint: string | null
+          consultation_fee: number | null
+          created_at: string
+          doctor_id: string
+          hospital_id: string
+          id: string
+          patient_id: string
+          slot_end_time: string
+          slot_time: string
+          status: string
+          visit_type: string
+          whatsapp_reminder_sent: boolean
+        }
+        Insert: {
+          appointment_date: string
+          appointment_id?: string | null
+          booked_by?: string | null
+          booked_via?: string
+          chief_complaint?: string | null
+          consultation_fee?: number | null
+          created_at?: string
+          doctor_id: string
+          hospital_id: string
+          id?: string
+          patient_id: string
+          slot_end_time: string
+          slot_time: string
+          status?: string
+          visit_type?: string
+          whatsapp_reminder_sent?: boolean
+        }
+        Update: {
+          appointment_date?: string
+          appointment_id?: string | null
+          booked_by?: string | null
+          booked_via?: string
+          chief_complaint?: string | null
+          consultation_fee?: number | null
+          created_at?: string
+          doctor_id?: string
+          hospital_id?: string
+          id?: string
+          patient_id?: string
+          slot_end_time?: string
+          slot_time?: string
+          status?: string
+          visit_type?: string
+          whatsapp_reminder_sent?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointments_booked_by_fkey"
+            columns: ["booked_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_doctor_id_fkey"
+            columns: ["doctor_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       art_couples: {
         Row: {
           afc_count: number | null
