@@ -91,16 +91,29 @@ const PmjayPreAuthTab: React.FC<Props> = ({ showNewForm, onFormClosed }) => {
   const [selectedPkg, setSelectedPkg] = useState<{ package_code: string; package_name: string; package_rate: number } | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // ICD-10 / diagnosis driven package matching
+  const [diagnosisQuery, setDiagnosisQuery] = useState("");
+  const [matchedPkgs, setMatchedPkgs] = useState<{ id: string; package_code: string; package_name: string; package_rate: number; specialty: string }[]>([]);
+  const [pkgSearch, setPkgSearch] = useState("");
+  const [pkgSearchResults, setPkgSearchResults] = useState<{ id: string; package_code: string; package_name: string; package_rate: number; specialty: string }[]>([]);
+
+  // Eligibility verification
+  const [pmjayCard, setPmjayCard] = useState("");
+  const [eligibilityLoading, setEligibilityLoading] = useState(false);
+  const [eligibility, setEligibility] = useState<{ eligible: boolean; mode?: string; beneficiary?: any; message?: string; error?: string } | null>(null);
+
   useEffect(() => { loadData(); loadFormData(); }, []);
   useEffect(() => { if (showNewForm) { setShowForm(true); setSelected(null); } }, [showNewForm]);
 
   const loadFormData = async () => {
     const [sRes, pRes] = await Promise.all([
       supabase.from("govt_schemes").select("id, scheme_name").eq("is_active", true),
-      supabase.from("pmjay_packages").select("id, package_code, package_name, package_rate").eq("is_active", true).order("package_name"),
+      supabase.from("pmjay_packages").select("id, package_code, package_name, rate_inr").eq("is_active", true).order("package_name"),
     ]);
     setFormSchemes((sRes.data || []) as any[]);
-    setFormPackages((pRes.data || []) as any[]);
+    setFormPackages(((pRes.data || []) as any[]).map((p: any) => ({
+      id: p.id, package_code: p.package_code, package_name: p.package_name, package_rate: Number(p.rate_inr) || 0,
+    })));
   };
 
   const loadData = async () => {
