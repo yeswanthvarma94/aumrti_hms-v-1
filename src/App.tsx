@@ -152,9 +152,9 @@ const App = () => (
 
           {/* App shell routes */}
           <Route element={<AuthGuard><AppShell /></AuthGuard>}>
-            <Route path="/dashboard" element={<SM name="Dashboard"><Dashboard /></SM>} />
-            <Route path="/modules" element={<SM name="Modules"><ModulesPage /></SM>} />
-            <Route path="/patients" element={<SM name="Patients"><PatientsPage /></SM>} />
+            <Route path="/dashboard" element={<RG path="/dashboard"><SM name="Dashboard"><Dashboard /></SM></RG>} />
+            <Route path="/modules" element={<RG path="/modules"><SM name="Modules"><ModulesPage /></SM></RG>} />
+            <Route path="/patients" element={<RG path="/patients"><SM name="Patients"><PatientsPage /></SM></RG>} />
             <Route path="/opd" element={<RG path="/opd"><SM name="OPD"><OPDPage /></SM></RG>} />
             <Route path="/ipd" element={<RG path="/ipd"><SM name="IPD"><IPDPage /></SM></RG>} />
             <Route path="/emergency" element={<RG path="/emergency"><SM name="Emergency"><EmergencyPage /></SM></RG>} />

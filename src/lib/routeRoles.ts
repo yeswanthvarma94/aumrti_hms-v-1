@@ -13,3 +13,13 @@ ROUTE_ROLES['/accounts'] = ['accountant', 'cfo', 'super_admin', 'hospital_admin'
 ROUTE_ROLES['/hr'] = ['hr_manager', 'super_admin', 'hospital_admin'];
 ROUTE_ROLES['/admin/go-live'] = ['super_admin', 'hospital_admin'];
 ROUTE_ROLES['/admin/data-migration'] = ['super_admin', 'hospital_admin'];
+
+// Core authenticated routes
+ROUTE_ROLES['/dashboard'] = [
+  'doctor', 'nurse', 'receptionist', 'pharmacist', 'lab_technician',
+  'radiologist', 'billing_staff', 'accountant', 'hr_manager', 'cfo',
+  'super_admin', 'hospital_admin',
+];
+ROUTE_ROLES['/patients'] = ['doctor', 'nurse', 'receptionist', 'super_admin', 'hospital_admin'];
+ROUTE_ROLES['/modules'] = ['super_admin', 'hospital_admin'];
+

@@ -2,10 +2,15 @@ import React, { useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
+import { useHospitalId } from "@/hooks/useHospitalId";
 
 const AuthGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [status, setStatus] = useState<"loading" | "authenticated" | "unauthenticated">("loading");
   const location = useLocation();
+
+  // Pre-fetch user's hospital_id and role so downstream guards (RoleGuard) can use it
+  // without each one re-querying the users table.
+  useHospitalId();
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -35,3 +40,4 @@ const AuthGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 };
 
 export default AuthGuard;
+
