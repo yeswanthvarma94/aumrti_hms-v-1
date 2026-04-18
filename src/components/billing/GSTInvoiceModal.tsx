@@ -4,10 +4,10 @@ import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Printer, MessageSquare, Mail, Info, Lock } from "lucide-react";
+import { Printer, MessageSquare, Mail, Info, Lock, Sparkles, Loader2 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { printDocument, printHeader } from "@/lib/printUtils";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+
 import type { BillRecord } from "@/pages/billing/BillingPage";
 import type { LineItem } from "@/components/billing/BillEditor";
 
@@ -26,9 +26,38 @@ const GSTInvoiceModal: React.FC<Props> = ({
 }) => {
   const { toast } = useToast();
   const [manualIrn, setManualIrn] = useState(initialIrn || "");
+  const [generatedIrn, setGeneratedIrn] = useState<string>("");
+  const [signedQr, setSignedQr] = useState<string>("");
+  const [irnMode, setIrnMode] = useState<"live" | "sandbox" | "manual" | "">(
+    (bill as any).irn_mode || "",
+  );
   const [lockingIrn, setLockingIrn] = useState(false);
-  const irn = initialIrn || manualIrn;
+  const [generatingIrn, setGeneratingIrn] = useState(false);
+  const irn = initialIrn || generatedIrn || manualIrn;
   const isLocked = bill.bill_status === "irn_locked";
+
+  const handleGenerateIrn = async () => {
+    setGeneratingIrn(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("gst-irn-generate", {
+        body: { bill_id: bill.id, hospital_id: (bill as any).hospital_id },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const result = data as { irn: string; signed_qr?: string; mode: "live" | "sandbox"; message?: string };
+      setGeneratedIrn(result.irn);
+      setSignedQr(result.signed_qr || "");
+      setIrnMode(result.mode);
+      toast({
+        title: result.mode === "live" ? "Live IRN generated" : "Sandbox IRN generated",
+        description: result.message || `IRN: ${result.irn}`,
+      });
+    } catch (e: any) {
+      toast({ title: "IRN generation failed", description: e?.message || "Try again", variant: "destructive" });
+    } finally {
+      setGeneratingIrn(false);
+    }
+  };
 
   const handleLockIrn = async () => {
     if (!manualIrn.trim()) return;
@@ -38,7 +67,9 @@ const GSTInvoiceModal: React.FC<Props> = ({
         irn: manualIrn.trim(),
         irn_generated_at: new Date().toISOString(),
         bill_status: "irn_locked",
+        irn_mode: "manual",
       }).eq("id", bill.id);
+      setIrnMode("manual");
       toast({ title: "IRN saved & bill locked", description: "This bill can no longer be edited." });
     } catch {
       toast({ title: "Failed to lock bill", variant: "destructive" });
@@ -96,51 +127,79 @@ const GSTInvoiceModal: React.FC<Props> = ({
           </div>
 
           {/* IRN Status Indicator */}
-          <div className="bg-amber-50 dark:bg-amber-950/30 px-4 py-2.5 border-b border-border">
-            <div className="flex items-center gap-2">
+          <div className="bg-muted/30 px-4 py-2.5 border-b border-border">
+            <div className="flex items-center gap-2 flex-wrap">
               {isLocked ? (
-                <Lock size={14} className="text-green-600 dark:text-green-400" />
+                <Lock size={14} className="text-primary" />
               ) : (
-                <Info size={14} className="text-amber-600 dark:text-amber-400" />
+                <Info size={14} className="text-muted-foreground" />
               )}
               <span className="text-[11px] font-semibold text-foreground">
-                IRN Generation: {isLocked ? "Locked" : "Manual Mode"}
+                IRN Generation: {isLocked ? "Locked" : "Pending"}
               </span>
-              {!isLocked && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Info size={12} className="text-muted-foreground cursor-help" />
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-[260px] text-xs">
-                    Automated IRN generation via GST portal API will be available in a future update.
-                    Currently, generate IRN manually on the GST portal and enter the IRN number here.
-                  </TooltipContent>
-                </Tooltip>
+              {irnMode === "live" && (
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/30">
+                  Live IRN
+                </span>
+              )}
+              {irnMode === "sandbox" && (
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground border border-border">
+                  Sandbox IRN
+                </span>
+              )}
+              {irnMode === "manual" && (
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground border border-border">
+                  Manual Entry
+                </span>
               )}
             </div>
             {!isLocked && !initialIrn && (
-              <div className="flex gap-2 mt-2">
-                <Input
-                  value={manualIrn}
-                  onChange={(e) => setManualIrn(e.target.value)}
-                  placeholder="Paste IRN from GST portal..."
-                  className="h-7 text-xs font-mono flex-1"
-                />
-                <Button size="sm" className="h-7 text-xs" disabled={!manualIrn.trim() || lockingIrn} onClick={handleLockIrn}>
-                  {lockingIrn ? "Locking..." : "Lock Bill"}
+              <div className="mt-2 space-y-2">
+                <Button
+                  size="sm"
+                  className="h-7 text-xs gap-1 w-full"
+                  disabled={generatingIrn}
+                  onClick={handleGenerateIrn}
+                >
+                  {generatingIrn ? (
+                    <>
+                      <Loader2 size={12} className="animate-spin" /> Generating IRN...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles size={12} /> Generate IRN via NIC IRP
+                    </>
+                  )}
                 </Button>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-muted-foreground whitespace-nowrap">Or enter manually:</span>
+                  <Input
+                    value={manualIrn}
+                    onChange={(e) => setManualIrn(e.target.value)}
+                    placeholder="Paste IRN from GST portal..."
+                    className="h-7 text-xs font-mono flex-1"
+                  />
+                  <Button size="sm" variant="outline" className="h-7 text-xs" disabled={!manualIrn.trim() || lockingIrn} onClick={handleLockIrn}>
+                    {lockingIrn ? "Locking..." : "Lock"}
+                  </Button>
+                </div>
               </div>
             )}
           </div>
 
           {/* IRN display */}
           {irn && (
-          <div className="bg-muted/50 px-4 py-2 border-b border-border flex items-center justify-between">
-            <div>
+          <div className="bg-muted/50 px-4 py-2 border-b border-border flex items-center justify-between gap-3">
+            <div className="flex-1 min-w-0">
               <p className="text-[10px] font-bold uppercase text-muted-foreground">IRN</p>
               <p className="font-mono text-xs font-bold text-foreground break-all">{irn}</p>
             </div>
-            <div className="text-right">
+            {signedQr && (
+              <div className="flex-shrink-0">
+                <QRCodeSVG value={signedQr} size={64} level="M" />
+              </div>
+            )}
+            <div className="text-right flex-shrink-0">
               <p className="text-[10px] text-muted-foreground">Invoice No: {bill.bill_number}</p>
               <p className="text-[10px] text-muted-foreground">Date: {bill.bill_date}</p>
             </div>
