@@ -1,63 +1,87 @@
 
-## Diagnosis (confirmed against your DB)
 
-Looking at your two screenshots side-by-side:
+## Root Cause
 
-- **Screenshot 1 (Billing):** the bill you opened — `BILL-20260418-0001` — is Yeswanth's **OPD bill** (`bill_type='opd'`, `admission_id=NULL`, status=Paid/Settled). It will never auto-pull IPD charges because it isn't an IPD bill. The other bill `BILL-20260418-0002` (₹1,814.4) belongs to **Siva**, not Yeswanth.
-- **Screenshot 2 (IPD):** Yeswanth's Day-11 admission `IPD-20260407-6350` is real and active, but **no IPD bill row exists for it in the `bills` table.** Auto-pull cannot run on a bill that doesn't exist yet.
+`bill_line_items.source_record_id` is a **`uuid`** column, but `src/lib/ipdBilling.ts` is inserting prefixed strings into it:
 
-So the IPD billing isn't "not calculating" — there is literally no IPD bill object for Yeswanth's stay. The system today only creates one when you click **"Clear Billing →"** on the Discharge stepper (which navigates to `/billing?action=new&admission_id=X&type=ipd`). Since you haven't clicked that for Yeswanth yet, no bill, no charges.
+| Block | Value being inserted | Valid UUID? |
+|---|---|---|
+| Pharmacy | `dispense-item:<uuid>` or `dispense:<id>:<drug>:<qty>` | No |
+| Doctor visit | `visit:<doctorId>:<date>` | No |
+| Room | `room:<admissionId>` | No |
+| Sibling bill lines | `bill-line:<id>` | No |
+| Sibling bill summaries | `bill-summary:<id>` | No |
 
-This is a UX gap: nothing in the IPD workspace shows the admin "this admission has no live bill yet" or lets them open a running bill mid-stay. The discharge stepper is the only entry point, which is wrong for an 11-day stay where you want to see the running tab today.
+That's why **Recalculate IPD Charges** fails with `invalid input syntax for type uuid: "dispense-item:..."`. The lab/radiology/nursing blocks happen to pass real UUIDs (`li.id`, `ro.id`, `np.id`), so they don't trigger the error — but as soon as a pharmacy item is in the mix, the whole insert is rejected.
 
-## Fix Plan
+The dedupe logic was relying on these composite string keys, but the database can't store them.
 
-### Change 1 — "Open Live IPD Bill" available any time during the stay
-File: `src/components/ipd/tabs/IPDOverviewTab.tsx`
+## Fix
 
-- Add a new always-visible button in the Overview header area (next to the discharge stepper): **"View / Update IPD Bill"**.
-- Behaviour: navigate to `/billing?action=new&admission_id=X&type=ipd` exactly like the existing Clear Billing button. The existing `createDischargeBill` flow already handles both "create new" and "open existing + re-pull", so this single route works for both Day-1 and Day-11.
-- Rename the stepper's existing button from "Clear Billing →" to "Finalise Billing →" so it's distinct from the live-bill action.
+Two clean options. Pick **Option A** (recommended) — keep the column as `uuid` (type-safe, no migration risk to existing rows) and change the code to:
 
-### Change 2 — Auto-create a draft IPD bill on admission
-File: `src/components/ipd/AdmitPatientModal.tsx` (and any other place admissions are created)
+1. Always pass a real UUID (or NULL) to `source_record_id`.
+2. Move the composite "logical key" into a new **text** column `source_dedupe_key` used purely for deduplication.
 
-- Right after the `admissions` insert succeeds, automatically insert a matching `bills` row:
-  - `bill_type='ipd'`, `bill_status='draft'`, `payment_status='unpaid'`
-  - `admission_id`, `patient_id`, `hospital_id` populated
-  - `bill_number` from `generateBillNumber(hospitalId, 'BILL')`
-- This guarantees every admission has a running tab from Day 1, not just at discharge.
+### Step 1 — Migration: add `source_dedupe_key` to `bill_line_items`
 
-### Change 3 — Make the billing queue surface admissions without bills
-File: `src/pages/billing/BillingPage.tsx`
+```sql
+ALTER TABLE public.bill_line_items
+  ADD COLUMN IF NOT EXISTS source_dedupe_key text;
 
-- In `fetchBills`, after loading bills, also query `admissions` where `status='active'` and there is no matching IPD bill, and render them as virtual "Pending IPD" rows in the bill list with a "Create Bill" button that calls the same `createDischargeBill(admissionId)` path.
-- This way the billing team sees Yeswanth (Day 11, no bill) directly in their queue.
+CREATE INDEX IF NOT EXISTS idx_bill_line_items_dedupe
+  ON public.bill_line_items (bill_id, source_dedupe_key);
+```
 
-### Change 4 — Auto-pull on every open of a draft IPD bill (already half-done)
-File: `src/components/billing/BillEditor.tsx`
+No data loss; existing rows simply have `NULL` here.
 
-The auto-pull `useEffect` (lines 128-147) already exists and looks correct. We will:
-- Verify it actually fires by adding a one-shot toast on mount when `bill_type==='ipd'` and `admission_id` is set, confirming the pull ran (even if 0 inserted).
-- Also re-run the pull whenever the user switches back to the Line Items tab if the bill is still `draft` and IPD — handles the "I added a new lab after opening the bill" case without needing the manual button.
+### Step 2 — Update `src/lib/ipdBilling.ts`
 
-### Change 5 — Cosmetic: clearer empty state on an IPD draft with 0 items
-File: `src/components/billing/tabs/LineItemsTab.tsx`
+For every block, split into two fields:
 
-- When `bill.bill_type==='ipd'`, `bill.admission_id` set, and `lineItems.length===0`, show a prominent "Recalculate IPD Charges" CTA in the empty area (instead of just the "+ Add Service" button) explaining what it pulls.
+| Block | `source_record_id` (uuid or null) | `source_dedupe_key` (text) |
+|---|---|---|
+| Lab | `li.id` | `lab:${li.id}` |
+| Radiology | `ro.id` | `radiology:${ro.id}` |
+| Pharmacy (item-level) | `item.id` (real uuid) | `pharmacy:dispense-item:${item.id}` |
+| Pharmacy (header fallback) | `pd.id` | `pharmacy:dispense:${pd.id}:${drug}:${qty}` |
+| Nursing | `np.id` | `nursing:${np.id}` |
+| Doctor visit | `doctorId` (real uuid) | `ipd_visit:${doctorId}:${date}` |
+| Room | `admissionId` | `ipd:room:${admissionId}` |
+| Sibling bill line | `item.id` | `bill-line:${item.id}` |
+| Sibling bill summary | `rb.id` | `bill-summary:${rb.id}` |
+
+Update `toKey()` and the `existingKeys` set to read `source_dedupe_key` instead of building from `source_record_id`. Update the room-charge delete block to filter on `source_dedupe_key = 'ipd:room:<admissionId>'` instead of source_record_id.
+
+Update the existing-items SELECT to fetch `source_dedupe_key` too.
+
+### Step 3 — Backfill existing rows (optional, safe)
+
+```sql
+UPDATE public.bill_line_items
+SET source_dedupe_key = source_module || ':' || source_record_id::text
+WHERE source_dedupe_key IS NULL
+  AND source_record_id IS NOT NULL
+  AND source_module IS NOT NULL;
+```
+
+This prevents accidental duplicates on the next re-pull for bills that already have items.
+
+### Step 4 — Verify
+
+After the fix:
+- Open Siva's IPD bill → click **Recalculate IPD Charges** → no error, totals refresh.
+- Re-click → no duplicates added (dedupe via `source_dedupe_key` works).
+- Room charge updates day-count correctly when re-pulled.
 
 ## Files Touched
 
 | File | Change |
-|------|--------|
-| `src/components/ipd/tabs/IPDOverviewTab.tsx` | Add "View / Update IPD Bill" button; rename stepper button |
-| `src/components/ipd/AdmitPatientModal.tsx` | Auto-create draft IPD bill on admission |
-| `src/pages/billing/BillingPage.tsx` | Surface admissions without bills in the queue |
-| `src/components/billing/BillEditor.tsx` | Confirm pull ran; re-pull on tab switch for IPD drafts |
-| `src/components/billing/tabs/LineItemsTab.tsx` | Empty-state CTA for IPD drafts with 0 items |
+|---|---|
+| `supabase/migrations/<new>.sql` | Add `source_dedupe_key text` + index + backfill |
+| `src/lib/ipdBilling.ts` | Use real UUIDs in `source_record_id`; move composite keys to `source_dedupe_key`; update dedupe + room-delete logic |
 
-## Expected Result
+## Why not just change the column to text?
 
-- For **existing** admissions like Yeswanth's Day-11 stay: open IPD → click new "View / Update IPD Bill" → bill is created on the fly with 11 days room + every doctor visit + every lab/rad/pharmacy item already pulled in.
-- For **new** admissions going forward: a draft IPD bill exists from the moment the patient is admitted, visible in the billing queue, auto-updating as charges accrue.
-- The billing team sees pending admissions directly in their queue, not just bills that already exist.
+That would also work, but `source_record_id` is referenced across many modules (auto-pull, leakage scanner, audit trails) as a UUID FK-style pointer. Keeping it `uuid` preserves type safety and the ability to JOIN it back to source tables. Adding a sibling text key is the smaller, safer change.
+
