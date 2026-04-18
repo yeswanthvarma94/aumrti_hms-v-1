@@ -38,6 +38,12 @@ const PatientRegistrationModal: React.FC<Props> = ({ onClose, onSuccess, editPat
   const [hospitalName, setHospitalName] = useState("Hospital");
   const [hospitalIdState, setHospitalIdState] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [abhaVerified, setAbhaVerified] = useState<boolean>(false);
+  const [abhaVerifying, setAbhaVerifying] = useState(false);
+  const [abhaStatus, setAbhaStatus] = useState<{
+    state: "idle" | "verified" | "invalid" | "sandbox";
+    message?: string;
+  }>({ state: "idle" });
   const [form, setForm] = useState({
     full_name: editPatient?.full_name || "",
     phone: editPatient?.phone || "",
