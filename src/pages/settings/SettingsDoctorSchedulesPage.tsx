@@ -40,14 +40,14 @@ const SettingsDoctorSchedulesPage: React.FC = () => {
       try {
         const { data, error } = await supabase
           .from("users")
-          .select("id, full_name, specialization, role")
+          .select("id, full_name, role, departments(name)")
           .eq("hospital_id", hospitalId)
           .eq("role", "doctor")
           .order("full_name");
         if (error) throw error;
 
         // Check which have schedules
-        const ids = (data || []).map((d) => d.id);
+        const ids = (data || []).map((d: any) => d.id);
         let scheduleSet = new Set<string>();
         if (ids.length) {
           const { data: scheds } = await supabase
@@ -57,7 +57,13 @@ const SettingsDoctorSchedulesPage: React.FC = () => {
             .in("doctor_id", ids);
           scheduleSet = new Set((scheds || []).map((s: any) => s.doctor_id));
         }
-        setDoctors((data || []).map((d: any) => ({ ...d, hasSchedule: scheduleSet.has(d.id) })));
+        setDoctors((data || []).map((d: any) => ({
+          id: d.id,
+          full_name: d.full_name,
+          role: d.role,
+          department_name: d.departments?.name || null,
+          hasSchedule: scheduleSet.has(d.id),
+        })));
       } catch (e: any) {
         console.error("Failed to load doctors:", e);
         toast({ title: "Failed to load doctors", description: e.message, variant: "destructive" });
