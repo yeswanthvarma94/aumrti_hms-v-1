@@ -324,6 +324,19 @@ const PatientDetailDrawer: React.FC<Props> = ({ patient, onClose, onUpdated, onD
           ) : (
             /* ====== VIEW MODE ====== */
             <>
+              <div className="space-y-2">
+                <Button size="sm" variant="outline" className="w-full" onClick={handleExportFHIR} disabled={exportingFhir}>
+                  {exportingFhir ? <Loader2 size={14} className="animate-spin mr-1" /> : <FileJson size={14} className="mr-1" />}
+                  Export FHIR R4
+                </Button>
+                {fhirBannerVisible && (
+                  <div className="flex items-start gap-2 rounded-md border border-primary/30 bg-primary/5 p-2 text-[11px] text-foreground">
+                    <Info size={12} className="text-primary mt-0.5 flex-shrink-0" />
+                    <span>FHIR R4 Bundle generated — contains Patient, Encounter, and Condition resources for ABDM Health Record sharing.</span>
+                  </div>
+                )}
+              </div>
+
               <Section title="Contact">
                 {patient.phone && (
                   <Row icon={<Phone size={14} />}>
