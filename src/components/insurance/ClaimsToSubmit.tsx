@@ -25,6 +25,7 @@ const ClaimsToSubmit: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState<string | null>(null);
   const [selectedForReview, setSelectedForReview] = useState<ClaimRow | null>(null);
+  const [bundleFor, setBundleFor] = useState<ClaimRow | null>(null);
   const [hospitalId, setHospitalId] = useState<string>("");
   const { toast } = useToast();
 
