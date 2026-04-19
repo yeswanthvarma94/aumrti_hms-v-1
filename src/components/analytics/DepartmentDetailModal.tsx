@@ -73,9 +73,9 @@ function useDeptDrillDown(deptId: string | null) {
           .eq("hospital_id", hospitalId).in("doctor_id", docIds)
           .not("diagnosis", "is", null)
           .gte("created_at", thisMonthStart).lte("created_at", thisMonthEnd + "T23:59:59").limit(2000),
-        supabase.from("opd_tokens").select("doctor_id, called_at, completion_time")
+        supabase.from("opd_tokens").select("doctor_id, consultation_start_at, consultation_end_at")
           .eq("hospital_id", hospitalId).in("doctor_id", docIds)
-          .not("called_at", "is", null).not("completion_time", "is", null)
+          .not("consultation_start_at", "is", null).not("consultation_end_at", "is", null)
           .gte("visit_date", thisMonthStart).lte("visit_date", thisMonthEnd).limit(2000),
         supabase.from("admissions").select("id, admitting_doctor_id, ward_id, status")
           .eq("hospital_id", hospitalId).in("admitting_doctor_id", docIds).limit(2000),
@@ -120,11 +120,11 @@ function useDeptDrillDown(deptId: string | null) {
         .map(([id, count]) => ({ name: docMap[id] || "Unknown", count }));
 
       // Avg consultation duration
-      const tokens = (tokensRes.data || []).filter(t => t.called_at && t.completion_time);
+      const tokens = (tokensRes.data || []).filter((t: any) => t.consultation_start_at && t.consultation_end_at);
       let avgConsultMin: number | null = null;
       if (tokens.length > 0) {
-        const totalMs = tokens.reduce((s, t) => {
-          return s + (new Date(t.completion_time).getTime() - new Date(t.called_at).getTime());
+        const totalMs = tokens.reduce((s: number, t: any) => {
+          return s + (new Date(t.consultation_end_at).getTime() - new Date(t.consultation_start_at).getTime());
         }, 0);
         avgConsultMin = Math.round(totalMs / tokens.length / 60000);
       }
