@@ -189,6 +189,22 @@ const ClaimsToSubmit: React.FC = () => {
           />
         </div>
       )}
+
+      {bundleFor && bundleFor.admission_id && hospitalId && (
+        <ClaimBundleGenerator
+          open={!!bundleFor}
+          onClose={() => setBundleFor(null)}
+          admissionId={bundleFor.admission_id}
+          billId={bundleFor.bill_id}
+          patientId={bundleFor.patient_id}
+          patientName={bundleFor.patient_name}
+          billNumber={bundleFor.bill_number}
+          totalAmount={bundleFor.total_amount}
+          tpaName={bundleFor.tpa_name}
+          hospitalId={hospitalId}
+          onSubmitted={() => { setBundleFor(null); loadData(); }}
+        />
+      )}
     </div>
   );
 };
