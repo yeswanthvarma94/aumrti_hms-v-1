@@ -400,9 +400,9 @@ const BookingModal: React.FC<{
         token_prefix: "APT",
         visit_date: date,
         status: "waiting",
-        appointment_id: appointmentId,
       } as any);
       if (terr) console.warn("Token insert failed:", terr.message);
+      void appointmentId;
 
       // WhatsApp confirmation
       try {
