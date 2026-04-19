@@ -8837,6 +8837,59 @@ export type Database = {
           },
         ]
       }
+      mar_records: {
+        Row: {
+          administered_at: string | null
+          administered_by: string | null
+          admission_id: string
+          dose: string | null
+          drug_name: string
+          hospital_id: string
+          id: string
+          notes: string | null
+          patient_id: string
+          route: string | null
+          scheduled_time: string | null
+          status: string | null
+        }
+        Insert: {
+          administered_at?: string | null
+          administered_by?: string | null
+          admission_id: string
+          dose?: string | null
+          drug_name: string
+          hospital_id: string
+          id?: string
+          notes?: string | null
+          patient_id: string
+          route?: string | null
+          scheduled_time?: string | null
+          status?: string | null
+        }
+        Update: {
+          administered_at?: string | null
+          administered_by?: string | null
+          admission_id?: string
+          dose?: string | null
+          drug_name?: string
+          hospital_id?: string
+          id?: string
+          notes?: string | null
+          patient_id?: string
+          route?: string | null
+          scheduled_time?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mar_records_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       marketing_campaigns: {
         Row: {
           budget_inr: number | null
@@ -9793,6 +9846,73 @@ export type Database = {
           },
           {
             foreignKeyName: "no_show_predictions_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nursing_care_plans: {
+        Row: {
+          admission_id: string
+          created_at: string | null
+          created_by: string | null
+          evaluation: string | null
+          goal: string
+          hospital_id: string
+          id: string
+          interventions: Json | null
+          nursing_diagnosis: string
+          patient_id: string
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          admission_id: string
+          created_at?: string | null
+          created_by?: string | null
+          evaluation?: string | null
+          goal: string
+          hospital_id: string
+          id?: string
+          interventions?: Json | null
+          nursing_diagnosis: string
+          patient_id: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          admission_id?: string
+          created_at?: string | null
+          created_by?: string | null
+          evaluation?: string | null
+          goal?: string
+          hospital_id?: string
+          id?: string
+          interventions?: Json | null
+          nursing_diagnosis?: string
+          patient_id?: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nursing_care_plans_admission_id_fkey"
+            columns: ["admission_id"]
+            isOneToOne: false
+            referencedRelation: "admissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nursing_care_plans_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nursing_care_plans_patient_id_fkey"
             columns: ["patient_id"]
             isOneToOne: false
             referencedRelation: "patients"
