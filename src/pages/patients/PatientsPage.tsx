@@ -191,7 +191,7 @@ const PatientsPage: React.FC = () => {
               <TableHead className="w-[120px]">Phone</TableHead>
               <TableHead className="w-[90px]">Blood Group</TableHead>
               <TableHead className="w-[120px]">Registered</TableHead>
-              <TableHead className="w-[60px]">Actions</TableHead>
+              <TableHead className="w-[100px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -220,9 +220,14 @@ const PatientsPage: React.FC = () => {
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">{new Date(p.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</TableCell>
                   <TableCell>
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); setSelectedPatient(p); }}>
-                      <Eye size={14} />
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="icon" className="h-7 w-7" title="View Details" onClick={(e) => { e.stopPropagation(); setSelectedPatient(p); }}>
+                        <Eye size={14} />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" title="View Medical Timeline" onClick={(e) => { e.stopPropagation(); setTimelinePatient(p); }}>
+                        <Activity size={14} className="text-primary" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
@@ -245,6 +250,12 @@ const PatientsPage: React.FC = () => {
           onClose={() => setSelectedPatient(null)}
           onUpdated={() => { setSelectedPatient(null); fetchPatients(); }}
           onDeleted={() => { setSelectedPatient(null); fetchPatients(); }}
+        />
+      )}
+      {timelinePatient && (
+        <PatientTimelineDrawer
+          patient={timelinePatient}
+          onClose={() => setTimelinePatient(null)}
         />
       )}
     </div>
