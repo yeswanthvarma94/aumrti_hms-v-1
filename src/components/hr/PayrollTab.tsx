@@ -280,10 +280,20 @@ const PayrollTab: React.FC = () => {
   };
 
   const viewRun = async (runId: string) => {
-    const { data } = await (supabase as any)
+    setActiveRunId(runId);
+    setShowViewDialog(true);
+    setViewLoading(true);
+    setViewItems([]);
+    const { data, error } = await (supabase as any)
       .from("payroll_items")
       .select("*, users!payroll_items_user_id_fkey(full_name), staff_profiles!payroll_items_user_id_fkey(employee_id, designation, departments(name))")
       .eq("payroll_run_id", runId);
+
+    if (error) {
+      toast({ title: "Failed to load payroll details", description: error.message, variant: "destructive" });
+      setViewLoading(false);
+      return;
+    }
 
     setViewItems((data || []).map((d: any) => ({
       ...d,
@@ -292,7 +302,94 @@ const PayrollTab: React.FC = () => {
       _designation: d.staff_profiles?.designation || null,
       _department: d.staff_profiles?.departments?.name || null,
     })));
-    setActiveRunId(runId);
+    setViewLoading(false);
+  };
+
+  const downloadPayrollPDF = async (runId: string) => {
+    const run = runs.find((r) => r.id === runId);
+    if (!run) return;
+
+    const { data: items } = await (supabase as any)
+      .from("payroll_items")
+      .select("*, users!payroll_items_user_id_fkey(full_name), staff_profiles!payroll_items_user_id_fkey(employee_id, departments(name))")
+      .eq("payroll_run_id", runId);
+
+    if (!items || items.length === 0) {
+      toast({ title: "No payroll details to export", variant: "destructive" });
+      return;
+    }
+
+    let hospitalName = "Hospital";
+    let hospitalAddress = "";
+    if (hospitalId) {
+      const { data: h } = await (supabase as any).from("hospitals").select("name, address").eq("id", hospitalId).maybeSingle();
+      if (h) { hospitalName = h.name || "Hospital"; hospitalAddress = h.address || ""; }
+    }
+
+    const totalGross = items.reduce((s: number, i: any) => s + Number(i.gross_salary || 0), 0);
+    const totalBasic = items.reduce((s: number, i: any) => s + Number(i.basic || 0), 0);
+    const totalPF = items.reduce((s: number, i: any) => s + Number(i.pf_employee || 0), 0);
+    const totalESIC = items.reduce((s: number, i: any) => s + Number(i.esic_employee || 0), 0);
+    const totalDed = items.reduce((s: number, i: any) => s + Number(i.total_deductions || 0), 0);
+    const totalNet = items.reduce((s: number, i: any) => s + Number(i.net_salary || 0), 0);
+
+    const esc = (s: any) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+    const rows = items.map((it: any, idx: number) => `
+      <tr>
+        <td>${idx + 1}</td>
+        <td>${esc(it.staff_profiles?.employee_id || "—")}</td>
+        <td>${esc(it.users?.full_name || "Unknown")}</td>
+        <td>${esc(it.staff_profiles?.departments?.name || "—")}</td>
+        <td style="text-align:center">${it.present_days || 0}/${it.absent_days || 0}/${it.leave_days || 0}</td>
+        <td class="amount" style="text-align:right">${printAmount(Number(it.basic || 0))}</td>
+        <td class="amount" style="text-align:right">${printAmount(Number(it.gross_salary || 0))}</td>
+        <td class="amount" style="text-align:right">${printAmount(Number(it.pf_employee || 0))}</td>
+        <td class="amount" style="text-align:right">${printAmount(Number(it.esic_employee || 0))}</td>
+        <td class="amount" style="text-align:right">${printAmount(Number(it.total_deductions || 0))}</td>
+        <td class="amount" style="text-align:right;font-weight:700">${printAmount(Number(it.net_salary || 0))}</td>
+      </tr>`).join("");
+
+    const body = `
+      ${printHeader(hospitalName, "Payroll Register", `<p style="font-size:12px;color:#475569;margin-top:4px;">${esc(hospitalAddress)}</p>`)}
+      <div style="display:flex;justify-content:space-between;margin-bottom:12px;font-size:12px;flex-wrap:wrap;gap:8px;">
+        <div><strong>Pay Month:</strong> ${esc(run.run_month)}</div>
+        <div><strong>Run Date:</strong> ${new Date(run.run_date || Date.now()).toLocaleDateString("en-IN")}</div>
+        <div><strong>Status:</strong> <span class="badge">${esc(run.status)}</span></div>
+        <div><strong>Total Staff:</strong> ${run.staff_count}</div>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th><th>Emp ID</th><th>Name</th><th>Dept</th>
+            <th style="text-align:center">P/A/L</th>
+            <th style="text-align:right">Basic</th>
+            <th style="text-align:right">Gross</th>
+            <th style="text-align:right">PF</th>
+            <th style="text-align:right">ESIC</th>
+            <th style="text-align:right">Deductions</th>
+            <th style="text-align:right">Net Pay</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows}
+          <tr style="background:#f1f5f9;font-weight:bold;border-top:2px solid #1A2F5A;">
+            <td colspan="5" style="text-align:right">TOTAL</td>
+            <td class="amount" style="text-align:right">${printAmount(totalBasic)}</td>
+            <td class="amount" style="text-align:right">${printAmount(totalGross)}</td>
+            <td class="amount" style="text-align:right">${printAmount(totalPF)}</td>
+            <td class="amount" style="text-align:right">${printAmount(totalESIC)}</td>
+            <td class="amount" style="text-align:right">${printAmount(totalDed)}</td>
+            <td class="amount" style="text-align:right">${printAmount(totalNet)}</td>
+          </tr>
+        </tbody>
+      </table>
+      <div style="margin-top:20px;font-size:11px;color:#64748b;">
+        <p>To save as PDF: in the print dialog, set destination to <strong>"Save as PDF"</strong>.</p>
+      </div>
+    `;
+
+    printDocument(`Payroll Register — ${run.run_month}`, body, { width: 1100, height: 800 });
   };
 
   const downloadPayslip = async (item: any) => {
