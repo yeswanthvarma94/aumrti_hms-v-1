@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useHospitalId } from "@/hooks/useHospitalId";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { autoPostJournalEntry } from "@/lib/accounting";
 import { printPayslip } from "@/lib/payslipPrint";
-import { DollarSign, Download, CheckSquare, Loader2, FileText } from "lucide-react";
+import { DollarSign, Download, CheckSquare, Loader2, FileText, AlertTriangle } from "lucide-react";
 
 /** Andhra Pradesh PT slab (default for unspecified states) */
 function professionalTax(gross: number): number {
