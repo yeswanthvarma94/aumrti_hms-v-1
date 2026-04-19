@@ -600,8 +600,13 @@ const PayrollTab: React.FC = () => {
                       <Badge variant={statusColor(r.status)}>{r.status}</Badge>
                     </TableCell>
                     <TableCell>
-                      <div className="flex gap-2">
-                        <Button size="sm" variant="outline" onClick={() => viewRun(r.id)}>View</Button>
+                      <div className="flex gap-2 flex-wrap">
+                        <Button size="sm" variant="outline" onClick={() => viewRun(r.id)} title="View payroll details">
+                          <Eye className="h-3 w-3 mr-1" /> View
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => downloadPayrollPDF(r.id)} title="Download payroll register as PDF">
+                          <Download className="h-3 w-3 mr-1" /> PDF
+                        </Button>
                         {r.status === "processed" && (
                           <Button size="sm" variant="outline" onClick={() => approveRun(r.id)}>
                             <CheckSquare className="h-3 w-3 mr-1" /> Approve
