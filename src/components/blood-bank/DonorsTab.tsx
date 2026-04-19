@@ -12,7 +12,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { formatBloodGroup } from "@/lib/bloodCompatibility";
 import { format } from "date-fns";
-import { Search, MessageCircle, Send } from "lucide-react";
+import { Search, MessageCircle, Send, Printer, AlertTriangle } from "lucide-react";
+import { buildQRString, printBloodBagLabel } from "@/lib/bloodBagLabel";
 
 interface Props { showModal: boolean; onCloseModal: () => void }
 
@@ -28,6 +29,7 @@ const COMPONENT_SHELF_LIFE: Record<string, number> = {
 const DonorsTab: React.FC<Props> = ({ showModal, onCloseModal }) => {
   const { toast } = useToast();
   const [donors, setDonors] = useState<any[]>([]);
+  const [recentUnits, setRecentUnits] = useState<any[]>([]);
   const [search, setSearch] = useState("");
   const [form, setForm] = useState({
     full_name: "", dob: "", gender: "male", blood_group: "O", rh_factor: "positive",
@@ -39,13 +41,29 @@ const DonorsTab: React.FC<Props> = ({ showModal, onCloseModal }) => {
   const [deferralMsg, setDeferralMsg] = useState("");
   const [step, setStep] = useState<"personal" | "screening" | "tti">("personal");
   const [showCampaign, setShowCampaign] = useState(false);
+  const [hospitalName, setHospitalName] = useState("Hospital");
 
   const fetchDonors = async () => {
     const { data } = await supabase.from("donors").select("*").order("created_at", { ascending: false });
     if (data) setDonors(data);
   };
 
-  useEffect(() => { fetchDonors(); }, []);
+  const fetchRecentUnits = async () => {
+    const { data } = await (supabase as any).from("blood_units")
+      .select("id, unit_number, component, blood_group, rh_factor, status, collected_at, expiry_at, qr_code, quarantine_reason, donor_id, donors(full_name)")
+      .order("created_at", { ascending: false })
+      .limit(50);
+    if (data) setRecentUnits(data);
+  };
+
+  const fetchHospitalName = async () => {
+    const { data: u } = await supabase.from("users").select("hospital_id").limit(1).maybeSingle();
+    if (!u?.hospital_id) return;
+    const { data: h } = await supabase.from("hospitals").select("name").eq("id", u.hospital_id).maybeSingle();
+    if (h?.name) setHospitalName(h.name);
+  };
+
+  useEffect(() => { fetchDonors(); fetchRecentUnits(); fetchHospitalName(); }, []);
 
   const filtered = donors.filter(d =>
     d.full_name.toLowerCase().includes(search.toLowerCase()) ||
@@ -71,7 +89,18 @@ const DonorsTab: React.FC<Props> = ({ showModal, onCloseModal }) => {
   };
 
   const submitDonor = async () => {
-    const reactive = [form.hiv_status, form.hbsag_status, form.hcv_status, form.vdrl_status, form.malaria_status].some(s => s === "reactive");
+    const ttiMap = {
+      tti_hiv: form.hiv_status,
+      tti_hbsag: form.hbsag_status,
+      tti_hcv: form.hcv_status,
+      tti_vdrl: form.vdrl_status,
+      tti_malaria: form.malaria_status,
+    };
+    const reactiveTests = Object.entries(ttiMap)
+      .filter(([, v]) => v === "reactive")
+      .map(([k]) => k.replace("tti_", "").toUpperCase());
+    const reactive = reactiveTests.length > 0;
+
     const { data: user } = await supabase.from("users").select("id, hospital_id").limit(1).maybeSingle();
     if (!user) return;
 
@@ -103,60 +132,59 @@ const DonorsTab: React.FC<Props> = ({ showModal, onCloseModal }) => {
       next_eligible: reactive ? null : new Date(Date.now() + 90 * 86400000).toISOString().split("T")[0],
     }).select("id").maybeSingle();
 
+    const donorId = donorData?.id || null;
+    const now = Date.now();
+    const collectedISO = new Date().toISOString();
+    const bagStatus = reactive ? "quarantine" : "available";
+    const quarantineReason = reactive ? `TTI reactive: ${reactiveTests.join(", ")}` : null;
+
+    const bags: { component: string; volume_ml: number; shelf_days: number; storage_location: string }[] = form.separate_components
+      ? [
+          { component: "rbc", volume_ml: 280, shelf_days: COMPONENT_SHELF_LIFE.rbc, storage_location: "Blood Bank Fridge" },
+          { component: "ffp", volume_ml: 150, shelf_days: COMPONENT_SHELF_LIFE.ffp, storage_location: "Deep Freezer" },
+          { component: "platelets", volume_ml: 50, shelf_days: COMPONENT_SHELF_LIFE.platelets, storage_location: "Platelet Agitator" },
+        ]
+      : [{ component: "whole_blood", volume_ml: 450, shelf_days: COMPONENT_SHELF_LIFE.whole_blood, storage_location: "Processing Area" }];
+
+    for (let i = 0; i < bags.length; i++) {
+      const b = bags[i];
+      const unitNum = `BU-${user.hospital_id.substring(0, 8)}-${b.component.toUpperCase()}-${String(now + i).slice(-5)}`;
+      const qrCode = buildQRString(user.hospital_id, unitNum, collectedISO);
+      await (supabase as any).from("blood_units").insert({
+        hospital_id: user.hospital_id,
+        unit_number: unitNum,
+        donor_id: donorId,
+        component: b.component,
+        blood_group: form.blood_group,
+        rh_factor: form.rh_factor,
+        volume_ml: b.volume_ml,
+        collected_at: collectedISO,
+        expiry_at: new Date(now + b.shelf_days * 86400000).toISOString(),
+        storage_location: b.storage_location,
+        status: bagStatus,
+        ...ttiMap,
+        quarantine_reason: quarantineReason,
+        qr_code: qrCode,
+      });
+    }
+
     if (reactive) {
-      toast({ title: "REACTIVE — Donor permanently deferred", variant: "destructive" });
+      toast({
+        title: `🚫 ${bags.length} Bag(s) QUARANTINED`,
+        description: `Reactive: ${reactiveTests.join(", ")}. Bags blocked from issue.`,
+        variant: "destructive",
+      });
     } else {
-      const donorId = donorData?.id || null;
-      const now = Date.now();
-
-      if (form.separate_components) {
-        // Component separation: create RBC, FFP, Platelets from whole blood
-        const components = [
-          { component: "rbc", volume_ml: 280, shelf_days: COMPONENT_SHELF_LIFE.rbc },
-          { component: "ffp", volume_ml: 150, shelf_days: COMPONENT_SHELF_LIFE.ffp },
-          { component: "platelets", volume_ml: 50, shelf_days: COMPONENT_SHELF_LIFE.platelets },
-        ];
-
-        for (const comp of components) {
-          const unitNum = `BU-${user.hospital_id.substring(0, 8)}-${comp.component.toUpperCase()}-${String(now).slice(-4)}`;
-          await supabase.from("blood_units").insert({
-            hospital_id: user.hospital_id,
-            unit_number: unitNum,
-            donor_id: donorId,
-            component: comp.component,
-            blood_group: form.blood_group,
-            rh_factor: form.rh_factor,
-            volume_ml: comp.volume_ml,
-            collected_at: new Date().toISOString(),
-            expiry_at: new Date(now + comp.shelf_days * 86400000).toISOString(),
-            storage_location: comp.component === "platelets" ? "Platelet Agitator" : comp.component === "ffp" ? "Deep Freezer" : "Blood Bank Fridge",
-            status: "available",
-          });
-        }
-        toast({ title: "Donor registered & components separated", description: `${donorCode} → RBC + FFP + Platelets created` });
-      } else {
-        // Store as whole blood
-        const unitNum = `BU-${user.hospital_id.substring(0, 8)}-WB-${String(now).slice(-4)}`;
-        await supabase.from("blood_units").insert({
-          hospital_id: user.hospital_id,
-          unit_number: unitNum,
-          donor_id: donorId,
-          component: "whole_blood",
-          blood_group: form.blood_group,
-          rh_factor: form.rh_factor,
-          volume_ml: 450,
-          collected_at: new Date().toISOString(),
-          expiry_at: new Date(now + COMPONENT_SHELF_LIFE.whole_blood * 86400000).toISOString(),
-          storage_location: "Processing Area",
-          status: "available",
-        });
-        toast({ title: "Donor registered & whole blood unit collected", description: donorCode });
-      }
+      toast({
+        title: `✓ TTI Clear — ${bags.length} bag(s) available`,
+        description: `${donorCode} → ${bags.map(b => b.component.toUpperCase()).join(" + ")}`,
+      });
     }
 
     onCloseModal();
     setStep("personal");
     fetchDonors();
+    fetchRecentUnits();
   };
 
   const sendCampaignWhatsApp = (donor: any) => {
@@ -185,43 +213,119 @@ const DonorsTab: React.FC<Props> = ({ showModal, onCloseModal }) => {
         </Button>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 py-2">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="text-xs">Code</TableHead>
-              <TableHead className="text-xs">Name</TableHead>
-              <TableHead className="text-xs">Group</TableHead>
-              <TableHead className="text-xs">Phone</TableHead>
-              <TableHead className="text-xs">Last Donation</TableHead>
-              <TableHead className="text-xs">Next Eligible</TableHead>
-              <TableHead className="text-xs">Donations</TableHead>
-              <TableHead className="text-xs">Status</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filtered.map(d => (
-              <TableRow key={d.id}>
-                <TableCell className="text-xs font-mono">{d.donor_code}</TableCell>
-                <TableCell className="text-xs font-medium">{d.full_name}</TableCell>
-                <TableCell className="text-xs font-semibold">{formatBloodGroup(d.blood_group, d.rh_factor)}</TableCell>
-                <TableCell className="text-xs">{d.phone || "—"}</TableCell>
-                <TableCell className="text-xs">{d.last_donation ? format(new Date(d.last_donation), "dd/MM/yyyy") : "—"}</TableCell>
-                <TableCell className="text-xs">{d.next_eligible ? format(new Date(d.next_eligible), "dd/MM/yyyy") : "—"}</TableCell>
-                <TableCell className="text-xs">{d.donation_count}</TableCell>
-                <TableCell>
-                  {!d.is_eligible ? <Badge className="bg-red-100 text-red-700 text-[10px]">Deferred</Badge>
-                    : d.next_eligible && new Date(d.next_eligible) > new Date()
-                      ? <Badge className="bg-amber-100 text-amber-700 text-[10px]">Cooldown</Badge>
-                      : <Badge className="bg-green-100 text-green-700 text-[10px]">Eligible</Badge>}
-                </TableCell>
+      <div className="flex-1 overflow-y-auto px-4 py-2 space-y-4">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Donors</p>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="text-xs">Code</TableHead>
+                <TableHead className="text-xs">Name</TableHead>
+                <TableHead className="text-xs">Group</TableHead>
+                <TableHead className="text-xs">Phone</TableHead>
+                <TableHead className="text-xs">Last Donation</TableHead>
+                <TableHead className="text-xs">Next Eligible</TableHead>
+                <TableHead className="text-xs">Donations</TableHead>
+                <TableHead className="text-xs">Status</TableHead>
               </TableRow>
-            ))}
-            {filtered.length === 0 && (
-              <TableRow><TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-8">No donors registered yet</TableCell></TableRow>
-            )}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {filtered.map(d => (
+                <TableRow key={d.id}>
+                  <TableCell className="text-xs font-mono">{d.donor_code}</TableCell>
+                  <TableCell className="text-xs font-medium">{d.full_name}</TableCell>
+                  <TableCell className="text-xs font-semibold">{formatBloodGroup(d.blood_group, d.rh_factor)}</TableCell>
+                  <TableCell className="text-xs">{d.phone || "—"}</TableCell>
+                  <TableCell className="text-xs">{d.last_donation ? format(new Date(d.last_donation), "dd/MM/yyyy") : "—"}</TableCell>
+                  <TableCell className="text-xs">{d.next_eligible ? format(new Date(d.next_eligible), "dd/MM/yyyy") : "—"}</TableCell>
+                  <TableCell className="text-xs">{d.donation_count}</TableCell>
+                  <TableCell>
+                    {!d.is_eligible ? <Badge className="bg-destructive/15 text-destructive text-[10px]">Deferred</Badge>
+                      : d.next_eligible && new Date(d.next_eligible) > new Date()
+                        ? <Badge className="bg-amber-500/15 text-amber-700 text-[10px]">Cooldown</Badge>
+                        : <Badge className="bg-emerald-500/15 text-emerald-700 text-[10px]">Eligible</Badge>}
+                  </TableCell>
+                </TableRow>
+              ))}
+              {filtered.length === 0 && (
+                <TableRow><TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-8">No donors registered yet</TableCell></TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Recent Blood Bags ({recentUnits.length})</p>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="text-xs">Bag No</TableHead>
+                <TableHead className="text-xs">Component</TableHead>
+                <TableHead className="text-xs">Group</TableHead>
+                <TableHead className="text-xs">Donor</TableHead>
+                <TableHead className="text-xs">Collected</TableHead>
+                <TableHead className="text-xs">Expires</TableHead>
+                <TableHead className="text-xs">TTI / Status</TableHead>
+                <TableHead className="text-xs">Label</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {recentUnits.map(u => {
+                const isQuarantine = u.status === "quarantine";
+                const isAvailable = u.status === "available";
+                return (
+                  <TableRow key={u.id} className={isQuarantine ? "bg-destructive/5" : ""}>
+                    <TableCell className="text-xs font-mono">{u.unit_number}</TableCell>
+                    <TableCell className="text-xs">{u.component?.replace(/_/g, " ").toUpperCase()}</TableCell>
+                    <TableCell className="text-xs font-semibold">{formatBloodGroup(u.blood_group, u.rh_factor)}</TableCell>
+                    <TableCell className="text-xs">{u.donors?.full_name || "—"}</TableCell>
+                    <TableCell className="text-xs">{u.collected_at ? format(new Date(u.collected_at), "dd/MM/yyyy") : "—"}</TableCell>
+                    <TableCell className="text-xs">{u.expiry_at ? format(new Date(u.expiry_at), "dd/MM/yyyy") : "—"}</TableCell>
+                    <TableCell>
+                      {isQuarantine ? (
+                        <div className="flex items-center gap-1">
+                          <AlertTriangle className="w-3 h-3 text-destructive" />
+                          <Badge className="bg-destructive text-destructive-foreground text-[10px]">QUARANTINED</Badge>
+                          {u.quarantine_reason && <span className="text-[9px] text-destructive ml-1">{u.quarantine_reason}</span>}
+                        </div>
+                      ) : isAvailable ? (
+                        <Badge className="bg-emerald-500/15 text-emerald-700 text-[10px]">✓ TTI Clear — Available</Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-[10px] capitalize">{u.status}</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-6 text-[10px] gap-1"
+                        onClick={() =>
+                          printBloodBagLabel({
+                            hospitalName,
+                            unitNumber: u.unit_number,
+                            component: u.component,
+                            bloodGroup: u.blood_group,
+                            rhFactor: u.rh_factor,
+                            collectedAt: u.collected_at,
+                            expiryAt: u.expiry_at,
+                            qrCode: u.qr_code || buildQRString("00000000", u.unit_number, u.collected_at),
+                            ttiStatus: isQuarantine ? "quarantine" : isAvailable ? "available" : "pending_tti",
+                            quarantineReason: u.quarantine_reason,
+                          })
+                        }
+                      >
+                        <Printer className="w-3 h-3" /> Print
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+              {recentUnits.length === 0 && (
+                <TableRow><TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-6">No blood bags yet</TableCell></TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
 
       {/* Campaign Modal */}
