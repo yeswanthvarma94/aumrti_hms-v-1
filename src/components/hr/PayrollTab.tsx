@@ -71,17 +71,30 @@ const PayrollTab: React.FC = () => {
   const [attendanceCount, setAttendanceCount] = useState(0);
 
   useEffect(() => {
-    loadRuns();
-  }, [selectedMonth]);
+    if (hospitalId) loadRuns();
+  }, [selectedMonth, hospitalId]);
 
   const loadRuns = async () => {
-    const { data } = await (supabase as any).from("payroll_runs").select("*").order("created_at", { ascending: false });
+    if (!hospitalId) return;
+    const { data } = await (supabase as any)
+      .from("payroll_runs")
+      .select("*")
+      .eq("hospital_id", hospitalId)
+      .order("created_at", { ascending: false });
     setRuns(data || []);
   };
 
   const openRunModal = async () => {
+    if (!hospitalId) {
+      toast({ title: "Hospital not loaded yet", variant: "destructive" });
+      return;
+    }
     // Count staff and attendance for the month
-    const { data: staff } = await (supabase as any).from("staff_profiles").select("user_id").eq("is_active", true);
+    const { data: staff } = await (supabase as any)
+      .from("staff_profiles")
+      .select("user_id")
+      .eq("hospital_id", hospitalId)
+      .eq("is_active", true);
     setStaffCount(staff?.length || 0);
 
     const monthStart = `${selectedMonth}-01`;
@@ -91,6 +104,7 @@ const PayrollTab: React.FC = () => {
     const { data: att } = await (supabase as any)
       .from("staff_attendance")
       .select("user_id")
+      .eq("hospital_id", hospitalId)
       .gte("attendance_date", monthStart)
       .lt("attendance_date", monthEnd);
 
@@ -111,8 +125,90 @@ const PayrollTab: React.FC = () => {
   };
 
   const calculatePayroll = async () => {
+    if (!hospitalId) return;
     setProcessing(true);
     try {
+      const { data: profiles } = await (supabase as any)
+        .from("staff_profiles")
+        .select("*, users!staff_profiles_user_id_fkey(full_name)")
+        .eq("hospital_id", hospitalId)
+        .eq("is_active", true);
+
+      if (!profiles?.length) {
+        toast({ title: "No active staff profiles found", variant: "destructive" });
+        setProcessing(false);
+        return;
+      }
+
+      const monthStart = `${selectedMonth}-01`;
+      const nextMonth = new Date(parseInt(selectedMonth.split("-")[0]), parseInt(selectedMonth.split("-")[1]), 1);
+      const monthEnd = nextMonth.toISOString().split("T")[0];
+
+      const { data: allAttendance } = await (supabase as any)
+        .from("staff_attendance")
+        .select("user_id, status, overtime_hours")
+        .eq("hospital_id", hospitalId)
+        .gte("attendance_date", monthStart)
+        .lt("attendance_date", monthEnd);
+
+      const items: PayrollItem[] = profiles.map((sp: any) => {
+        const userAtt = (allAttendance || []).filter((a: any) => a.user_id === sp.user_id);
+        const presentDays = userAtt.filter((a: any) => a.status === "present" || a.status === "late").length;
+        const leaveDays = userAtt.filter((a: any) => a.status === "on_leave").length;
+        const absentDaysExplicit = userAtt.filter((a: any) => a.status === "absent").length;
+        const otHours = userAtt.reduce((sum: number, a: any) => sum + (parseFloat(a.overtime_hours) || 0), 0);
+
+        // FIX: missing attendance rows = "assume present". Only explicit "absent" rows reduce paid days.
+        const paidDays = Math.max(0, workingDays - absentDaysExplicit);
+        const displayPresent = userAtt.length === 0 ? workingDays : presentDays;
+        const displayAbsent = absentDaysExplicit;
+
+        const basicSalary = Number(sp.basic_salary) || 0;
+        const salaryMissing = basicSalary <= 0;
+
+        const perDay = basicSalary / workingDays;
+        const basic = Math.round(paidDays * perDay * 100) / 100;
+        const hra = Math.round(basic * ((sp.hra_percent || 20) / 100) * 100) / 100;
+        const da = Math.round(basic * ((sp.da_percent || 10) / 100) * 100) / 100;
+        const conv = absentDaysExplicit > 3 ? Math.round((sp.conveyance || 1600) * (paidDays / workingDays) * 100) / 100 : (sp.conveyance || 1600);
+        const med = sp.medical_allowance || 1250;
+        const otAmount = Math.round(otHours * (perDay / 8) * 1.5 * 100) / 100;
+        const gross = salaryMissing ? 0 : basic + hra + da + conv + med + otAmount;
+
+        const pfEmp = !salaryMissing && sp.pf_applicable ? Math.min(Math.round(basic * 0.12 * 100) / 100, 1800) : 0;
+        const esicEmp = !salaryMissing && sp.esic_applicable && gross <= 21000 ? Math.round(gross * 0.0075 * 100) / 100 : 0;
+        const pt = salaryMissing ? 0 : professionalTax(gross);
+        const totalDed = pfEmp + esicEmp + pt;
+        const net = Math.round((gross - totalDed) * 100) / 100;
+
+        return {
+          id: sp.id,
+          user_id: sp.user_id,
+          full_name: sp.users?.full_name || "Unknown",
+          present_days: displayPresent,
+          absent_days: displayAbsent,
+          leave_days: leaveDays,
+          overtime_hours: otHours,
+          basic, hra, da, conveyance: salaryMissing ? 0 : conv, medical_allowance: salaryMissing ? 0 : med,
+          overtime_amount: otAmount,
+          gross_salary: gross,
+          pf_employee: pfEmp,
+          esic_employee: esicEmp,
+          professional_tax: pt,
+          tds: 0,
+          total_deductions: totalDed,
+          net_salary: net,
+          payment_status: "pending",
+          salary_missing: salaryMissing,
+        };
+      });
+
+      setCalculatedItems(items);
+    } catch (err) {
+      toast({ title: "Error calculating payroll", variant: "destructive" });
+    }
+    setProcessing(false);
+  };
       const { data: profiles } = await (supabase as any)
         .from("staff_profiles")
         .select("*, users!staff_profiles_user_id_fkey(full_name)")
