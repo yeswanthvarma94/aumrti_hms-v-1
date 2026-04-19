@@ -213,43 +213,119 @@ const DonorsTab: React.FC<Props> = ({ showModal, onCloseModal }) => {
         </Button>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 py-2">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="text-xs">Code</TableHead>
-              <TableHead className="text-xs">Name</TableHead>
-              <TableHead className="text-xs">Group</TableHead>
-              <TableHead className="text-xs">Phone</TableHead>
-              <TableHead className="text-xs">Last Donation</TableHead>
-              <TableHead className="text-xs">Next Eligible</TableHead>
-              <TableHead className="text-xs">Donations</TableHead>
-              <TableHead className="text-xs">Status</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filtered.map(d => (
-              <TableRow key={d.id}>
-                <TableCell className="text-xs font-mono">{d.donor_code}</TableCell>
-                <TableCell className="text-xs font-medium">{d.full_name}</TableCell>
-                <TableCell className="text-xs font-semibold">{formatBloodGroup(d.blood_group, d.rh_factor)}</TableCell>
-                <TableCell className="text-xs">{d.phone || "—"}</TableCell>
-                <TableCell className="text-xs">{d.last_donation ? format(new Date(d.last_donation), "dd/MM/yyyy") : "—"}</TableCell>
-                <TableCell className="text-xs">{d.next_eligible ? format(new Date(d.next_eligible), "dd/MM/yyyy") : "—"}</TableCell>
-                <TableCell className="text-xs">{d.donation_count}</TableCell>
-                <TableCell>
-                  {!d.is_eligible ? <Badge className="bg-red-100 text-red-700 text-[10px]">Deferred</Badge>
-                    : d.next_eligible && new Date(d.next_eligible) > new Date()
-                      ? <Badge className="bg-amber-100 text-amber-700 text-[10px]">Cooldown</Badge>
-                      : <Badge className="bg-green-100 text-green-700 text-[10px]">Eligible</Badge>}
-                </TableCell>
+      <div className="flex-1 overflow-y-auto px-4 py-2 space-y-4">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Donors</p>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="text-xs">Code</TableHead>
+                <TableHead className="text-xs">Name</TableHead>
+                <TableHead className="text-xs">Group</TableHead>
+                <TableHead className="text-xs">Phone</TableHead>
+                <TableHead className="text-xs">Last Donation</TableHead>
+                <TableHead className="text-xs">Next Eligible</TableHead>
+                <TableHead className="text-xs">Donations</TableHead>
+                <TableHead className="text-xs">Status</TableHead>
               </TableRow>
-            ))}
-            {filtered.length === 0 && (
-              <TableRow><TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-8">No donors registered yet</TableCell></TableRow>
-            )}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {filtered.map(d => (
+                <TableRow key={d.id}>
+                  <TableCell className="text-xs font-mono">{d.donor_code}</TableCell>
+                  <TableCell className="text-xs font-medium">{d.full_name}</TableCell>
+                  <TableCell className="text-xs font-semibold">{formatBloodGroup(d.blood_group, d.rh_factor)}</TableCell>
+                  <TableCell className="text-xs">{d.phone || "—"}</TableCell>
+                  <TableCell className="text-xs">{d.last_donation ? format(new Date(d.last_donation), "dd/MM/yyyy") : "—"}</TableCell>
+                  <TableCell className="text-xs">{d.next_eligible ? format(new Date(d.next_eligible), "dd/MM/yyyy") : "—"}</TableCell>
+                  <TableCell className="text-xs">{d.donation_count}</TableCell>
+                  <TableCell>
+                    {!d.is_eligible ? <Badge className="bg-destructive/15 text-destructive text-[10px]">Deferred</Badge>
+                      : d.next_eligible && new Date(d.next_eligible) > new Date()
+                        ? <Badge className="bg-amber-500/15 text-amber-700 text-[10px]">Cooldown</Badge>
+                        : <Badge className="bg-emerald-500/15 text-emerald-700 text-[10px]">Eligible</Badge>}
+                  </TableCell>
+                </TableRow>
+              ))}
+              {filtered.length === 0 && (
+                <TableRow><TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-8">No donors registered yet</TableCell></TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Recent Blood Bags ({recentUnits.length})</p>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="text-xs">Bag No</TableHead>
+                <TableHead className="text-xs">Component</TableHead>
+                <TableHead className="text-xs">Group</TableHead>
+                <TableHead className="text-xs">Donor</TableHead>
+                <TableHead className="text-xs">Collected</TableHead>
+                <TableHead className="text-xs">Expires</TableHead>
+                <TableHead className="text-xs">TTI / Status</TableHead>
+                <TableHead className="text-xs">Label</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {recentUnits.map(u => {
+                const isQuarantine = u.status === "quarantine";
+                const isAvailable = u.status === "available";
+                return (
+                  <TableRow key={u.id} className={isQuarantine ? "bg-destructive/5" : ""}>
+                    <TableCell className="text-xs font-mono">{u.unit_number}</TableCell>
+                    <TableCell className="text-xs">{u.component?.replace(/_/g, " ").toUpperCase()}</TableCell>
+                    <TableCell className="text-xs font-semibold">{formatBloodGroup(u.blood_group, u.rh_factor)}</TableCell>
+                    <TableCell className="text-xs">{u.donors?.full_name || "—"}</TableCell>
+                    <TableCell className="text-xs">{u.collected_at ? format(new Date(u.collected_at), "dd/MM/yyyy") : "—"}</TableCell>
+                    <TableCell className="text-xs">{u.expiry_at ? format(new Date(u.expiry_at), "dd/MM/yyyy") : "—"}</TableCell>
+                    <TableCell>
+                      {isQuarantine ? (
+                        <div className="flex items-center gap-1">
+                          <AlertTriangle className="w-3 h-3 text-destructive" />
+                          <Badge className="bg-destructive text-destructive-foreground text-[10px]">QUARANTINED</Badge>
+                          {u.quarantine_reason && <span className="text-[9px] text-destructive ml-1">{u.quarantine_reason}</span>}
+                        </div>
+                      ) : isAvailable ? (
+                        <Badge className="bg-emerald-500/15 text-emerald-700 text-[10px]">✓ TTI Clear — Available</Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-[10px] capitalize">{u.status}</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-6 text-[10px] gap-1"
+                        onClick={() =>
+                          printBloodBagLabel({
+                            hospitalName,
+                            unitNumber: u.unit_number,
+                            component: u.component,
+                            bloodGroup: u.blood_group,
+                            rhFactor: u.rh_factor,
+                            collectedAt: u.collected_at,
+                            expiryAt: u.expiry_at,
+                            qrCode: u.qr_code || buildQRString("00000000", u.unit_number, u.collected_at),
+                            ttiStatus: isQuarantine ? "quarantine" : isAvailable ? "available" : "pending_tti",
+                            quarantineReason: u.quarantine_reason,
+                          })
+                        }
+                      >
+                        <Printer className="w-3 h-3" /> Print
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+              {recentUnits.length === 0 && (
+                <TableRow><TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-6">No blood bags yet</TableCell></TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
 
       {/* Campaign Modal */}
