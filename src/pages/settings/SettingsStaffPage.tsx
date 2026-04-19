@@ -13,6 +13,14 @@ import { cn } from "@/lib/utils";
 /* ─── Types ─── */
 type AppRole = string;
 
+/* ─── Valid app_role enum values (must match Postgres app_role enum) ─── */
+const VALID_APP_ROLES = [
+  "super_admin", "hospital_admin", "doctor", "nurse", "receptionist",
+  "pharmacist", "lab_tech", "lab_technician", "radiologist",
+  "accountant", "billing_executive", "billing_staff", "cfo", "hr_manager",
+] as const;
+const isValidAppRole = (r: string) => (VALID_APP_ROLES as readonly string[]).includes(r);
+
 interface StaffForm {
   full_name: string;
   phone: string;
@@ -139,8 +147,12 @@ const SettingsStaffPage: React.FC = () => {
 
   /* ─── Dynamic role cards + filter tabs ─── */
   const ROLE_CARDS = useMemo(() => {
-    if (customRoles && customRoles.length > 0) {
-      return customRoles.map((r: any) => {
+    // Only allow roles that match the Postgres app_role enum.
+    // Custom role rows in role_permissions (e.g. "custom_xxx") would cause
+    // a DB enum error if used as users.role.
+    const validCustom = (customRoles ?? []).filter((r: any) => isValidAppRole(r.role_name));
+    if (validCustom.length > 0) {
+      return validCustom.map((r: any) => {
         const meta = ROLE_META[r.role_name];
         return {
           role: r.role_name as AppRole,
@@ -169,6 +181,8 @@ const SettingsStaffPage: React.FC = () => {
       roleCounts.set(r, (roleCounts.get(r) || 0) + 1);
     });
     roleCounts.forEach((_, role) => {
+      // Skip stale/invalid roles so the tab strip never breaks
+      if (!isValidAppRole(role)) return;
       if (role === "hospital_admin" || role === "super_admin") {
         if (!tabs.find((t) => t.key === "admin")) tabs.push({ key: "admin", label: "Admin" });
       } else {
@@ -215,6 +229,14 @@ const SettingsStaffPage: React.FC = () => {
 
   const saveStaff = useMutation({
     mutationFn: async () => {
+      // Guard: users.role is a Postgres enum (app_role). Reject anything else
+      // up-front so the user gets a clear message instead of an opaque DB error.
+      if (!form.role || !isValidAppRole(form.role)) {
+        throw new Error("Please select a valid role for this staff member.");
+      }
+      if (!form.full_name?.trim()) {
+        throw new Error("Full name is required.");
+      }
       const hid = await getHospitalId();
       const deptId = getSafeDepartmentId();
       if (editingId) {
