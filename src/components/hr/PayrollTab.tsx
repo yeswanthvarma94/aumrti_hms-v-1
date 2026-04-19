@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useHospitalId } from "@/hooks/useHospitalId";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { autoPostJournalEntry } from "@/lib/accounting";
 import { printPayslip } from "@/lib/payslipPrint";
-import { DollarSign, Download, CheckSquare, Loader2, FileText } from "lucide-react";
+import { DollarSign, Download, CheckSquare, Loader2, FileText, AlertTriangle } from "lucide-react";
 
 /** Andhra Pradesh PT slab (default for unspecified states) */
 function professionalTax(gross: number): number {
@@ -50,10 +52,12 @@ interface PayrollItem {
   total_deductions: number;
   net_salary: number;
   payment_status: string;
+  salary_missing?: boolean;
 }
 
 const PayrollTab: React.FC = () => {
   const { toast } = useToast();
+  const { hospitalId } = useHospitalId();
   const now = new Date();
   const [selectedMonth, setSelectedMonth] = useState(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`);
   const [runs, setRuns] = useState<PayrollRun[]>([]);
@@ -67,17 +71,30 @@ const PayrollTab: React.FC = () => {
   const [attendanceCount, setAttendanceCount] = useState(0);
 
   useEffect(() => {
-    loadRuns();
-  }, [selectedMonth]);
+    if (hospitalId) loadRuns();
+  }, [selectedMonth, hospitalId]);
 
   const loadRuns = async () => {
-    const { data } = await (supabase as any).from("payroll_runs").select("*").order("created_at", { ascending: false });
+    if (!hospitalId) return;
+    const { data } = await (supabase as any)
+      .from("payroll_runs")
+      .select("*")
+      .eq("hospital_id", hospitalId)
+      .order("created_at", { ascending: false });
     setRuns(data || []);
   };
 
   const openRunModal = async () => {
+    if (!hospitalId) {
+      toast({ title: "Hospital not loaded yet", variant: "destructive" });
+      return;
+    }
     // Count staff and attendance for the month
-    const { data: staff } = await (supabase as any).from("staff_profiles").select("user_id").eq("is_active", true);
+    const { data: staff } = await (supabase as any)
+      .from("staff_profiles")
+      .select("user_id")
+      .eq("hospital_id", hospitalId)
+      .eq("is_active", true);
     setStaffCount(staff?.length || 0);
 
     const monthStart = `${selectedMonth}-01`;
@@ -87,6 +104,7 @@ const PayrollTab: React.FC = () => {
     const { data: att } = await (supabase as any)
       .from("staff_attendance")
       .select("user_id")
+      .eq("hospital_id", hospitalId)
       .gte("attendance_date", monthStart)
       .lt("attendance_date", monthEnd);
 
@@ -107,11 +125,13 @@ const PayrollTab: React.FC = () => {
   };
 
   const calculatePayroll = async () => {
+    if (!hospitalId) return;
     setProcessing(true);
     try {
       const { data: profiles } = await (supabase as any)
         .from("staff_profiles")
         .select("*, users!staff_profiles_user_id_fkey(full_name)")
+        .eq("hospital_id", hospitalId)
         .eq("is_active", true);
 
       if (!profiles?.length) {
@@ -126,7 +146,8 @@ const PayrollTab: React.FC = () => {
 
       const { data: allAttendance } = await (supabase as any)
         .from("staff_attendance")
-        .select("user_id, status")
+        .select("user_id, status, overtime_hours")
+        .eq("hospital_id", hospitalId)
         .gte("attendance_date", monthStart)
         .lt("attendance_date", monthEnd);
 
@@ -134,22 +155,29 @@ const PayrollTab: React.FC = () => {
         const userAtt = (allAttendance || []).filter((a: any) => a.user_id === sp.user_id);
         const presentDays = userAtt.filter((a: any) => a.status === "present" || a.status === "late").length;
         const leaveDays = userAtt.filter((a: any) => a.status === "on_leave").length;
-        const absentDays = workingDays - presentDays - leaveDays;
+        const absentDaysExplicit = userAtt.filter((a: any) => a.status === "absent").length;
         const otHours = userAtt.reduce((sum: number, a: any) => sum + (parseFloat(a.overtime_hours) || 0), 0);
 
-        const perDay = (sp.basic_salary || 0) / workingDays;
-        const paidDays = presentDays + leaveDays;
+        // FIX: missing attendance rows = "assume present". Only explicit "absent" rows reduce paid days.
+        const paidDays = Math.max(0, workingDays - absentDaysExplicit);
+        const displayPresent = userAtt.length === 0 ? workingDays : presentDays;
+        const displayAbsent = absentDaysExplicit;
+
+        const basicSalary = Number(sp.basic_salary) || 0;
+        const salaryMissing = basicSalary <= 0;
+
+        const perDay = basicSalary / workingDays;
         const basic = Math.round(paidDays * perDay * 100) / 100;
         const hra = Math.round(basic * ((sp.hra_percent || 20) / 100) * 100) / 100;
         const da = Math.round(basic * ((sp.da_percent || 10) / 100) * 100) / 100;
-        const conv = absentDays > 3 ? Math.round((sp.conveyance || 1600) * (paidDays / workingDays) * 100) / 100 : (sp.conveyance || 1600);
+        const conv = absentDaysExplicit > 3 ? Math.round((sp.conveyance || 1600) * (paidDays / workingDays) * 100) / 100 : (sp.conveyance || 1600);
         const med = sp.medical_allowance || 1250;
         const otAmount = Math.round(otHours * (perDay / 8) * 1.5 * 100) / 100;
-        const gross = basic + hra + da + conv + med + otAmount;
+        const gross = salaryMissing ? 0 : basic + hra + da + conv + med + otAmount;
 
-        const pfEmp = sp.pf_applicable ? Math.min(Math.round(basic * 0.12 * 100) / 100, 1800) : 0;
-        const esicEmp = sp.esic_applicable && gross <= 21000 ? Math.round(gross * 0.0075 * 100) / 100 : 0;
-        const pt = professionalTax(gross);
+        const pfEmp = !salaryMissing && sp.pf_applicable ? Math.min(Math.round(basic * 0.12 * 100) / 100, 1800) : 0;
+        const esicEmp = !salaryMissing && sp.esic_applicable && gross <= 21000 ? Math.round(gross * 0.0075 * 100) / 100 : 0;
+        const pt = salaryMissing ? 0 : professionalTax(gross);
         const totalDed = pfEmp + esicEmp + pt;
         const net = Math.round((gross - totalDed) * 100) / 100;
 
@@ -157,11 +185,11 @@ const PayrollTab: React.FC = () => {
           id: sp.id,
           user_id: sp.user_id,
           full_name: sp.users?.full_name || "Unknown",
-          present_days: presentDays,
-          absent_days: Math.max(0, absentDays),
+          present_days: displayPresent,
+          absent_days: displayAbsent,
           leave_days: leaveDays,
           overtime_hours: otHours,
-          basic, hra, da, conveyance: conv, medical_allowance: med,
+          basic, hra, da, conveyance: salaryMissing ? 0 : conv, medical_allowance: salaryMissing ? 0 : med,
           overtime_amount: otAmount,
           gross_salary: gross,
           pf_employee: pfEmp,
@@ -171,6 +199,7 @@ const PayrollTab: React.FC = () => {
           total_deductions: totalDed,
           net_salary: net,
           payment_status: "pending",
+          salary_missing: salaryMissing,
         };
       });
 
@@ -188,9 +217,17 @@ const PayrollTab: React.FC = () => {
       const { data: currentUser } = await supabase.from("users").select("id, hospital_id").eq("auth_user_id", user.user?.id || "").maybeSingle();
       if (!currentUser) throw new Error("No user");
 
-      const totalGross = calculatedItems.reduce((s, i) => s + i.gross_salary, 0);
-      const totalDed = calculatedItems.reduce((s, i) => s + i.total_deductions, 0);
-      const totalNet = calculatedItems.reduce((s, i) => s + i.net_salary, 0);
+      // Skip staff with missing salary master — never insert ₹0 payslips silently
+      const validItems = calculatedItems.filter((i) => !i.salary_missing);
+      if (validItems.length === 0) {
+        toast({ title: "No staff with salary configured. Set Basic Salary in Staff Directory first.", variant: "destructive" });
+        setProcessing(false);
+        return;
+      }
+
+      const totalGross = validItems.reduce((s, i) => s + i.gross_salary, 0);
+      const totalDed = validItems.reduce((s, i) => s + i.total_deductions, 0);
+      const totalNet = validItems.reduce((s, i) => s + i.net_salary, 0);
 
       const { data: run, error: runErr } = await (supabase as any).from("payroll_runs").insert({
         hospital_id: currentUser.hospital_id,
@@ -198,14 +235,14 @@ const PayrollTab: React.FC = () => {
         total_gross: totalGross,
         total_deductions: totalDed,
         total_net: totalNet,
-        staff_count: calculatedItems.length,
+        staff_count: validItems.length,
         status: "processed",
         processed_by: currentUser.id,
       }).select().maybeSingle();
 
       if (runErr) throw runErr;
 
-      const items = calculatedItems.map((i) => ({
+      const items = validItems.map((i) => ({
         hospital_id: currentUser.hospital_id,
         payroll_run_id: run.id,
         user_id: i.user_id,
@@ -226,7 +263,10 @@ const PayrollTab: React.FC = () => {
 
       await (supabase as any).from("payroll_items").insert(items);
 
-      toast({ title: `Payroll processed for ${calculatedItems.length} staff` });
+      const skipped = calculatedItems.length - validItems.length;
+      toast({
+        title: `Payroll processed for ${validItems.length} staff${skipped > 0 ? ` (${skipped} skipped — salary not set)` : ""}`,
+      });
       setShowModal(false);
       setCalculatedItems([]);
       loadRuns();
@@ -600,18 +640,28 @@ const PayrollTab: React.FC = () => {
                   </TableHeader>
                   <TableBody>
                     {calculatedItems.map((item) => (
-                      <TableRow key={item.user_id}>
-                        <TableCell className="font-medium text-sm">{item.full_name}</TableCell>
+                      <TableRow key={item.user_id} className={item.salary_missing ? "opacity-60" : ""}>
+                        <TableCell className="font-medium text-sm">
+                          <div className="flex items-center gap-2">
+                            <span>{item.full_name}</span>
+                            {item.salary_missing && (
+                              <Link to="/settings/staff" className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-destructive/10 text-destructive font-medium hover:underline">
+                                <AlertTriangle className="h-3 w-3" />
+                                Salary not set
+                              </Link>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell className="text-center text-xs">{item.present_days}/{item.absent_days}/{item.leave_days}</TableCell>
-                        <TableCell className="text-right text-sm">{fmt(item.basic)}</TableCell>
-                        <TableCell className="text-right text-sm">{fmt(item.gross_salary)}</TableCell>
-                        <TableCell className="text-right text-sm">{fmt(item.pf_employee)}</TableCell>
-                        <TableCell className="text-right text-sm">{fmt(item.esic_employee)}</TableCell>
-                        <TableCell className="text-right text-sm font-semibold">{fmt(item.net_salary)}</TableCell>
+                        <TableCell className="text-right text-sm">{item.salary_missing ? "—" : fmt(item.basic)}</TableCell>
+                        <TableCell className="text-right text-sm">{item.salary_missing ? "—" : fmt(item.gross_salary)}</TableCell>
+                        <TableCell className="text-right text-sm">{item.salary_missing ? "—" : fmt(item.pf_employee)}</TableCell>
+                        <TableCell className="text-right text-sm">{item.salary_missing ? "—" : fmt(item.esic_employee)}</TableCell>
+                        <TableCell className="text-right text-sm font-semibold">{item.salary_missing ? "—" : fmt(item.net_salary)}</TableCell>
                       </TableRow>
                     ))}
                     <TableRow className="bg-muted/50 font-bold">
-                      <TableCell>TOTAL ({calculatedItems.length} staff)</TableCell>
+                      <TableCell>TOTAL ({calculatedItems.filter((i) => !i.salary_missing).length} staff{calculatedItems.some((i) => i.salary_missing) ? `, ${calculatedItems.filter((i) => i.salary_missing).length} skipped` : ""})</TableCell>
                       <TableCell />
                       <TableCell className="text-right">{fmt(calculatedItems.reduce((s, i) => s + i.basic, 0))}</TableCell>
                       <TableCell className="text-right">{fmt(calculatedItems.reduce((s, i) => s + i.gross_salary, 0))}</TableCell>
