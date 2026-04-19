@@ -197,30 +197,25 @@ const SettingsRolesPage: React.FC = () => {
     onError: () => toast({ title: "Failed to save", variant: "destructive" }),
   });
 
-  /* ── Create role ── */
+  /* ── Create role (DISABLED) ──
+   * The users.role column is a Postgres ENUM (app_role) with a fixed set of
+   * values. Inserting a synthetic name like `custom_<timestamp>` here used to
+   * create role_permissions rows that could never be assigned to a staff
+   * member (DB rejected with "invalid input value for enum app_role").
+   * Use the existing system roles and customise their permissions instead.
+   */
   const createMutation = useMutation({
     mutationFn: async () => {
-      if (!hospitalId) throw new Error("No hospital");
-      const name = `custom_${Date.now()}`;
-      const { data, error } = await supabase
-        .from("role_permissions")
-        .insert({
-          hospital_id: hospitalId,
-          role_name: name,
-          role_label: "New Role",
-          is_system_role: false,
-          permissions: {},
-        } as any)
-        .select()
-        .maybeSingle();
-      if (error) throw error;
-      return data;
+      throw new Error(
+        "New roles cannot be created. Select an existing system role on the left and customise its permissions."
+      );
     },
-    onSuccess: (data: any) => {
-      queryClient.invalidateQueries({ queryKey: ["role-permissions"] });
-      setSelectedRoleId(data.id);
-      toast({ title: "Role created" });
-    },
+    onError: (e: any) =>
+      toast({
+        title: "Custom roles disabled",
+        description: e?.message ?? "Use an existing system role instead.",
+        variant: "destructive",
+      }),
   });
 
   /* ── Delete role ── */
