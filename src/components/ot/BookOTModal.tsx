@@ -199,9 +199,6 @@ const BookOTModal: React.FC<Props> = ({ rooms, selectedRoomId, selectedDate, pre
     onBooked(form.date, form.roomId);
   };
 
-  const filteredPatients = patients.filter(
-    (p) => !patientSearch || p.full_name.toLowerCase().includes(patientSearch.toLowerCase()) || p.uhid.toLowerCase().includes(patientSearch.toLowerCase())
-  );
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={onClose}>
