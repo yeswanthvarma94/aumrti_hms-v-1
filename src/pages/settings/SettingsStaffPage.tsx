@@ -75,6 +75,14 @@ const DEFAULT_ROLE_CARDS: { role: AppRole; icon: React.ElementType; label: strin
   { role: "hospital_admin", icon: Shield,         label: "Admin / CEO" },
 ];
 
+/* Valid app_role enum values from Postgres — staff role MUST be one of these */
+const VALID_APP_ROLES = [
+  "super_admin", "hospital_admin", "doctor", "nurse", "receptionist",
+  "pharmacist", "lab_tech", "accountant", "billing_executive", "hr_manager",
+  "lab_technician", "radiologist", "cfo", "billing_staff",
+] as const;
+const VALID_APP_ROLES_SET = new Set<string>(VALID_APP_ROLES);
+
 /* ─── Bulk doctor row ─── */
 interface BulkRow { name: string; speciality: string; phone: string; dept_id: string; fee: string }
 const EMPTY_BULK: BulkRow = { name: "", speciality: "", phone: "", dept_id: "", fee: "" };
@@ -138,18 +146,21 @@ const SettingsStaffPage: React.FC = () => {
   });
 
   /* ─── Dynamic role cards + filter tabs ─── */
+  // Always show the 7 system defaults. If admins customised a role label
+  // (via Roles & Permissions) for a VALID app_role enum value, use that label.
+  // Custom synthetic names (custom_*) or any role outside the DB enum are ignored
+  // because users.role is a strict Postgres ENUM and would reject them.
   const ROLE_CARDS = useMemo(() => {
-    if (customRoles && customRoles.length > 0) {
-      return customRoles.map((r: any) => {
-        const meta = ROLE_META[r.role_name];
-        return {
-          role: r.role_name as AppRole,
-          icon: meta?.icon ?? Users,
-          label: r.role_label || meta?.label || r.role_name,
-        };
-      });
-    }
-    return DEFAULT_ROLE_CARDS;
+    const labelOverride = new Map<string, string>();
+    (customRoles ?? []).forEach((r: any) => {
+      if (VALID_APP_ROLES_SET.has(r.role_name) && r.role_label) {
+        labelOverride.set(r.role_name, r.role_label);
+      }
+    });
+    return DEFAULT_ROLE_CARDS.map((c) => ({
+      ...c,
+      label: labelOverride.get(c.role) || c.label,
+    }));
   }, [customRoles]);
 
   /* ─── Computed ─── */
