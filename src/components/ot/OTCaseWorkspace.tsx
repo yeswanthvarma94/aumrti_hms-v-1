@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import WHOChecklistTab from "./tabs/WHOChecklistTab";
 import CaseDetailsTab from "./tabs/CaseDetailsTab";
 import OTTeamTab from "./tabs/OTTeamTab";
+import PACUTab from "./tabs/PACUTab";
 import EndCaseModal from "./EndCaseModal";
 
 interface Props {
@@ -14,11 +15,13 @@ interface Props {
   onRefresh: () => void;
 }
 
-const TABS = ["WHO Checklist", "Case Details", "OT Team"] as const;
+const BASE_TABS = ["WHO Checklist", "Case Details", "OT Team"] as const;
+const PACU_TAB = "PACU" as const;
+type TabName = (typeof BASE_TABS)[number] | typeof PACU_TAB;
 
 const OTCaseWorkspace: React.FC<Props> = ({ schedule, onRefresh }) => {
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>("WHO Checklist");
+  const [activeTab, setActiveTab] = useState<TabName>("WHO Checklist");
   const [endCaseOpen, setEndCaseOpen] = useState(false);
 
   const updateStatus = async (newStatus: string, extras: Record<string, any> = {}) => {
@@ -114,7 +117,7 @@ const OTCaseWorkspace: React.FC<Props> = ({ schedule, onRefresh }) => {
 
       {/* Tab strip */}
       <div className="flex border-b border-border bg-card flex-shrink-0">
-        {TABS.map((tab) => (
+        {([...BASE_TABS, ...((schedule.status === "in_progress" || schedule.status === "completed") ? [PACU_TAB] : [])] as TabName[]).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -126,6 +129,9 @@ const OTCaseWorkspace: React.FC<Props> = ({ schedule, onRefresh }) => {
             )}
           >
             {tab}
+            {tab === PACU_TAB && schedule.status === "in_progress" && (
+              <span className="ml-1.5 inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            )}
             {activeTab === tab && (
               <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
             )}
@@ -138,6 +144,9 @@ const OTCaseWorkspace: React.FC<Props> = ({ schedule, onRefresh }) => {
         {activeTab === "WHO Checklist" && <WHOChecklistTab schedule={schedule} onRefresh={onRefresh} />}
         {activeTab === "Case Details" && <CaseDetailsTab schedule={schedule} onRefresh={onRefresh} />}
         {activeTab === "OT Team" && <OTTeamTab schedule={schedule} />}
+        {activeTab === PACU_TAB && (schedule.status === "in_progress" || schedule.status === "completed") && (
+          <PACUTab schedule={schedule} />
+        )}
       </div>
 
       {endCaseOpen && (

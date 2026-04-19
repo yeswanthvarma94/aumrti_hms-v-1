@@ -11252,6 +11252,62 @@ export type Database = {
           },
         ]
       }
+      pacu_assessments: {
+        Row: {
+          activity: number | null
+          assessed_at: string | null
+          circulation: number | null
+          consciousness: number | null
+          created_at: string | null
+          hospital_id: string
+          id: string
+          notes: string | null
+          ot_schedule_id: string
+          recorded_by: string | null
+          respiration: number | null
+          spo2_score: number | null
+          total_score: number | null
+        }
+        Insert: {
+          activity?: number | null
+          assessed_at?: string | null
+          circulation?: number | null
+          consciousness?: number | null
+          created_at?: string | null
+          hospital_id: string
+          id?: string
+          notes?: string | null
+          ot_schedule_id: string
+          recorded_by?: string | null
+          respiration?: number | null
+          spo2_score?: number | null
+          total_score?: number | null
+        }
+        Update: {
+          activity?: number | null
+          assessed_at?: string | null
+          circulation?: number | null
+          consciousness?: number | null
+          created_at?: string | null
+          hospital_id?: string
+          id?: string
+          notes?: string | null
+          ot_schedule_id?: string
+          recorded_by?: string | null
+          respiration?: number | null
+          spo2_score?: number | null
+          total_score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pacu_assessments_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       panchakarma_schedules: {
         Row: {
           billed: boolean | null
