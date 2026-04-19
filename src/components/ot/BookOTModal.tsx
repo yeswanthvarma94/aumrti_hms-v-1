@@ -3,6 +3,7 @@ import { X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useHospitalId } from "@/hooks/useHospitalId";
+import PatientSearchPicker from "@/components/shared/PatientSearchPicker";
 import type { OTRoom } from "@/pages/ot/OTPage";
 
 interface Props {
@@ -26,9 +27,7 @@ const DURATIONS = [30, 45, 60, 90, 120, 150, 180, 240];
 const BookOTModal: React.FC<Props> = ({ rooms, selectedRoomId, selectedDate, prefillTime, onClose, onBooked, initialPatientId, initialPatientName, initialDiagnosis, initialUrgency, initialSurgeonId }) => {
   const { hospitalId } = useHospitalId();
   const { toast } = useToast();
-  const [patients, setPatients] = useState<any[]>([]);
   const [doctors, setDoctors] = useState<any[]>([]);
-  const [patientSearch, setPatientSearch] = useState(initialPatientName || "");
   const isEmergencyReferral = initialUrgency === "emergency";
   const [form, setForm] = useState({
     patientId: initialPatientId || "",
@@ -49,11 +48,7 @@ const BookOTModal: React.FC<Props> = ({ rooms, selectedRoomId, selectedDate, pre
   useEffect(() => {
     if (!hospitalId) return;
     const fetchData = async () => {
-      const [{ data: pts }, { data: docs }] = await Promise.all([
-        supabase.from("patients").select("id, full_name, uhid, blood_group").eq("hospital_id", hospitalId).order("full_name").limit(100),
-        supabase.from("users").select("id, full_name, role").eq("hospital_id", hospitalId).eq("role", "doctor").eq("is_active", true).order("full_name"),
-      ]);
-      setPatients(pts || []);
+      const { data: docs } = await supabase.from("users").select("id, full_name, role").eq("hospital_id", hospitalId).eq("role", "doctor").eq("is_active", true).order("full_name");
       setDoctors(docs || []);
     };
     fetchData();
@@ -204,9 +199,6 @@ const BookOTModal: React.FC<Props> = ({ rooms, selectedRoomId, selectedDate, pre
     onBooked(form.date, form.roomId);
   };
 
-  const filteredPatients = patients.filter(
-    (p) => !patientSearch || p.full_name.toLowerCase().includes(patientSearch.toLowerCase()) || p.uhid.toLowerCase().includes(patientSearch.toLowerCase())
-  );
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={onClose}>
@@ -223,18 +215,13 @@ const BookOTModal: React.FC<Props> = ({ rooms, selectedRoomId, selectedDate, pre
           {/* Patient */}
           <div>
             <label className="text-xs font-medium text-foreground mb-1 block">Patient *</label>
-            <input type="text" placeholder="Search by name or UHID..." value={patientSearch} onChange={(e) => setPatientSearch(e.target.value)}
-              className="w-full text-sm border border-border rounded-md px-3 py-2 bg-background focus:outline-none focus:ring-1 focus:ring-primary" />
-            {patientSearch && !form.patientId && (
-              <div className="border border-border rounded-md mt-1 max-h-32 overflow-y-auto bg-card">
-                {filteredPatients.slice(0, 8).map((p) => (
-                  <button key={p.id} onClick={() => { setForm({ ...form, patientId: p.id }); setPatientSearch(p.full_name); }}
-                    className="w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors">
-                    {p.full_name} <span className="text-muted-foreground text-xs">({p.uhid})</span>
-                  </button>
-                ))}
-              </div>
-            )}
+            <PatientSearchPicker
+              hospitalId={hospitalId || ""}
+              value={form.patientId}
+              onChange={(pid) => setForm({ ...form, patientId: pid })}
+              selectedLabel={initialPatientName}
+              placeholder="Search by name or UHID…"
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
