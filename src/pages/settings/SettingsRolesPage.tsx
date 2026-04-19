@@ -47,6 +47,24 @@ type ModuleKey = (typeof MODULES)[number]["key"];
 const ACTIONS = ["view", "create", "edit", "delete", "approve", "export"] as const;
 type Action = (typeof ACTIONS)[number];
 
+/* Valid app_role enum values — role_permissions.role_name MUST match users.role enum */
+const VALID_APP_ROLES: { value: string; label: string }[] = [
+  { value: "super_admin",       label: "Super Admin" },
+  { value: "hospital_admin",    label: "Admin" },
+  { value: "doctor",            label: "Doctor" },
+  { value: "nurse",             label: "Nurse" },
+  { value: "receptionist",      label: "Reception" },
+  { value: "pharmacist",        label: "Pharmacist" },
+  { value: "lab_tech",          label: "Lab Tech" },
+  { value: "lab_technician",    label: "Lab Technician" },
+  { value: "radiologist",       label: "Radiologist" },
+  { value: "accountant",        label: "Accountant" },
+  { value: "billing_executive", label: "Billing Executive" },
+  { value: "billing_staff",     label: "Billing Staff" },
+  { value: "hr_manager",        label: "HR Manager" },
+  { value: "cfo",               label: "CFO" },
+];
+
 const ROLE_COLORS: Record<string, string> = {
   super_admin: "hsl(var(--primary))",
   doctor: "#3B82F6",
