@@ -27,9 +27,7 @@ const DURATIONS = [30, 45, 60, 90, 120, 150, 180, 240];
 const BookOTModal: React.FC<Props> = ({ rooms, selectedRoomId, selectedDate, prefillTime, onClose, onBooked, initialPatientId, initialPatientName, initialDiagnosis, initialUrgency, initialSurgeonId }) => {
   const { hospitalId } = useHospitalId();
   const { toast } = useToast();
-  const [patients, setPatients] = useState<any[]>([]);
   const [doctors, setDoctors] = useState<any[]>([]);
-  const [patientSearch, setPatientSearch] = useState(initialPatientName || "");
   const isEmergencyReferral = initialUrgency === "emergency";
   const [form, setForm] = useState({
     patientId: initialPatientId || "",
