@@ -177,6 +177,8 @@ const SettingsStaffPage: React.FC = () => {
     const roleCounts = new Map<string, number>();
     users.forEach((u) => {
       const r = u.role;
+      // Skip any legacy/invalid role values that aren't in the enum
+      if (!VALID_APP_ROLES_SET.has(r)) return;
       roleCounts.set(r, (roleCounts.get(r) || 0) + 1);
     });
     roleCounts.forEach((_, role) => {
@@ -226,6 +228,10 @@ const SettingsStaffPage: React.FC = () => {
 
   const saveStaff = useMutation({
     mutationFn: async () => {
+      // Guard: role must be a valid Postgres app_role enum value
+      if (!form.role || !VALID_APP_ROLES_SET.has(form.role)) {
+        throw new Error("Please select a valid role before saving.");
+      }
       const hid = await getHospitalId();
       const deptId = getSafeDepartmentId();
       if (editingId) {
