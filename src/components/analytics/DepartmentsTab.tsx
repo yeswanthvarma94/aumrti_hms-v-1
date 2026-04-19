@@ -40,38 +40,51 @@ const DepartmentsTab: React.FC<{ range: DateRange }> = ({ range }) => {
 
         <div className="divide-y divide-border/50">
           {(depts || []).map(dept => (
-            <button
+            <div
               key={dept.id}
-              onClick={() => setSelectedDeptId(dept.id)}
               className={cn(
-                "w-full px-4 py-3 text-left transition-colors",
+                "px-4 py-3 transition-colors",
                 selectedDeptId === dept.id
                   ? "bg-primary/5 border-l-2 border-primary"
                   : "hover:bg-muted/50 border-l-2 border-transparent"
               )}
             >
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-[13px] font-semibold text-foreground">{dept.name}</span>
-                <span className="text-[10px] text-muted-foreground">{dept.doctorCount} doctors</span>
-              </div>
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[13px] font-bold text-foreground">{fmt(dept.revenue)}</span>
-                <span className="text-[10px] text-muted-foreground">
-                  {dept.opdCount} OPD · {dept.ipdCount} IPD
-                </span>
-              </div>
-              {/* Share bar */}
-              <div className="h-1 bg-muted rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-primary/60 rounded-full"
-                  style={{ width: `${Math.round((dept.revenue / maxRevenue) * 100)}%` }}
-                />
-              </div>
-              <p className="text-[9px] text-muted-foreground mt-1">{dept.revenueShare}% of total revenue</p>
-            </button>
+              <button onClick={() => setSelectedDeptId(dept.id)} className="w-full text-left">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[13px] font-semibold text-foreground">{dept.name}</span>
+                  <span className="text-[10px] text-muted-foreground">{dept.doctorCount} doctors</span>
+                </div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[13px] font-bold text-foreground">{fmt(dept.revenue)}</span>
+                  <span className="text-[10px] text-muted-foreground">
+                    {dept.opdCount} OPD · {dept.ipdCount} IPD
+                  </span>
+                </div>
+                <div className="h-1 bg-muted rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-primary/60 rounded-full"
+                    style={{ width: `${Math.round((dept.revenue / maxRevenue) * 100)}%` }}
+                  />
+                </div>
+                <p className="text-[9px] text-muted-foreground mt-1">{dept.revenueShare}% of total revenue</p>
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); setDrillDeptId(dept.id); }}
+                className="mt-2 text-[10px] font-medium text-primary hover:underline inline-flex items-center gap-1"
+              >
+                <Maximize2 size={10} /> View Drill-Down
+              </button>
+            </div>
           ))}
         </div>
       </div>
+
+      <DepartmentDetailModal
+        open={!!drillDeptId}
+        onOpenChange={(v) => !v && setDrillDeptId(null)}
+        deptId={drillDeptId}
+        deptName={depts?.find(d => d.id === drillDeptId)?.name || ""}
+      />
 
       {/* Right — Department Detail */}
       <div className="flex-1 overflow-y-auto">
