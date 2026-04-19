@@ -4,8 +4,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Send, AlertTriangle, Bot } from "lucide-react";
+import { Send, Bot, Package } from "lucide-react";
 import DenialPredictorPanel from "@/components/insurance/DenialPredictorPanel";
+import ClaimBundleGenerator from "@/components/insurance/ClaimBundleGenerator";
 
 interface ClaimRow {
   bill_id: string;
@@ -24,6 +25,7 @@ const ClaimsToSubmit: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState<string | null>(null);
   const [selectedForReview, setSelectedForReview] = useState<ClaimRow | null>(null);
+  const [bundleFor, setBundleFor] = useState<ClaimRow | null>(null);
   const [hospitalId, setHospitalId] = useState<string>("");
   const { toast } = useToast();
 
@@ -152,6 +154,9 @@ const ClaimsToSubmit: React.FC = () => {
                 <TableCell>{riskBadge(r.denial_risk)}</TableCell>
                 <TableCell>
                   <div className="flex gap-1">
+                    <Button size="sm" variant="outline" className="text-[11px] h-7 gap-1" onClick={() => setBundleFor(r)} disabled={!r.admission_id}>
+                      <Package size={12} /> Bundle
+                    </Button>
                     <Button size="sm" variant="outline" className="text-[11px] h-7 gap-1" onClick={() => setSelectedForReview(r)}>
                       <Bot size={12} /> AI Review
                     </Button>
@@ -183,6 +188,22 @@ const ClaimsToSubmit: React.FC = () => {
             }}
           />
         </div>
+      )}
+
+      {bundleFor && bundleFor.admission_id && hospitalId && (
+        <ClaimBundleGenerator
+          open={!!bundleFor}
+          onClose={() => setBundleFor(null)}
+          admissionId={bundleFor.admission_id}
+          billId={bundleFor.bill_id}
+          patientId={bundleFor.patient_id}
+          patientName={bundleFor.patient_name}
+          billNumber={bundleFor.bill_number}
+          totalAmount={bundleFor.total_amount}
+          tpaName={bundleFor.tpa_name}
+          hospitalId={hospitalId}
+          onSubmitted={() => { setBundleFor(null); loadData(); }}
+        />
       )}
     </div>
   );

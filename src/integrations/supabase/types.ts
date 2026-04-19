@@ -7179,6 +7179,7 @@ export type Database = {
           ai_denial_risk_score: number | null
           approved_amount: number | null
           bill_id: string
+          bundle_generated_at: string | null
           claim_number: string | null
           claimed_amount: number
           created_at: string | null
@@ -7195,12 +7196,14 @@ export type Database = {
           settlement_date: string | null
           status: string
           submitted_at: string | null
+          submitted_by: string | null
           tpa_name: string
         }
         Insert: {
           ai_denial_risk_score?: number | null
           approved_amount?: number | null
           bill_id: string
+          bundle_generated_at?: string | null
           claim_number?: string | null
           claimed_amount: number
           created_at?: string | null
@@ -7217,12 +7220,14 @@ export type Database = {
           settlement_date?: string | null
           status?: string
           submitted_at?: string | null
+          submitted_by?: string | null
           tpa_name: string
         }
         Update: {
           ai_denial_risk_score?: number | null
           approved_amount?: number | null
           bill_id?: string
+          bundle_generated_at?: string | null
           claim_number?: string | null
           claimed_amount?: number
           created_at?: string | null
@@ -7239,6 +7244,7 @@ export type Database = {
           settlement_date?: string | null
           status?: string
           submitted_at?: string | null
+          submitted_by?: string | null
           tpa_name?: string
         }
         Relationships: [
@@ -7284,6 +7290,7 @@ export type Database = {
           admission_id: string
           approved_amount: number | null
           approved_at: string | null
+          bundle_generated_at: string | null
           created_at: string | null
           created_by: string | null
           diagnosis_codes: string[] | null
@@ -7306,6 +7313,7 @@ export type Database = {
           admission_id: string
           approved_amount?: number | null
           approved_at?: string | null
+          bundle_generated_at?: string | null
           created_at?: string | null
           created_by?: string | null
           diagnosis_codes?: string[] | null
@@ -7328,6 +7336,7 @@ export type Database = {
           admission_id?: string
           approved_amount?: number | null
           approved_at?: string | null
+          bundle_generated_at?: string | null
           created_at?: string | null
           created_by?: string | null
           diagnosis_codes?: string[] | null
