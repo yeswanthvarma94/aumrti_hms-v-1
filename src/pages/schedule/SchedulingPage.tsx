@@ -489,20 +489,14 @@ const ApptDetailModal: React.FC<{
         .eq("id", appt.id);
       if (error) throw error;
 
-      // Cancel matching opd_token via appointment_id link, fallback to broad match
-      const { error: tokErr } = await supabase
+      // Cancel matching opd_token (best-effort match by patient/doctor/date)
+      await supabase
         .from("opd_tokens")
         .update({ status: "cancelled" })
-        .eq("appointment_id", appt.id);
-      if (tokErr) {
-        await supabase
-          .from("opd_tokens")
-          .update({ status: "cancelled" })
-          .eq("patient_id", appt.patient_id)
-          .eq("doctor_id", appt.doctor_id)
-          .eq("visit_date", appt.appointment_date)
-          .eq("token_prefix", "APT");
-      }
+        .eq("patient_id", appt.patient_id)
+        .eq("doctor_id", appt.doctor_id)
+        .eq("visit_date", appt.appointment_date)
+        .eq("token_prefix", "APT");
 
       // WhatsApp cancellation
       try {
