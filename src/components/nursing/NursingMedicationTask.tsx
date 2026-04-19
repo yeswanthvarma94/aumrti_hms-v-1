@@ -57,11 +57,32 @@ const NursingMedicationTask: React.FC<Props> = ({ task, onComplete }) => {
       five_rights_verified: allChecked,
     });
 
+    // Mirror to dedicated mar_records audit log
+    const marStatus = outcome === "given" ? "given" : outcome === "held" ? "withheld" : "refused";
+    await supabase.from("mar_records" as any).insert({
+      hospital_id: task.hospitalId!,
+      admission_id: task.admissionId,
+      patient_id: task.patientId,
+      drug_name: task.drugName || "",
+      dose: task.dose || null,
+      route: task.route || null,
+      scheduled_time: `${task.scheduledDate}T${task.scheduledTime}:00`,
+      administered_at: outcome === "given" ? new Date().toISOString() : null,
+      administered_by: userId,
+      status: marStatus,
+      notes: omissionReason || null,
+    });
+
     setSaving(false);
     if (error) {
       toast({ title: "Error saving record", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: `✓ ${task.drugName} — ${outcome.toUpperCase()}` });
+      toast({
+        title: outcome === "given"
+          ? `✓ Administered: ${task.drugName} ${task.dose || ""}`
+          : `${task.drugName} — ${outcome.toUpperCase()}`,
+        description: outcome === "given" ? "5 Rights verified. Recorded to MAR." : undefined,
+      });
       if (outcome === "given" && task.hospitalId) {
         logNABHEvidence(task.hospitalId, "MOM.3",
           `Medication administered: ${task.drugName} ${task.dose || ""} to ${task.patientName || "patient"}. 5 Rights verified.`);
