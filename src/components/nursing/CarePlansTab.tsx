@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, ClipboardList, CheckCircle2, RefreshCcw, XCircle } from "lucide-react";
+import { Plus, ClipboardList, CheckCircle2 } from "lucide-react";
 import CarePlanModal from "./CarePlanModal";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 

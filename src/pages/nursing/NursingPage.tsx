@@ -3,10 +3,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useHospitalId } from "@/hooks/useHospitalId";
 import { Button } from "@/components/ui/button";
-import { ClipboardPlus } from "lucide-react";
+import { ClipboardPlus, ListChecks, ClipboardList } from "lucide-react";
 import NursingTaskList from "@/components/nursing/NursingTaskList";
 import NursingTaskExecution from "@/components/nursing/NursingTaskExecution";
 import NursingProcedureModal from "@/components/nursing/NursingProcedureModal";
+import CarePlansTab from "@/components/nursing/CarePlansTab";
+import { cn } from "@/lib/utils";
 
 export interface NursingTask {
   id: string;
@@ -84,6 +86,7 @@ const NursingPage: React.FC = () => {
   const [selectedWard, setSelectedWard] = useState<string>("all");
   const [filter, setFilter] = useState<string>("all");
   const [showProcedureModal, setShowProcedureModal] = useState(false);
+  const [activeTab, setActiveTab] = useState<"tasks" | "care_plans">("tasks");
   const shift = getCurrentShift();
 
   const fetchTasks = useCallback(async () => {
@@ -288,32 +291,56 @@ const NursingPage: React.FC = () => {
 
   return (
     <div className="h-full flex flex-col overflow-hidden bg-background">
-      {/* Procedure button header */}
-      <div className="flex items-center justify-end px-4 py-1.5 border-b shrink-0">
-        <Button size="sm" onClick={() => setShowProcedureModal(true)}>
+      {/* Top tabs + Procedure button */}
+      <div className="flex items-center px-4 py-1.5 border-b shrink-0 gap-1">
+        <button
+          onClick={() => setActiveTab("tasks")}
+          className={cn(
+            "h-8 px-3 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-colors",
+            activeTab === "tasks" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"
+          )}
+        >
+          <ListChecks className="h-3.5 w-3.5" /> Tasks
+        </button>
+        <button
+          onClick={() => setActiveTab("care_plans")}
+          className={cn(
+            "h-8 px-3 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-colors",
+            activeTab === "care_plans" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"
+          )}
+        >
+          <ClipboardList className="h-3.5 w-3.5" /> Care Plans
+        </button>
+        <Button size="sm" className="ml-auto" onClick={() => setShowProcedureModal(true)}>
           <ClipboardPlus className="h-4 w-4 mr-1" /> Log Procedure
         </Button>
       </div>
       <div className="flex-1 flex overflow-hidden">
-        <NursingTaskList
-          tasks={filteredTasks}
-          loading={loading}
-          selectedTaskId={selectedTask?.id || null}
-          onSelectTask={setSelectedTask}
-          shift={shift}
-          wards={wards}
-          selectedWard={selectedWard}
-          onWardChange={setSelectedWard}
-          filter={filter}
-          onFilterChange={setFilter}
-          stats={stats}
-        />
-        <NursingTaskExecution
-          task={selectedTask}
-          shift={shift}
-          wards={wards}
-          onComplete={handleTaskComplete}
-        />
+        {activeTab === "tasks" ? (
+          <>
+            <NursingTaskList
+              tasks={filteredTasks}
+              loading={loading}
+              selectedTaskId={selectedTask?.id || null}
+              onSelectTask={setSelectedTask}
+              shift={shift}
+              wards={wards}
+              selectedWard={selectedWard}
+              onWardChange={setSelectedWard}
+              filter={filter}
+              onFilterChange={setFilter}
+              stats={stats}
+            />
+            <NursingTaskExecution
+              task={selectedTask}
+              shift={shift}
+              wards={wards}
+              onComplete={handleTaskComplete}
+            />
+          </>
+        ) : (
+          hospitalId && <CarePlansTab hospitalId={hospitalId} />
+        )}
       </div>
       {showProcedureModal && hospitalId && (
         <NursingProcedureModal
