@@ -640,18 +640,28 @@ const PayrollTab: React.FC = () => {
                   </TableHeader>
                   <TableBody>
                     {calculatedItems.map((item) => (
-                      <TableRow key={item.user_id}>
-                        <TableCell className="font-medium text-sm">{item.full_name}</TableCell>
+                      <TableRow key={item.user_id} className={item.salary_missing ? "opacity-60" : ""}>
+                        <TableCell className="font-medium text-sm">
+                          <div className="flex items-center gap-2">
+                            <span>{item.full_name}</span>
+                            {item.salary_missing && (
+                              <Link to="/settings/staff" className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-destructive/10 text-destructive font-medium hover:underline">
+                                <AlertTriangle className="h-3 w-3" />
+                                Salary not set
+                              </Link>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell className="text-center text-xs">{item.present_days}/{item.absent_days}/{item.leave_days}</TableCell>
-                        <TableCell className="text-right text-sm">{fmt(item.basic)}</TableCell>
-                        <TableCell className="text-right text-sm">{fmt(item.gross_salary)}</TableCell>
-                        <TableCell className="text-right text-sm">{fmt(item.pf_employee)}</TableCell>
-                        <TableCell className="text-right text-sm">{fmt(item.esic_employee)}</TableCell>
-                        <TableCell className="text-right text-sm font-semibold">{fmt(item.net_salary)}</TableCell>
+                        <TableCell className="text-right text-sm">{item.salary_missing ? "—" : fmt(item.basic)}</TableCell>
+                        <TableCell className="text-right text-sm">{item.salary_missing ? "—" : fmt(item.gross_salary)}</TableCell>
+                        <TableCell className="text-right text-sm">{item.salary_missing ? "—" : fmt(item.pf_employee)}</TableCell>
+                        <TableCell className="text-right text-sm">{item.salary_missing ? "—" : fmt(item.esic_employee)}</TableCell>
+                        <TableCell className="text-right text-sm font-semibold">{item.salary_missing ? "—" : fmt(item.net_salary)}</TableCell>
                       </TableRow>
                     ))}
                     <TableRow className="bg-muted/50 font-bold">
-                      <TableCell>TOTAL ({calculatedItems.length} staff)</TableCell>
+                      <TableCell>TOTAL ({calculatedItems.filter((i) => !i.salary_missing).length} staff{calculatedItems.some((i) => i.salary_missing) ? `, ${calculatedItems.filter((i) => i.salary_missing).length} skipped` : ""})</TableCell>
                       <TableCell />
                       <TableCell className="text-right">{fmt(calculatedItems.reduce((s, i) => s + i.basic, 0))}</TableCell>
                       <TableCell className="text-right">{fmt(calculatedItems.reduce((s, i) => s + i.gross_salary, 0))}</TableCell>
