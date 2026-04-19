@@ -52,10 +52,12 @@ interface PayrollItem {
   total_deductions: number;
   net_salary: number;
   payment_status: string;
+  salary_missing?: boolean;
 }
 
 const PayrollTab: React.FC = () => {
   const { toast } = useToast();
+  const { hospitalId } = useHospitalId();
   const now = new Date();
   const [selectedMonth, setSelectedMonth] = useState(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`);
   const [runs, setRuns] = useState<PayrollRun[]>([]);
