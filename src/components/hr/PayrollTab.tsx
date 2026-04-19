@@ -217,9 +217,17 @@ const PayrollTab: React.FC = () => {
       const { data: currentUser } = await supabase.from("users").select("id, hospital_id").eq("auth_user_id", user.user?.id || "").maybeSingle();
       if (!currentUser) throw new Error("No user");
 
-      const totalGross = calculatedItems.reduce((s, i) => s + i.gross_salary, 0);
-      const totalDed = calculatedItems.reduce((s, i) => s + i.total_deductions, 0);
-      const totalNet = calculatedItems.reduce((s, i) => s + i.net_salary, 0);
+      // Skip staff with missing salary master — never insert ₹0 payslips silently
+      const validItems = calculatedItems.filter((i) => !i.salary_missing);
+      if (validItems.length === 0) {
+        toast({ title: "No staff with salary configured. Set Basic Salary in Staff Directory first.", variant: "destructive" });
+        setProcessing(false);
+        return;
+      }
+
+      const totalGross = validItems.reduce((s, i) => s + i.gross_salary, 0);
+      const totalDed = validItems.reduce((s, i) => s + i.total_deductions, 0);
+      const totalNet = validItems.reduce((s, i) => s + i.net_salary, 0);
 
       const { data: run, error: runErr } = await (supabase as any).from("payroll_runs").insert({
         hospital_id: currentUser.hospital_id,
@@ -227,14 +235,14 @@ const PayrollTab: React.FC = () => {
         total_gross: totalGross,
         total_deductions: totalDed,
         total_net: totalNet,
-        staff_count: calculatedItems.length,
+        staff_count: validItems.length,
         status: "processed",
         processed_by: currentUser.id,
       }).select().maybeSingle();
 
       if (runErr) throw runErr;
 
-      const items = calculatedItems.map((i) => ({
+      const items = validItems.map((i) => ({
         hospital_id: currentUser.hospital_id,
         payroll_run_id: run.id,
         user_id: i.user_id,
