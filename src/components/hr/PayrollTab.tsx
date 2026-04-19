@@ -239,11 +239,69 @@ const PayrollTab: React.FC = () => {
   const viewRun = async (runId: string) => {
     const { data } = await (supabase as any)
       .from("payroll_items")
-      .select("*, users!payroll_items_user_id_fkey(full_name)")
+      .select("*, users!payroll_items_user_id_fkey(full_name), staff_profiles!payroll_items_user_id_fkey(employee_id, designation, departments(name))")
       .eq("payroll_run_id", runId);
 
-    setViewItems((data || []).map((d: any) => ({ ...d, full_name: d.users?.full_name || "Unknown" })));
+    setViewItems((data || []).map((d: any) => ({
+      ...d,
+      full_name: d.users?.full_name || "Unknown",
+      _employee_id: d.staff_profiles?.employee_id || null,
+      _designation: d.staff_profiles?.designation || null,
+      _department: d.staff_profiles?.departments?.name || null,
+    })));
     setActiveRunId(runId);
+  };
+
+  const downloadPayslip = async (item: any) => {
+    const run = runs.find((r) => r.id === activeRunId);
+    if (!run) {
+      toast({ title: "Payroll run not found", variant: "destructive" });
+      return;
+    }
+    // Fetch hospital info
+    const { data: u } = await supabase.auth.getUser();
+    const { data: cu } = await supabase.from("users").select("hospital_id").eq("auth_user_id", u.user?.id || "").maybeSingle();
+    let hospitalName = "Hospital";
+    let hospitalAddress: string | undefined;
+    let hospitalGstin: string | undefined;
+    if (cu?.hospital_id) {
+      const { data: h } = await (supabase as any).from("hospitals").select("name, address, gstin").eq("id", cu.hospital_id).maybeSingle();
+      if (h) { hospitalName = h.name || "Hospital"; hospitalAddress = h.address; hospitalGstin = h.gstin; }
+    }
+    const pf = Number(item.pf_employee) || 0;
+    const esic = Number(item.esic_employee) || 0;
+    const tds = Number(item.tds) || 0;
+    const totalDed = Number(item.total_deductions) || 0;
+    const pt = Math.max(0, Math.round((totalDed - pf - esic - tds) * 100) / 100);
+
+    printPayslip(
+      {
+        full_name: item.full_name,
+        employee_id: item._employee_id,
+        designation: item._designation,
+        department: item._department,
+        payment_mode: "Bank Transfer",
+      },
+      {
+        month: run.run_month,
+        working_days: undefined,
+        paid_days: (item.present_days || 0) + (item.leave_days || 0),
+        basic: Number(item.basic) || 0,
+        hra: Number(item.hra) || 0,
+        da: Number(item.da) || 0,
+        conveyance: Number(item.conveyance) || 0,
+        medical_allowance: Number(item.medical_allowance) || 0,
+        overtime_amount: Number(item.overtime_amount) || 0,
+        gross_salary: Number(item.gross_salary) || 0,
+        pf_employee: pf,
+        esic_employee: esic,
+        professional_tax: pt,
+        tds,
+        total_deductions: totalDed,
+        net_salary: Number(item.net_salary) || 0,
+      },
+      { name: hospitalName, address: hospitalAddress, gstin: hospitalGstin }
+    );
   };
 
   const approveRun = async (runId: string) => {
