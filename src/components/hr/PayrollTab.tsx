@@ -10,7 +10,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { autoPostJournalEntry } from "@/lib/accounting";
 import { printPayslip } from "@/lib/payslipPrint";
-import { DollarSign, Download, CheckSquare, Loader2, FileText, AlertTriangle } from "lucide-react";
+import { printDocument, printHeader, printAmount } from "@/lib/printUtils";
+import { DollarSign, Download, CheckSquare, Loader2, FileText, AlertTriangle, Eye } from "lucide-react";
 
 /** Andhra Pradesh PT slab (default for unspecified states) */
 function professionalTax(gross: number): number {
@@ -67,6 +68,8 @@ const PayrollTab: React.FC = () => {
   const [calculatedItems, setCalculatedItems] = useState<PayrollItem[]>([]);
   const [activeRunId, setActiveRunId] = useState<string | null>(null);
   const [viewItems, setViewItems] = useState<PayrollItem[]>([]);
+  const [showViewDialog, setShowViewDialog] = useState(false);
+  const [viewLoading, setViewLoading] = useState(false);
   const [staffCount, setStaffCount] = useState(0);
   const [attendanceCount, setAttendanceCount] = useState(0);
 
@@ -277,10 +280,20 @@ const PayrollTab: React.FC = () => {
   };
 
   const viewRun = async (runId: string) => {
-    const { data } = await (supabase as any)
+    setActiveRunId(runId);
+    setShowViewDialog(true);
+    setViewLoading(true);
+    setViewItems([]);
+    const { data, error } = await (supabase as any)
       .from("payroll_items")
       .select("*, users!payroll_items_user_id_fkey(full_name), staff_profiles!payroll_items_user_id_fkey(employee_id, designation, departments(name))")
       .eq("payroll_run_id", runId);
+
+    if (error) {
+      toast({ title: "Failed to load payroll details", description: error.message, variant: "destructive" });
+      setViewLoading(false);
+      return;
+    }
 
     setViewItems((data || []).map((d: any) => ({
       ...d,
@@ -289,7 +302,94 @@ const PayrollTab: React.FC = () => {
       _designation: d.staff_profiles?.designation || null,
       _department: d.staff_profiles?.departments?.name || null,
     })));
-    setActiveRunId(runId);
+    setViewLoading(false);
+  };
+
+  const downloadPayrollPDF = async (runId: string) => {
+    const run = runs.find((r) => r.id === runId);
+    if (!run) return;
+
+    const { data: items } = await (supabase as any)
+      .from("payroll_items")
+      .select("*, users!payroll_items_user_id_fkey(full_name), staff_profiles!payroll_items_user_id_fkey(employee_id, departments(name))")
+      .eq("payroll_run_id", runId);
+
+    if (!items || items.length === 0) {
+      toast({ title: "No payroll details to export", variant: "destructive" });
+      return;
+    }
+
+    let hospitalName = "Hospital";
+    let hospitalAddress = "";
+    if (hospitalId) {
+      const { data: h } = await (supabase as any).from("hospitals").select("name, address").eq("id", hospitalId).maybeSingle();
+      if (h) { hospitalName = h.name || "Hospital"; hospitalAddress = h.address || ""; }
+    }
+
+    const totalGross = items.reduce((s: number, i: any) => s + Number(i.gross_salary || 0), 0);
+    const totalBasic = items.reduce((s: number, i: any) => s + Number(i.basic || 0), 0);
+    const totalPF = items.reduce((s: number, i: any) => s + Number(i.pf_employee || 0), 0);
+    const totalESIC = items.reduce((s: number, i: any) => s + Number(i.esic_employee || 0), 0);
+    const totalDed = items.reduce((s: number, i: any) => s + Number(i.total_deductions || 0), 0);
+    const totalNet = items.reduce((s: number, i: any) => s + Number(i.net_salary || 0), 0);
+
+    const esc = (s: any) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+    const rows = items.map((it: any, idx: number) => `
+      <tr>
+        <td>${idx + 1}</td>
+        <td>${esc(it.staff_profiles?.employee_id || "—")}</td>
+        <td>${esc(it.users?.full_name || "Unknown")}</td>
+        <td>${esc(it.staff_profiles?.departments?.name || "—")}</td>
+        <td style="text-align:center">${it.present_days || 0}/${it.absent_days || 0}/${it.leave_days || 0}</td>
+        <td class="amount" style="text-align:right">${printAmount(Number(it.basic || 0))}</td>
+        <td class="amount" style="text-align:right">${printAmount(Number(it.gross_salary || 0))}</td>
+        <td class="amount" style="text-align:right">${printAmount(Number(it.pf_employee || 0))}</td>
+        <td class="amount" style="text-align:right">${printAmount(Number(it.esic_employee || 0))}</td>
+        <td class="amount" style="text-align:right">${printAmount(Number(it.total_deductions || 0))}</td>
+        <td class="amount" style="text-align:right;font-weight:700">${printAmount(Number(it.net_salary || 0))}</td>
+      </tr>`).join("");
+
+    const body = `
+      ${printHeader(hospitalName, "Payroll Register", `<p style="font-size:12px;color:#475569;margin-top:4px;">${esc(hospitalAddress)}</p>`)}
+      <div style="display:flex;justify-content:space-between;margin-bottom:12px;font-size:12px;flex-wrap:wrap;gap:8px;">
+        <div><strong>Pay Month:</strong> ${esc(run.run_month)}</div>
+        <div><strong>Run Date:</strong> ${new Date(run.run_date || Date.now()).toLocaleDateString("en-IN")}</div>
+        <div><strong>Status:</strong> <span class="badge">${esc(run.status)}</span></div>
+        <div><strong>Total Staff:</strong> ${run.staff_count}</div>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th><th>Emp ID</th><th>Name</th><th>Dept</th>
+            <th style="text-align:center">P/A/L</th>
+            <th style="text-align:right">Basic</th>
+            <th style="text-align:right">Gross</th>
+            <th style="text-align:right">PF</th>
+            <th style="text-align:right">ESIC</th>
+            <th style="text-align:right">Deductions</th>
+            <th style="text-align:right">Net Pay</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows}
+          <tr style="background:#f1f5f9;font-weight:bold;border-top:2px solid #1A2F5A;">
+            <td colspan="5" style="text-align:right">TOTAL</td>
+            <td class="amount" style="text-align:right">${printAmount(totalBasic)}</td>
+            <td class="amount" style="text-align:right">${printAmount(totalGross)}</td>
+            <td class="amount" style="text-align:right">${printAmount(totalPF)}</td>
+            <td class="amount" style="text-align:right">${printAmount(totalESIC)}</td>
+            <td class="amount" style="text-align:right">${printAmount(totalDed)}</td>
+            <td class="amount" style="text-align:right">${printAmount(totalNet)}</td>
+          </tr>
+        </tbody>
+      </table>
+      <div style="margin-top:20px;font-size:11px;color:#64748b;">
+        <p>To save as PDF: in the print dialog, set destination to <strong>"Save as PDF"</strong>.</p>
+      </div>
+    `;
+
+    printDocument(`Payroll Register — ${run.run_month}`, body, { width: 1100, height: 800 });
   };
 
   const downloadPayslip = async (item: any) => {
@@ -500,8 +600,13 @@ const PayrollTab: React.FC = () => {
                       <Badge variant={statusColor(r.status)}>{r.status}</Badge>
                     </TableCell>
                     <TableCell>
-                      <div className="flex gap-2">
-                        <Button size="sm" variant="outline" onClick={() => viewRun(r.id)}>View</Button>
+                      <div className="flex gap-2 flex-wrap">
+                        <Button size="sm" variant="outline" onClick={() => viewRun(r.id)} title="View payroll details">
+                          <Eye className="h-3 w-3 mr-1" /> View
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => downloadPayrollPDF(r.id)} title="Download payroll register as PDF">
+                          <Download className="h-3 w-3 mr-1" /> PDF
+                        </Button>
                         {r.status === "processed" && (
                           <Button size="sm" variant="outline" onClick={() => approveRun(r.id)}>
                             <CheckSquare className="h-3 w-3 mr-1" /> Approve
@@ -516,19 +621,45 @@ const PayrollTab: React.FC = () => {
           </div>
         )}
 
-        {/* View items for selected run */}
-        {viewItems.length > 0 && (
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-semibold text-foreground">Payroll Details</h3>
-              <Button size="sm" variant="ghost" onClick={() => { setViewItems([]); setActiveRunId(null); }}>Close</Button>
+        {runs.length === 0 && (
+          <div className="flex-1 flex items-center justify-center text-muted-foreground">
+            <div className="text-center">
+              <DollarSign className="h-12 w-12 mx-auto mb-3 opacity-40" />
+              <p className="text-sm font-medium">No payroll runs yet</p>
+              <p className="text-xs mt-1">Click "Run Payroll" to process salaries</p>
             </div>
+          </div>
+        )}
+      </div>
+
+      {/* View Payroll Details Dialog */}
+      <Dialog open={showViewDialog} onOpenChange={(open) => { setShowViewDialog(open); if (!open) { setViewItems([]); setActiveRunId(null); } }}>
+        <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between">
+              <span>Payroll Details — {runs.find(r => r.id === activeRunId)?.run_month || ""}</span>
+              {activeRunId && (
+                <Button size="sm" variant="outline" onClick={() => downloadPayrollPDF(activeRunId)} className="mr-6">
+                  <Download className="h-3 w-3 mr-1" /> Download PDF
+                </Button>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+
+          {viewLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              <span className="ml-2 text-sm text-muted-foreground">Loading payroll details...</span>
+            </div>
+          ) : viewItems.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground text-sm">No payroll items found for this run.</div>
+          ) : (
             <div className="overflow-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Staff</TableHead>
-                    <TableHead className="text-center">Days</TableHead>
+                    <TableHead className="text-center">Days (P/A/L)</TableHead>
                     <TableHead className="text-right">Gross</TableHead>
                     <TableHead className="text-right">PF</TableHead>
                     <TableHead className="text-right">ESIC</TableHead>
@@ -541,7 +672,7 @@ const PayrollTab: React.FC = () => {
                   {viewItems.map((item) => (
                     <TableRow key={item.id}>
                       <TableCell className="font-medium">{item.full_name}</TableCell>
-                      <TableCell className="text-center text-xs">P:{item.present_days} A:{item.absent_days} L:{item.leave_days}</TableCell>
+                      <TableCell className="text-center text-xs">{item.present_days}/{item.absent_days}/{item.leave_days}</TableCell>
                       <TableCell className="text-right">{fmt(item.gross_salary)}</TableCell>
                       <TableCell className="text-right">{fmt(item.pf_employee)}</TableCell>
                       <TableCell className="text-right">{fmt(item.esic_employee)}</TableCell>
@@ -575,19 +706,9 @@ const PayrollTab: React.FC = () => {
                 </TableBody>
               </Table>
             </div>
-          </div>
-        )}
-
-        {runs.length === 0 && viewItems.length === 0 && (
-          <div className="flex-1 flex items-center justify-center text-muted-foreground">
-            <div className="text-center">
-              <DollarSign className="h-12 w-12 mx-auto mb-3 opacity-40" />
-              <p className="text-sm font-medium">No payroll runs yet</p>
-              <p className="text-xs mt-1">Click "Run Payroll" to process salaries</p>
-            </div>
-          </div>
-        )}
-      </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Run Payroll Modal */}
       <Dialog open={showModal} onOpenChange={setShowModal}>
