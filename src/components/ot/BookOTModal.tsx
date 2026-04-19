@@ -48,11 +48,17 @@ const BookOTModal: React.FC<Props> = ({ rooms, selectedRoomId, selectedDate, pre
   useEffect(() => {
     if (!hospitalId) return;
     const fetchData = async () => {
-      const { data: docs } = await supabase.from("users").select("id, full_name, role").eq("hospital_id", hospitalId).eq("role", "doctor").eq("is_active", true).order("full_name");
+      const { data: docs } = await supabase
+        .from("users")
+        .select("id, full_name, role")
+        .eq("hospital_id", hospitalId)
+        .in("role", ["doctor", "super_admin", "hospital_admin"])
+        .eq("is_active", true)
+        .order("full_name");
       setDoctors(docs || []);
     };
     fetchData();
-  }, []);
+  }, [hospitalId]);
 
   const addMinutes = (time: string, mins: number) => {
     const [h, m] = time.split(":").map(Number);
