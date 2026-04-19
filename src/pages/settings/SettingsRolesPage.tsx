@@ -141,6 +141,9 @@ const SettingsRolesPage: React.FC = () => {
   const [matrix, setMatrix] = useState<Record<ModuleKey, Record<Action, boolean>> | null>(null);
   const [editLabel, setEditLabel] = useState("");
   const [previewRole, setPreviewRole] = useState<RolePermission | null>(null);
+  const [createPickerOpen, setCreatePickerOpen] = useState(false);
+  const [pickerRole, setPickerRole] = useState<string>("");
+  const [pickerLabel, setPickerLabel] = useState<string>("");
 
   /* ── Fetch roles ── */
   const { data: roles = [] } = useQuery({
