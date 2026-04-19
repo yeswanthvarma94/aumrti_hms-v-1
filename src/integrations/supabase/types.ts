@@ -16424,6 +16424,10 @@ export type Database = {
         Returns: boolean
       }
       increment_icd_use_count: { Args: { p_code: string }; Returns: undefined }
+      seed_default_roles_for_hospital: {
+        Args: { p_hospital_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role:
