@@ -147,11 +147,10 @@ const PayrollTab: React.FC = () => {
         const otAmount = Math.round(otHours * (perDay / 8) * 1.5 * 100) / 100;
         const gross = basic + hra + da + conv + med + otAmount;
 
-        const pfEmp = sp.pf_applicable ? Math.round(basic * 0.12 * 100) / 100 : 0;
-        const pfEr = sp.pf_applicable ? Math.round(basic * 0.12 * 100) / 100 : 0;
-        const esicEmp = sp.esic_applicable ? Math.round(gross * 0.0075 * 100) / 100 : 0;
-        const esicEr = sp.esic_applicable ? Math.round(gross * 0.0325 * 100) / 100 : 0;
-        const totalDed = pfEmp + esicEmp;
+        const pfEmp = sp.pf_applicable ? Math.min(Math.round(basic * 0.12 * 100) / 100, 1800) : 0;
+        const esicEmp = sp.esic_applicable && gross <= 21000 ? Math.round(gross * 0.0075 * 100) / 100 : 0;
+        const pt = professionalTax(gross);
+        const totalDed = pfEmp + esicEmp + pt;
         const net = Math.round((gross - totalDed) * 100) / 100;
 
         return {
