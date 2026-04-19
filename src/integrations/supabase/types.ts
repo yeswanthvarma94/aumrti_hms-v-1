@@ -14209,6 +14209,71 @@ export type Database = {
           },
         ]
       }
+      report_schedules: {
+        Row: {
+          config: Json | null
+          created_at: string | null
+          created_by: string | null
+          day_of_month: number | null
+          day_of_week: number | null
+          format: string | null
+          frequency: string
+          hospital_id: string
+          id: string
+          is_active: boolean | null
+          last_sent_at: string | null
+          recipient_emails: string[] | null
+          recipient_roles: string[] | null
+          report_name: string
+          report_type: string
+          send_time: string | null
+        }
+        Insert: {
+          config?: Json | null
+          created_at?: string | null
+          created_by?: string | null
+          day_of_month?: number | null
+          day_of_week?: number | null
+          format?: string | null
+          frequency: string
+          hospital_id: string
+          id?: string
+          is_active?: boolean | null
+          last_sent_at?: string | null
+          recipient_emails?: string[] | null
+          recipient_roles?: string[] | null
+          report_name: string
+          report_type: string
+          send_time?: string | null
+        }
+        Update: {
+          config?: Json | null
+          created_at?: string | null
+          created_by?: string | null
+          day_of_month?: number | null
+          day_of_week?: number | null
+          format?: string | null
+          frequency?: string
+          hospital_id?: string
+          id?: string
+          is_active?: boolean | null
+          last_sent_at?: string | null
+          recipient_emails?: string[] | null
+          recipient_roles?: string[] | null
+          report_name?: string
+          report_type?: string
+          send_time?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_schedules_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       retention_schedules: {
         Row: {
           created_at: string | null
