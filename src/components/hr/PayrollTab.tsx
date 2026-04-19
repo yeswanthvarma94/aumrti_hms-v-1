@@ -68,6 +68,8 @@ const PayrollTab: React.FC = () => {
   const [calculatedItems, setCalculatedItems] = useState<PayrollItem[]>([]);
   const [activeRunId, setActiveRunId] = useState<string | null>(null);
   const [viewItems, setViewItems] = useState<PayrollItem[]>([]);
+  const [showViewDialog, setShowViewDialog] = useState(false);
+  const [viewLoading, setViewLoading] = useState(false);
   const [staffCount, setStaffCount] = useState(0);
   const [attendanceCount, setAttendanceCount] = useState(0);
 
