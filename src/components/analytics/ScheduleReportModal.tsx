@@ -44,27 +44,51 @@ const ScheduleReportModal: React.FC<ScheduleReportModalProps> = ({ open, onOpenC
 
   const removeRecipient = (r: string) => setRecipients(prev => prev.filter(x => x !== r));
 
-  const handleSave = () => {
-    const schedule = {
-      id: Date.now().toString(),
-      reportName,
+  const handleSave = async () => {
+    const { supabase } = await import("@/integrations/supabase/client");
+    const { getHospitalId } = await import("@/lib/getHospitalId");
+    const hospitalId = await getHospitalId();
+    if (!hospitalId) {
+      toast.error("Cannot find your hospital. Please re-login.");
+      return;
+    }
+
+    const dayMap: Record<string, number> = { Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6 };
+    const formats: string[] = [];
+    if (formatExcel) formats.push("excel");
+    if (formatPdf) formats.push("pdf");
+    const fmt = formats.length === 2 ? "both" : formats[0] || "pdf";
+
+    const payload: any = {
+      hospital_id: hospitalId,
+      report_name: reportName,
+      report_type: "custom",
       frequency,
-      time,
-      weekDay: frequency === "weekly" ? weekDay : null,
-      monthDay: frequency === "monthly" ? monthDay : null,
-      recipients,
-      allAdmins,
-      deliveryWhatsapp,
-      deliveryEmail,
-      formatExcel,
-      formatPdf,
-      createdAt: new Date().toISOString(),
+      send_time: time,
+      recipient_emails: recipients,
+      format: fmt,
+      is_active: true,
+      config: {
+        allAdmins,
+        deliveryWhatsapp,
+        deliveryEmail,
+        weekDay: frequency === "weekly" ? weekDay : null,
+        monthDay: frequency === "monthly" ? monthDay : null,
+      },
     };
+    if (frequency === "weekly") payload.day_of_week = dayMap[weekDay];
+    if (frequency === "monthly") payload.day_of_month = parseInt(monthDay, 10);
 
-    const existing = JSON.parse(localStorage.getItem("scheduled_reports") || "[]");
-    localStorage.setItem("scheduled_reports", JSON.stringify([...existing, schedule]));
+    const { error } = await supabase.from("report_schedules").insert(payload);
+    if (error) {
+      toast.error(`Save failed: ${error.message}`);
+      return;
+    }
 
-    const freqLabel = frequency === "daily" ? "every day" : frequency === "weekly" ? `every ${weekDay}` : `on the ${monthDay}${monthDay === "1" ? "st" : monthDay === "2" ? "nd" : "th"} of each month`;
+    const freqLabel =
+      frequency === "daily" ? "every day" :
+      frequency === "weekly" ? `every ${weekDay}` :
+      `on day ${monthDay} of each month`;
     toast.success(`Report scheduled ✓ — delivers ${freqLabel} at ${time}`);
     onOpenChange(false);
   };
