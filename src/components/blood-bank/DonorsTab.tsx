@@ -89,7 +89,18 @@ const DonorsTab: React.FC<Props> = ({ showModal, onCloseModal }) => {
   };
 
   const submitDonor = async () => {
-    const reactive = [form.hiv_status, form.hbsag_status, form.hcv_status, form.vdrl_status, form.malaria_status].some(s => s === "reactive");
+    const ttiMap = {
+      tti_hiv: form.hiv_status,
+      tti_hbsag: form.hbsag_status,
+      tti_hcv: form.hcv_status,
+      tti_vdrl: form.vdrl_status,
+      tti_malaria: form.malaria_status,
+    };
+    const reactiveTests = Object.entries(ttiMap)
+      .filter(([, v]) => v === "reactive")
+      .map(([k]) => k.replace("tti_", "").toUpperCase());
+    const reactive = reactiveTests.length > 0;
+
     const { data: user } = await supabase.from("users").select("id, hospital_id").limit(1).maybeSingle();
     if (!user) return;
 
@@ -121,60 +132,59 @@ const DonorsTab: React.FC<Props> = ({ showModal, onCloseModal }) => {
       next_eligible: reactive ? null : new Date(Date.now() + 90 * 86400000).toISOString().split("T")[0],
     }).select("id").maybeSingle();
 
+    const donorId = donorData?.id || null;
+    const now = Date.now();
+    const collectedISO = new Date().toISOString();
+    const bagStatus = reactive ? "quarantine" : "available";
+    const quarantineReason = reactive ? `TTI reactive: ${reactiveTests.join(", ")}` : null;
+
+    const bags: { component: string; volume_ml: number; shelf_days: number; storage_location: string }[] = form.separate_components
+      ? [
+          { component: "rbc", volume_ml: 280, shelf_days: COMPONENT_SHELF_LIFE.rbc, storage_location: "Blood Bank Fridge" },
+          { component: "ffp", volume_ml: 150, shelf_days: COMPONENT_SHELF_LIFE.ffp, storage_location: "Deep Freezer" },
+          { component: "platelets", volume_ml: 50, shelf_days: COMPONENT_SHELF_LIFE.platelets, storage_location: "Platelet Agitator" },
+        ]
+      : [{ component: "whole_blood", volume_ml: 450, shelf_days: COMPONENT_SHELF_LIFE.whole_blood, storage_location: "Processing Area" }];
+
+    for (let i = 0; i < bags.length; i++) {
+      const b = bags[i];
+      const unitNum = `BU-${user.hospital_id.substring(0, 8)}-${b.component.toUpperCase()}-${String(now + i).slice(-5)}`;
+      const qrCode = buildQRString(user.hospital_id, unitNum, collectedISO);
+      await (supabase as any).from("blood_units").insert({
+        hospital_id: user.hospital_id,
+        unit_number: unitNum,
+        donor_id: donorId,
+        component: b.component,
+        blood_group: form.blood_group,
+        rh_factor: form.rh_factor,
+        volume_ml: b.volume_ml,
+        collected_at: collectedISO,
+        expiry_at: new Date(now + b.shelf_days * 86400000).toISOString(),
+        storage_location: b.storage_location,
+        status: bagStatus,
+        ...ttiMap,
+        quarantine_reason: quarantineReason,
+        qr_code: qrCode,
+      });
+    }
+
     if (reactive) {
-      toast({ title: "REACTIVE — Donor permanently deferred", variant: "destructive" });
+      toast({
+        title: `🚫 ${bags.length} Bag(s) QUARANTINED`,
+        description: `Reactive: ${reactiveTests.join(", ")}. Bags blocked from issue.`,
+        variant: "destructive",
+      });
     } else {
-      const donorId = donorData?.id || null;
-      const now = Date.now();
-
-      if (form.separate_components) {
-        // Component separation: create RBC, FFP, Platelets from whole blood
-        const components = [
-          { component: "rbc", volume_ml: 280, shelf_days: COMPONENT_SHELF_LIFE.rbc },
-          { component: "ffp", volume_ml: 150, shelf_days: COMPONENT_SHELF_LIFE.ffp },
-          { component: "platelets", volume_ml: 50, shelf_days: COMPONENT_SHELF_LIFE.platelets },
-        ];
-
-        for (const comp of components) {
-          const unitNum = `BU-${user.hospital_id.substring(0, 8)}-${comp.component.toUpperCase()}-${String(now).slice(-4)}`;
-          await supabase.from("blood_units").insert({
-            hospital_id: user.hospital_id,
-            unit_number: unitNum,
-            donor_id: donorId,
-            component: comp.component,
-            blood_group: form.blood_group,
-            rh_factor: form.rh_factor,
-            volume_ml: comp.volume_ml,
-            collected_at: new Date().toISOString(),
-            expiry_at: new Date(now + comp.shelf_days * 86400000).toISOString(),
-            storage_location: comp.component === "platelets" ? "Platelet Agitator" : comp.component === "ffp" ? "Deep Freezer" : "Blood Bank Fridge",
-            status: "available",
-          });
-        }
-        toast({ title: "Donor registered & components separated", description: `${donorCode} → RBC + FFP + Platelets created` });
-      } else {
-        // Store as whole blood
-        const unitNum = `BU-${user.hospital_id.substring(0, 8)}-WB-${String(now).slice(-4)}`;
-        await supabase.from("blood_units").insert({
-          hospital_id: user.hospital_id,
-          unit_number: unitNum,
-          donor_id: donorId,
-          component: "whole_blood",
-          blood_group: form.blood_group,
-          rh_factor: form.rh_factor,
-          volume_ml: 450,
-          collected_at: new Date().toISOString(),
-          expiry_at: new Date(now + COMPONENT_SHELF_LIFE.whole_blood * 86400000).toISOString(),
-          storage_location: "Processing Area",
-          status: "available",
-        });
-        toast({ title: "Donor registered & whole blood unit collected", description: donorCode });
-      }
+      toast({
+        title: `✓ TTI Clear — ${bags.length} bag(s) available`,
+        description: `${donorCode} → ${bags.map(b => b.component.toUpperCase()).join(" + ")}`,
+      });
     }
 
     onCloseModal();
     setStep("personal");
     fetchDonors();
+    fetchRecentUnits();
   };
 
   const sendCampaignWhatsApp = (donor: any) => {
