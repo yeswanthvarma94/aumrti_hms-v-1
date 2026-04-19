@@ -512,9 +512,14 @@ const PayrollTab: React.FC = () => {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Button size="sm" variant="ghost" onClick={() => toggleHold(item.id, item.payment_status)}>
-                          {item.payment_status === "hold" ? "Release" : "Hold"}
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button size="sm" variant="ghost" onClick={() => toggleHold(item.id, item.payment_status)}>
+                            {item.payment_status === "hold" ? "Release" : "Hold"}
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => downloadPayslip(item)} title="Download Payslip">
+                            <FileText className="h-3 w-3 mr-1" /> Payslip
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
