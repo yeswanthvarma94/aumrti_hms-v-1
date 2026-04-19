@@ -397,10 +397,57 @@ const SettingsRolesPage: React.FC = () => {
             </button>
             <span className="text-sm font-bold text-foreground">Roles</span>
           </div>
-          <Button size="sm" variant="default" className="h-7 text-xs gap-1" onClick={() => createMutation.mutate()}>
+          <Button size="sm" variant="default" className="h-7 text-xs gap-1" onClick={() => setCreatePickerOpen(true)}>
             <Plus size={12} /> Create
           </Button>
         </div>
+
+        {/* ── Create Role picker modal ── */}
+        {createPickerOpen && (
+          <div className="fixed inset-0 z-[120] bg-black/50 flex items-center justify-center p-4" onClick={() => setCreatePickerOpen(false)}>
+            <div className="bg-card border border-border rounded-xl p-6 w-full max-w-md shadow-xl" onClick={(e) => e.stopPropagation()}>
+              <h3 className="text-base font-bold text-foreground mb-1">Customise Permissions for a Role</h3>
+              <p className="text-xs text-muted-foreground mb-4">
+                Choose one of the system roles to override its default permissions for this hospital.
+              </p>
+              <label className="text-xs font-medium text-foreground block mb-1">Role</label>
+              <select
+                value={pickerRole}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setPickerRole(v);
+                  const found = VALID_APP_ROLES.find((r) => r.value === v);
+                  if (found && !pickerLabel) setPickerLabel(found.label);
+                }}
+                className="w-full h-9 rounded-md border border-border bg-background px-2 text-sm mb-3"
+              >
+                <option value="">— Select a role —</option>
+                {VALID_APP_ROLES
+                  .filter((r) => !roles.some((existing) => existing.role_name === r.value))
+                  .map((r) => (
+                    <option key={r.value} value={r.value}>{r.label}</option>
+                  ))}
+              </select>
+              <label className="text-xs font-medium text-foreground block mb-1">Display Label</label>
+              <Input
+                value={pickerLabel}
+                onChange={(e) => setPickerLabel(e.target.value)}
+                placeholder="e.g. Senior Doctor"
+                className="mb-4 h-9"
+              />
+              <div className="flex justify-end gap-2">
+                <Button size="sm" variant="outline" onClick={() => setCreatePickerOpen(false)}>Cancel</Button>
+                <Button
+                  size="sm"
+                  onClick={() => createMutation.mutate()}
+                  disabled={!pickerRole || createMutation.isPending}
+                >
+                  Create
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="flex-1 overflow-y-auto p-2 space-y-1">
           {roles.map((role) => (
