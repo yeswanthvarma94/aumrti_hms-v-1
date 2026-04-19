@@ -621,19 +621,45 @@ const PayrollTab: React.FC = () => {
           </div>
         )}
 
-        {/* View items for selected run */}
-        {viewItems.length > 0 && (
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-semibold text-foreground">Payroll Details</h3>
-              <Button size="sm" variant="ghost" onClick={() => { setViewItems([]); setActiveRunId(null); }}>Close</Button>
+        {runs.length === 0 && (
+          <div className="flex-1 flex items-center justify-center text-muted-foreground">
+            <div className="text-center">
+              <DollarSign className="h-12 w-12 mx-auto mb-3 opacity-40" />
+              <p className="text-sm font-medium">No payroll runs yet</p>
+              <p className="text-xs mt-1">Click "Run Payroll" to process salaries</p>
             </div>
+          </div>
+        )}
+      </div>
+
+      {/* View Payroll Details Dialog */}
+      <Dialog open={showViewDialog} onOpenChange={(open) => { setShowViewDialog(open); if (!open) { setViewItems([]); setActiveRunId(null); } }}>
+        <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between">
+              <span>Payroll Details — {runs.find(r => r.id === activeRunId)?.run_month || ""}</span>
+              {activeRunId && (
+                <Button size="sm" variant="outline" onClick={() => downloadPayrollPDF(activeRunId)} className="mr-6">
+                  <Download className="h-3 w-3 mr-1" /> Download PDF
+                </Button>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+
+          {viewLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              <span className="ml-2 text-sm text-muted-foreground">Loading payroll details...</span>
+            </div>
+          ) : viewItems.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground text-sm">No payroll items found for this run.</div>
+          ) : (
             <div className="overflow-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Staff</TableHead>
-                    <TableHead className="text-center">Days</TableHead>
+                    <TableHead className="text-center">Days (P/A/L)</TableHead>
                     <TableHead className="text-right">Gross</TableHead>
                     <TableHead className="text-right">PF</TableHead>
                     <TableHead className="text-right">ESIC</TableHead>
@@ -646,7 +672,7 @@ const PayrollTab: React.FC = () => {
                   {viewItems.map((item) => (
                     <TableRow key={item.id}>
                       <TableCell className="font-medium">{item.full_name}</TableCell>
-                      <TableCell className="text-center text-xs">P:{item.present_days} A:{item.absent_days} L:{item.leave_days}</TableCell>
+                      <TableCell className="text-center text-xs">{item.present_days}/{item.absent_days}/{item.leave_days}</TableCell>
                       <TableCell className="text-right">{fmt(item.gross_salary)}</TableCell>
                       <TableCell className="text-right">{fmt(item.pf_employee)}</TableCell>
                       <TableCell className="text-right">{fmt(item.esic_employee)}</TableCell>
@@ -680,19 +706,9 @@ const PayrollTab: React.FC = () => {
                 </TableBody>
               </Table>
             </div>
-          </div>
-        )}
-
-        {runs.length === 0 && viewItems.length === 0 && (
-          <div className="flex-1 flex items-center justify-center text-muted-foreground">
-            <div className="text-center">
-              <DollarSign className="h-12 w-12 mx-auto mb-3 opacity-40" />
-              <p className="text-sm font-medium">No payroll runs yet</p>
-              <p className="text-xs mt-1">Click "Run Payroll" to process salaries</p>
-            </div>
-          </div>
-        )}
-      </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Run Payroll Modal */}
       <Dialog open={showModal} onOpenChange={setShowModal}>
