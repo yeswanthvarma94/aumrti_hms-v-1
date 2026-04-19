@@ -24,7 +24,7 @@ type DocSchedule = {
   session_start: string;
   session_end: string;
   slot_duration_minutes: number;
-  doctor?: { full_name: string; specialty?: string | null };
+  doctor?: { full_name: string };
 };
 
 type Appt = {
@@ -39,6 +39,12 @@ type Appt = {
   chief_complaint: string | null;
   consultation_fee: number;
   patient?: { full_name: string; uhid: string; phone: string | null };
+};
+
+type DoctorGroup = {
+  doctor_id: string;
+  doctor_name: string;
+  sessions: DocSchedule[];
 };
 
 const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -64,29 +70,30 @@ const SchedulingPage: React.FC = () => {
   const qc = useQueryClient();
   const [date, setDate] = useState<Date>(new Date());
   const [selectedDoctor, setSelectedDoctor] = useState<string | null>(null);
-  const [bookingSlot, setBookingSlot] = useState<{ start: string; end: string } | null>(null);
+  const [bookingSlot, setBookingSlot] = useState<{ start: string; end: string; session: DocSchedule } | null>(null);
   const [viewingAppt, setViewingAppt] = useState<Appt | null>(null);
 
   const dateStr = format(date, "yyyy-MM-dd");
   const dow = DOW[date.getDay()];
 
-  // Doctor schedules for the selected day
-  const { data: schedules = [], isLoading: loadingSchedules } = useQuery({
+  // Doctor schedules for the selected day — only select fields that exist on users
+  const { data: schedules = [], isLoading: loadingSchedules, error: schedError } = useQuery({
     queryKey: ["doctor-schedules", hospitalId, dow],
     enabled: !!hospitalId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("doctor_schedules")
-        .select("id, doctor_id, day_of_week, session_start, session_end, slot_duration_minutes, doctor:users!doctor_schedules_doctor_id_fkey(full_name, specialty)")
+        .select("id, doctor_id, day_of_week, session_start, session_end, slot_duration_minutes, doctor:users!doctor_schedules_doctor_id_fkey(full_name)")
         .eq("hospital_id", hospitalId)
         .eq("day_of_week", dow)
-        .eq("is_active", true);
+        .eq("is_active", true)
+        .order("session_start", { ascending: true });
       if (error) throw error;
       return (data as any[]) as DocSchedule[];
     },
   });
 
-  // Appointments for selected date (all doctors, for counts + grid)
+  // Appointments for selected date
   const { data: appointments = [] } = useQuery({
     queryKey: ["appointments", hospitalId, dateStr],
     enabled: !!hospitalId,
@@ -110,24 +117,42 @@ const SchedulingPage: React.FC = () => {
     return m;
   }, [appointments]);
 
-  const selectedSched = schedules.find(s => s.doctor_id === selectedDoctor);
-
-  // Build slot list for the selected doctor
-  const slots = useMemo(() => {
-    if (!selectedSched) return [];
-    const start = timeToMinutes(selectedSched.session_start);
-    const end = timeToMinutes(selectedSched.session_end);
-    const dur = selectedSched.slot_duration_minutes || 15;
-    const out: { start: string; end: string; appt?: Appt }[] = [];
-    const docAppts = apptsByDoctor[selectedSched.doctor_id] || [];
-    for (let m = start; m + dur <= end; m += dur) {
-      const s = minutesToTime(m);
-      const e = minutesToTime(m + dur);
-      const appt = docAppts.find(a => a.slot_time === s || a.slot_time === s.slice(0, 5));
-      out.push({ start: s, end: e, appt });
+  // Group schedules by doctor (multi-session support)
+  const doctorGroups = useMemo<DoctorGroup[]>(() => {
+    const map = new Map<string, DoctorGroup>();
+    for (const s of schedules) {
+      if (!map.has(s.doctor_id)) {
+        map.set(s.doctor_id, {
+          doctor_id: s.doctor_id,
+          doctor_name: s.doctor?.full_name || "Doctor",
+          sessions: [],
+        });
+      }
+      map.get(s.doctor_id)!.sessions.push(s);
     }
-    return out;
-  }, [selectedSched, apptsByDoctor]);
+    return Array.from(map.values());
+  }, [schedules]);
+
+  const selectedGroup = doctorGroups.find(g => g.doctor_id === selectedDoctor);
+
+  // Build slot list for the selected doctor across ALL sessions
+  const sessionsWithSlots = useMemo(() => {
+    if (!selectedGroup) return [];
+    const docAppts = apptsByDoctor[selectedGroup.doctor_id] || [];
+    return selectedGroup.sessions.map(sess => {
+      const start = timeToMinutes(sess.session_start);
+      const end = timeToMinutes(sess.session_end);
+      const dur = sess.slot_duration_minutes || 15;
+      const slots: { start: string; end: string; appt?: Appt }[] = [];
+      for (let m = start; m + dur <= end; m += dur) {
+        const s = minutesToTime(m);
+        const e = minutesToTime(m + dur);
+        const appt = docAppts.find(a => a.slot_time === s || a.slot_time === s.slice(0, 5));
+        slots.push({ start: s, end: e, appt });
+      }
+      return { session: sess, slots };
+    });
+  }, [selectedGroup, apptsByDoctor]);
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["appointments", hospitalId, dateStr] });
@@ -167,36 +192,41 @@ const SchedulingPage: React.FC = () => {
               <Loader2 className="animate-spin mr-2" size={16} /> Loading…
             </div>
           )}
-          {!loadingSchedules && schedules.length === 0 && (
+          {schedError && (
+            <div className="text-sm text-destructive p-3 bg-destructive/10 rounded">
+              Failed to load schedules: {(schedError as Error).message}
+            </div>
+          )}
+          {!loadingSchedules && !schedError && doctorGroups.length === 0 && (
             <div className="text-sm text-muted-foreground p-6 text-center">
               No doctors scheduled for {dow}.
             </div>
           )}
-          {schedules.map(s => {
-            const docAppts = apptsByDoctor[s.doctor_id] || [];
-            const totalSlots = Math.floor(
-              (timeToMinutes(s.session_end) - timeToMinutes(s.session_start)) / (s.slot_duration_minutes || 15)
-            );
+          {doctorGroups.map(g => {
+            const docAppts = apptsByDoctor[g.doctor_id] || [];
+            const totalSlots = g.sessions.reduce((sum, s) =>
+              sum + Math.floor((timeToMinutes(s.session_end) - timeToMinutes(s.session_start)) / (s.slot_duration_minutes || 15)), 0);
             const booked = docAppts.length;
             const available = Math.max(0, totalSlots - booked);
-            const active = selectedDoctor === s.doctor_id;
+            const active = selectedDoctor === g.doctor_id;
             return (
               <Card
-                key={s.id}
-                onClick={() => setSelectedDoctor(s.doctor_id)}
+                key={g.doctor_id}
+                onClick={() => setSelectedDoctor(g.doctor_id)}
                 className={cn(
                   "p-3 cursor-pointer transition-colors hover:border-primary",
                   active && "border-primary bg-primary/5"
                 )}
               >
-                <div className="font-medium text-sm">{s.doctor?.full_name || "Doctor"}</div>
-                {s.doctor?.specialty && (
-                  <div className="text-xs text-muted-foreground">{s.doctor.specialty}</div>
-                )}
-                <div className="text-xs text-muted-foreground mt-1">
-                  {fmtTime(s.session_start)} – {fmtTime(s.session_end)} · {s.slot_duration_minutes}m slots
+                <div className="font-medium text-sm">{g.doctor_name}</div>
+                <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
+                  {g.sessions.map(s => (
+                    <div key={s.id}>
+                      {fmtTime(s.session_start)} – {fmtTime(s.session_end)} · {s.slot_duration_minutes}m
+                    </div>
+                  ))}
                 </div>
-                <div className="flex gap-1.5 mt-2">
+                <div className="flex gap-1.5 mt-2 flex-wrap">
                   <Badge variant="outline" className="text-[10px]">Total {totalSlots}</Badge>
                   <Badge variant="secondary" className="text-[10px] bg-amber-100 text-amber-800">Booked {booked}</Badge>
                   <Badge variant="secondary" className="text-[10px] bg-emerald-100 text-emerald-800">Free {available}</Badge>
@@ -208,19 +238,18 @@ const SchedulingPage: React.FC = () => {
 
         {/* RIGHT: slot grid */}
         <div className="overflow-y-auto p-4">
-          {!selectedSched && (
+          {!selectedGroup && (
             <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
               Select a doctor to see available slots.
             </div>
           )}
-          {selectedSched && (
-            <div>
-              <div className="mb-3 flex items-center justify-between">
+          {selectedGroup && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
                 <div>
-                  <div className="font-semibold">{selectedSched.doctor?.full_name}</div>
+                  <div className="font-semibold">{selectedGroup.doctor_name}</div>
                   <div className="text-xs text-muted-foreground">
-                    {fmtTime(selectedSched.session_start)} – {fmtTime(selectedSched.session_end)} ·{" "}
-                    {format(date, "dd MMM yyyy")}
+                    {format(date, "dd MMM yyyy")} · {selectedGroup.sessions.length} session(s)
                   </div>
                 </div>
                 <div className="flex gap-3 text-xs">
@@ -228,45 +257,56 @@ const SchedulingPage: React.FC = () => {
                   <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-muted-foreground/30"></span>Booked</span>
                 </div>
               </div>
-              <div className="grid grid-cols-4 gap-2">
-                {slots.map(slot => {
-                  const isBooked = !!slot.appt;
-                  return (
-                    <button
-                      key={slot.start}
-                      onClick={() => isBooked ? setViewingAppt(slot.appt!) : setBookingSlot({ start: slot.start, end: slot.end })}
-                      className={cn(
-                        "p-3 rounded-md border text-left transition-all hover:shadow-sm",
-                        isBooked
-                          ? "bg-muted/40 border-muted hover:bg-muted/60"
-                          : "bg-emerald-50 border-emerald-200 hover:bg-emerald-100"
-                      )}
-                    >
-                      <div className="text-sm font-medium">{fmtTime(slot.start)}</div>
-                      {isBooked ? (
-                        <div className="text-[11px] text-muted-foreground truncate">
-                          {slot.appt?.patient?.full_name || "Booked"}
-                        </div>
-                      ) : (
-                        <div className="text-[11px] text-emerald-700">Available</div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-              {slots.length === 0 && (
-                <div className="text-sm text-muted-foreground text-center p-6">No slots configured.</div>
-              )}
+
+              {sessionsWithSlots.map(({ session, slots }) => (
+                <div key={session.id}>
+                  <div className="text-sm font-medium mb-2 pb-1 border-b">
+                    Session: {fmtTime(session.session_start)} – {fmtTime(session.session_end)}
+                  </div>
+                  <div className="grid grid-cols-4 gap-2">
+                    {slots.map(slot => {
+                      const isBooked = !!slot.appt;
+                      return (
+                        <button
+                          key={slot.start}
+                          onClick={() => isBooked
+                            ? setViewingAppt(slot.appt!)
+                            : setBookingSlot({ start: slot.start, end: slot.end, session })}
+                          className={cn(
+                            "p-3 rounded-md border text-left transition-all hover:shadow-sm",
+                            isBooked
+                              ? "bg-muted/40 border-muted hover:bg-muted/60"
+                              : "bg-emerald-50 border-emerald-200 hover:bg-emerald-100"
+                          )}
+                        >
+                          <div className="text-sm font-medium">{fmtTime(slot.start)}</div>
+                          {isBooked ? (
+                            <div className="text-[11px] text-muted-foreground truncate">
+                              {slot.appt?.patient?.full_name || "Booked"}
+                            </div>
+                          ) : (
+                            <div className="text-[11px] text-emerald-700">Available</div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {slots.length === 0 && (
+                    <div className="text-sm text-muted-foreground text-center p-4">No slots configured.</div>
+                  )}
+                </div>
+              ))}
             </div>
           )}
         </div>
       </div>
 
       {/* Booking modal */}
-      {bookingSlot && selectedSched && (
+      {bookingSlot && selectedGroup && (
         <BookingModal
           hospitalId={hospitalId!}
-          doctor={selectedSched}
+          doctorId={selectedGroup.doctor_id}
+          doctorName={selectedGroup.doctor_name}
           date={dateStr}
           slot={bookingSlot}
           onClose={() => setBookingSlot(null)}
@@ -289,12 +329,13 @@ const SchedulingPage: React.FC = () => {
 // ─────────────────────────────────────────────────────────
 const BookingModal: React.FC<{
   hospitalId: string;
-  doctor: DocSchedule;
+  doctorId: string;
+  doctorName: string;
   date: string;
   slot: { start: string; end: string };
   onClose: () => void;
   onBooked: () => void;
-}> = ({ hospitalId, doctor, date, slot, onClose, onBooked }) => {
+}> = ({ hospitalId, doctorId, doctorName, date, slot, onClose, onBooked }) => {
   const [patientId, setPatientId] = useState("");
   const [visitType, setVisitType] = useState<"new" | "follow_up" | "review">("new");
   const [chiefComplaint, setChiefComplaint] = useState("");
@@ -330,7 +371,7 @@ const BookingModal: React.FC<{
         .insert({
           hospital_id: hospitalId,
           patient_id: patientId,
-          doctor_id: doctor.doctor_id,
+          doctor_id: doctorId,
           appointment_date: date,
           slot_time: slot.start,
           slot_end_time: slot.end,
@@ -344,8 +385,9 @@ const BookingModal: React.FC<{
         .select("id")
         .single();
       if (aerr) throw aerr;
+      const appointmentId = (appt as any)?.id;
 
-      // Issue OPD token
+      // Issue OPD token with APT prefix
       const { data: tokenNum } = await supabase.rpc("generate_token_number", {
         p_hospital_id: hospitalId, p_prefix: "APT",
       });
@@ -353,13 +395,14 @@ const BookingModal: React.FC<{
       const { error: terr } = await supabase.from("opd_tokens").insert({
         hospital_id: hospitalId,
         patient_id: patientId,
-        doctor_id: doctor.doctor_id,
+        doctor_id: doctorId,
         token_number: tokenNum as any,
         token_prefix: "APT",
         visit_date: date,
         status: "waiting",
-      });
+      } as any);
       if (terr) console.warn("Token insert failed:", terr.message);
+      void appointmentId;
 
       // WhatsApp confirmation
       try {
@@ -368,7 +411,7 @@ const BookingModal: React.FC<{
           supabase.from("hospitals").select("name").eq("id", hospitalId).maybeSingle(),
         ]);
         if (pat?.phone) {
-          const msg = `Dear ${pat.full_name}, your appointment with Dr. ${doctor.doctor?.full_name || ""} on ${format(parseISO(date), "dd MMM yyyy")} at ${fmtTime(slot.start)} is confirmed. Token: ${tokenNum}. — ${hosp?.name || ""}`;
+          const msg = `Dear ${pat.full_name}, your appointment with Dr. ${doctorName} on ${format(parseISO(date), "dd MMM yyyy")} at ${fmtTime(slot.start)} is confirmed. Token: APT-${tokenNum}. — ${hosp?.name || ""}`;
           await sendWhatsApp({ hospitalId, phone: pat.phone, message: msg });
         }
       } catch (e) { console.warn("WhatsApp send failed", e); }
@@ -390,7 +433,7 @@ const BookingModal: React.FC<{
         </DialogHeader>
         <div className="space-y-3">
           <div className="text-sm text-muted-foreground bg-muted/40 rounded p-2">
-            <div><b>Dr.</b> {doctor.doctor?.full_name}</div>
+            <div><b>Dr.</b> {doctorName}</div>
             <div><b>Date:</b> {format(parseISO(date), "dd MMM yyyy")} · <b>Time:</b> {fmtTime(slot.start)}</div>
           </div>
           <div>
@@ -446,7 +489,7 @@ const ApptDetailModal: React.FC<{
         .eq("id", appt.id);
       if (error) throw error;
 
-      // Cancel matching opd_token (best-effort)
+      // Cancel matching opd_token (best-effort match by patient/doctor/date)
       await supabase
         .from("opd_tokens")
         .update({ status: "cancelled" })
