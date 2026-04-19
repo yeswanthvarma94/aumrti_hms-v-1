@@ -166,6 +166,7 @@ const PayrollTab: React.FC = () => {
           gross_salary: gross,
           pf_employee: pfEmp,
           esic_employee: esicEmp,
+          professional_tax: pt,
           tds: 0,
           total_deductions: totalDed,
           net_salary: net,
