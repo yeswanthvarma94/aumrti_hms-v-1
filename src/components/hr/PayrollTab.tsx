@@ -263,7 +263,10 @@ const PayrollTab: React.FC = () => {
 
       await (supabase as any).from("payroll_items").insert(items);
 
-      toast({ title: `Payroll processed for ${calculatedItems.length} staff` });
+      const skipped = calculatedItems.length - validItems.length;
+      toast({
+        title: `Payroll processed for ${validItems.length} staff${skipped > 0 ? ` (${skipped} skipped — salary not set)` : ""}`,
+      });
       setShowModal(false);
       setCalculatedItems([]);
       loadRuns();
