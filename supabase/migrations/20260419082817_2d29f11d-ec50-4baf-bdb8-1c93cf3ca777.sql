@@ -1,1 +1,0 @@
-DELETE FROM role_permissions WHERE role_name LIKE 'custom_%';
