@@ -218,17 +218,17 @@ const SettingsRolesPage: React.FC = () => {
     onError: () => toast({ title: "Failed to save", variant: "destructive" }),
   });
 
-  /* ── Create role ── */
+  /* ── Create role: pick from valid app_role enum so users.role stays compatible ── */
   const createMutation = useMutation({
     mutationFn: async () => {
       if (!hospitalId) throw new Error("No hospital");
-      const name = `custom_${Date.now()}`;
+      if (!pickerRole) throw new Error("Please pick a role");
       const { data, error } = await supabase
         .from("role_permissions")
         .insert({
           hospital_id: hospitalId,
-          role_name: name,
-          role_label: "New Role",
+          role_name: pickerRole,
+          role_label: pickerLabel || pickerRole,
           is_system_role: false,
           permissions: {},
         } as any)
@@ -240,8 +240,13 @@ const SettingsRolesPage: React.FC = () => {
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["role-permissions"] });
       setSelectedRoleId(data.id);
+      setCreatePickerOpen(false);
+      setPickerRole("");
+      setPickerLabel("");
       toast({ title: "Role created" });
     },
+    onError: (e: any) =>
+      toast({ title: "Failed to create role", description: e.message, variant: "destructive" }),
   });
 
   /* ── Delete role ── */
