@@ -1,50 +1,56 @@
 
-Goal: restore the /schedule flow so scheduled doctors appear, slots render, booking works, and the patient lands in OPD with an APT token.
 
-1. Fix the blocking schedule query error
-- Update `src/pages/schedule/SchedulingPage.tsx` so the doctor schedule query no longer requests `users.specialty`.
-- I confirmed from the live network trace that `/doctor_schedules` is failing with:
-  `column users_1.specialty does not exist`
-- Because that request returns HTTP 400, the page shows “No doctors scheduled…” even when schedules exist.
+## Problem
 
-2. Make the doctor list resilient to the real user schema
-- Keep the join to `users` for doctor name, but only select fields that exist.
-- If specialty/department info is needed for display, fetch it from a valid source already used elsewhere in the app (likely `department_id -> departments.name`) or omit it rather than breaking the page.
+Two related issues from your screenshots:
 
-3. Fix slot rendering for multi-session schedules
-- The Doctor Schedules settings page supports multiple sessions per doctor per day.
-- The current scheduling page uses `schedules.find(...)`, which only shows the first session for a doctor.
-- Refactor the right panel to group schedules by doctor and render slots across all that doctor’s sessions for the selected day.
+**A. Staff creation shows wrong roles after creating a custom role**
+When you create a new role in `/settings/roles` (e.g., "Admin", "OT"), the `Add Staff Member` modal stops showing the default 7 system roles (Doctor, Nurse, Billing, Pharmacist, Lab Tech, Reception, Admin/CEO) and only shows the custom ones. Worse, those custom roles have synthetic names like `custom_1776588267208` that the database `app_role` enum rejects → cannot save staff.
 
-4. Harden booking → OPD token integration
-- Keep the current booking flow, but correct the token insert details:
-  - store the new appointment id on `opd_tokens.appointment_id`
-  - avoid prefix duplication by matching `generate_token_number()` output with how `opd_tokens.token_number` and `token_prefix` are displayed elsewhere
-- This prevents inconsistent token display like double `APT` and gives a reliable link between appointment and OPD queue.
+Root cause in `SettingsStaffPage.tsx` lines 141-153:
+```ts
+if (customRoles && customRoles.length > 0) {
+  return customRoles.map(...);   // ← replaces defaults entirely
+}
+return DEFAULT_ROLE_CARDS;
+```
+And new hospitals never get the 7 system `role_permissions` rows seeded, so the only rows that exist are the bad `custom_*` ones.
 
-5. Preserve cancellation consistency
-- Update cancel logic to use the appointment linkage when available, instead of broad matching only by patient/doctor/date.
-- Keep WhatsApp cancellation behavior unchanged.
+**B. Hospital founder is `hospital_admin`, not `super_admin`**
+Every recently-registered hospital owner is `hospital_admin`. You want them to be `super_admin` so they own the entire hospital and can manage everything.
 
-6. End-to-end verification after implementation
-- Open `/schedule`
-- Select today’s date
-- Confirm doctors with schedules appear in the left panel
-- Click a doctor and confirm all configured session slots appear
-- Book a test patient into an available slot
-- Confirm the slot becomes booked
-- Open `/opd`
-- Confirm the patient appears in the queue with the expected APT token format
+## Fix Plan
 
-Technical details
-- Root cause found: the schedule fetch in `SchedulingPage.tsx` selects `doctor:users!doctor_schedules_doctor_id_fkey(full_name, specialty)`, but `users.specialty` is not present in the current schema.
-- Confirmed via network snapshot: the request returns 400, not an empty dataset.
-- Secondary issue: multi-session schedules are currently flattened incorrectly for the right panel.
-- Secondary data issue: booking currently inserts into `opd_tokens` without setting `appointment_id`, despite that column existing in the schema.
+### 1. Always show valid system roles + filter out invalid custom names
+In `src/pages/settings/SettingsStaffPage.tsx`:
+- Define a `VALID_APP_ROLES` constant (the 14 enum values from the DB).
+- Build `ROLE_CARDS` as: **always** the 7 default cards (Doctor, Nurse, Billing, Pharmacist, Lab Tech, Reception, Admin/CEO), **plus** any custom role from `role_permissions` whose `role_name` is in `VALID_APP_ROLES` (so admins can rename labels, e.g. "Billing Executive" → "Cashier", but never inject invalid enum values).
+- Skip any `role_name` starting with `custom_` from the staff picker.
+- Add a guard in `saveStaff` mutation: if `form.role` not in `VALID_APP_ROLES`, show toast and abort.
+- Apply same filter to `FILTER_TABS`.
 
-Files to update
-- `src/pages/schedule/SchedulingPage.tsx`
+### 2. Stop creating invalid custom role names in Roles & Permissions
+In `src/pages/settings/SettingsRolesPage.tsx`:
+- Replace the "Create" button behaviour. Instead of generating `custom_${Date.now()}`, open a small picker that asks **"Customise permissions for which role?"** with a dropdown of the 14 valid `app_role` values (excluding ones already in the table for this hospital).
+- The created `role_permissions` row uses the chosen enum value as `role_name` (so it stays compatible with `users.role`). Custom `role_label` is still freely editable.
+- This keeps the "Roles & Permissions" page useful for permission overrides without ever inventing fake role names.
 
-Expected result
-- Doctors will appear correctly on scheduled days.
-- Reception can select a doctor, view valid slots, book an appointment, and see the patient in OPD queue immediately.
+### 3. Auto-seed default `role_permissions` for new hospitals
+Add a migration: a Postgres function `seed_default_roles_for_hospital(p_hospital_id uuid)` that inserts the 7 default system role rows (super_admin, hospital_admin, doctor, nurse, receptionist, pharmacist, lab_tech) with sensible default permission JSON if they don't already exist. Backfill all existing hospitals once. Optionally call it from the registration flow too.
+
+### 4. Make hospital founder a `super_admin`
+Locate the hospital registration flow (the page/edge function that inserts the first `users` row when a new hospital is registered) and change `role: 'hospital_admin'` → `role: 'super_admin'`. Add a migration to upgrade **existing** founders: for every hospital, promote the **earliest-created** `hospital_admin` user to `super_admin` so each hospital has one full owner. This person already bypasses all RoleGuard checks (line 12 of `RoleGuard.tsx`), so no permission code needs to change.
+
+### 5. Cleanup migration
+- `DELETE FROM role_permissions WHERE role_name LIKE 'custom_%';` — removes the broken rows already in the DB so they stop appearing in any UI.
+
+## Files to change
+- `src/pages/settings/SettingsStaffPage.tsx` — add `VALID_APP_ROLES`, merge defaults + valid customs, guard save.
+- `src/pages/settings/SettingsRolesPage.tsx` — replace `Create` flow with enum-picker.
+- New migration: seed function + backfill defaults + promote founders + cleanup `custom_*`.
+- The registration page/edge function (I'll locate exact file in default mode) — change founder role to `super_admin`.
+
+## Out of scope
+- Adding new values to the `app_role` enum (would cascade through ~108 references).
+- Changing the visual layout of the Add Staff modal.
+
