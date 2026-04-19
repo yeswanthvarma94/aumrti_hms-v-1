@@ -224,18 +224,13 @@ const BookOTModal: React.FC<Props> = ({ rooms, selectedRoomId, selectedDate, pre
           {/* Patient */}
           <div>
             <label className="text-xs font-medium text-foreground mb-1 block">Patient *</label>
-            <input type="text" placeholder="Search by name or UHID..." value={patientSearch} onChange={(e) => setPatientSearch(e.target.value)}
-              className="w-full text-sm border border-border rounded-md px-3 py-2 bg-background focus:outline-none focus:ring-1 focus:ring-primary" />
-            {patientSearch && !form.patientId && (
-              <div className="border border-border rounded-md mt-1 max-h-32 overflow-y-auto bg-card">
-                {filteredPatients.slice(0, 8).map((p) => (
-                  <button key={p.id} onClick={() => { setForm({ ...form, patientId: p.id }); setPatientSearch(p.full_name); }}
-                    className="w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors">
-                    {p.full_name} <span className="text-muted-foreground text-xs">({p.uhid})</span>
-                  </button>
-                ))}
-              </div>
-            )}
+            <PatientSearchPicker
+              hospitalId={hospitalId || ""}
+              value={form.patientId}
+              onChange={(pid) => setForm({ ...form, patientId: pid })}
+              selectedLabel={initialPatientName}
+              placeholder="Search by name or UHID…"
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
