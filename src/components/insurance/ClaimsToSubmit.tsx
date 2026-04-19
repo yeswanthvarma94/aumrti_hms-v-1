@@ -154,6 +154,9 @@ const ClaimsToSubmit: React.FC = () => {
                 <TableCell>{riskBadge(r.denial_risk)}</TableCell>
                 <TableCell>
                   <div className="flex gap-1">
+                    <Button size="sm" variant="outline" className="text-[11px] h-7 gap-1" onClick={() => setBundleFor(r)} disabled={!r.admission_id}>
+                      <Package size={12} /> Bundle
+                    </Button>
                     <Button size="sm" variant="outline" className="text-[11px] h-7 gap-1" onClick={() => setSelectedForReview(r)}>
                       <Bot size={12} /> AI Review
                     </Button>
