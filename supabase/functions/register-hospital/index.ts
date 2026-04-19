@@ -112,10 +112,15 @@ serve(async (req) => {
         full_name: admin.full_name,
         email: admin.email,
         phone: admin.phone || null,
-        role: "hospital_admin",
+        role: "super_admin",
         is_active: true,
         can_login: true,
       });
+
+    // Seed default role permissions for the new hospital
+    await supabaseAdmin.rpc("seed_default_roles_for_hospital", {
+      p_hospital_id: hospitalData.id,
+    });
 
     if (userError) {
       // Cleanup

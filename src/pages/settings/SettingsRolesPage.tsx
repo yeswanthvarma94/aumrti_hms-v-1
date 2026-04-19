@@ -47,6 +47,24 @@ type ModuleKey = (typeof MODULES)[number]["key"];
 const ACTIONS = ["view", "create", "edit", "delete", "approve", "export"] as const;
 type Action = (typeof ACTIONS)[number];
 
+/* Valid app_role enum values — role_permissions.role_name MUST match users.role enum */
+const VALID_APP_ROLES: { value: string; label: string }[] = [
+  { value: "super_admin",       label: "Super Admin" },
+  { value: "hospital_admin",    label: "Admin" },
+  { value: "doctor",            label: "Doctor" },
+  { value: "nurse",             label: "Nurse" },
+  { value: "receptionist",      label: "Reception" },
+  { value: "pharmacist",        label: "Pharmacist" },
+  { value: "lab_tech",          label: "Lab Tech" },
+  { value: "lab_technician",    label: "Lab Technician" },
+  { value: "radiologist",       label: "Radiologist" },
+  { value: "accountant",        label: "Accountant" },
+  { value: "billing_executive", label: "Billing Executive" },
+  { value: "billing_staff",     label: "Billing Staff" },
+  { value: "hr_manager",        label: "HR Manager" },
+  { value: "cfo",               label: "CFO" },
+];
+
 const ROLE_COLORS: Record<string, string> = {
   super_admin: "hsl(var(--primary))",
   doctor: "#3B82F6",
@@ -123,6 +141,9 @@ const SettingsRolesPage: React.FC = () => {
   const [matrix, setMatrix] = useState<Record<ModuleKey, Record<Action, boolean>> | null>(null);
   const [editLabel, setEditLabel] = useState("");
   const [previewRole, setPreviewRole] = useState<RolePermission | null>(null);
+  const [createPickerOpen, setCreatePickerOpen] = useState(false);
+  const [pickerRole, setPickerRole] = useState<string>("");
+  const [pickerLabel, setPickerLabel] = useState<string>("");
 
   /* ── Fetch roles ── */
   const { data: roles = [] } = useQuery({
@@ -197,17 +218,17 @@ const SettingsRolesPage: React.FC = () => {
     onError: () => toast({ title: "Failed to save", variant: "destructive" }),
   });
 
-  /* ── Create role ── */
+  /* ── Create role: pick from valid app_role enum so users.role stays compatible ── */
   const createMutation = useMutation({
     mutationFn: async () => {
       if (!hospitalId) throw new Error("No hospital");
-      const name = `custom_${Date.now()}`;
+      if (!pickerRole) throw new Error("Please pick a role");
       const { data, error } = await supabase
         .from("role_permissions")
         .insert({
           hospital_id: hospitalId,
-          role_name: name,
-          role_label: "New Role",
+          role_name: pickerRole,
+          role_label: pickerLabel || pickerRole,
           is_system_role: false,
           permissions: {},
         } as any)
@@ -219,8 +240,13 @@ const SettingsRolesPage: React.FC = () => {
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["role-permissions"] });
       setSelectedRoleId(data.id);
+      setCreatePickerOpen(false);
+      setPickerRole("");
+      setPickerLabel("");
       toast({ title: "Role created" });
     },
+    onError: (e: any) =>
+      toast({ title: "Failed to create role", description: e.message, variant: "destructive" }),
   });
 
   /* ── Delete role ── */
@@ -371,10 +397,57 @@ const SettingsRolesPage: React.FC = () => {
             </button>
             <span className="text-sm font-bold text-foreground">Roles</span>
           </div>
-          <Button size="sm" variant="default" className="h-7 text-xs gap-1" onClick={() => createMutation.mutate()}>
+          <Button size="sm" variant="default" className="h-7 text-xs gap-1" onClick={() => setCreatePickerOpen(true)}>
             <Plus size={12} /> Create
           </Button>
         </div>
+
+        {/* ── Create Role picker modal ── */}
+        {createPickerOpen && (
+          <div className="fixed inset-0 z-[120] bg-black/50 flex items-center justify-center p-4" onClick={() => setCreatePickerOpen(false)}>
+            <div className="bg-card border border-border rounded-xl p-6 w-full max-w-md shadow-xl" onClick={(e) => e.stopPropagation()}>
+              <h3 className="text-base font-bold text-foreground mb-1">Customise Permissions for a Role</h3>
+              <p className="text-xs text-muted-foreground mb-4">
+                Choose one of the system roles to override its default permissions for this hospital.
+              </p>
+              <label className="text-xs font-medium text-foreground block mb-1">Role</label>
+              <select
+                value={pickerRole}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setPickerRole(v);
+                  const found = VALID_APP_ROLES.find((r) => r.value === v);
+                  if (found && !pickerLabel) setPickerLabel(found.label);
+                }}
+                className="w-full h-9 rounded-md border border-border bg-background px-2 text-sm mb-3"
+              >
+                <option value="">— Select a role —</option>
+                {VALID_APP_ROLES
+                  .filter((r) => !roles.some((existing) => existing.role_name === r.value))
+                  .map((r) => (
+                    <option key={r.value} value={r.value}>{r.label}</option>
+                  ))}
+              </select>
+              <label className="text-xs font-medium text-foreground block mb-1">Display Label</label>
+              <Input
+                value={pickerLabel}
+                onChange={(e) => setPickerLabel(e.target.value)}
+                placeholder="e.g. Senior Doctor"
+                className="mb-4 h-9"
+              />
+              <div className="flex justify-end gap-2">
+                <Button size="sm" variant="outline" onClick={() => setCreatePickerOpen(false)}>Cancel</Button>
+                <Button
+                  size="sm"
+                  onClick={() => createMutation.mutate()}
+                  disabled={!pickerRole || createMutation.isPending}
+                >
+                  Create
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="flex-1 overflow-y-auto p-2 space-y-1">
           {roles.map((role) => (
