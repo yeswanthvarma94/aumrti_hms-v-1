@@ -41,7 +41,7 @@ type Appt = {
   patient?: { full_name: string; uhid: string; phone: string | null };
 };
 
-const DOW = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 function timeToMinutes(t: string): number {
   const [h, m] = t.split(":").map(Number);
