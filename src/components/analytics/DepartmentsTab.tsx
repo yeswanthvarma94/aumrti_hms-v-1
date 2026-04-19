@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
 import { Maximize2 } from "lucide-react";
 import { useDeptPerformance, useDeptDoctors, useDeptTopServices } from "@/hooks/useDoctorDeptData";
 import AnalyticsKPICard from "./AnalyticsKPICard";
