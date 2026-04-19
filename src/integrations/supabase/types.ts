@@ -2014,11 +2014,18 @@ export type Database = {
           hospital_id: string
           id: string
           issued_to: string | null
+          qr_code: string | null
+          quarantine_reason: string | null
           reserved_for: string | null
           reserved_for_ot: string | null
           rh_factor: string
           status: string | null
           storage_location: string | null
+          tti_hbsag: string | null
+          tti_hcv: string | null
+          tti_hiv: string | null
+          tti_malaria: string | null
+          tti_vdrl: string | null
           unit_number: string
           volume_ml: number | null
         }
@@ -2034,11 +2041,18 @@ export type Database = {
           hospital_id: string
           id?: string
           issued_to?: string | null
+          qr_code?: string | null
+          quarantine_reason?: string | null
           reserved_for?: string | null
           reserved_for_ot?: string | null
           rh_factor: string
           status?: string | null
           storage_location?: string | null
+          tti_hbsag?: string | null
+          tti_hcv?: string | null
+          tti_hiv?: string | null
+          tti_malaria?: string | null
+          tti_vdrl?: string | null
           unit_number: string
           volume_ml?: number | null
         }
@@ -2054,11 +2068,18 @@ export type Database = {
           hospital_id?: string
           id?: string
           issued_to?: string | null
+          qr_code?: string | null
+          quarantine_reason?: string | null
           reserved_for?: string | null
           reserved_for_ot?: string | null
           rh_factor?: string
           status?: string | null
           storage_location?: string | null
+          tti_hbsag?: string | null
+          tti_hcv?: string | null
+          tti_hiv?: string | null
+          tti_malaria?: string | null
+          tti_vdrl?: string | null
           unit_number?: string
           volume_ml?: number | null
         }
