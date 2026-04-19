@@ -2,8 +2,11 @@ import React, { useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { Maximize2 } from "lucide-react";
 import { useDeptPerformance, useDeptDoctors, useDeptTopServices } from "@/hooks/useDoctorDeptData";
 import AnalyticsKPICard from "./AnalyticsKPICard";
+import DepartmentDetailModal from "./DepartmentDetailModal";
 import type { DateRange } from "@/hooks/useAnalyticsData";
 
 const fmt = (n: number) => {
@@ -16,6 +19,7 @@ const fmt = (n: number) => {
 const DepartmentsTab: React.FC<{ range: DateRange }> = ({ range }) => {
   const { data: depts, isLoading } = useDeptPerformance(range);
   const [selectedDeptId, setSelectedDeptId] = useState<string | null>(null);
+  const [drillDeptId, setDrillDeptId] = useState<string | null>(null);
   const { data: deptDoctors } = useDeptDoctors(selectedDeptId, range);
   const { data: topServices } = useDeptTopServices(selectedDeptId, range);
 
