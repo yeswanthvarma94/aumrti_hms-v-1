@@ -29,6 +29,7 @@ const COMPONENT_SHELF_LIFE: Record<string, number> = {
 const DonorsTab: React.FC<Props> = ({ showModal, onCloseModal }) => {
   const { toast } = useToast();
   const [donors, setDonors] = useState<any[]>([]);
+  const [recentUnits, setRecentUnits] = useState<any[]>([]);
   const [search, setSearch] = useState("");
   const [form, setForm] = useState({
     full_name: "", dob: "", gender: "male", blood_group: "O", rh_factor: "positive",
@@ -40,13 +41,29 @@ const DonorsTab: React.FC<Props> = ({ showModal, onCloseModal }) => {
   const [deferralMsg, setDeferralMsg] = useState("");
   const [step, setStep] = useState<"personal" | "screening" | "tti">("personal");
   const [showCampaign, setShowCampaign] = useState(false);
+  const [hospitalName, setHospitalName] = useState("Hospital");
 
   const fetchDonors = async () => {
     const { data } = await supabase.from("donors").select("*").order("created_at", { ascending: false });
     if (data) setDonors(data);
   };
 
-  useEffect(() => { fetchDonors(); }, []);
+  const fetchRecentUnits = async () => {
+    const { data } = await (supabase as any).from("blood_units")
+      .select("id, unit_number, component, blood_group, rh_factor, status, collected_at, expiry_at, qr_code, quarantine_reason, donor_id, donors(full_name)")
+      .order("created_at", { ascending: false })
+      .limit(50);
+    if (data) setRecentUnits(data);
+  };
+
+  const fetchHospitalName = async () => {
+    const { data: u } = await supabase.from("users").select("hospital_id").limit(1).maybeSingle();
+    if (!u?.hospital_id) return;
+    const { data: h } = await supabase.from("hospitals").select("name").eq("id", u.hospital_id).maybeSingle();
+    if (h?.name) setHospitalName(h.name);
+  };
+
+  useEffect(() => { fetchDonors(); fetchRecentUnits(); fetchHospitalName(); }, []);
 
   const filtered = donors.filter(d =>
     d.full_name.toLowerCase().includes(search.toLowerCase()) ||
