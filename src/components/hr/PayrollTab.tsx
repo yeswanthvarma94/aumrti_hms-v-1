@@ -7,7 +7,15 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { autoPostJournalEntry } from "@/lib/accounting";
-import { DollarSign, Download, CheckSquare, Loader2 } from "lucide-react";
+import { printPayslip } from "@/lib/payslipPrint";
+import { DollarSign, Download, CheckSquare, Loader2, FileText } from "lucide-react";
+
+/** Andhra Pradesh PT slab (default for unspecified states) */
+function professionalTax(gross: number): number {
+  if (gross <= 15000) return 0;
+  if (gross <= 20000) return 150;
+  return 200;
+}
 
 interface PayrollRun {
   id: string;
@@ -37,6 +45,7 @@ interface PayrollItem {
   gross_salary: number;
   pf_employee: number;
   esic_employee: number;
+  professional_tax: number;
   tds: number;
   total_deductions: number;
   net_salary: number;
@@ -138,11 +147,10 @@ const PayrollTab: React.FC = () => {
         const otAmount = Math.round(otHours * (perDay / 8) * 1.5 * 100) / 100;
         const gross = basic + hra + da + conv + med + otAmount;
 
-        const pfEmp = sp.pf_applicable ? Math.round(basic * 0.12 * 100) / 100 : 0;
-        const pfEr = sp.pf_applicable ? Math.round(basic * 0.12 * 100) / 100 : 0;
-        const esicEmp = sp.esic_applicable ? Math.round(gross * 0.0075 * 100) / 100 : 0;
-        const esicEr = sp.esic_applicable ? Math.round(gross * 0.0325 * 100) / 100 : 0;
-        const totalDed = pfEmp + esicEmp;
+        const pfEmp = sp.pf_applicable ? Math.min(Math.round(basic * 0.12 * 100) / 100, 1800) : 0;
+        const esicEmp = sp.esic_applicable && gross <= 21000 ? Math.round(gross * 0.0075 * 100) / 100 : 0;
+        const pt = professionalTax(gross);
+        const totalDed = pfEmp + esicEmp + pt;
         const net = Math.round((gross - totalDed) * 100) / 100;
 
         return {
@@ -158,6 +166,7 @@ const PayrollTab: React.FC = () => {
           gross_salary: gross,
           pf_employee: pfEmp,
           esic_employee: esicEmp,
+          professional_tax: pt,
           tds: 0,
           total_deductions: totalDed,
           net_salary: net,
@@ -230,11 +239,69 @@ const PayrollTab: React.FC = () => {
   const viewRun = async (runId: string) => {
     const { data } = await (supabase as any)
       .from("payroll_items")
-      .select("*, users!payroll_items_user_id_fkey(full_name)")
+      .select("*, users!payroll_items_user_id_fkey(full_name), staff_profiles!payroll_items_user_id_fkey(employee_id, designation, departments(name))")
       .eq("payroll_run_id", runId);
 
-    setViewItems((data || []).map((d: any) => ({ ...d, full_name: d.users?.full_name || "Unknown" })));
+    setViewItems((data || []).map((d: any) => ({
+      ...d,
+      full_name: d.users?.full_name || "Unknown",
+      _employee_id: d.staff_profiles?.employee_id || null,
+      _designation: d.staff_profiles?.designation || null,
+      _department: d.staff_profiles?.departments?.name || null,
+    })));
     setActiveRunId(runId);
+  };
+
+  const downloadPayslip = async (item: any) => {
+    const run = runs.find((r) => r.id === activeRunId);
+    if (!run) {
+      toast({ title: "Payroll run not found", variant: "destructive" });
+      return;
+    }
+    // Fetch hospital info
+    const { data: u } = await supabase.auth.getUser();
+    const { data: cu } = await supabase.from("users").select("hospital_id").eq("auth_user_id", u.user?.id || "").maybeSingle();
+    let hospitalName = "Hospital";
+    let hospitalAddress: string | undefined;
+    let hospitalGstin: string | undefined;
+    if (cu?.hospital_id) {
+      const { data: h } = await (supabase as any).from("hospitals").select("name, address, gstin").eq("id", cu.hospital_id).maybeSingle();
+      if (h) { hospitalName = h.name || "Hospital"; hospitalAddress = h.address; hospitalGstin = h.gstin; }
+    }
+    const pf = Number(item.pf_employee) || 0;
+    const esic = Number(item.esic_employee) || 0;
+    const tds = Number(item.tds) || 0;
+    const totalDed = Number(item.total_deductions) || 0;
+    const pt = Math.max(0, Math.round((totalDed - pf - esic - tds) * 100) / 100);
+
+    printPayslip(
+      {
+        full_name: item.full_name,
+        employee_id: item._employee_id,
+        designation: item._designation,
+        department: item._department,
+        payment_mode: "Bank Transfer",
+      },
+      {
+        month: run.run_month,
+        working_days: undefined,
+        paid_days: (item.present_days || 0) + (item.leave_days || 0),
+        basic: Number(item.basic) || 0,
+        hra: Number(item.hra) || 0,
+        da: Number(item.da) || 0,
+        conveyance: Number(item.conveyance) || 0,
+        medical_allowance: Number(item.medical_allowance) || 0,
+        overtime_amount: Number(item.overtime_amount) || 0,
+        gross_salary: Number(item.gross_salary) || 0,
+        pf_employee: pf,
+        esic_employee: esic,
+        professional_tax: pt,
+        tds,
+        total_deductions: totalDed,
+        net_salary: Number(item.net_salary) || 0,
+      },
+      { name: hospitalName, address: hospitalAddress, gstin: hospitalGstin }
+    );
   };
 
   const approveRun = async (runId: string) => {
@@ -445,9 +512,14 @@ const PayrollTab: React.FC = () => {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Button size="sm" variant="ghost" onClick={() => toggleHold(item.id, item.payment_status)}>
-                          {item.payment_status === "hold" ? "Release" : "Hold"}
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button size="sm" variant="ghost" onClick={() => toggleHold(item.id, item.payment_status)}>
+                            {item.payment_status === "hold" ? "Release" : "Hold"}
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => downloadPayslip(item)} title="Download Payslip">
+                            <FileText className="h-3 w-3 mr-1" /> Payslip
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
