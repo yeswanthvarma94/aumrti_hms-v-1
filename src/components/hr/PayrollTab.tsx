@@ -10,7 +10,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { autoPostJournalEntry } from "@/lib/accounting";
 import { printPayslip } from "@/lib/payslipPrint";
-import { DollarSign, Download, CheckSquare, Loader2, FileText, AlertTriangle } from "lucide-react";
+import { printDocument, printHeader, printAmount } from "@/lib/printUtils";
+import { DollarSign, Download, CheckSquare, Loader2, FileText, AlertTriangle, Eye } from "lucide-react";
 
 /** Andhra Pradesh PT slab (default for unspecified states) */
 function professionalTax(gross: number): number {
