@@ -63,6 +63,7 @@ const PatientsPage: React.FC = () => {
   const [filter, setFilter] = useState<FilterPeriod>("all");
   const [showRegister, setShowRegister] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const [timelinePatient, setTimelinePatient] = useState<Patient | null>(null);
   const [showInactive, setShowInactive] = useState(false);
   const [page, setPage] = useState(0);
   const PAGE_SIZE = 50;
