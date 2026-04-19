@@ -45,6 +45,7 @@ interface PayrollItem {
   gross_salary: number;
   pf_employee: number;
   esic_employee: number;
+  professional_tax: number;
   tds: number;
   total_deductions: number;
   net_salary: number;
