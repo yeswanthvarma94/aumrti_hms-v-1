@@ -12,7 +12,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { formatBloodGroup } from "@/lib/bloodCompatibility";
 import { format } from "date-fns";
-import { Search, MessageCircle, Send } from "lucide-react";
+import { Search, MessageCircle, Send, Printer, AlertTriangle } from "lucide-react";
+import { buildQRString, printBloodBagLabel } from "@/lib/bloodBagLabel";
 
 interface Props { showModal: boolean; onCloseModal: () => void }
 
