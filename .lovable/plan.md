@@ -1,50 +1,40 @@
 
-Goal: restore the /schedule flow so scheduled doctors appear, slots render, booking works, and the patient lands in OPD with an APT token.
 
-1. Fix the blocking schedule query error
-- Update `src/pages/schedule/SchedulingPage.tsx` so the doctor schedule query no longer requests `users.specialty`.
-- I confirmed from the live network trace that `/doctor_schedules` is failing with:
-  `column users_1.specialty does not exist`
-- Because that request returns HTTP 400, the page shows “No doctors scheduled…” even when schedules exist.
+## Root Cause
 
-2. Make the doctor list resilient to the real user schema
-- Keep the join to `users` for doctor name, but only select fields that exist.
-- If specialty/department info is needed for display, fetch it from a valid source already used elsewhere in the app (likely `department_id -> departments.name`) or omit it rather than breaking the page.
+The error `invalid input value for enum app_role: "custom_1775358460148"` happens because:
 
-3. Fix slot rendering for multi-session schedules
-- The Doctor Schedules settings page supports multiple sessions per doctor per day.
-- The current scheduling page uses `schedules.find(...)`, which only shows the first session for a doctor.
-- Refactor the right panel to group schedules by doctor and render slots across all that doctor’s sessions for the selected day.
+1. `SettingsRolesPage.tsx` lets admins create custom roles, stored in the `role_permissions` table with synthetic names like `custom_1775358460148`.
+2. `SettingsStaffPage.tsx` shows these custom roles as selectable role cards (via `customRoles` query at line 130-138).
+3. When you submit the staff form, it inserts into `users.role` — which is a Postgres ENUM (`app_role`) limited to a fixed list: `super_admin, hospital_admin, doctor, nurse, receptionist, pharmacist, lab_tech, accountant, billing_executive, hr_manager, lab_technician, radiologist, cfo, billing_staff`.
+4. `custom_1775358460148` is not in that enum → DB rejects with the error in your screenshot.
 
-4. Harden booking → OPD token integration
-- Keep the current booking flow, but correct the token insert details:
-  - store the new appointment id on `opd_tokens.appointment_id`
-  - avoid prefix duplication by matching `generate_token_number()` output with how `opd_tokens.token_number` and `token_prefix` are displayed elsewhere
-- This prevents inconsistent token display like double `APT` and gives a reliable link between appointment and OPD queue.
+The screenshot also shows the role chip area is empty (no role selected visually) because the form was created against a custom role whose name doesn't match any real enum value.
 
-5. Preserve cancellation consistency
-- Update cancel logic to use the appointment linkage when available, instead of broad matching only by patient/doctor/date.
-- Keep WhatsApp cancellation behavior unchanged.
+## Fix
 
-6. End-to-end verification after implementation
-- Open `/schedule`
-- Select today’s date
-- Confirm doctors with schedules appear in the left panel
-- Click a doctor and confirm all configured session slots appear
-- Book a test patient into an available slot
-- Confirm the slot becomes booked
-- Open `/opd`
-- Confirm the patient appears in the queue with the expected APT token format
+Constrain staff creation to **only the valid `app_role` enum values**, while still allowing `role_permissions` to extend permissions for those existing roles.
 
-Technical details
-- Root cause found: the schedule fetch in `SchedulingPage.tsx` selects `doctor:users!doctor_schedules_doctor_id_fkey(full_name, specialty)`, but `users.specialty` is not present in the current schema.
-- Confirmed via network snapshot: the request returns 400, not an empty dataset.
-- Secondary issue: multi-session schedules are currently flattened incorrectly for the right panel.
-- Secondary data issue: booking currently inserts into `opd_tokens` without setting `appointment_id`, despite that column existing in the schema.
+### Changes
 
-Files to update
-- `src/pages/schedule/SchedulingPage.tsx`
+**1. `src/pages/settings/SettingsStaffPage.tsx`**
+- Define a hardcoded `VALID_APP_ROLES` array matching the DB enum (14 values).
+- In the `ROLE_CARDS` memo, filter `customRoles` to only those whose `role_name` is in `VALID_APP_ROLES`. Discard any `custom_*` roles for the staff-creation picker (they remain editable in Roles & Permissions for permission overrides on existing enum roles only).
+- Add a guard at the start of `saveStaff.mutationFn`: if `form.role` is empty or not in `VALID_APP_ROLES`, throw a clear toast error ("Please select a valid role") before calling Supabase.
+- In `FILTER_TABS` memo, do the same filter so leftover users with stale custom roles don't crash the tabs.
 
-Expected result
-- Doctors will appear correctly on scheduled days.
-- Reception can select a doctor, view valid slots, book an appointment, and see the patient in OPD queue immediately.
+**2. `src/pages/settings/SettingsRolesPage.tsx`**
+- Either disable the "Create Role" button entirely (preferred — system enum cannot be extended without a DB migration), OR keep it but rename it to "Customize Permissions for Existing Role" with a dropdown of the 14 valid `app_role` values rather than generating a `custom_${Date.now()}` name.
+- Recommend: change `createMutation` to require selecting one of the valid enum values from a dropdown, and use that as `role_name`. This keeps `role_permissions.role_name` aligned with `users.role`.
+
+**3. Cleanup migration** (optional safety net)
+- Delete any existing `role_permissions` rows where `role_name LIKE 'custom_%'` so they stop appearing in the staff role picker.
+
+### Files to edit
+- `src/pages/settings/SettingsStaffPage.tsx` (filter + validation)
+- `src/pages/settings/SettingsRolesPage.tsx` (replace custom-name creation with enum picker)
+- New migration: `DELETE FROM role_permissions WHERE role_name LIKE 'custom_%';`
+
+### Out of scope
+- Extending the `app_role` enum itself (would require coordinated changes across `has_role()`, `ROUTE_ROLES`, `RoleGuard`, and every component that switches on role).
+
