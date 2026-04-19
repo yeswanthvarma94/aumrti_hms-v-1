@@ -7,7 +7,15 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { autoPostJournalEntry } from "@/lib/accounting";
-import { DollarSign, Download, CheckSquare, Loader2 } from "lucide-react";
+import { printPayslip } from "@/lib/payslipPrint";
+import { DollarSign, Download, CheckSquare, Loader2, FileText } from "lucide-react";
+
+/** Andhra Pradesh PT slab (default for unspecified states) */
+function professionalTax(gross: number): number {
+  if (gross <= 15000) return 0;
+  if (gross <= 20000) return 150;
+  return 200;
+}
 
 interface PayrollRun {
   id: string;
