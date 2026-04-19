@@ -11,9 +11,10 @@ import { Badge } from "@/components/ui/badge";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Search, UserPlus, Eye, Users, EyeOff } from "lucide-react";
+import { Search, UserPlus, Eye, Users, EyeOff, Activity } from "lucide-react";
 import PatientRegistrationModal from "@/components/patients/PatientRegistrationModal";
 import PatientDetailDrawer from "@/components/patients/PatientDetailDrawer";
+import PatientTimelineDrawer from "@/components/patients/PatientTimelineDrawer";
 
 type Patient = {
   id: string;
