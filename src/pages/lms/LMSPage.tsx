@@ -355,26 +355,42 @@ export default function LMSPage() {
   };
 
   const printCertificate = () => {
-    const el = document.getElementById('certificate-content');
-    if (!el) return;
-    const w = window.open('', '_blank', 'noopener,noreferrer,width=1100,height=800');
-    if (!w) return;
-    w.document.write(`<html><head><title>Certificate</title>
-      <style>
-        @page { size: A4 landscape; margin: 0; }
-        body { margin: 0; font-family: 'Georgia', serif; }
-        .cert { width: 297mm; height: 210mm; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 12px double #B8860B; padding: 40px; box-sizing: border-box; }
-        .cert h1 { color: #B8860B; font-size: 28px; letter-spacing: 4px; margin: 0; }
-        .cert .name { color: #1A2F5A; font-size: 32px; font-weight: bold; margin: 16px 0; }
-        .cert .course-name { color: #1A2F5A; font-size: 22px; font-weight: bold; }
-        .cert .detail { color: #333; font-size: 14px; margin: 4px 0; }
-        .cert .footer { position: absolute; bottom: 30px; width: calc(100% - 80px); display: flex; justify-content: space-between; font-size: 12px; color: #666; }
-        .cert .nabh { color: #0E7B7B; font-weight: bold; }
-      </style></head><body>`);
-    w.document.write(el.outerHTML);
-    w.document.write('</body></html>');
-    w.document.close();
-    w.print();
+    if (!certData) return;
+    const dept = staffUsers.find(u => u.id === certData.cert.enrollment_id ? false : false);
+    const enrol = enrollments.find(e => e.id === certData.cert.enrollment_id);
+    const user = staffUsers.find(u => u.id === enrol?.user_id);
+    const deptName = departments.find(d => d.id === user?.department_id)?.name;
+    printCertCard({
+      staffName: certData.userName,
+      designation: certData.userRole?.replace(/_/g, ' '),
+      department: deptName,
+      courseName: certData.course.course_name,
+      score: enrol?.score_percent ?? null,
+      completedDate: format(new Date(certData.cert.issued_at), 'dd MMM yyyy'),
+      validUntil: certData.cert.expires_at ? format(new Date(certData.cert.expires_at), 'dd MMM yyyy') : null,
+      certificateNumber: certData.cert.certificate_number,
+      hospitalName,
+    });
+  };
+
+  // Quick "Download Certificate" inline action — bypasses preview modal
+  const downloadCertificateFor = (enrollment: Enrollment) => {
+    const course = courses.find(c => c.id === enrollment.course_id);
+    const cert = certificates.find(c => c.enrollment_id === enrollment.id);
+    if (!course || !cert) { toast.error('Certificate not available yet'); return; }
+    const user = staffUsers.find(u => u.id === enrollment.user_id);
+    const deptName = departments.find(d => d.id === user?.department_id)?.name;
+    printCertCard({
+      staffName: user?.full_name || currentUserName,
+      designation: user?.role?.replace(/_/g, ' '),
+      department: deptName,
+      courseName: course.course_name,
+      score: enrollment.score_percent ?? null,
+      completedDate: format(new Date(cert.issued_at), 'dd MMM yyyy'),
+      validUntil: cert.expires_at ? format(new Date(cert.expires_at), 'dd MMM yyyy') : null,
+      certificateNumber: cert.certificate_number,
+      hospitalName,
+    });
   };
 
   // ── ADMIN: BULK ENROL ──
