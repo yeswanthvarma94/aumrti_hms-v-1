@@ -13,13 +13,18 @@ const SettingsProfilePage: React.FC = () => {
   const [form, setForm] = useState({
     name: "", address: "", state: "", pincode: "",
     gstin: "", nabh_number: "", primary_color: "#0EA5E9",
+    session_timeout_minutes: 30,
   });
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   const { data: hospital } = useQuery({
     queryKey: ["settings-hospital"],
     queryFn: async () => {
-      const { data: me } = await supabase.from("users").select("hospital_id").limit(1).maybeSingle();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+      const { data: me } = await supabase.from("users").select("hospital_id, role").eq("auth_user_id", user.id).maybeSingle();
       if (!me) return null;
+      setUserRole(me.role);
       const { data, error } = await supabase.from("hospitals").select("*").eq("id", me.hospital_id).maybeSingle();
       if (error) throw error;
       return data;
@@ -36,6 +41,7 @@ const SettingsProfilePage: React.FC = () => {
         gstin: hospital.gstin || "",
         nabh_number: hospital.nabh_number || "",
         primary_color: hospital.primary_color || "#0EA5E9",
+        session_timeout_minutes: (hospital as any).session_timeout_minutes ?? 30,
       });
     }
   }, [hospital]);
@@ -51,7 +57,8 @@ const SettingsProfilePage: React.FC = () => {
         gstin: form.gstin || null,
         nabh_number: form.nabh_number || null,
         primary_color: form.primary_color,
-      }).eq("id", hospital.id);
+        session_timeout_minutes: form.session_timeout_minutes,
+      } as any).eq("id", hospital.id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -109,6 +116,29 @@ const SettingsProfilePage: React.FC = () => {
               <input type="color" value={form.primary_color} onChange={(e) => setForm({ ...form, primary_color: e.target.value })} className="h-10 w-10 rounded border border-input cursor-pointer" />
               <Input value={form.primary_color} onChange={(e) => setForm({ ...form, primary_color: e.target.value })} className="h-10 w-28 font-mono text-sm" />
             </div>
+          </div>
+
+          <div className="pt-4 border-t border-border">
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">
+              Auto-logout after inactivity
+            </label>
+            <p className="text-xs text-muted-foreground mb-2">
+              Users will be automatically logged out after this period of inactivity. Pharmacy and Billing roles have stricter limits enforced.
+            </p>
+            <select
+              value={form.session_timeout_minutes}
+              onChange={(e) => setForm({ ...form, session_timeout_minutes: parseInt(e.target.value, 10) })}
+              className="h-10 w-64 rounded-md border border-input bg-background px-3 text-sm"
+            >
+              <option value={10}>10 minutes</option>
+              <option value={15}>15 minutes</option>
+              <option value={20}>20 minutes</option>
+              <option value={30}>30 minutes (default)</option>
+              <option value={60}>60 minutes</option>
+              {(userRole === "super_admin" || userRole === "hospital_admin") && (
+                <option value={0}>Never (admin only)</option>
+              )}
+            </select>
           </div>
         </div>
       </div>
