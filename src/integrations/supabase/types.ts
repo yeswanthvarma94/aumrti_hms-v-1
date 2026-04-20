@@ -3624,6 +3624,86 @@ export type Database = {
           },
         ]
       }
+      cryobank_records: {
+        Row: {
+          consent_expiry_date: string | null
+          consent_renewal_reminded_30d: boolean | null
+          consent_renewal_reminded_7d: boolean | null
+          created_at: string | null
+          created_by: string | null
+          cryo_medium: string | null
+          embryo_grade: string | null
+          embryo_id: string
+          expiry_date: string
+          freeze_date: string
+          hospital_id: string
+          id: string
+          ivf_cycle_id: string | null
+          notes: string | null
+          outcome: string | null
+          patient_id: string
+          status: string
+          storage_canister: string
+          storage_goblet: string
+          storage_tank: string
+          thaw_date: string | null
+        }
+        Insert: {
+          consent_expiry_date?: string | null
+          consent_renewal_reminded_30d?: boolean | null
+          consent_renewal_reminded_7d?: boolean | null
+          created_at?: string | null
+          created_by?: string | null
+          cryo_medium?: string | null
+          embryo_grade?: string | null
+          embryo_id: string
+          expiry_date: string
+          freeze_date: string
+          hospital_id: string
+          id?: string
+          ivf_cycle_id?: string | null
+          notes?: string | null
+          outcome?: string | null
+          patient_id: string
+          status?: string
+          storage_canister: string
+          storage_goblet: string
+          storage_tank: string
+          thaw_date?: string | null
+        }
+        Update: {
+          consent_expiry_date?: string | null
+          consent_renewal_reminded_30d?: boolean | null
+          consent_renewal_reminded_7d?: boolean | null
+          created_at?: string | null
+          created_by?: string | null
+          cryo_medium?: string | null
+          embryo_grade?: string | null
+          embryo_id?: string
+          expiry_date?: string
+          freeze_date?: string
+          hospital_id?: string
+          id?: string
+          ivf_cycle_id?: string | null
+          notes?: string | null
+          outcome?: string | null
+          patient_id?: string
+          status?: string
+          storage_canister?: string
+          storage_goblet?: string
+          storage_tank?: string
+          thaw_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cryobank_records_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cycle_instruments: {
         Row: {
           cycle_id: string
