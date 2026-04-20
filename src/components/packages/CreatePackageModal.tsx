@@ -74,6 +74,7 @@ export default function CreatePackageModal({ open, onClose }: Props) {
       estimated_hours: form.estimated_hours ? +form.estimated_hours : totalMins > 0 ? +(totalMins / 60).toFixed(1) : null,
       components: components as any,
       total_components: components.length,
+      stations: stations as any,
     }]);
     setSaving(false);
     if (error) { toast.error("Failed: " + error.message); return; }
@@ -87,6 +88,13 @@ export default function CreatePackageModal({ open, onClose }: Props) {
     { value: "consultation", label: "Consultation" },
     { value: "radiology", label: "Radiology" },
     { value: "service", label: "Service (ECG, PFT etc.)" },
+  ];
+  const moduleOpts = [
+    { value: "nursing", label: "Nursing" },
+    { value: "lab", label: "Lab" },
+    { value: "radiology", label: "Radiology" },
+    { value: "opd", label: "OPD" },
+    { value: "other", label: "Other" },
   ];
 
   return (
