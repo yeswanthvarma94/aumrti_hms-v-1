@@ -16,6 +16,7 @@ ROUTE_ROLES['/lab'] = ['lab_technician', 'lab_tech', 'doctor', 'super_admin', 'h
 ROUTE_ROLES['/radiology'] = ['radiologist', 'doctor', 'super_admin', 'hospital_admin'];
 ROUTE_ROLES['/admin/go-live'] = ['super_admin', 'hospital_admin'];
 ROUTE_ROLES['/admin/data-migration'] = ['super_admin', 'hospital_admin'];
+ROUTE_ROLES['/assets'] = ['accountant', 'cfo', 'super_admin', 'hospital_admin'];
 
 // Core authenticated routes
 ROUTE_ROLES['/dashboard'] = [
