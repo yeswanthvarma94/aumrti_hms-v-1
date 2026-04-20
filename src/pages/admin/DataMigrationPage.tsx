@@ -122,22 +122,51 @@ const DataMigrationPage: React.FC = () => {
 
   const handleRollback = async () => {
     if (!rollbackJob) return;
+    if (rollbackConfirmText.trim().toUpperCase() !== "CONFIRM") {
+      toast({ title: "Type CONFIRM to proceed", variant: "destructive" });
+      return;
+    }
     setRollbackLoading(true);
 
-    // Note: actual record deletion will be handled in the import wizard (14B-2)
-    // For now, mark the job as rolled back
+    // Resolve target table from entity_type
+    const entityCfg = ENTITIES.find(e => e.key === rollbackJob.entity_type);
+    const targetTable = entityCfg?.table;
+
+    // Fetch all entity_ids inserted by this job
+    const { data: logs } = await supabase
+      .from("migration_logs")
+      .select("id, entity_id")
+      .eq("job_id", rollbackJob.id)
+      .eq("status", "imported")
+      .not("entity_id", "is", null);
+
+    const ids = (logs || []).map((l: any) => l.entity_id).filter(Boolean);
+    let deletedCount = 0;
+
+    if (targetTable && ids.length > 0) {
+      // Delete in batches of 200 to stay safe
+      for (let i = 0; i < ids.length; i += 200) {
+        const batch = ids.slice(i, i + 200);
+        const { error } = await supabase.from(targetTable as any).delete().in("id", batch);
+        if (!error) deletedCount += batch.length;
+      }
+    }
+
     await supabase.from("migration_jobs").update({
       status: "rolled_back",
       rolled_back_at: new Date().toISOString(),
     }).eq("id", rollbackJob.id);
 
-    // Mark logs as rolled back
     await supabase.from("migration_logs").update({
       status: "rolled_back",
     }).eq("job_id", rollbackJob.id).eq("status", "imported");
 
-    toast({ title: `Job "${rollbackJob.job_name}" rolled back` });
+    toast({
+      title: `Rolled back: ${deletedCount} records deleted`,
+      description: `Job "${rollbackJob.job_name}"`,
+    });
     setRollbackJob(null);
+    setRollbackConfirmText("");
     setRollbackLoading(false);
     loadData();
   };
