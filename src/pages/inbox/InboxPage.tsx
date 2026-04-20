@@ -586,6 +586,7 @@ const InboxPage: React.FC = () => {
           </>
         )}
       </div>
+      </div>
 
       {/* ══ Compose Modal ══ */}
       {showCompose && (
