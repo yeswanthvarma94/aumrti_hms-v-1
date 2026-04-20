@@ -439,20 +439,33 @@ const InboxPage: React.FC = () => {
                         <span className="text-[11px] text-muted-foreground shrink-0 ml-2">{formatTime(msg.created_at)}</span>
                       </div>
                       {/* Row 2 */}
-                      <div className="flex items-center gap-1.5 mt-0.5">
+                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                         {ch && (
                           <span className={cn("text-[9px] px-1.5 py-0.5 rounded-full font-medium", ch.color)}>
                             {ch.label}
                           </span>
                         )}
-                        <span className="text-xs text-muted-foreground truncate">
-                          {msg.subject || msg.message_body.slice(0, 60)}
+                        <SLABadge deadline={msg.sla_deadline} resolvedAt={msg.resolved_at} compact />
+                        <span className="text-xs text-muted-foreground truncate flex-1">
+                          {msg.subject || msg.message_body.slice(0, 50)}
                         </span>
                       </div>
                       {/* Row 3 */}
-                      {msg.priority === "urgent" && (
-                        <span className="text-[10px] text-destructive font-medium mt-0.5 inline-block">🔴 Urgent</span>
-                      )}
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        {msg.priority === "urgent" && (
+                          <span className="text-[10px] text-destructive font-medium inline-flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-destructive animate-pulse" /> Urgent
+                          </span>
+                        )}
+                        {msg.assigned_to && (
+                          <span className="text-[10px] text-muted-foreground inline-flex items-center gap-1">
+                            <User size={10} /> {staffById(msg.assigned_to)?.full_name || "Assigned"}
+                          </span>
+                        )}
+                        {(msg.tags || []).slice(0, 3).map(t => (
+                          <span key={t} className="text-[9px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">#{t}</span>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </button>
