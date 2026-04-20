@@ -3,12 +3,14 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { useHospitalId } from "@/hooks/useHospitalId";
+import { useBranch } from "@/contexts/BranchContext";
+import BranchOverviewCard from "@/components/hod/BranchOverviewCard";
 import {
   BarChart, Bar, ResponsiveContainer, PieChart, Pie, Cell,
 } from "recharts";
 import {
   ArrowLeft, Clock, Users, BedDouble, IndianRupee,
-  AlertTriangle, Activity, LogOut,
+  AlertTriangle, Activity, LayoutGrid, Building2,
 } from "lucide-react";
 
 const REFRESH_MS = 30_000;
@@ -16,7 +18,13 @@ const DONUT_COLORS = ["hsl(var(--primary))", "#10B981", "#F59E0B"];
 
 const HODDashboardPage: React.FC = () => {
   const navigate = useNavigate();
-  const { hospitalId } = useHospitalId();
+  const { hospitalId, role } = useHospitalId();
+  const { branches, setSelectedBranchId } = useBranch();
+  const isCeoLevel = role === "ceo" || role === "super_admin";
+  const [viewMode, setViewMode] = useState<"single" | "ceo">(
+    isCeoLevel && branches.length > 1 ? "ceo" : "single"
+  );
+  const [refreshKey, setRefreshKey] = useState(0);
   const [now, setNow] = useState(new Date());
   const [opdCount, setOpdCount] = useState(0);
   const [opdYesterday, setOpdYesterday] = useState(0);
