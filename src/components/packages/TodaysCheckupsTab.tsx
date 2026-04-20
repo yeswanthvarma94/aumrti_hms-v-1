@@ -28,6 +28,7 @@ export default function TodaysCheckupsTab({ onRefreshKPIs }: Props) {
   const [vitalsModal, setVitalsModal] = useState<any | null>(null);
   const [stationModal, setStationModal] = useState<{ booking: any; station: string } | null>(null);
   const [stationNotes, setStationNotes] = useState("");
+  const [routingBookingId, setRoutingBookingId] = useState<string | null>(null);
   const [vitals, setVitals] = useState<VitalsForm>({
     bp_systolic: "", bp_diastolic: "", pulse: "", spo2: "", temperature: "", height_cm: "", weight_kg: "",
   });
