@@ -121,6 +121,20 @@ export default function PackagesPage() {
 
       {showBook && <BookPackageModal open={showBook} onClose={() => { setShowBook(false); loadKPIs(); }} />}
       {showCreate && <CreatePackageModal open={showCreate} onClose={() => setShowCreate(false)} />}
+      {routingBookingId && (
+        <PatientRoutingView
+          bookingId={routingBookingId}
+          open={!!routingBookingId}
+          onClose={() => {
+            setRoutingBookingId(null);
+            if (searchParams.get("booking")) {
+              searchParams.delete("booking");
+              setSearchParams(searchParams, { replace: true });
+            }
+          }}
+          onUpdated={loadKPIs}
+        />
+      )}
     </div>
   );
 }
