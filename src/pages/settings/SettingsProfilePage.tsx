@@ -61,15 +61,6 @@ const SettingsProfilePage: React.FC = () => {
       } as any).eq("id", hospital.id);
       if (error) throw error;
     },
-        address: form.address || null,
-        state: form.state || null,
-        pincode: form.pincode || null,
-        gstin: form.gstin || null,
-        nabh_number: form.nabh_number || null,
-        primary_color: form.primary_color,
-      }).eq("id", hospital.id);
-      if (error) throw error;
-    },
     onSuccess: () => {
       toast({ title: "Hospital profile updated" });
       qc.invalidateQueries({ queryKey: ["settings-hospital"] });
