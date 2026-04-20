@@ -152,22 +152,33 @@ export default function LMSPage() {
     explanation: '',
   });
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { loadData(); }, [hospitalId]);
 
   const loadData = async () => {
+    if (!hospitalId) return;
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
     const userId = user?.id;
 
-    const [coursesRes, usersRes, deptsRes] = await Promise.all([
+    const [coursesRes, usersRes, deptsRes, hospitalRes, qCountRes] = await Promise.all([
       supabase.from('lms_courses').select('*').eq('is_active', true),
       supabase.from('users').select('id, full_name, role, department_id').eq('hospital_id', hospitalId),
       supabase.from('departments').select('id, name').eq('hospital_id', hospitalId),
+      supabase.from('hospitals').select('name').eq('id', hospitalId).maybeSingle(),
+      supabase.from('lms_quiz_questions').select('course_id'),
     ]);
 
     setCourses((coursesRes.data || []) as Course[]);
     setStaffUsers(usersRes.data || []);
     setDepartments(deptsRes.data || []);
+    if (hospitalRes.data?.name) setHospitalName(hospitalRes.data.name);
+
+    // Aggregate question counts per course
+    const counts: Record<string, number> = {};
+    (qCountRes.data || []).forEach((q: any) => {
+      counts[q.course_id] = (counts[q.course_id] || 0) + 1;
+    });
+    setQuestionCounts(counts);
 
     if (userId) {
       const userRow = (usersRes.data || []).find((u: any) => u.id === userId);
