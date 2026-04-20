@@ -14,6 +14,7 @@ import {
   AlertTriangle, CheckCircle2, FileSpreadsheet, Loader2
 } from "lucide-react";
 import * as XLSX from "xlsx";
+import { downloadXlsxTemplate } from "@/lib/migrationTemplates";
 
 type EntityType = "patients" | "staff" | "services" | "drugs" | "vendors" | "lab_tests";
 
@@ -65,13 +66,13 @@ const ENTITY_FIELDS: Record<EntityType, FieldDef[]> = {
   ],
   drugs: [
     { key: "drug_name", label: "Drug Name", required: true },
-    { key: "generic_name", label: "Generic Name", required: false },
+    { key: "generic_name", label: "Generic Name", required: true },
     { key: "category", label: "Category", required: true },
     { key: "schedule", label: "Schedule", required: false },
-    { key: "strength", label: "Strength", required: false },
-    { key: "form", label: "Form", required: false },
-    { key: "mrp", label: "MRP (₹)", required: false },
+    { key: "is_ndps", label: "NDPS Controlled", required: false },
     { key: "hsn_code", label: "HSN Code", required: false },
+    { key: "gst_percent", label: "GST %", required: false },
+    { key: "reorder_level", label: "Reorder Level", required: false },
   ],
   vendors: [
     { key: "vendor_name", label: "Vendor Name", required: true },
@@ -123,9 +124,8 @@ const AUTO_MATCH: Record<string, string[]> = {
   drug_name: ["drug_name", "drug", "name", "brand_name", "medicine"],
   generic_name: ["generic_name", "generic", "salt", "composition"],
   schedule: ["schedule", "drug_schedule"],
-  strength: ["strength", "dose"],
-  form: ["form", "dosage_form", "type"],
-  mrp: ["mrp", "price", "rate"],
+  is_ndps: ["is_ndps", "ndps", "controlled"],
+  reorder_level: ["reorder_level", "reorder", "min_stock"],
   vendor_name: ["vendor_name", "vendor", "supplier", "name", "company"],
   contact_person: ["contact_person", "contact_name", "person"],
   gst_number: ["gst_number", "gstin", "gst", "gst_no"],
@@ -219,13 +219,17 @@ const ImportWizard: React.FC<ImportWizardProps> = ({ entityType, onClose, onComp
     const errors: ValidationError[] = [];
     const dupes: number[] = [];
 
-    // For dupe detection, fetch existing phones
+    // For dupe detection, fetch existing keys
     let existingPhones = new Set<string>();
+    let existingDrugNames = new Set<string>();
     if (entityType === "patients" || entityType === "vendors") {
       const table = entityType === "patients" ? "patients" : "vendors";
       const phoneCol = entityType === "vendors" ? "contact_phone" : "phone";
       const { data } = await supabase.from(table as any).select(phoneCol);
       if (data) existingPhones = new Set(data.map((r: any) => String(r[phoneCol] || "").trim()));
+    } else if (entityType === "drugs") {
+      const { data } = await supabase.from("drug_master").select("drug_name");
+      if (data) existingDrugNames = new Set(data.map((r: any) => String(r.drug_name || "").trim().toLowerCase()));
     }
 
     rawData.forEach((row, i) => {
@@ -267,12 +271,22 @@ const ImportWizard: React.FC<ImportWizardProps> = ({ entityType, onClose, onComp
         if (isNaN(rate) || rate <= 0) err = "Rate must be a positive number";
         if (mapped.gst_percent && ![0, 5, 12, 18].includes(Number(mapped.gst_percent))) err = "GST must be 0, 5, 12, or 18";
       } else if (entityType === "drugs") {
+        if (!mapped.generic_name) err = "Generic name is required";
         if (mapped.schedule) {
           const validSchedules = ["otc", "h", "h1", "x", "g", ""];
           if (!validSchedules.includes(mapped.schedule.toLowerCase())) err = "Schedule must be OTC/H/H1/X/G";
           else mapped.schedule = mapped.schedule.toUpperCase();
         }
-        if (mapped.mrp && (isNaN(Number(mapped.mrp)) || Number(mapped.mrp) < 0)) err = "MRP must be a positive number";
+        if (mapped.is_ndps) {
+          const v = mapped.is_ndps.toString().toLowerCase();
+          if (!["true", "false", "yes", "no", "1", "0", ""].includes(v)) err = "NDPS must be true/false";
+          mapped.is_ndps = ["true", "yes", "1"].includes(v);
+        }
+        if (mapped.gst_percent && ![0, 5, 12, 18].includes(Number(mapped.gst_percent))) err = "GST must be 0, 5, 12, or 18";
+        if (mapped.reorder_level !== "" && mapped.reorder_level != null) {
+          const n = Number(mapped.reorder_level);
+          if (isNaN(n) || n < 0) err = "Reorder level must be zero or positive";
+        }
       } else if (entityType === "vendors") {
         if (mapped.phone && !/^\d{10}$/.test(mapped.phone)) err = "Phone must be 10 digits";
       }
@@ -284,7 +298,10 @@ const ImportWizard: React.FC<ImportWizardProps> = ({ entityType, onClose, onComp
 
       // Dupe check
       const phoneKey = mapped.phone || "";
+      const drugKey = (mapped.drug_name || "").toLowerCase();
       if (phoneKey && existingPhones.has(phoneKey)) {
+        dupes.push(i + 2);
+      } else if (entityType === "drugs" && drugKey && existingDrugNames.has(drugKey)) {
         dupes.push(i + 2);
       }
 
@@ -373,9 +390,12 @@ const ImportWizard: React.FC<ImportWizardProps> = ({ entityType, onClose, onComp
             if (error) throw error;
             entityId = ins?.id || null;
           } else if (entityType === "drugs") {
-            record = { ...record, drug_name: row.drug_name, generic_name: row.generic_name || null, category: row.category };
+            record = { ...record, drug_name: row.drug_name, generic_name: row.generic_name, category: row.category };
             if (row.schedule) record.drug_schedule = row.schedule;
             if (row.hsn_code) record.hsn_code = row.hsn_code;
+            if (row.gst_percent) record.gst_percent = Number(row.gst_percent);
+            if (row.is_ndps !== undefined && row.is_ndps !== "") record.is_ndps = !!row.is_ndps;
+            if (row.reorder_level !== "" && row.reorder_level != null) record.reorder_level = Number(row.reorder_level);
             const { data: ins, error } = await supabase.from("drug_master").insert(record).select("id").maybeSingle();
             if (error) throw error;
             entityId = ins?.id || null;
@@ -449,14 +469,8 @@ const ImportWizard: React.FC<ImportWizardProps> = ({ entityType, onClose, onComp
   };
 
   const downloadTemplate = () => {
-    const headers = fields.map((f) => f.key);
-    const blob = new Blob([headers.join(",") + "\n"], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${entityType}_template.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadXlsxTemplate(entityType);
+    toast({ title: `${ENTITY_LABELS[entityType]} template downloaded`, description: "Open in Excel — yellow columns are required." });
   };
 
   return (

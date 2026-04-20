@@ -4,6 +4,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import {
@@ -11,6 +13,7 @@ import {
   ArrowRight, Undo2, Eye, FileSpreadsheet, AlertTriangle
 } from "lucide-react";
 import ImportWizard from "@/components/migration/ImportWizard";
+import { downloadXlsxTemplate, type MigrationEntity } from "@/lib/migrationTemplates";
 
 interface MigrationJob {
   id: string;
@@ -48,62 +51,7 @@ const ENTITIES = [
   { key: "lab_tests", label: "Lab Tests", icon: TestTube, desc: "Lab test catalog with normal ranges", table: "lab_tests" },
 ] as const;
 
-const TEMPLATES: Record<string, { headers: string[]; examples: string[][]; notes: string[] }> = {
-  patients: {
-    headers: ["full_name", "phone", "gender", "dob", "blood_group", "address", "uhid"],
-    examples: [
-      ["Ramesh Kumar", "9876543210", "male", "1985-03-15", "B+", "123 MG Road, Indore", ""],
-      ["Sita Devi", "9123456789", "female", "1992-07-22", "O+", "45 Nehru Nagar, Bhopal", ""],
-      ["Ahmed Khan", "8765432109", "male", "1978-11-01", "A-", "78 Station Road, Jaipur", ""],
-    ],
-    notes: ["Full name (required)", "10-digit mobile", "male/female/other", "YYYY-MM-DD", "A+/A-/B+/B-/AB+/AB-/O+/O-", "Full address", "Leave blank for auto-generate"],
-  },
-  staff: {
-    headers: ["full_name", "email", "phone", "role", "department", "designation", "qualification"],
-    examples: [
-      ["Dr. Priya Sharma", "priya@hospital.com", "9876543210", "doctor", "General Medicine", "Consultant", "MBBS, MD"],
-      ["Nurse Rekha", "rekha@hospital.com", "9123456789", "nurse", "ICU", "Staff Nurse", "GNM"],
-      ["Admin Rahul", "rahul@hospital.com", "8765432109", "admin", "Administration", "Front Desk", "BA"],
-    ],
-    notes: ["Full name (required)", "Email (required)", "10-digit mobile", "doctor/nurse/admin/pharmacist/lab_tech", "Department name", "Job title", "Qualifications"],
-  },
-  services: {
-    headers: ["service_name", "service_code", "department", "rate", "gst_percent", "category"],
-    examples: [
-      ["General Consultation", "SVC-001", "General Medicine", "500", "0", "consultation"],
-      ["CBC Test", "SVC-002", "Laboratory", "350", "0", "lab"],
-      ["X-Ray Chest", "SVC-003", "Radiology", "800", "0", "radiology"],
-    ],
-    notes: ["Service name (required)", "Unique code", "Department", "Rate in INR (required)", "GST %", "consultation/lab/radiology/procedure/room/other"],
-  },
-  drugs: {
-    headers: ["drug_name", "generic_name", "drug_code", "category", "unit", "mrp", "schedule"],
-    examples: [
-      ["Paracetamol 500mg", "Paracetamol", "DRG-001", "tablet", "strip", "25.50", ""],
-      ["Amoxicillin 500mg", "Amoxicillin", "DRG-002", "capsule", "strip", "85.00", "H"],
-      ["Normal Saline 500ml", "Sodium Chloride", "DRG-003", "iv_fluid", "bottle", "45.00", ""],
-    ],
-    notes: ["Brand name (required)", "Generic name (required)", "Unique code", "tablet/capsule/syrup/injection/iv_fluid/ointment", "Unit of measure", "MRP in INR", "H/H1/X or blank"],
-  },
-  vendors: {
-    headers: ["vendor_name", "contact_person", "phone", "email", "gst_number", "address", "category"],
-    examples: [
-      ["MedSupply India Pvt Ltd", "Rajesh Gupta", "9876543210", "rajesh@medsupply.in", "29AABCU1234F1Z5", "Industrial Area, Pune", "pharma"],
-      ["SurgEquip Co", "Meena Patel", "9123456789", "meena@surgequip.com", "27AADCS5678G1Z8", "MIDC, Mumbai", "surgical"],
-      ["LabChem Solutions", "Anil Verma", "8765432109", "anil@labchem.in", "09AAECL9012H1ZJ", "Sector 62, Noida", "consumable"],
-    ],
-    notes: ["Company name (required)", "Contact person", "10-digit mobile", "Email", "15-char GSTIN", "Address", "pharma/surgical/consumable/equipment/other"],
-  },
-  lab_tests: {
-    headers: ["test_name", "test_code", "department", "sample_type", "normal_range", "unit", "rate"],
-    examples: [
-      ["Complete Blood Count", "CBC", "Haematology", "blood", "See individual params", "", "350"],
-      ["Fasting Blood Sugar", "FBS", "Biochemistry", "blood", "70-100", "mg/dL", "150"],
-      ["Urine Routine", "URE", "Clinical Pathology", "urine", "See report", "", "200"],
-    ],
-    notes: ["Test name (required)", "Unique code (required)", "Lab department", "blood/urine/stool/sputum/csf/other", "Normal range text", "Unit of measure", "Rate in INR"],
-  },
-};
+// Templates are now generated via downloadXlsxTemplate (src/lib/migrationTemplates.ts)
 
 const statusBadge = (status: string) => {
   const map: Record<string, string> = {
@@ -130,6 +78,7 @@ const DataMigrationPage: React.FC = () => {
   const [viewLogs, setViewLogs] = useState<MigrationLog[]>([]);
   const [rollbackJob, setRollbackJob] = useState<MigrationJob | null>(null);
   const [rollbackLoading, setRollbackLoading] = useState(false);
+  const [rollbackConfirmText, setRollbackConfirmText] = useState("");
   const [wizardEntity, setWizardEntity] = useState<string | null>(null);
 
   useEffect(() => { loadData(); }, []);
@@ -154,25 +103,10 @@ const DataMigrationPage: React.FC = () => {
   };
 
   const downloadTemplate = (entityKey: string) => {
-    const template = TEMPLATES[entityKey];
-    if (!template) return;
     const entity = ENTITIES.find(e => e.key === entityKey);
-
-    const rows = [
-      template.headers.join(","),
-      ...template.examples.map(row => row.map(v => `"${v}"`).join(",")),
-      "",
-      "# NOTES: " + template.notes.join(" | "),
-    ];
-
-    const blob = new Blob([rows.join("\n")], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${entityKey}_import_template.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast({ title: `${entity?.label} template downloaded` });
+    if (!entity) return;
+    downloadXlsxTemplate(entityKey as MigrationEntity);
+    toast({ title: `${entity.label} template downloaded`, description: "Open in Excel — yellow columns are required, grey row is instructions (delete before saving)." });
   };
 
   const viewJobLogs = async (job: MigrationJob) => {
@@ -188,22 +122,51 @@ const DataMigrationPage: React.FC = () => {
 
   const handleRollback = async () => {
     if (!rollbackJob) return;
+    if (rollbackConfirmText.trim().toUpperCase() !== "CONFIRM") {
+      toast({ title: "Type CONFIRM to proceed", variant: "destructive" });
+      return;
+    }
     setRollbackLoading(true);
 
-    // Note: actual record deletion will be handled in the import wizard (14B-2)
-    // For now, mark the job as rolled back
+    // Resolve target table from entity_type
+    const entityCfg = ENTITIES.find(e => e.key === rollbackJob.entity_type);
+    const targetTable = entityCfg?.table;
+
+    // Fetch all entity_ids inserted by this job
+    const { data: logs } = await supabase
+      .from("migration_logs")
+      .select("id, entity_id")
+      .eq("job_id", rollbackJob.id)
+      .eq("status", "imported")
+      .not("entity_id", "is", null);
+
+    const ids = (logs || []).map((l: any) => l.entity_id).filter(Boolean);
+    let deletedCount = 0;
+
+    if (targetTable && ids.length > 0) {
+      // Delete in batches of 200 to stay safe
+      for (let i = 0; i < ids.length; i += 200) {
+        const batch = ids.slice(i, i + 200);
+        const { error } = await supabase.from(targetTable as any).delete().in("id", batch);
+        if (!error) deletedCount += batch.length;
+      }
+    }
+
     await supabase.from("migration_jobs").update({
       status: "rolled_back",
       rolled_back_at: new Date().toISOString(),
     }).eq("id", rollbackJob.id);
 
-    // Mark logs as rolled back
     await supabase.from("migration_logs").update({
       status: "rolled_back",
     }).eq("job_id", rollbackJob.id).eq("status", "imported");
 
-    toast({ title: `Job "${rollbackJob.job_name}" rolled back` });
+    toast({
+      title: `Rolled back: ${deletedCount} records deleted`,
+      description: `Job "${rollbackJob.job_name}"`,
+    });
     setRollbackJob(null);
+    setRollbackConfirmText("");
     setRollbackLoading(false);
     loadData();
   };
