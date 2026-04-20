@@ -10,6 +10,7 @@ import { useSidebar } from "./SidebarContext";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import BranchSwitcher from "./BranchSwitcher";
 
 interface SidebarItem {
   label: string;
@@ -125,6 +126,11 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ isMobileOverlay, onClose }) => 
           </button>
         </div>
       )}
+
+      {/* Branch switcher */}
+      <div className={cn("px-2 pt-2", isMobileOverlay ? "" : "border-b border-sidebar-border pb-2")}>
+        <BranchSwitcher collapsed={isCollapsed} />
+      </div>
 
       {/* Top items */}
       <nav className="flex-shrink-0 flex flex-col gap-1 px-2 pt-3">
