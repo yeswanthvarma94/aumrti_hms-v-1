@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import {
   Home, LayoutGrid, UserPlus, Stethoscope, BedDouble,
   FlaskConical, Pill, Receipt, BarChart3, Inbox, Settings,
-  LogOut, HeartPulse, Activity, FolderOpen, X, CalendarDays,
+  LogOut, HeartPulse, Activity, FolderOpen, X, CalendarDays, Building2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "./SidebarContext";
@@ -35,6 +35,7 @@ const quickAccessItems: SidebarItem[] = [
 
 const recordsItems: SidebarItem[] = [
   { label: "Medical Records", path: "/mrd", icon: FolderOpen },
+  { label: "Assets", path: "/assets", icon: Building2 },
 ];
 
 const bottomItems: SidebarItem[] = [

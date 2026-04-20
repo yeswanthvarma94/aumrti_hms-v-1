@@ -100,6 +100,7 @@ const PackagesPage = lazy(() => import("./pages/packages/PackagesPage"));
 const IVFPage = lazy(() => import("./pages/ivf/IVFPage"));
 const SettingsRadiologyPage = lazy(() => import("./pages/settings/SettingsRadiologyPage"));
 const SchedulingPage = lazy(() => import("./pages/schedule/SchedulingPage"));
+const AssetsPage = lazy(() => import("./pages/assets/AssetsPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -230,6 +231,7 @@ const App = () => (
             <Route path="/ayush" element={<RG path="/ayush"><SM name="AYUSH"><AyushPage /></SM></RG>} />
             <Route path="/packages" element={<RG path="/packages"><SM name="Health Packages"><PackagesPage /></SM></RG>} />
             <Route path="/ivf" element={<RG path="/ivf"><SM name="IVF"><IVFPage /></SM></RG>} />
+            <Route path="/assets" element={<RG path="/assets"><SM name="Assets"><AssetsPage /></SM></RG>} />
             <Route path="/admin/go-live" element={<RG path="/admin/go-live"><SM name="Go-Live Checklist"><GoLiveChecklistPage /></SM></RG>} />
             <Route path="/admin/data-migration" element={<RG path="/admin/data-migration"><SM name="Data Migration"><DataMigrationPage /></SM></RG>} />
           </Route>
