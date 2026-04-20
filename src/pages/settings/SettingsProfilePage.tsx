@@ -117,6 +117,29 @@ const SettingsProfilePage: React.FC = () => {
               <Input value={form.primary_color} onChange={(e) => setForm({ ...form, primary_color: e.target.value })} className="h-10 w-28 font-mono text-sm" />
             </div>
           </div>
+
+          <div className="pt-4 border-t border-border">
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">
+              Auto-logout after inactivity
+            </label>
+            <p className="text-xs text-muted-foreground mb-2">
+              Users will be automatically logged out after this period of inactivity. Pharmacy and Billing roles have stricter limits enforced.
+            </p>
+            <select
+              value={form.session_timeout_minutes}
+              onChange={(e) => setForm({ ...form, session_timeout_minutes: parseInt(e.target.value, 10) })}
+              className="h-10 w-64 rounded-md border border-input bg-background px-3 text-sm"
+            >
+              <option value={10}>10 minutes</option>
+              <option value={15}>15 minutes</option>
+              <option value={20}>20 minutes</option>
+              <option value={30}>30 minutes (default)</option>
+              <option value={60}>60 minutes</option>
+              {(userRole === "super_admin" || userRole === "hospital_admin") && (
+                <option value={0}>Never (admin only)</option>
+              )}
+            </select>
+          </div>
         </div>
       </div>
     </div>
