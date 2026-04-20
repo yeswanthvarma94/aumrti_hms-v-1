@@ -7250,6 +7250,8 @@ export type Database = {
           resolved_by: string | null
           sender_name: string | null
           sender_phone: string | null
+          sla_breached: boolean | null
+          sla_deadline: string | null
           status: string | null
           subject: string | null
           tags: string[] | null
@@ -7271,6 +7273,8 @@ export type Database = {
           resolved_by?: string | null
           sender_name?: string | null
           sender_phone?: string | null
+          sla_breached?: boolean | null
+          sla_deadline?: string | null
           status?: string | null
           subject?: string | null
           tags?: string[] | null
@@ -7292,6 +7296,8 @@ export type Database = {
           resolved_by?: string | null
           sender_name?: string | null
           sender_phone?: string | null
+          sla_breached?: boolean | null
+          sla_deadline?: string | null
           status?: string | null
           subject?: string | null
           tags?: string[] | null
