@@ -66,13 +66,13 @@ const ENTITY_FIELDS: Record<EntityType, FieldDef[]> = {
   ],
   drugs: [
     { key: "drug_name", label: "Drug Name", required: true },
-    { key: "generic_name", label: "Generic Name", required: false },
+    { key: "generic_name", label: "Generic Name", required: true },
     { key: "category", label: "Category", required: true },
     { key: "schedule", label: "Schedule", required: false },
-    { key: "strength", label: "Strength", required: false },
-    { key: "form", label: "Form", required: false },
-    { key: "mrp", label: "MRP (₹)", required: false },
+    { key: "is_ndps", label: "NDPS Controlled", required: false },
     { key: "hsn_code", label: "HSN Code", required: false },
+    { key: "gst_percent", label: "GST %", required: false },
+    { key: "reorder_level", label: "Reorder Level", required: false },
   ],
   vendors: [
     { key: "vendor_name", label: "Vendor Name", required: true },
