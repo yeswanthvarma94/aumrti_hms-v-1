@@ -300,6 +300,16 @@ export default function TodaysCheckupsTab({ onRefreshKPIs }: Props) {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Multi-Department Routing View */}
+      {routingBookingId && (
+        <PatientRoutingView
+          bookingId={routingBookingId}
+          open={!!routingBookingId}
+          onClose={() => setRoutingBookingId(null)}
+          onUpdated={() => { load(); onRefreshKPIs(); }}
+        />
+      )}
     </div>
   );
 }
