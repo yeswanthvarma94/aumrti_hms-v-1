@@ -10,12 +10,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import CampExecutionDialog from "./CampExecutionDialog";
+import { Play } from "lucide-react";
 
 interface Props { hospitalId: string; }
 
 const CampsTab: React.FC<Props> = ({ hospitalId }) => {
   const [camps, setCamps] = useState<any[]>([]);
   const [showAdd, setShowAdd] = useState(false);
+  const [executeCamp, setExecuteCamp] = useState<any>(null);
   const [name, setName] = useState("");
   const [campDate, setCampDate] = useState("");
   const [location, setLocation] = useState("");
@@ -77,6 +80,7 @@ const CampsTab: React.FC<Props> = ({ hospitalId }) => {
               <TableHead>Target</TableHead>
               <TableHead>Actual</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead className="text-right">Action</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -88,11 +92,16 @@ const CampsTab: React.FC<Props> = ({ hospitalId }) => {
                 <TableCell className="font-mono text-sm">{c.target_count || "—"}</TableCell>
                 <TableCell className="font-mono text-sm">{c.actual_count}</TableCell>
                 <TableCell><Badge variant={statusColor(c.status)} className="text-xs capitalize">{c.status}</Badge></TableCell>
+                <TableCell className="text-right">
+                  <Button size="sm" variant="ghost" onClick={() => setExecuteCamp(c)}>
+                    <Play className="h-3.5 w-3.5 mr-1" /> Execute
+                  </Button>
+                </TableCell>
               </TableRow>
             ))}
             {camps.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No camps planned yet</TableCell>
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No camps planned yet</TableCell>
               </TableRow>
             )}
           </TableBody>
@@ -133,6 +142,13 @@ const CampsTab: React.FC<Props> = ({ hospitalId }) => {
           </div>
         </DialogContent>
       </Dialog>
+
+      <CampExecutionDialog
+        hospitalId={hospitalId}
+        camp={executeCamp}
+        open={!!executeCamp}
+        onClose={() => { setExecuteCamp(null); loadCamps(); }}
+      />
     </div>
   );
 };

@@ -12,6 +12,7 @@ import RecordVaccineTab from "@/components/vaccination/RecordVaccineTab";
 import ColdChainTab from "@/components/vaccination/ColdChainTab";
 import CampsTab from "@/components/vaccination/CampsTab";
 import StockTab from "@/components/vaccination/StockTab";
+import AefiTab from "@/components/vaccination/AefiTab";
 import { Syringe, AlertTriangle, CalendarClock, Thermometer, Loader2 } from "lucide-react";
 
 const VaccinationPage: React.FC = () => {
@@ -125,6 +126,7 @@ const VaccinationPage: React.FC = () => {
           <TabsTrigger value="cold-chain">🧊 Cold Chain</TabsTrigger>
           <TabsTrigger value="camps">🏕️ Camps</TabsTrigger>
           <TabsTrigger value="stock">📦 Stock</TabsTrigger>
+          <TabsTrigger value="aefi">⚠️ AEFI</TabsTrigger>
         </TabsList>
 
         <TabsContent value="patient-card" className="flex-1 overflow-auto mt-0">
@@ -144,6 +146,9 @@ const VaccinationPage: React.FC = () => {
         </TabsContent>
         <TabsContent value="stock" className="flex-1 overflow-auto mt-0">
           <StockTab hospitalId={hospitalId} />
+        </TabsContent>
+        <TabsContent value="aefi" className="flex-1 overflow-auto mt-0">
+          <AefiTab hospitalId={hospitalId} />
         </TabsContent>
       </Tabs>
     </div>
