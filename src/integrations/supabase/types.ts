@@ -235,6 +235,77 @@ export type Database = {
           },
         ]
       }
+      aefi_reports: {
+        Row: {
+          created_at: string | null
+          dose_number: number | null
+          event_description: string | null
+          event_onset_hours: number | null
+          event_severity: string
+          event_type: string
+          hospital_id: string
+          id: string
+          outcome: string | null
+          patient_id: string
+          report_date: string | null
+          reported_by: string | null
+          reported_to: string | null
+          status: string | null
+          treatment_given: string | null
+          vaccinated_at: string | null
+          vaccination_record_id: string | null
+          vaccine_name: string
+        }
+        Insert: {
+          created_at?: string | null
+          dose_number?: number | null
+          event_description?: string | null
+          event_onset_hours?: number | null
+          event_severity: string
+          event_type: string
+          hospital_id: string
+          id?: string
+          outcome?: string | null
+          patient_id: string
+          report_date?: string | null
+          reported_by?: string | null
+          reported_to?: string | null
+          status?: string | null
+          treatment_given?: string | null
+          vaccinated_at?: string | null
+          vaccination_record_id?: string | null
+          vaccine_name: string
+        }
+        Update: {
+          created_at?: string | null
+          dose_number?: number | null
+          event_description?: string | null
+          event_onset_hours?: number | null
+          event_severity?: string
+          event_type?: string
+          hospital_id?: string
+          id?: string
+          outcome?: string | null
+          patient_id?: string
+          report_date?: string | null
+          reported_by?: string | null
+          reported_to?: string | null
+          status?: string | null
+          treatment_given?: string | null
+          vaccinated_at?: string | null
+          vaccination_record_id?: string | null
+          vaccine_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "aefi_reports_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_digests: {
         Row: {
           anomalies: Json | null
@@ -2499,6 +2570,71 @@ export type Database = {
           },
           {
             foreignKeyName: "calibration_records_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      camp_vaccination_records: {
+        Row: {
+          administered_at: string | null
+          administered_by: string | null
+          aefi_notes: string | null
+          aefi_occurred: boolean | null
+          camp_id: string
+          created_at: string | null
+          dose_number: number | null
+          hospital_id: string
+          id: string
+          lot_number: string | null
+          patient_age: string | null
+          patient_gender: string | null
+          patient_name: string
+          patient_phone: string | null
+          vaccine_id: string | null
+          vaccine_name: string
+        }
+        Insert: {
+          administered_at?: string | null
+          administered_by?: string | null
+          aefi_notes?: string | null
+          aefi_occurred?: boolean | null
+          camp_id: string
+          created_at?: string | null
+          dose_number?: number | null
+          hospital_id: string
+          id?: string
+          lot_number?: string | null
+          patient_age?: string | null
+          patient_gender?: string | null
+          patient_name: string
+          patient_phone?: string | null
+          vaccine_id?: string | null
+          vaccine_name: string
+        }
+        Update: {
+          administered_at?: string | null
+          administered_by?: string | null
+          aefi_notes?: string | null
+          aefi_occurred?: boolean | null
+          camp_id?: string
+          created_at?: string | null
+          dose_number?: number | null
+          hospital_id?: string
+          id?: string
+          lot_number?: string | null
+          patient_age?: string | null
+          patient_gender?: string | null
+          patient_name?: string
+          patient_phone?: string | null
+          vaccine_id?: string | null
+          vaccine_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "camp_vaccination_records_hospital_id_fkey"
             columns: ["hospital_id"]
             isOneToOne: false
             referencedRelation: "hospitals"
