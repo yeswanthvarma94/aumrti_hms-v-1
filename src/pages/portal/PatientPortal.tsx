@@ -11,14 +11,30 @@ import PortalFeedback from "./PortalFeedback";
 import PortalTimeline from "./PortalTimeline";
 import { supabase } from "@/integrations/supabase/client";
 
+const PORTAL_CACHE_KEY = "portal_cache";
+
 const PatientPortal: React.FC = () => {
   const [session, setSession] = useState<PortalSession | null>(null);
   const [loading, setLoading] = useState(true);
+  const [cacheDate, setCacheDate] = useState<string | null>(null);
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const location = useLocation();
 
   const hospitalId = searchParams.get("h") || null;
+
+  // Track online/offline
+  useEffect(() => {
+    const onOnline = () => setIsOffline(false);
+    const onOffline = () => setIsOffline(true);
+    window.addEventListener("online", onOnline);
+    window.addEventListener("offline", onOffline);
+    return () => {
+      window.removeEventListener("online", onOnline);
+      window.removeEventListener("offline", onOffline);
+    };
+  }, []);
 
   // Try restoring session from localStorage
   useEffect(() => {
@@ -27,48 +43,87 @@ const PatientPortal: React.FC = () => {
     if (!token || !pid) { setLoading(false); return; }
 
     (async () => {
-      const { data: sess } = await supabase
-        .from("patient_portal_sessions")
-        .select("patient_id, hospital_id")
-        .eq("session_token", token)
-        .eq("otp_verified", true)
-        .maybeSingle();
-
-      if (!sess) {
-        localStorage.removeItem("portal_session_token");
-        localStorage.removeItem("portal_patient_id");
+      // If offline, hydrate from cache immediately
+      if (!navigator.onLine) {
+        try {
+          const cached = localStorage.getItem(PORTAL_CACHE_KEY);
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            if (parsed.session) {
+              setSession(parsed.session);
+              setCacheDate(parsed.cachedAt || null);
+            }
+          }
+        } catch { /* ignore */ }
         setLoading(false);
         return;
       }
 
-      const s = sess as any;
-      const { data: patient } = await supabase
-        .from("patients")
-        .select("full_name, uhid, phone, blood_group")
-        .eq("id", s.patient_id)
-        .maybeSingle();
+      try {
+        const { data: sess } = await supabase
+          .from("patient_portal_sessions")
+          .select("patient_id, hospital_id")
+          .eq("session_token", token)
+          .eq("otp_verified", true)
+          .maybeSingle();
 
-      const { data: hospital } = await supabase
-        .from("hospitals")
-        .select("name, logo_url")
-        .eq("id", s.hospital_id)
-        .maybeSingle();
+        if (!sess) {
+          localStorage.removeItem("portal_session_token");
+          localStorage.removeItem("portal_patient_id");
+          setLoading(false);
+          return;
+        }
 
-      if (patient && hospital) {
-        setSession({
-          patientId: s.patient_id,
-          hospitalId: s.hospital_id,
-          fullName: patient.full_name,
-          uhid: patient.uhid,
-          phone: patient.phone || "",
-          hospitalName: hospital.name,
-          hospitalLogo: hospital.logo_url,
-          bloodGroup: patient.blood_group || null,
-        });
+        const s = sess as any;
+        const { data: patient } = await supabase
+          .from("patients")
+          .select("full_name, uhid, phone, blood_group")
+          .eq("id", s.patient_id)
+          .maybeSingle();
+
+        const { data: hospital } = await supabase
+          .from("hospitals")
+          .select("name, logo_url")
+          .eq("id", s.hospital_id)
+          .maybeSingle();
+
+        if (patient && hospital) {
+          const newSession: PortalSession = {
+            patientId: s.patient_id,
+            hospitalId: s.hospital_id,
+            fullName: patient.full_name,
+            uhid: patient.uhid,
+            phone: patient.phone || "",
+            hospitalName: hospital.name,
+            hospitalLogo: hospital.logo_url,
+            bloodGroup: patient.blood_group || null,
+          };
+          setSession(newSession);
+          // Cache for offline use
+          try {
+            localStorage.setItem(
+              PORTAL_CACHE_KEY,
+              JSON.stringify({ session: newSession, cachedAt: new Date().toISOString() })
+            );
+          } catch { /* quota — ignore */ }
+        }
+      } catch {
+        // Network failed — fall back to cache
+        try {
+          const cached = localStorage.getItem(PORTAL_CACHE_KEY);
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            if (parsed.session) {
+              setSession(parsed.session);
+              setCacheDate(parsed.cachedAt || null);
+            }
+          }
+        } catch { /* ignore */ }
       }
       setLoading(false);
     })();
   }, []);
+
 
   const handleLogin = useCallback((s: PortalSession) => {
     setSession(s);
