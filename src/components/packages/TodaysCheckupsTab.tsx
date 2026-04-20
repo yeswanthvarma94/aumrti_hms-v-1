@@ -213,6 +213,9 @@ export default function TodaysCheckupsTab({ onRefreshKPIs }: Props) {
               <div className="flex items-center gap-3">
                 <Progress value={pct} className="flex-1 h-2" />
                 <span className="text-xs font-medium">{pct}%</span>
+                <Button size="sm" variant="outline" onClick={() => setRoutingBookingId(b.id)}>
+                  <Route className="h-4 w-4 mr-1" /> Track Progress
+                </Button>
                 {b.status === "booked" && <Button size="sm" onClick={() => checkIn(b.id)}>Check In</Button>}
                 {(b.status === "checked_in" || b.status === "in_progress") && (
                   <Button size="sm" variant="outline" onClick={() => handleStationClick(b)}>
