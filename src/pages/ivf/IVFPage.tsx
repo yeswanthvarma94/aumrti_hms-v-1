@@ -98,7 +98,9 @@ const IVFPage = () => {
           <TabsTrigger value="stimulation">📊 Stimulation</TabsTrigger>
           <TabsTrigger value="embryology">🧫 Embryology</TabsTrigger>
           <TabsTrigger value="embryo-bank">❄️ Embryo Bank</TabsTrigger>
+          <TabsTrigger value="cryobank">🧊 Cryobank</TabsTrigger>
           <TabsTrigger value="andrology">💉 Andrology</TabsTrigger>
+          <TabsTrigger value="icmr">📋 ICMR Report</TabsTrigger>
         </TabsList>
 
         <TabsContent value="couples" className="flex-1 overflow-auto m-0 p-4">
