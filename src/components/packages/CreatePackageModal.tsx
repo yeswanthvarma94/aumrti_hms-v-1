@@ -14,6 +14,16 @@ import { useHospitalId } from '@/hooks/useHospitalId';
 interface Props { open: boolean; onClose: () => void; }
 
 interface Component { name: string; type: string; estimated_mins: number; sequence: number; }
+interface Station { order: number; station: string; module: string; duration_min: number; }
+
+const DEFAULT_STATIONS: Station[] = [
+  { order: 1, station: "Vitals", module: "nursing", duration_min: 10 },
+  { order: 2, station: "Blood Collection", module: "lab", duration_min: 15 },
+  { order: 3, station: "ECG", module: "radiology", duration_min: 20 },
+  { order: 4, station: "Chest X-Ray", module: "radiology", duration_min: 15 },
+  { order: 5, station: "USG Abdomen", module: "radiology", duration_min: 30 },
+  { order: 6, station: "Doctor Consultation", module: "opd", duration_min: 30 },
+];
 
 export default function CreatePackageModal({ open, onClose }: Props) {
   const { hospitalId } = useHospitalId();
@@ -23,7 +33,14 @@ export default function CreatePackageModal({ open, onClose }: Props) {
     max_age: "", price: "", estimated_hours: "",
   });
   const [components, setComponents] = useState<Component[]>([]);
+  const [stations, setStations] = useState<Station[]>(DEFAULT_STATIONS);
   const [saving, setSaving] = useState(false);
+
+  const addStation = () => setStations([...stations, { order: stations.length + 1, station: "", module: "opd", duration_min: 15 }]);
+  const updateStation = (idx: number, field: keyof Station, value: any) =>
+    setStations(stations.map((s, i) => i === idx ? { ...s, [field]: value } : s));
+  const removeStation = (idx: number) =>
+    setStations(stations.filter((_, i) => i !== idx).map((s, i) => ({ ...s, order: i + 1 })));
 
   const addComponent = () => {
     setComponents([...components, { name: "", type: "lab_test", estimated_mins: 15, sequence: components.length + 1 }]);
