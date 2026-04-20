@@ -13,7 +13,9 @@ const SettingsProfilePage: React.FC = () => {
   const [form, setForm] = useState({
     name: "", address: "", state: "", pincode: "",
     gstin: "", nabh_number: "", primary_color: "#0EA5E9",
+    session_timeout_minutes: 30,
   });
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   const { data: hospital } = useQuery({
     queryKey: ["settings-hospital"],
@@ -39,6 +41,7 @@ const SettingsProfilePage: React.FC = () => {
         gstin: hospital.gstin || "",
         nabh_number: hospital.nabh_number || "",
         primary_color: hospital.primary_color || "#0EA5E9",
+        session_timeout_minutes: (hospital as any).session_timeout_minutes ?? 30,
       });
     }
   }, [hospital]);
@@ -48,6 +51,16 @@ const SettingsProfilePage: React.FC = () => {
       if (!hospital) return;
       const { error } = await supabase.from("hospitals").update({
         name: form.name,
+        address: form.address || null,
+        state: form.state || null,
+        pincode: form.pincode || null,
+        gstin: form.gstin || null,
+        nabh_number: form.nabh_number || null,
+        primary_color: form.primary_color,
+        session_timeout_minutes: form.session_timeout_minutes,
+      } as any).eq("id", hospital.id);
+      if (error) throw error;
+    },
         address: form.address || null,
         state: form.state || null,
         pincode: form.pincode || null,
