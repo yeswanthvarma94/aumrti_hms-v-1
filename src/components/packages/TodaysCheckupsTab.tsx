@@ -9,8 +9,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { CheckCircle2, Circle, PlayCircle, Stethoscope, FlaskConical, Activity } from "lucide-react";
+import { CheckCircle2, Circle, PlayCircle, Stethoscope, FlaskConical, Activity, Route } from "lucide-react";
 import { useHospitalId } from '@/hooks/useHospitalId';
+import PatientRoutingView from "./PatientRoutingView";
 
 const STATIONS = ["Reception", "Vitals", "Lab", "ECG", "X-Ray", "USG", "Doctor", "Report"];
 
@@ -27,6 +28,7 @@ export default function TodaysCheckupsTab({ onRefreshKPIs }: Props) {
   const [vitalsModal, setVitalsModal] = useState<any | null>(null);
   const [stationModal, setStationModal] = useState<{ booking: any; station: string } | null>(null);
   const [stationNotes, setStationNotes] = useState("");
+  const [routingBookingId, setRoutingBookingId] = useState<string | null>(null);
   const [vitals, setVitals] = useState<VitalsForm>({
     bp_systolic: "", bp_diastolic: "", pulse: "", spo2: "", temperature: "", height_cm: "", weight_kg: "",
   });
@@ -211,6 +213,9 @@ export default function TodaysCheckupsTab({ onRefreshKPIs }: Props) {
               <div className="flex items-center gap-3">
                 <Progress value={pct} className="flex-1 h-2" />
                 <span className="text-xs font-medium">{pct}%</span>
+                <Button size="sm" variant="outline" onClick={() => setRoutingBookingId(b.id)}>
+                  <Route className="h-4 w-4 mr-1" /> Track Progress
+                </Button>
                 {b.status === "booked" && <Button size="sm" onClick={() => checkIn(b.id)}>Check In</Button>}
                 {(b.status === "checked_in" || b.status === "in_progress") && (
                   <Button size="sm" variant="outline" onClick={() => handleStationClick(b)}>
@@ -295,6 +300,16 @@ export default function TodaysCheckupsTab({ onRefreshKPIs }: Props) {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Multi-Department Routing View */}
+      {routingBookingId && (
+        <PatientRoutingView
+          bookingId={routingBookingId}
+          open={!!routingBookingId}
+          onClose={() => setRoutingBookingId(null)}
+          onUpdated={() => { load(); onRefreshKPIs(); }}
+        />
+      )}
     </div>
   );
 }

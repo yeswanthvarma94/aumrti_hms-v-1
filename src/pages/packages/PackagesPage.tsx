@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,13 +15,25 @@ import CorporateTab from "@/components/packages/CorporateTab";
 import PackageAnalyticsTab from "@/components/packages/PackageAnalyticsTab";
 import BookPackageModal from "@/components/packages/BookPackageModal";
 import CreatePackageModal from "@/components/packages/CreatePackageModal";
+import PatientRoutingView from "@/components/packages/PatientRoutingView";
 
 export default function PackagesPage() {
   const { hospitalId, loading: hospitalLoading } = useHospitalId();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [tab, setTab] = useState("checkups");
   const [showBook, setShowBook] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
+  const [routingBookingId, setRoutingBookingId] = useState<string | null>(null);
   const [kpis, setKpis] = useState({ booked: 0, inProgress: 0, completed: 0, revenue: 0 });
+
+  // Deep link from QR code: ?booking=<id> opens routing view
+  useEffect(() => {
+    const id = searchParams.get("booking");
+    if (id) {
+      setRoutingBookingId(id);
+      setTab("checkups");
+    }
+  }, [searchParams]);
 
   const loadKPIs = async () => {
     const today = new Date().toISOString().split("T")[0];
@@ -108,6 +121,20 @@ export default function PackagesPage() {
 
       {showBook && <BookPackageModal open={showBook} onClose={() => { setShowBook(false); loadKPIs(); }} />}
       {showCreate && <CreatePackageModal open={showCreate} onClose={() => setShowCreate(false)} />}
+      {routingBookingId && (
+        <PatientRoutingView
+          bookingId={routingBookingId}
+          open={!!routingBookingId}
+          onClose={() => {
+            setRoutingBookingId(null);
+            if (searchParams.get("booking")) {
+              searchParams.delete("booking");
+              setSearchParams(searchParams, { replace: true });
+            }
+          }}
+          onUpdated={loadKPIs}
+        />
+      )}
     </div>
   );
 }

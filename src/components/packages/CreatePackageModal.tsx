@@ -14,6 +14,16 @@ import { useHospitalId } from '@/hooks/useHospitalId';
 interface Props { open: boolean; onClose: () => void; }
 
 interface Component { name: string; type: string; estimated_mins: number; sequence: number; }
+interface Station { order: number; station: string; module: string; duration_min: number; }
+
+const DEFAULT_STATIONS: Station[] = [
+  { order: 1, station: "Vitals", module: "nursing", duration_min: 10 },
+  { order: 2, station: "Blood Collection", module: "lab", duration_min: 15 },
+  { order: 3, station: "ECG", module: "radiology", duration_min: 20 },
+  { order: 4, station: "Chest X-Ray", module: "radiology", duration_min: 15 },
+  { order: 5, station: "USG Abdomen", module: "radiology", duration_min: 30 },
+  { order: 6, station: "Doctor Consultation", module: "opd", duration_min: 30 },
+];
 
 export default function CreatePackageModal({ open, onClose }: Props) {
   const { hospitalId } = useHospitalId();
@@ -23,7 +33,14 @@ export default function CreatePackageModal({ open, onClose }: Props) {
     max_age: "", price: "", estimated_hours: "",
   });
   const [components, setComponents] = useState<Component[]>([]);
+  const [stations, setStations] = useState<Station[]>(DEFAULT_STATIONS);
   const [saving, setSaving] = useState(false);
+
+  const addStation = () => setStations([...stations, { order: stations.length + 1, station: "", module: "opd", duration_min: 15 }]);
+  const updateStation = (idx: number, field: keyof Station, value: any) =>
+    setStations(stations.map((s, i) => i === idx ? { ...s, [field]: value } : s));
+  const removeStation = (idx: number) =>
+    setStations(stations.filter((_, i) => i !== idx).map((s, i) => ({ ...s, order: i + 1 })));
 
   const addComponent = () => {
     setComponents([...components, { name: "", type: "lab_test", estimated_mins: 15, sequence: components.length + 1 }]);
@@ -57,6 +74,7 @@ export default function CreatePackageModal({ open, onClose }: Props) {
       estimated_hours: form.estimated_hours ? +form.estimated_hours : totalMins > 0 ? +(totalMins / 60).toFixed(1) : null,
       components: components as any,
       total_components: components.length,
+      stations: stations as any,
     }]);
     setSaving(false);
     if (error) { toast.error("Failed: " + error.message); return; }
@@ -70,6 +88,13 @@ export default function CreatePackageModal({ open, onClose }: Props) {
     { value: "consultation", label: "Consultation" },
     { value: "radiology", label: "Radiology" },
     { value: "service", label: "Service (ECG, PFT etc.)" },
+  ];
+  const moduleOpts = [
+    { value: "nursing", label: "Nursing" },
+    { value: "lab", label: "Lab" },
+    { value: "radiology", label: "Radiology" },
+    { value: "opd", label: "OPD" },
+    { value: "other", label: "Other" },
   ];
 
   return (
@@ -122,6 +147,28 @@ export default function CreatePackageModal({ open, onClose }: Props) {
                 <Input className="w-16" type="number" value={c.estimated_mins} onChange={(e) => updateComponent(i, "estimated_mins", +e.target.value)} />
                 <span className="text-xs text-muted-foreground">min</span>
                 <Button size="icon" variant="ghost" onClick={() => removeComponent(i)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+              </div>
+            ))}
+          </div>
+
+          {/* Stations - Routing Pipeline */}
+          <div className="border rounded-lg p-3 space-y-3">
+            <div className="flex items-center justify-between">
+              <Label className="font-semibold">Routing Stations ({stations.length})</Label>
+              <Button size="sm" variant="outline" onClick={addStation}><Plus className="h-3 w-3 mr-1" /> Add Station</Button>
+            </div>
+            <p className="text-xs text-muted-foreground">Defines the patient flow through departments. Order matters.</p>
+            {stations.map((s, i) => (
+              <div key={i} className="flex items-center gap-2 bg-muted/50 rounded p-2">
+                <span className="text-xs font-mono w-6 text-center">{s.order}</span>
+                <Input className="flex-1" placeholder="Station name (e.g. Vitals, ECG)" value={s.station} onChange={(e) => updateStation(i, "station", e.target.value)} />
+                <Select value={s.module} onValueChange={(v) => updateStation(i, "module", v)}>
+                  <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
+                  <SelectContent>{moduleOpts.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}</SelectContent>
+                </Select>
+                <Input className="w-16" type="number" value={s.duration_min} onChange={(e) => updateStation(i, "duration_min", +e.target.value)} />
+                <span className="text-xs text-muted-foreground">min</span>
+                <Button size="icon" variant="ghost" onClick={() => removeStation(i)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
               </div>
             ))}
           </div>
