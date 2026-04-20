@@ -20,9 +20,24 @@ const PROCEDURES = [
   "Gingivectomy", "Flap Surgery", "Curettage", "Other",
 ];
 
+const ICD10_DENTAL = [
+  { code: "K02.1", label: "Dentinal caries" },
+  { code: "K02.9", label: "Dental caries, unspecified" },
+  { code: "K04.0", label: "Pulpitis" },
+  { code: "K04.1", label: "Necrosis of pulp" },
+  { code: "K05.0", label: "Acute gingivitis" },
+  { code: "K05.1", label: "Chronic gingivitis" },
+  { code: "K05.2", label: "Aggressive periodontitis" },
+  { code: "K05.3", label: "Chronic periodontitis" },
+  { code: "K06.2", label: "Gingival recession" },
+  { code: "K08.1", label: "Loss of teeth (accident/extraction/perio)" },
+  { code: "K08.4", label: "Partial edentulism" },
+];
+
 interface TreatmentItem {
   tooth_number: string;
   procedure: string;
+  icd10_code?: string;
   priority: "urgent" | "soon" | "elective";
   cost: number;
   sessions: number;
@@ -45,7 +60,7 @@ const TreatmentPlanTab: React.FC<TreatmentPlanTabProps> = ({ patientId, hospital
   const [showAdd, setShowAdd] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<TreatmentItem>({
-    tooth_number: "", procedure: "", priority: "soon", cost: 0, sessions: 1, status: "planned",
+    tooth_number: "", procedure: "", icd10_code: "", priority: "soon", cost: 0, sessions: 1, status: "planned",
   });
 
   useEffect(() => { loadPlan(); }, [patientId]);
@@ -69,7 +84,7 @@ const TreatmentPlanTab: React.FC<TreatmentPlanTabProps> = ({ patientId, hospital
   const addItem = () => {
     if (!form.procedure) return;
     setItems(prev => [...prev, { ...form }]);
-    setForm({ tooth_number: "", procedure: "", priority: "soon", cost: 0, sessions: 1, status: "planned" });
+    setForm({ tooth_number: "", procedure: "", icd10_code: "", priority: "soon", cost: 0, sessions: 1, status: "planned" });
     setShowAdd(false);
   };
 
@@ -180,6 +195,7 @@ const TreatmentPlanTab: React.FC<TreatmentPlanTabProps> = ({ patientId, hospital
             <TableRow>
               <TableHead className="w-16">Tooth</TableHead>
               <TableHead>Procedure</TableHead>
+              <TableHead className="w-28">ICD-10</TableHead>
               <TableHead className="w-20">Priority</TableHead>
               <TableHead className="w-20">Cost ₹</TableHead>
               <TableHead className="w-16">Sessions</TableHead>
@@ -188,12 +204,17 @@ const TreatmentPlanTab: React.FC<TreatmentPlanTabProps> = ({ patientId, hospital
           </TableHeader>
           <TableBody>
             {items.length === 0 && (
-              <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">No items yet. Click "+ Add Item" above.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">No items yet. Click "+ Add Item" above.</TableCell></TableRow>
             )}
             {items.map((item, idx) => (
               <TableRow key={idx}>
                 <TableCell className="font-mono text-xs">{item.tooth_number || "—"}</TableCell>
                 <TableCell className="text-xs">{item.procedure}</TableCell>
+                <TableCell className="text-xs font-mono">
+                  {item.icd10_code ? (
+                    <span title={ICD10_DENTAL.find(c => c.code === item.icd10_code)?.label}>{item.icd10_code}</span>
+                  ) : <span className="text-muted-foreground">—</span>}
+                </TableCell>
                 <TableCell>
                   <Badge className={`text-[10px] capitalize ${PRIORITY_COLORS[item.priority]}`}>{item.priority}</Badge>
                 </TableCell>
@@ -246,6 +267,20 @@ const TreatmentPlanTab: React.FC<TreatmentPlanTabProps> = ({ patientId, hospital
                 <SelectTrigger><SelectValue placeholder="Select procedure" /></SelectTrigger>
                 <SelectContent>
                   {PROCEDURES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">ICD-10 Diagnosis Code</label>
+              <Select value={form.icd10_code || "__none__"} onValueChange={(v) => setForm({ ...form, icd10_code: v === "__none__" ? "" : v })}>
+                <SelectTrigger><SelectValue placeholder="Select ICD-10 code (optional)" /></SelectTrigger>
+                <SelectContent className="max-h-72">
+                  <SelectItem value="__none__">— None —</SelectItem>
+                  {ICD10_DENTAL.map(c => (
+                    <SelectItem key={c.code} value={c.code}>
+                      <span className="font-mono mr-2">{c.code}</span>{c.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
