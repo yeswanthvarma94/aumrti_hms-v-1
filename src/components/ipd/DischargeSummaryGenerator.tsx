@@ -243,10 +243,68 @@ Use formal medical language. Keep factual. Do not invent details not provided. M
     onSummaryDone();
   };
 
+  const printSummary = async () => {
+    if (!summary.trim()) { toast.error("Summary is empty"); return; }
+    const { data: adm } = await supabase.from("admissions")
+      .select("*, patients(full_name, age, gender, uhid, address, phone), wards(ward_name), beds(bed_number)")
+      .eq("id", admissionId).maybeSingle();
+    const p: any = (adm as any)?.patients || {};
+    const ward = (adm as any)?.wards?.ward_name || "—";
+    const bed = (adm as any)?.beds?.bed_number || "—";
+    const admittedStr = (adm as any)?.admitted_at ? new Date((adm as any).admitted_at).toLocaleDateString("en-GB") : "—";
+    const dischargeStr = new Date().toLocaleDateString("en-GB");
+
+    let consultantName = "—";
+    let consultantReg = "";
+    if ((adm as any)?.consultant_doctor_id) {
+      const { data: doc } = await supabase.from("users")
+        .select("full_name, registration_number")
+        .eq("id", (adm as any).consultant_doctor_id).maybeSingle();
+      consultantName = (doc as any)?.full_name || "—";
+      consultantReg = (doc as any)?.registration_number || "";
+    }
+
+    const header = await buildHospitalPrintHeader(hospitalId);
+    const hInfo = await fetchHospitalPrintInfo(hospitalId);
+
+    const html = `<!DOCTYPE html><html><head><title>Discharge Summary</title>
+      <style>@media print{body{margin:0}@page{size:A4;margin:14mm}}</style></head>
+      <body style="font-family:system-ui,sans-serif;color:#0F172A;max-width:780px;margin:0 auto;padding:20px;font-size:12px;line-height:1.5;">
+        ${header}
+        <h2 style="text-align:center;margin:0 0 12px;color:#1B3A6B;letter-spacing:1px;font-size:16px;">DISCHARGE SUMMARY</h2>
+        <table width="100%" style="margin-bottom:10px;">
+          <tr>
+            <td style="width:50%;"><b>Patient:</b> ${p.full_name || "—"}<br/><b>UHID:</b> ${p.uhid || "—"}<br/><b>Age/Gender:</b> ${p.age || "—"} / ${p.gender || "—"}</td>
+            <td style="width:50%;text-align:right;"><b>Admission:</b> ${admittedStr}<br/><b>Discharge:</b> ${dischargeStr}<br/><b>Ward / Bed:</b> ${ward} / ${bed}</td>
+          </tr>
+          ${p.address ? `<tr><td colspan="2"><b>Address:</b> ${p.address}</td></tr>` : ""}
+          <tr><td colspan="2"><b>Consultant:</b> Dr. ${consultantName}${consultantReg ? ` (Reg. No: ${consultantReg})` : ""}</td></tr>
+          ${(adm as any)?.admitting_diagnosis ? `<tr><td colspan="2"><b>Diagnosis:</b> ${(adm as any).admitting_diagnosis}</td></tr>` : ""}
+        </table>
+        <hr style="border:none;border-top:1px solid #E2E8F0;margin:10px 0;" />
+        <div style="white-space:pre-wrap;font-size:12px;">${summary.replace(/</g, "&lt;")}</div>
+        <table width="100%" style="margin-top:36px;">
+          <tr><td style="width:60%;"></td>
+            <td style="width:40%;text-align:right;border-top:1px solid #0F172A;padding-top:4px;">
+              <b>Dr. ${consultantName}</b><br/>
+              ${consultantReg ? `Reg. No: ${consultantReg}<br/>` : ""}
+              Signature &amp; Stamp
+            </td></tr>
+        </table>
+        ${getPrintFooter(hInfo.emergency_phone || hInfo.phone)}
+      </body></html>`;
+
+    const w = window.open("", "_blank", "noopener,noreferrer");
+    if (w) { w.document.write(html); w.document.close(); setTimeout(() => w.print(), 400); }
+  };
+
   if (signed) {
     return (
-      <div className="text-center py-6 space-y-2">
+      <div className="text-center py-6 space-y-3">
         <p className="text-sm font-semibold text-emerald-600">✅ Discharge summary signed — patient discharged</p>
+        <Button onClick={printSummary} variant="outline" size="sm">
+          <Printer className="h-4 w-4 mr-2" /> Print Discharge Summary
+        </Button>
       </div>
     );
   }
