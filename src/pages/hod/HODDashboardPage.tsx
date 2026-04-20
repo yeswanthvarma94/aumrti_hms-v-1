@@ -134,6 +134,18 @@ const HODDashboardPage: React.FC = () => {
   const tatHours = Math.floor(dischargeTat);
   const tatMinutes = Math.round((dischargeTat - tatHours) * 60);
 
+  // Auto-refresh CEO board cards
+  useEffect(() => {
+    if (viewMode !== "ceo") return;
+    const iv = setInterval(() => setRefreshKey(k => k + 1), REFRESH_MS);
+    return () => clearInterval(iv);
+  }, [viewMode]);
+
+  const handleViewBranch = (id: string) => {
+    setSelectedBranchId(id);
+    setViewMode("single");
+  };
+
   return (
     <div className="h-screen flex flex-col bg-muted/30">
       {/* Header */}
@@ -142,13 +154,52 @@ const HODDashboardPage: React.FC = () => {
           <ArrowLeft size={16} /> Back to HMS
         </button>
         <Activity size={20} className="mr-2" />
-        <h1 className="text-base font-bold">HOD Control Tower</h1>
+        <h1 className="text-base font-bold">
+          {viewMode === "ceo" ? "CEO Board — Multi-Branch" : "HOD Control Tower"}
+        </h1>
+        {isCeoLevel && branches.length > 1 && (
+          <div className="ml-6 flex items-center gap-1 bg-white/10 rounded-lg p-0.5">
+            <button
+              onClick={() => setViewMode("ceo")}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition ${
+                viewMode === "ceo" ? "bg-white text-sidebar" : "text-white/70 hover:text-white"
+              }`}
+            >
+              <LayoutGrid size={12} /> CEO Board
+            </button>
+            <button
+              onClick={() => setViewMode("single")}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition ${
+                viewMode === "single" ? "bg-white text-sidebar" : "text-white/70 hover:text-white"
+              }`}
+            >
+              <Building2 size={12} /> Single Branch
+            </button>
+          </div>
+        )}
         <div className="ml-auto flex items-center gap-4">
           <span className="text-sm text-white/80">{format(now, "dd MMM yyyy")}</span>
           <span className="text-sm font-mono font-bold">{format(now, "HH:mm:ss")}</span>
         </div>
       </header>
 
+      {viewMode === "ceo" ? (
+        <main className="flex-1 overflow-y-auto p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {branches.map(b => (
+              <BranchOverviewCard
+                key={b.id}
+                hospitalId={b.id}
+                hospitalName={b.name}
+                state={b.state}
+                onView={handleViewBranch}
+                refreshKey={refreshKey}
+              />
+            ))}
+          </div>
+        </main>
+      ) : (
+      <>
       {/* Grid */}
       <main className="flex-1 grid grid-cols-3 grid-rows-2 gap-4 p-4 overflow-hidden">
         {/* Tile 1: OPD */}
