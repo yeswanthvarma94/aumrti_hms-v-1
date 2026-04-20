@@ -487,23 +487,51 @@ const InboxPage: React.FC = () => {
             {/* Header */}
             <div className="h-[60px] shrink-0 border-b border-border px-5 flex items-center justify-between bg-card">
               <div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-[15px] font-bold text-foreground">{selectedMsg.sender_name || "Unknown"}</span>
                   {CHANNEL_CONFIG[selectedMsg.channel] && (
                     <span className={cn("text-[9px] px-1.5 py-0.5 rounded-full font-medium", CHANNEL_CONFIG[selectedMsg.channel].color)}>
                       {CHANNEL_CONFIG[selectedMsg.channel].label}
                     </span>
                   )}
+                  <SLABadge deadline={selectedMsg.sla_deadline} resolvedAt={selectedMsg.resolved_at} />
                 </div>
                 {selectedMsg.sender_phone && (
                   <p className="text-xs text-muted-foreground flex items-center gap-1">
                     <Phone size={10} /> {selectedMsg.sender_phone}
                   </p>
                 )}
+                {/* Tags row */}
+                <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                  {(selectedMsg.tags || []).map(t => (
+                    <span key={t} className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-foreground inline-flex items-center gap-1">
+                      #{t}
+                      <button onClick={() => handleRemoveTag(t)} className="hover:text-destructive"><X size={10} /></button>
+                    </span>
+                  ))}
+                  <input
+                    value={tagInput}
+                    onChange={(e) => setTagInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddTag(); } }}
+                    placeholder="+ tag"
+                    className="text-[10px] px-1.5 py-0.5 rounded-full border border-dashed border-border bg-transparent w-20 outline-none focus:border-primary"
+                  />
+                </div>
               </div>
               <div className="flex items-center gap-2">
+                <Select value={selectedMsg.assigned_to || "unassigned"} onValueChange={handleAssignChange}>
+                  <SelectTrigger className="h-8 w-[140px] text-xs">
+                    <SelectValue placeholder="Assign to…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unassigned">Unassigned</SelectItem>
+                    {staffOptions.map(s => (
+                      <SelectItem key={s.id} value={s.id}>{s.full_name} <span className="text-muted-foreground">({s.role})</span></SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <Select value={selectedMsg.priority} onValueChange={handlePriorityChange}>
-                  <SelectTrigger className="h-8 w-[110px] text-xs">
+                  <SelectTrigger className="h-8 w-[100px] text-xs">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
