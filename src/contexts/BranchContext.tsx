@@ -87,6 +87,7 @@ export const BranchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const setSelectedBranchId = useCallback((id: string) => {
     setSelectedBranchIdState(id);
     localStorage.setItem(STORAGE_KEY, id);
+    window.dispatchEvent(new CustomEvent("branch:changed", { detail: { id } }));
     queryClient.invalidateQueries();
   }, [queryClient]);
 
