@@ -219,13 +219,17 @@ const ImportWizard: React.FC<ImportWizardProps> = ({ entityType, onClose, onComp
     const errors: ValidationError[] = [];
     const dupes: number[] = [];
 
-    // For dupe detection, fetch existing phones
+    // For dupe detection, fetch existing keys
     let existingPhones = new Set<string>();
+    let existingDrugNames = new Set<string>();
     if (entityType === "patients" || entityType === "vendors") {
       const table = entityType === "patients" ? "patients" : "vendors";
       const phoneCol = entityType === "vendors" ? "contact_phone" : "phone";
       const { data } = await supabase.from(table as any).select(phoneCol);
       if (data) existingPhones = new Set(data.map((r: any) => String(r[phoneCol] || "").trim()));
+    } else if (entityType === "drugs") {
+      const { data } = await supabase.from("drug_master").select("drug_name");
+      if (data) existingDrugNames = new Set(data.map((r: any) => String(r.drug_name || "").trim().toLowerCase()));
     }
 
     rawData.forEach((row, i) => {
