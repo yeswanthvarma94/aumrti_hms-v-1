@@ -18,8 +18,11 @@ const SettingsProfilePage: React.FC = () => {
   const { data: hospital } = useQuery({
     queryKey: ["settings-hospital"],
     queryFn: async () => {
-      const { data: me } = await supabase.from("users").select("hospital_id").limit(1).maybeSingle();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+      const { data: me } = await supabase.from("users").select("hospital_id, role").eq("auth_user_id", user.id).maybeSingle();
       if (!me) return null;
+      setUserRole(me.role);
       const { data, error } = await supabase.from("hospitals").select("*").eq("id", me.hospital_id).maybeSingle();
       if (error) throw error;
       return data;
