@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 interface Branch {
   id: string;
   name: string;
-  city: string | null;
+  state: string | null;
 }
 
 interface BranchContextValue {
@@ -21,6 +21,7 @@ interface BranchContextValue {
 const BranchContext = createContext<BranchContextValue | undefined>(undefined);
 
 const STORAGE_KEY = "selectedBranchId";
+const MULTI_BRANCH_ROLES = ["super_admin", "ceo", "hospital_admin"];
 
 export const BranchProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [selectedBranchId, setSelectedBranchIdState] = useState<string | null>(
@@ -28,7 +29,6 @@ export const BranchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   );
   const [branches, setBranches] = useState<Branch[]>([]);
   const [role, setRole] = useState<string | null>(null);
-  const [defaultHospitalId, setDefaultHospitalId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const queryClient = useQueryClient();
 
@@ -43,34 +43,34 @@ export const BranchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         .eq("auth_user_id", user.id)
         .maybeSingle();
 
-      const userRole = u?.role || null;
+      const userRole = (u?.role as string) || null;
       setRole(userRole);
-      setDefaultHospitalId(u?.hospital_id || null);
 
-      const isMulti = userRole === "super_admin" || userRole === "ceo";
+      const isMulti = userRole ? MULTI_BRANCH_ROLES.includes(userRole) : false;
 
-      if (isMulti) {
+      let branchList: Branch[] = [];
+      if (isMulti && (userRole === "super_admin" || userRole === "ceo")) {
         const { data: hs } = await supabase
           .from("hospitals")
-          .select("id, name, city")
+          .select("id, name, state")
+          .eq("is_active", true)
           .order("name");
-        setBranches(hs || []);
+        branchList = (hs as Branch[]) || [];
       } else if (u?.hospital_id) {
         const { data: h } = await supabase
           .from("hospitals")
-          .select("id, name, city")
+          .select("id, name, state")
           .eq("id", u.hospital_id)
           .maybeSingle();
-        setBranches(h ? [h] : []);
+        branchList = h ? [h as Branch] : [];
       }
+      setBranches(branchList);
 
-      // initialize selected
       const stored = localStorage.getItem(STORAGE_KEY);
-      const initial = stored || u?.hospital_id || null;
-      if (initial && initial !== selectedBranchId) {
-        setSelectedBranchIdState(initial);
-        if (initial) localStorage.setItem(STORAGE_KEY, initial);
-      }
+      const validStored = stored && branchList.some(b => b.id === stored) ? stored : null;
+      const initial = validStored || u?.hospital_id || branchList[0]?.id || null;
+      setSelectedBranchIdState(initial);
+      if (initial) localStorage.setItem(STORAGE_KEY, initial);
     } catch (e) {
       console.error("BranchContext load:", e);
     } finally {

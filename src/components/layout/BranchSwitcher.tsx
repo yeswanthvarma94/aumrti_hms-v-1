@@ -34,8 +34,8 @@ const BranchSwitcher: React.FC<BranchSwitcherProps> = ({ collapsed }) => {
         <Building2 size={14} className="shrink-0" />
         <div className="min-w-0 flex-1">
           <p className="text-xs font-semibold truncate">{selectedBranch.name}</p>
-          {selectedBranch.city && (
-            <p className="text-[10px] text-sidebar-foreground/50 truncate">{selectedBranch.city}</p>
+          {selectedBranch.state && (
+            <p className="text-[10px] text-sidebar-foreground/50 truncate">{selectedBranch.state}</p>
           )}
         </div>
       </div>
@@ -57,8 +57,8 @@ const BranchSwitcher: React.FC<BranchSwitcherProps> = ({ collapsed }) => {
             <>
               <div className="min-w-0 flex-1 text-left">
                 <p className="text-xs font-semibold truncate">{selectedBranch.name}</p>
-                {selectedBranch.city && (
-                  <p className="text-[10px] text-sidebar-foreground/50 truncate">{selectedBranch.city}</p>
+                {selectedBranch.state && (
+                  <p className="text-[10px] text-sidebar-foreground/50 truncate">{selectedBranch.state}</p>
                 )}
               </div>
               <ChevronsUpDown size={12} className="text-sidebar-foreground/50" />
@@ -80,7 +80,7 @@ const BranchSwitcher: React.FC<BranchSwitcherProps> = ({ collapsed }) => {
             <Building2 size={14} className="text-muted-foreground" />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">{b.name}</p>
-              {b.city && <p className="text-xs text-muted-foreground truncate">{b.city}</p>}
+              {b.state && <p className="text-xs text-muted-foreground truncate">{b.state}</p>}
             </div>
             {selectedBranch.id === b.id && <Check size={14} className="text-primary" />}
           </DropdownMenuItem>
