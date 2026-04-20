@@ -133,9 +133,18 @@ const PatientPortal: React.FC = () => {
   const handleLogout = useCallback(() => {
     localStorage.removeItem("portal_session_token");
     localStorage.removeItem("portal_patient_id");
+    localStorage.removeItem(PORTAL_CACHE_KEY);
     setSession(null);
     navigate("/portal/login");
   }, [navigate]);
+
+  const formatCacheDate = (iso: string | null) => {
+    if (!iso) return "";
+    try {
+      const d = new Date(iso);
+      return d.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" });
+    } catch { return ""; }
+  };
 
   if (loading) {
     return (
@@ -163,6 +172,20 @@ const PatientPortal: React.FC = () => {
       patientName={session.fullName}
       onLogout={handleLogout}
     >
+      {isOffline && cacheDate && (
+        <div
+          style={{
+            background: "#FEF3C7",
+            color: "#92400E",
+            padding: "8px 16px",
+            fontSize: 13,
+            textAlign: "center",
+            borderBottom: "1px solid #FDE68A",
+          }}
+        >
+          📡 Showing last synced data from {formatCacheDate(cacheDate)}
+        </div>
+      )}
       <Routes>
         <Route path="dashboard" element={<PortalDashboard session={session} />} />
         <Route path="appointments" element={<PortalAppointments session={session} />} />
