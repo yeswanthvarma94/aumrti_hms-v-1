@@ -134,19 +134,7 @@ const InboxPage: React.FC = () => {
     return () => { supabase.removeChannel(channel); };
   }, [hospitalId]);
 
-  // ── Realtime subscription
-  useEffect(() => {
-    if (!hospitalId) return;
-    const channel = supabase
-      .channel("inbox-realtime")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "inbox_messages", filter: `hospital_id=eq.${hospitalId}` },
-        (payload) => {
-          setMessages((prev) => [payload.new as InboxMsg, ...prev]);
-        }
-      )
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [hospitalId]);
+
 
   // ── Load thread when message selected
   useEffect(() => {
