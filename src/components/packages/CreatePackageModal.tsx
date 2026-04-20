@@ -151,6 +151,28 @@ export default function CreatePackageModal({ open, onClose }: Props) {
             ))}
           </div>
 
+          {/* Stations - Routing Pipeline */}
+          <div className="border rounded-lg p-3 space-y-3">
+            <div className="flex items-center justify-between">
+              <Label className="font-semibold">Routing Stations ({stations.length})</Label>
+              <Button size="sm" variant="outline" onClick={addStation}><Plus className="h-3 w-3 mr-1" /> Add Station</Button>
+            </div>
+            <p className="text-xs text-muted-foreground">Defines the patient flow through departments. Order matters.</p>
+            {stations.map((s, i) => (
+              <div key={i} className="flex items-center gap-2 bg-muted/50 rounded p-2">
+                <span className="text-xs font-mono w-6 text-center">{s.order}</span>
+                <Input className="flex-1" placeholder="Station name (e.g. Vitals, ECG)" value={s.station} onChange={(e) => updateStation(i, "station", e.target.value)} />
+                <Select value={s.module} onValueChange={(v) => updateStation(i, "module", v)}>
+                  <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
+                  <SelectContent>{moduleOpts.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}</SelectContent>
+                </Select>
+                <Input className="w-16" type="number" value={s.duration_min} onChange={(e) => updateStation(i, "duration_min", +e.target.value)} />
+                <span className="text-xs text-muted-foreground">min</span>
+                <Button size="icon" variant="ghost" onClick={() => removeStation(i)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+              </div>
+            ))}
+          </div>
+
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={onClose}>Cancel</Button>
             <Button onClick={save} disabled={saving}>{saving ? "Creating..." : "Create Package"}</Button>
