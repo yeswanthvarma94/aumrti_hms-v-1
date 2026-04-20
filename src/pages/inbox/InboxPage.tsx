@@ -318,8 +318,10 @@ const InboxPage: React.FC = () => {
   };
 
   return (
-    <div className="h-[calc(100vh-56px)] flex overflow-hidden bg-background">
-      {/* ══ COLUMN 1: Navigation ══ */}
+    <div className="h-[calc(100vh-56px)] flex flex-col overflow-hidden bg-background">
+      <InboxStatsBar messages={messages as any} />
+      <div className="flex-1 flex overflow-hidden">
+      {/* spacer wrapper */}
       <div className="w-[240px] shrink-0 border-r border-border bg-card flex flex-col">
         {/* Compose button */}
         <div className="p-3">
