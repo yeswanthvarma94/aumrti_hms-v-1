@@ -13,8 +13,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
-import { GraduationCap, CheckCircle2, AlertTriangle, XCircle, Clock, Download, Printer, Send, Users, Plus, BookOpen, Loader2 } from 'lucide-react';
+import { GraduationCap, CheckCircle2, AlertTriangle, XCircle, Clock, Download, Printer, Send, Users, Plus, BookOpen, Loader2, FileQuestion, FileSpreadsheet } from 'lucide-react';
 import { format, addMonths, differenceInDays, isPast, isBefore, addDays } from 'date-fns';
+import QuizBuilderModal from '@/components/lms/QuizBuilderModal';
+import { printCertificate as printCertCard } from '@/lib/certificatePrint';
 
 interface Course {
   id: string;
@@ -79,9 +81,10 @@ const categoryColors: Record<string, string> = {
 };
 
 export default function LMSPage() {
-  const { hospitalId, loading: hospitalLoading } = useHospitalId();
+  const { hospitalId, role: currentUserRole, loading: hospitalLoading } = useHospitalId();
   const [searchParams, setSearchParams] = useSearchParams();
   const isAdmin = searchParams.get('admin') === 'true';
+  const canManage = currentUserRole === 'super_admin' || currentUserRole === 'hospital_admin';
 
 
   const [courses, setCourses] = useState<Course[]>([]);
@@ -89,10 +92,16 @@ export default function LMSPage() {
   const [certificates, setCertificates] = useState<Certificate[]>([]);
   const [staffUsers, setStaffUsers] = useState<StaffUser[]>([]);
   const [departments, setDepartments] = useState<{ id: string; name: string }[]>([]);
+  const [hospitalName, setHospitalName] = useState('Hospital');
+  const [questionCounts, setQuestionCounts] = useState<Record<string, number>>({});
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUserName, setCurrentUserName] = useState('Staff');
   const [filter, setFilter] = useState('all');
   const [loading, setLoading] = useState(true);
+
+  // Quiz builder
+  const [builderOpen, setBuilderOpen] = useState(false);
+  const [builderCourse, setBuilderCourse] = useState<Course | null>(null);
 
   // Quiz state
   const [quizOpen, setQuizOpen] = useState(false);
@@ -143,22 +152,33 @@ export default function LMSPage() {
     explanation: '',
   });
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { loadData(); }, [hospitalId]);
 
   const loadData = async () => {
+    if (!hospitalId) return;
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
     const userId = user?.id;
 
-    const [coursesRes, usersRes, deptsRes] = await Promise.all([
+    const [coursesRes, usersRes, deptsRes, hospitalRes, qCountRes] = await Promise.all([
       supabase.from('lms_courses').select('*').eq('is_active', true),
       supabase.from('users').select('id, full_name, role, department_id').eq('hospital_id', hospitalId),
       supabase.from('departments').select('id, name').eq('hospital_id', hospitalId),
+      supabase.from('hospitals').select('name').eq('id', hospitalId).maybeSingle(),
+      supabase.from('lms_quiz_questions').select('course_id'),
     ]);
 
     setCourses((coursesRes.data || []) as Course[]);
     setStaffUsers(usersRes.data || []);
     setDepartments(deptsRes.data || []);
+    if (hospitalRes.data?.name) setHospitalName(hospitalRes.data.name);
+
+    // Aggregate question counts per course
+    const counts: Record<string, number> = {};
+    (qCountRes.data || []).forEach((q: any) => {
+      counts[q.course_id] = (counts[q.course_id] || 0) + 1;
+    });
+    setQuestionCounts(counts);
 
     if (userId) {
       const userRow = (usersRes.data || []).find((u: any) => u.id === userId);
@@ -335,26 +355,41 @@ export default function LMSPage() {
   };
 
   const printCertificate = () => {
-    const el = document.getElementById('certificate-content');
-    if (!el) return;
-    const w = window.open('', '_blank', 'noopener,noreferrer,width=1100,height=800');
-    if (!w) return;
-    w.document.write(`<html><head><title>Certificate</title>
-      <style>
-        @page { size: A4 landscape; margin: 0; }
-        body { margin: 0; font-family: 'Georgia', serif; }
-        .cert { width: 297mm; height: 210mm; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 12px double #B8860B; padding: 40px; box-sizing: border-box; }
-        .cert h1 { color: #B8860B; font-size: 28px; letter-spacing: 4px; margin: 0; }
-        .cert .name { color: #1A2F5A; font-size: 32px; font-weight: bold; margin: 16px 0; }
-        .cert .course-name { color: #1A2F5A; font-size: 22px; font-weight: bold; }
-        .cert .detail { color: #333; font-size: 14px; margin: 4px 0; }
-        .cert .footer { position: absolute; bottom: 30px; width: calc(100% - 80px); display: flex; justify-content: space-between; font-size: 12px; color: #666; }
-        .cert .nabh { color: #0E7B7B; font-weight: bold; }
-      </style></head><body>`);
-    w.document.write(el.outerHTML);
-    w.document.write('</body></html>');
-    w.document.close();
-    w.print();
+    if (!certData) return;
+    const enrol = enrollments.find(e => e.id === certData.cert.enrollment_id);
+    const user = staffUsers.find(u => u.id === enrol?.user_id);
+    const deptName = departments.find(d => d.id === user?.department_id)?.name;
+    printCertCard({
+      staffName: certData.userName,
+      designation: certData.userRole?.replace(/_/g, ' '),
+      department: deptName,
+      courseName: certData.course.course_name,
+      score: enrol?.score_percent ?? null,
+      completedDate: format(new Date(certData.cert.issued_at), 'dd MMM yyyy'),
+      validUntil: certData.cert.expires_at ? format(new Date(certData.cert.expires_at), 'dd MMM yyyy') : null,
+      certificateNumber: certData.cert.certificate_number,
+      hospitalName,
+    });
+  };
+
+  // Quick "Download Certificate" inline action — bypasses preview modal
+  const downloadCertificateFor = (enrollment: Enrollment) => {
+    const course = courses.find(c => c.id === enrollment.course_id);
+    const cert = certificates.find(c => c.enrollment_id === enrollment.id);
+    if (!course || !cert) { toast.error('Certificate not available yet'); return; }
+    const user = staffUsers.find(u => u.id === enrollment.user_id);
+    const deptName = departments.find(d => d.id === user?.department_id)?.name;
+    printCertCard({
+      staffName: user?.full_name || currentUserName,
+      designation: user?.role?.replace(/_/g, ' '),
+      department: deptName,
+      courseName: course.course_name,
+      score: enrollment.score_percent ?? null,
+      completedDate: format(new Date(cert.issued_at), 'dd MMM yyyy'),
+      validUntil: cert.expires_at ? format(new Date(cert.expires_at), 'dd MMM yyyy') : null,
+      certificateNumber: cert.certificate_number,
+      hospitalName,
+    });
   };
 
   // ── ADMIN: BULK ENROL ──
@@ -435,9 +470,8 @@ export default function LMSPage() {
 
   // ── ADMIN: COMPLIANCE HEATMAP ──
   const heatmapData = useMemo(() => {
-    const mandatoryCourses = courses.filter(c => c.category.startsWith('mandatory'));
     return {
-      courses: mandatoryCourses,
+      courses: courses,
       departments: departments,
       getCell: (deptId: string, courseId: string) => {
         const deptStaff = staffUsers.filter(s => s.department_id === deptId);
@@ -446,6 +480,20 @@ export default function LMSPage() {
           enrollments.some(e => e.user_id === s.id && e.course_id === courseId && e.status === 'completed')
         ).length;
         return { pct: Math.round((completed / deptStaff.length) * 100), total: deptStaff.length, completed };
+      },
+      getOverall: () => {
+        let totalEnrollments = 0;
+        let totalCompleted = 0;
+        courses.forEach(c => {
+          departments.forEach(d => {
+            const staffInDept = staffUsers.filter(s => s.department_id === d.id);
+            totalEnrollments += staffInDept.length;
+            totalCompleted += staffInDept.filter(s =>
+              enrollments.some(e => e.user_id === s.id && e.course_id === c.id && e.status === 'completed')
+            ).length;
+          });
+        });
+        return totalEnrollments > 0 ? Math.round((totalCompleted / totalEnrollments) * 100) : 0;
       },
     };
   }, [courses, departments, staffUsers, enrollments]);
