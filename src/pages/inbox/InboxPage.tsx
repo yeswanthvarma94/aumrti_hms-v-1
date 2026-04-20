@@ -108,8 +108,31 @@ const InboxPage: React.FC = () => {
         .order("created_at", { ascending: false })
         .limit(200);
       if (data) setMessages(data as any);
+
+      const { data: staff } = await supabase
+        .from("users")
+        .select("id, full_name, role")
+        .eq("hospital_id", ud.hospital_id)
+        .in("role", ["receptionist", "billing_staff", "doctor", "hospital_admin", "nurse"])
+        .order("full_name");
+      if (staff) setStaffOptions(staff as StaffOpt[]);
     })();
   }, []);
+
+  // ── Realtime: also handle UPDATE so SLA/assignment changes propagate
+  useEffect(() => {
+    if (!hospitalId) return;
+    const channel = supabase
+      .channel("inbox-realtime")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "inbox_messages", filter: `hospital_id=eq.${hospitalId}` },
+        (payload) => setMessages((prev) => [payload.new as InboxMsg, ...prev])
+      )
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "inbox_messages", filter: `hospital_id=eq.${hospitalId}` },
+        (payload) => setMessages((prev) => prev.map(m => m.id === (payload.new as any).id ? (payload.new as InboxMsg) : m))
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [hospitalId]);
 
   // ── Realtime subscription
   useEffect(() => {
