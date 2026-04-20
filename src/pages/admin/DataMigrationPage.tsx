@@ -158,25 +158,10 @@ const DataMigrationPage: React.FC = () => {
   };
 
   const downloadTemplate = (entityKey: string) => {
-    const template = TEMPLATES[entityKey];
-    if (!template) return;
     const entity = ENTITIES.find(e => e.key === entityKey);
-
-    const rows = [
-      template.headers.join(","),
-      ...template.examples.map(row => row.map(v => `"${v}"`).join(",")),
-      "",
-      "# NOTES: " + template.notes.join(" | "),
-    ];
-
-    const blob = new Blob([rows.join("\n")], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${entityKey}_import_template.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast({ title: `${entity?.label} template downloaded` });
+    if (!entity) return;
+    downloadXlsxTemplate(entityKey as MigrationEntity);
+    toast({ title: `${entity.label} template downloaded`, description: "Open in Excel — yellow columns are required, grey row is instructions (delete before saving)." });
   };
 
   const viewJobLogs = async (job: MigrationJob) => {
