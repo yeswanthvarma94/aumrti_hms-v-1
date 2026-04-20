@@ -121,6 +121,12 @@ const IVFPage = () => {
         <TabsContent value="andrology" className="flex-1 overflow-auto m-0 p-4">
           <AndrologyTab />
         </TabsContent>
+        <TabsContent value="cryobank" className="flex-1 overflow-auto m-0 p-4">
+          <CryobankTab />
+        </TabsContent>
+        <TabsContent value="icmr" className="flex-1 overflow-auto m-0 p-4">
+          <IcmrReportTab />
+        </TabsContent>
       </Tabs>
     </div>
   );
