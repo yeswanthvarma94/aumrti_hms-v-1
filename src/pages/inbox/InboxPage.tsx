@@ -162,7 +162,7 @@ const InboxPage: React.FC = () => {
 
   useEffect(() => { threadEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [thread]);
 
-  // ── Filtered list
+  // ── Filtered list (urgent first, then newest)
   const filteredMessages = messages.filter((m) => {
     if (search) {
       const q = search.toLowerCase();
@@ -178,7 +178,18 @@ const InboxPage: React.FC = () => {
       case "resolved": return m.status === "resolved" || m.status === "closed";
       default: return m.direction === "inbound" && m.status !== "resolved" && m.status !== "closed";
     }
+  }).sort((a, b) => {
+    if (a.priority === "urgent" && b.priority !== "urgent") return -1;
+    if (b.priority === "urgent" && a.priority !== "urgent") return 1;
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   });
+
+  // ── Breached count (open + past deadline)
+  const breachedCount = messages.filter(m =>
+    m.direction === "inbound"
+    && m.status !== "resolved" && m.status !== "closed"
+    && m.sla_deadline && new Date(m.sla_deadline).getTime() < Date.now()
+  ).length;
 
   // ── Counts
   const counts: Record<Section, number> = {
@@ -193,12 +204,14 @@ const InboxPage: React.FC = () => {
   };
 
   const selectedMsg = messages.find((m) => m.id === selectedId);
+  const staffById = (id: string | null) => id ? staffOptions.find(s => s.id === id) : null;
 
   // ── Actions
   const handleResolve = async () => {
     if (!selectedMsg || !hospitalId) return;
-    await supabase.from("inbox_messages").update({ status: "resolved", resolved_at: new Date().toISOString() } as any).eq("id", selectedMsg.id);
-    setMessages((prev) => prev.map((m) => m.id === selectedMsg.id ? { ...m, status: "resolved" } : m));
+    const ts = new Date().toISOString();
+    await supabase.from("inbox_messages").update({ status: "resolved", resolved_at: ts } as any).eq("id", selectedMsg.id);
+    setMessages((prev) => prev.map((m) => m.id === selectedMsg.id ? { ...m, status: "resolved", resolved_at: ts } : m));
     toast({ title: "Marked as resolved ✓" });
   };
 
@@ -213,6 +226,30 @@ const InboxPage: React.FC = () => {
     if (!selectedMsg) return;
     await supabase.from("inbox_messages").update({ priority: val } as any).eq("id", selectedMsg.id);
     setMessages((prev) => prev.map((m) => m.id === selectedMsg.id ? { ...m, priority: val } : m));
+  };
+
+  const handleAssignChange = async (val: string) => {
+    if (!selectedMsg) return;
+    const newVal = val === "unassigned" ? null : val;
+    await supabase.from("inbox_messages").update({ assigned_to: newVal } as any).eq("id", selectedMsg.id);
+    setMessages((prev) => prev.map((m) => m.id === selectedMsg.id ? { ...m, assigned_to: newVal } : m));
+    toast({ title: newVal ? "Assigned ✓" : "Unassigned" });
+  };
+
+  const handleAddTag = async () => {
+    const t = tagInput.trim().toLowerCase();
+    if (!t || !selectedMsg) return;
+    const next = Array.from(new Set([...(selectedMsg.tags || []), t]));
+    await supabase.from("inbox_messages").update({ tags: next } as any).eq("id", selectedMsg.id);
+    setMessages((prev) => prev.map((m) => m.id === selectedMsg.id ? { ...m, tags: next } : m));
+    setTagInput("");
+  };
+
+  const handleRemoveTag = async (tag: string) => {
+    if (!selectedMsg) return;
+    const next = (selectedMsg.tags || []).filter(t => t !== tag);
+    await supabase.from("inbox_messages").update({ tags: next } as any).eq("id", selectedMsg.id);
+    setMessages((prev) => prev.map((m) => m.id === selectedMsg.id ? { ...m, tags: next } : m));
   };
 
   const handleReply = async () => {
