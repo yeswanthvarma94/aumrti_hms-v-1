@@ -11,6 +11,8 @@ import StimulationTab from "@/components/ivf/StimulationTab";
 import EmbryologyTab from "@/components/ivf/EmbryologyTab";
 import EmbryoBankTab from "@/components/ivf/EmbryoBankTab";
 import AndrologyTab from "@/components/ivf/AndrologyTab";
+import CryobankTab from "@/components/ivf/CryobankTab";
+import IcmrReportTab from "@/components/ivf/IcmrReportTab";
 
 interface KPIs {
   activeCycles: number;
