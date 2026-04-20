@@ -14,6 +14,8 @@ import {
   User, Phone, ExternalLink, PenSquare, X
 } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
+import SLABadge from "@/components/inbox/SLABadge";
+import InboxStatsBar from "@/components/inbox/InboxStatsBar";
 
 // ── Types ──
 
@@ -37,7 +39,11 @@ interface InboxMsg {
   resolved_at: string | null;
   resolved_by: string | null;
   created_at: string;
+  sla_deadline: string | null;
+  sla_breached: boolean;
 }
+
+interface StaffOpt { id: string; full_name: string; role: string; }
 
 type Section = "all" | "whatsapp" | "in_app" | "feedback" | "grievance" | "sent" | "starred" | "resolved";
 
@@ -82,6 +88,8 @@ const InboxPage: React.FC = () => {
   const [composePhone, setComposePhone] = useState("");
   const [composeMsg, setComposeMsg] = useState("");
   const [composeName, setComposeName] = useState("");
+  const [staffOptions, setStaffOptions] = useState<StaffOpt[]>([]);
+  const [tagInput, setTagInput] = useState("");
   const threadEndRef = useRef<HTMLDivElement>(null);
 
   // ── Load data
@@ -100,22 +108,33 @@ const InboxPage: React.FC = () => {
         .order("created_at", { ascending: false })
         .limit(200);
       if (data) setMessages(data as any);
+
+      const { data: staff } = await supabase
+        .from("users")
+        .select("id, full_name, role")
+        .eq("hospital_id", ud.hospital_id)
+        .in("role", ["receptionist", "billing_staff", "doctor", "hospital_admin", "nurse"])
+        .order("full_name");
+      if (staff) setStaffOptions(staff as StaffOpt[]);
     })();
   }, []);
 
-  // ── Realtime subscription
+  // ── Realtime: also handle UPDATE so SLA/assignment changes propagate
   useEffect(() => {
     if (!hospitalId) return;
     const channel = supabase
       .channel("inbox-realtime")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "inbox_messages", filter: `hospital_id=eq.${hospitalId}` },
-        (payload) => {
-          setMessages((prev) => [payload.new as InboxMsg, ...prev]);
-        }
+        (payload) => setMessages((prev) => [payload.new as InboxMsg, ...prev])
+      )
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "inbox_messages", filter: `hospital_id=eq.${hospitalId}` },
+        (payload) => setMessages((prev) => prev.map(m => m.id === (payload.new as any).id ? (payload.new as InboxMsg) : m))
       )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [hospitalId]);
+
+
 
   // ── Load thread when message selected
   useEffect(() => {
@@ -143,7 +162,7 @@ const InboxPage: React.FC = () => {
 
   useEffect(() => { threadEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [thread]);
 
-  // ── Filtered list
+  // ── Filtered list (urgent first, then newest)
   const filteredMessages = messages.filter((m) => {
     if (search) {
       const q = search.toLowerCase();
@@ -159,7 +178,18 @@ const InboxPage: React.FC = () => {
       case "resolved": return m.status === "resolved" || m.status === "closed";
       default: return m.direction === "inbound" && m.status !== "resolved" && m.status !== "closed";
     }
+  }).sort((a, b) => {
+    if (a.priority === "urgent" && b.priority !== "urgent") return -1;
+    if (b.priority === "urgent" && a.priority !== "urgent") return 1;
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   });
+
+  // ── Breached count (open + past deadline)
+  const breachedCount = messages.filter(m =>
+    m.direction === "inbound"
+    && m.status !== "resolved" && m.status !== "closed"
+    && m.sla_deadline && new Date(m.sla_deadline).getTime() < Date.now()
+  ).length;
 
   // ── Counts
   const counts: Record<Section, number> = {
@@ -174,12 +204,14 @@ const InboxPage: React.FC = () => {
   };
 
   const selectedMsg = messages.find((m) => m.id === selectedId);
+  const staffById = (id: string | null) => id ? staffOptions.find(s => s.id === id) : null;
 
   // ── Actions
   const handleResolve = async () => {
     if (!selectedMsg || !hospitalId) return;
-    await supabase.from("inbox_messages").update({ status: "resolved", resolved_at: new Date().toISOString() } as any).eq("id", selectedMsg.id);
-    setMessages((prev) => prev.map((m) => m.id === selectedMsg.id ? { ...m, status: "resolved" } : m));
+    const ts = new Date().toISOString();
+    await supabase.from("inbox_messages").update({ status: "resolved", resolved_at: ts } as any).eq("id", selectedMsg.id);
+    setMessages((prev) => prev.map((m) => m.id === selectedMsg.id ? { ...m, status: "resolved", resolved_at: ts } : m));
     toast({ title: "Marked as resolved ✓" });
   };
 
@@ -194,6 +226,30 @@ const InboxPage: React.FC = () => {
     if (!selectedMsg) return;
     await supabase.from("inbox_messages").update({ priority: val } as any).eq("id", selectedMsg.id);
     setMessages((prev) => prev.map((m) => m.id === selectedMsg.id ? { ...m, priority: val } : m));
+  };
+
+  const handleAssignChange = async (val: string) => {
+    if (!selectedMsg) return;
+    const newVal = val === "unassigned" ? null : val;
+    await supabase.from("inbox_messages").update({ assigned_to: newVal } as any).eq("id", selectedMsg.id);
+    setMessages((prev) => prev.map((m) => m.id === selectedMsg.id ? { ...m, assigned_to: newVal } : m));
+    toast({ title: newVal ? "Assigned ✓" : "Unassigned" });
+  };
+
+  const handleAddTag = async () => {
+    const t = tagInput.trim().toLowerCase();
+    if (!t || !selectedMsg) return;
+    const next = Array.from(new Set([...(selectedMsg.tags || []), t]));
+    await supabase.from("inbox_messages").update({ tags: next } as any).eq("id", selectedMsg.id);
+    setMessages((prev) => prev.map((m) => m.id === selectedMsg.id ? { ...m, tags: next } : m));
+    setTagInput("");
+  };
+
+  const handleRemoveTag = async (tag: string) => {
+    if (!selectedMsg) return;
+    const next = (selectedMsg.tags || []).filter(t => t !== tag);
+    await supabase.from("inbox_messages").update({ tags: next } as any).eq("id", selectedMsg.id);
+    setMessages((prev) => prev.map((m) => m.id === selectedMsg.id ? { ...m, tags: next } : m));
   };
 
   const handleReply = async () => {
@@ -262,8 +318,10 @@ const InboxPage: React.FC = () => {
   };
 
   return (
-    <div className="h-[calc(100vh-56px)] flex overflow-hidden bg-background">
-      {/* ══ COLUMN 1: Navigation ══ */}
+    <div className="h-[calc(100vh-56px)] flex flex-col overflow-hidden bg-background">
+      <InboxStatsBar messages={messages as any} />
+      <div className="flex-1 flex overflow-hidden">
+      {/* spacer wrapper */}
       <div className="w-[240px] shrink-0 border-r border-border bg-card flex flex-col">
         {/* Compose button */}
         <div className="p-3">
@@ -291,6 +349,11 @@ const InboxPage: React.FC = () => {
               >
                 <Icon size={16} className="shrink-0" />
                 <span className="flex-1 text-left">{sec.label}</span>
+                {sec.key === "all" && breachedCount > 0 && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-destructive text-destructive-foreground animate-pulse" title="SLA breached">
+                    !{breachedCount}
+                  </span>
+                )}
                 {count > 0 && (
                   <span className={cn(
                     "text-[10px] px-1.5 py-0.5 rounded-full font-bold min-w-[20px] text-center",
@@ -376,20 +439,33 @@ const InboxPage: React.FC = () => {
                         <span className="text-[11px] text-muted-foreground shrink-0 ml-2">{formatTime(msg.created_at)}</span>
                       </div>
                       {/* Row 2 */}
-                      <div className="flex items-center gap-1.5 mt-0.5">
+                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                         {ch && (
                           <span className={cn("text-[9px] px-1.5 py-0.5 rounded-full font-medium", ch.color)}>
                             {ch.label}
                           </span>
                         )}
-                        <span className="text-xs text-muted-foreground truncate">
-                          {msg.subject || msg.message_body.slice(0, 60)}
+                        <SLABadge deadline={msg.sla_deadline} resolvedAt={msg.resolved_at} compact />
+                        <span className="text-xs text-muted-foreground truncate flex-1">
+                          {msg.subject || msg.message_body.slice(0, 50)}
                         </span>
                       </div>
                       {/* Row 3 */}
-                      {msg.priority === "urgent" && (
-                        <span className="text-[10px] text-destructive font-medium mt-0.5 inline-block">🔴 Urgent</span>
-                      )}
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        {msg.priority === "urgent" && (
+                          <span className="text-[10px] text-destructive font-medium inline-flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-destructive animate-pulse" /> Urgent
+                          </span>
+                        )}
+                        {msg.assigned_to && (
+                          <span className="text-[10px] text-muted-foreground inline-flex items-center gap-1">
+                            <User size={10} /> {staffById(msg.assigned_to)?.full_name || "Assigned"}
+                          </span>
+                        )}
+                        {(msg.tags || []).slice(0, 3).map(t => (
+                          <span key={t} className="text-[9px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">#{t}</span>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </button>
@@ -411,23 +487,51 @@ const InboxPage: React.FC = () => {
             {/* Header */}
             <div className="h-[60px] shrink-0 border-b border-border px-5 flex items-center justify-between bg-card">
               <div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-[15px] font-bold text-foreground">{selectedMsg.sender_name || "Unknown"}</span>
                   {CHANNEL_CONFIG[selectedMsg.channel] && (
                     <span className={cn("text-[9px] px-1.5 py-0.5 rounded-full font-medium", CHANNEL_CONFIG[selectedMsg.channel].color)}>
                       {CHANNEL_CONFIG[selectedMsg.channel].label}
                     </span>
                   )}
+                  <SLABadge deadline={selectedMsg.sla_deadline} resolvedAt={selectedMsg.resolved_at} />
                 </div>
                 {selectedMsg.sender_phone && (
                   <p className="text-xs text-muted-foreground flex items-center gap-1">
                     <Phone size={10} /> {selectedMsg.sender_phone}
                   </p>
                 )}
+                {/* Tags row */}
+                <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                  {(selectedMsg.tags || []).map(t => (
+                    <span key={t} className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-foreground inline-flex items-center gap-1">
+                      #{t}
+                      <button onClick={() => handleRemoveTag(t)} className="hover:text-destructive"><X size={10} /></button>
+                    </span>
+                  ))}
+                  <input
+                    value={tagInput}
+                    onChange={(e) => setTagInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddTag(); } }}
+                    placeholder="+ tag"
+                    className="text-[10px] px-1.5 py-0.5 rounded-full border border-dashed border-border bg-transparent w-20 outline-none focus:border-primary"
+                  />
+                </div>
               </div>
               <div className="flex items-center gap-2">
+                <Select value={selectedMsg.assigned_to || "unassigned"} onValueChange={handleAssignChange}>
+                  <SelectTrigger className="h-8 w-[140px] text-xs">
+                    <SelectValue placeholder="Assign to…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unassigned">Unassigned</SelectItem>
+                    {staffOptions.map(s => (
+                      <SelectItem key={s.id} value={s.id}>{s.full_name} <span className="text-muted-foreground">({s.role})</span></SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <Select value={selectedMsg.priority} onValueChange={handlePriorityChange}>
-                  <SelectTrigger className="h-8 w-[110px] text-xs">
+                  <SelectTrigger className="h-8 w-[100px] text-xs">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -527,6 +631,7 @@ const InboxPage: React.FC = () => {
             )}
           </>
         )}
+      </div>
       </div>
 
       {/* ══ Compose Modal ══ */}
