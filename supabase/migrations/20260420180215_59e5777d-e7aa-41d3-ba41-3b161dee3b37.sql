@@ -1,0 +1,1 @@
+ALTER TABLE public.hospitals ADD COLUMN IF NOT EXISTS session_timeout_minutes integer DEFAULT 30;

@@ -6793,6 +6793,7 @@ export type Database = {
           pincode: string | null
           primary_color: string | null
           razorpay_key_id: string | null
+          session_timeout_minutes: number | null
           setup_complete: boolean
           state: string | null
           subdomain: string | null
@@ -6828,6 +6829,7 @@ export type Database = {
           pincode?: string | null
           primary_color?: string | null
           razorpay_key_id?: string | null
+          session_timeout_minutes?: number | null
           setup_complete?: boolean
           state?: string | null
           subdomain?: string | null
@@ -6863,6 +6865,7 @@ export type Database = {
           pincode?: string | null
           primary_color?: string | null
           razorpay_key_id?: string | null
+          session_timeout_minutes?: number | null
           setup_complete?: boolean
           state?: string | null
           subdomain?: string | null
