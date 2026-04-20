@@ -4,6 +4,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import {
@@ -11,6 +13,7 @@ import {
   ArrowRight, Undo2, Eye, FileSpreadsheet, AlertTriangle
 } from "lucide-react";
 import ImportWizard from "@/components/migration/ImportWizard";
+import { downloadXlsxTemplate, type MigrationEntity } from "@/lib/migrationTemplates";
 
 interface MigrationJob {
   id: string;
