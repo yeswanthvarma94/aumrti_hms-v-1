@@ -270,6 +270,20 @@ const TreatmentPlanTab: React.FC<TreatmentPlanTabProps> = ({ patientId, hospital
                 </SelectContent>
               </Select>
             </div>
+            <div>
+              <label className="text-xs text-muted-foreground">ICD-10 Diagnosis Code</label>
+              <Select value={form.icd10_code || "__none__"} onValueChange={(v) => setForm({ ...form, icd10_code: v === "__none__" ? "" : v })}>
+                <SelectTrigger><SelectValue placeholder="Select ICD-10 code (optional)" /></SelectTrigger>
+                <SelectContent className="max-h-72">
+                  <SelectItem value="__none__">— None —</SelectItem>
+                  {ICD10_DENTAL.map(c => (
+                    <SelectItem key={c.code} value={c.code}>
+                      <span className="font-mono mr-2">{c.code}</span>{c.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="flex gap-2">
               <div className="flex-1">
                 <label className="text-xs text-muted-foreground">Priority</label>
