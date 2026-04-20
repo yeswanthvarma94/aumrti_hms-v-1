@@ -298,7 +298,10 @@ const ImportWizard: React.FC<ImportWizardProps> = ({ entityType, onClose, onComp
 
       // Dupe check
       const phoneKey = mapped.phone || "";
+      const drugKey = (mapped.drug_name || "").toLowerCase();
       if (phoneKey && existingPhones.has(phoneKey)) {
+        dupes.push(i + 2);
+      } else if (entityType === "drugs" && drugKey && existingDrugNames.has(drugKey)) {
         dupes.push(i + 2);
       }
 
