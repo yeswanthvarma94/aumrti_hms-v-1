@@ -24,7 +24,7 @@ const AefiTab: React.FC<Props> = ({ hospitalId }) => {
   const [reports, setReports] = useState<any[]>([]);
   const [showAdd, setShowAdd] = useState(false);
   const [patientId, setPatientId] = useState("");
-  const [patientName, setPatientName] = useState("");
+  const [patientLabel, setPatientLabel] = useState("");
   const [vaccinationRecords, setVaccinationRecords] = useState<any[]>([]);
   const [vaccinationRecordId, setVaccinationRecordId] = useState("");
   const [vaccineName, setVaccineName] = useState("");
@@ -92,7 +92,7 @@ const AefiTab: React.FC<Props> = ({ hospitalId }) => {
     if (error) { toast.error("Failed: " + error.message); setSaving(false); return; }
     toast.success("AEFI report submitted");
     setShowAdd(false);
-    setPatientId(""); setPatientName(""); setVaccinationRecordId("");
+    setPatientId(""); setPatientLabel(""); setVaccinationRecordId("");
     setVaccineName(""); setDoseNumber(""); setVaccinatedAt("");
     setOnsetHours(""); setEventType(""); setDescription("");
     setTreatment(""); setReportedBy(""); setReportedTo("");
@@ -203,7 +203,16 @@ h1{text-align:center;font-size:18px;border-bottom:2px solid #1A2F5A;padding-bott
               <PatientSearchPicker
                 hospitalId={hospitalId}
                 value={patientId}
-                onSelect={(p) => { setPatientId(p?.id || ""); setPatientName(p?.full_name || ""); }}
+                selectedLabel={patientLabel}
+                onChange={async (id) => {
+                  setPatientId(id);
+                  if (id) {
+                    const { data } = await supabase.from("patients").select("full_name, uhid").eq("id", id).maybeSingle();
+                    if (data) setPatientLabel(`${data.full_name} (${data.uhid})`);
+                  } else {
+                    setPatientLabel("");
+                  }
+                }}
               />
             </div>
 

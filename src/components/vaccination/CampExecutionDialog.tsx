@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Printer, UserPlus, FileText } from "lucide-react";
+import { Printer, UserPlus } from "lucide-react";
 
 interface Props {
   hospitalId: string;
