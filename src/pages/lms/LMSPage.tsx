@@ -356,7 +356,6 @@ export default function LMSPage() {
 
   const printCertificate = () => {
     if (!certData) return;
-    const dept = staffUsers.find(u => u.id === certData.cert.enrollment_id ? false : false);
     const enrol = enrollments.find(e => e.id === certData.cert.enrollment_id);
     const user = staffUsers.find(u => u.id === enrol?.user_id);
     const deptName = departments.find(d => d.id === user?.department_id)?.name;
