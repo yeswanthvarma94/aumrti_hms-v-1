@@ -304,6 +304,8 @@ const HODDashboardPage: React.FC = () => {
           </div>
         </div>
       )}
+      </>
+      )}
     </div>
   );
 };
