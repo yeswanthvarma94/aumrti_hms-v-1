@@ -469,14 +469,8 @@ const ImportWizard: React.FC<ImportWizardProps> = ({ entityType, onClose, onComp
   };
 
   const downloadTemplate = () => {
-    const headers = fields.map((f) => f.key);
-    const blob = new Blob([headers.join(",") + "\n"], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${entityType}_template.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadXlsxTemplate(entityType);
+    toast({ title: `${ENTITY_LABELS[entityType]} template downloaded`, description: "Open in Excel — yellow columns are required." });
   };
 
   return (
