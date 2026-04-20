@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,6 +15,7 @@ import CorporateTab from "@/components/packages/CorporateTab";
 import PackageAnalyticsTab from "@/components/packages/PackageAnalyticsTab";
 import BookPackageModal from "@/components/packages/BookPackageModal";
 import CreatePackageModal from "@/components/packages/CreatePackageModal";
+import PatientRoutingView from "@/components/packages/PatientRoutingView";
 
 export default function PackagesPage() {
   const { hospitalId, loading: hospitalLoading } = useHospitalId();
