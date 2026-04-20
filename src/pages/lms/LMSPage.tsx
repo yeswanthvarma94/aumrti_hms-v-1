@@ -470,9 +470,8 @@ export default function LMSPage() {
 
   // ── ADMIN: COMPLIANCE HEATMAP ──
   const heatmapData = useMemo(() => {
-    const mandatoryCourses = courses.filter(c => c.category.startsWith('mandatory'));
     return {
-      courses: mandatoryCourses,
+      courses: courses,
       departments: departments,
       getCell: (deptId: string, courseId: string) => {
         const deptStaff = staffUsers.filter(s => s.department_id === deptId);
@@ -481,6 +480,20 @@ export default function LMSPage() {
           enrollments.some(e => e.user_id === s.id && e.course_id === courseId && e.status === 'completed')
         ).length;
         return { pct: Math.round((completed / deptStaff.length) * 100), total: deptStaff.length, completed };
+      },
+      getOverall: () => {
+        let totalEnrollments = 0;
+        let totalCompleted = 0;
+        courses.forEach(c => {
+          departments.forEach(d => {
+            const staffInDept = staffUsers.filter(s => s.department_id === d.id);
+            totalEnrollments += staffInDept.length;
+            totalCompleted += staffInDept.filter(s =>
+              enrollments.some(e => e.user_id === s.id && e.course_id === c.id && e.status === 'completed')
+            ).length;
+          });
+        });
+        return totalEnrollments > 0 ? Math.round((totalCompleted / totalEnrollments) * 100) : 0;
       },
     };
   }, [courses, departments, staffUsers, enrollments]);
