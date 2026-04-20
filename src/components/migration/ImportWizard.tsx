@@ -271,12 +271,22 @@ const ImportWizard: React.FC<ImportWizardProps> = ({ entityType, onClose, onComp
         if (isNaN(rate) || rate <= 0) err = "Rate must be a positive number";
         if (mapped.gst_percent && ![0, 5, 12, 18].includes(Number(mapped.gst_percent))) err = "GST must be 0, 5, 12, or 18";
       } else if (entityType === "drugs") {
+        if (!mapped.generic_name) err = "Generic name is required";
         if (mapped.schedule) {
           const validSchedules = ["otc", "h", "h1", "x", "g", ""];
           if (!validSchedules.includes(mapped.schedule.toLowerCase())) err = "Schedule must be OTC/H/H1/X/G";
           else mapped.schedule = mapped.schedule.toUpperCase();
         }
-        if (mapped.mrp && (isNaN(Number(mapped.mrp)) || Number(mapped.mrp) < 0)) err = "MRP must be a positive number";
+        if (mapped.is_ndps) {
+          const v = mapped.is_ndps.toString().toLowerCase();
+          if (!["true", "false", "yes", "no", "1", "0", ""].includes(v)) err = "NDPS must be true/false";
+          mapped.is_ndps = ["true", "yes", "1"].includes(v);
+        }
+        if (mapped.gst_percent && ![0, 5, 12, 18].includes(Number(mapped.gst_percent))) err = "GST must be 0, 5, 12, or 18";
+        if (mapped.reorder_level !== "" && mapped.reorder_level != null) {
+          const n = Number(mapped.reorder_level);
+          if (isNaN(n) || n < 0) err = "Reorder level must be zero or positive";
+        }
       } else if (entityType === "vendors") {
         if (mapped.phone && !/^\d{10}$/.test(mapped.phone)) err = "Phone must be 10 digits";
       }
