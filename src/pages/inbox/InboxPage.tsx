@@ -14,6 +14,8 @@ import {
   User, Phone, ExternalLink, PenSquare, X
 } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
+import SLABadge from "@/components/inbox/SLABadge";
+import InboxStatsBar from "@/components/inbox/InboxStatsBar";
 
 // ── Types ──
 
@@ -37,7 +39,11 @@ interface InboxMsg {
   resolved_at: string | null;
   resolved_by: string | null;
   created_at: string;
+  sla_deadline: string | null;
+  sla_breached: boolean;
 }
+
+interface StaffOpt { id: string; full_name: string; role: string; }
 
 type Section = "all" | "whatsapp" | "in_app" | "feedback" | "grievance" | "sent" | "starred" | "resolved";
 
