@@ -20,9 +20,24 @@ const PROCEDURES = [
   "Gingivectomy", "Flap Surgery", "Curettage", "Other",
 ];
 
+const ICD10_DENTAL = [
+  { code: "K02.1", label: "Dentinal caries" },
+  { code: "K02.9", label: "Dental caries, unspecified" },
+  { code: "K04.0", label: "Pulpitis" },
+  { code: "K04.1", label: "Necrosis of pulp" },
+  { code: "K05.0", label: "Acute gingivitis" },
+  { code: "K05.1", label: "Chronic gingivitis" },
+  { code: "K05.2", label: "Aggressive periodontitis" },
+  { code: "K05.3", label: "Chronic periodontitis" },
+  { code: "K06.2", label: "Gingival recession" },
+  { code: "K08.1", label: "Loss of teeth (accident/extraction/perio)" },
+  { code: "K08.4", label: "Partial edentulism" },
+];
+
 interface TreatmentItem {
   tooth_number: string;
   procedure: string;
+  icd10_code?: string;
   priority: "urgent" | "soon" | "elective";
   cost: number;
   sessions: number;
