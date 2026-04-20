@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Package, ClipboardList, FileText, PackageCheck, Building2, BarChart3, Brain } from "lucide-react";
+import { Package, ClipboardList, FileText, PackageCheck, Building2, BarChart3, Brain, Zap } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -10,11 +10,13 @@ import GRNPanel from "@/components/inventory/GRNPanel";
 import VendorsPanel from "@/components/inventory/VendorsPanel";
 import ReportsPanel from "@/components/inventory/ReportsPanel";
 import InventoryDemandReview from "@/components/inventory/InventoryDemandReview";
+import SmartProcurementPanel from "@/components/inventory/SmartProcurementPanel";
 
 const navTabs = [
   { id: "stock", label: "Stock Overview", icon: Package },
   { id: "indents", label: "Indents", icon: ClipboardList },
   { id: "po", label: "Purchase Orders", icon: FileText },
+  { id: "smart", label: "Smart Procurement", icon: Zap },
   { id: "grn", label: "GRN / Receipts", icon: PackageCheck },
   { id: "vendors", label: "Vendors", icon: Building2 },
   { id: "reports", label: "Reports", icon: BarChart3 },
@@ -76,6 +78,7 @@ const InventoryPage: React.FC = () => {
       case "stock": return <StockOverview />;
       case "indents": return <IndentsPanel />;
       case "po": return <PurchaseOrdersPanel />;
+      case "smart": return <SmartProcurementPanel />;
       case "grn": return <GRNPanel />;
       case "vendors": return <VendorsPanel />;
       case "reports": return <ReportsPanel />;
