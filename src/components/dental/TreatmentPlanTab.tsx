@@ -195,6 +195,7 @@ const TreatmentPlanTab: React.FC<TreatmentPlanTabProps> = ({ patientId, hospital
             <TableRow>
               <TableHead className="w-16">Tooth</TableHead>
               <TableHead>Procedure</TableHead>
+              <TableHead className="w-28">ICD-10</TableHead>
               <TableHead className="w-20">Priority</TableHead>
               <TableHead className="w-20">Cost ₹</TableHead>
               <TableHead className="w-16">Sessions</TableHead>
@@ -203,12 +204,17 @@ const TreatmentPlanTab: React.FC<TreatmentPlanTabProps> = ({ patientId, hospital
           </TableHeader>
           <TableBody>
             {items.length === 0 && (
-              <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">No items yet. Click "+ Add Item" above.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">No items yet. Click "+ Add Item" above.</TableCell></TableRow>
             )}
             {items.map((item, idx) => (
               <TableRow key={idx}>
                 <TableCell className="font-mono text-xs">{item.tooth_number || "—"}</TableCell>
                 <TableCell className="text-xs">{item.procedure}</TableCell>
+                <TableCell className="text-xs font-mono">
+                  {item.icd10_code ? (
+                    <span title={ICD10_DENTAL.find(c => c.code === item.icd10_code)?.label}>{item.icd10_code}</span>
+                  ) : <span className="text-muted-foreground">—</span>}
+                </TableCell>
                 <TableCell>
                   <Badge className={`text-[10px] capitalize ${PRIORITY_COLORS[item.priority]}`}>{item.priority}</Badge>
                 </TableCell>
