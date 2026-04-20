@@ -14,6 +14,7 @@ import {
   AlertTriangle, CheckCircle2, FileSpreadsheet, Loader2
 } from "lucide-react";
 import * as XLSX from "xlsx";
+import { downloadXlsxTemplate } from "@/lib/migrationTemplates";
 
 type EntityType = "patients" | "staff" | "services" | "drugs" | "vendors" | "lab_tests";
 
