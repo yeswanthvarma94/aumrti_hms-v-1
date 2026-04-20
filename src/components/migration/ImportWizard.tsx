@@ -390,9 +390,12 @@ const ImportWizard: React.FC<ImportWizardProps> = ({ entityType, onClose, onComp
             if (error) throw error;
             entityId = ins?.id || null;
           } else if (entityType === "drugs") {
-            record = { ...record, drug_name: row.drug_name, generic_name: row.generic_name || null, category: row.category };
+            record = { ...record, drug_name: row.drug_name, generic_name: row.generic_name, category: row.category };
             if (row.schedule) record.drug_schedule = row.schedule;
             if (row.hsn_code) record.hsn_code = row.hsn_code;
+            if (row.gst_percent) record.gst_percent = Number(row.gst_percent);
+            if (row.is_ndps !== undefined && row.is_ndps !== "") record.is_ndps = !!row.is_ndps;
+            if (row.reorder_level !== "" && row.reorder_level != null) record.reorder_level = Number(row.reorder_level);
             const { data: ins, error } = await supabase.from("drug_master").insert(record).select("id").maybeSingle();
             if (error) throw error;
             entityId = ins?.id || null;
