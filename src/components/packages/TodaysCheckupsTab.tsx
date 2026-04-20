@@ -9,8 +9,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { CheckCircle2, Circle, PlayCircle, Stethoscope, FlaskConical, Activity } from "lucide-react";
+import { CheckCircle2, Circle, PlayCircle, Stethoscope, FlaskConical, Activity, Route } from "lucide-react";
 import { useHospitalId } from '@/hooks/useHospitalId';
+import PatientRoutingView from "./PatientRoutingView";
 
 const STATIONS = ["Reception", "Vitals", "Lab", "ECG", "X-Ray", "USG", "Doctor", "Report"];
 
