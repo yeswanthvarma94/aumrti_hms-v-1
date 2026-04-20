@@ -11,6 +11,8 @@ import StimulationTab from "@/components/ivf/StimulationTab";
 import EmbryologyTab from "@/components/ivf/EmbryologyTab";
 import EmbryoBankTab from "@/components/ivf/EmbryoBankTab";
 import AndrologyTab from "@/components/ivf/AndrologyTab";
+import CryobankTab from "@/components/ivf/CryobankTab";
+import IcmrReportTab from "@/components/ivf/IcmrReportTab";
 
 interface KPIs {
   activeCycles: number;
@@ -96,7 +98,9 @@ const IVFPage = () => {
           <TabsTrigger value="stimulation">📊 Stimulation</TabsTrigger>
           <TabsTrigger value="embryology">🧫 Embryology</TabsTrigger>
           <TabsTrigger value="embryo-bank">❄️ Embryo Bank</TabsTrigger>
+          <TabsTrigger value="cryobank">🧊 Cryobank</TabsTrigger>
           <TabsTrigger value="andrology">💉 Andrology</TabsTrigger>
+          <TabsTrigger value="icmr">📋 ICMR Report</TabsTrigger>
         </TabsList>
 
         <TabsContent value="couples" className="flex-1 overflow-auto m-0 p-4">
@@ -116,6 +120,12 @@ const IVFPage = () => {
         </TabsContent>
         <TabsContent value="andrology" className="flex-1 overflow-auto m-0 p-4">
           <AndrologyTab />
+        </TabsContent>
+        <TabsContent value="cryobank" className="flex-1 overflow-auto m-0 p-4">
+          <CryobankTab />
+        </TabsContent>
+        <TabsContent value="icmr" className="flex-1 overflow-auto m-0 p-4">
+          <IcmrReportTab />
         </TabsContent>
       </Tabs>
     </div>
