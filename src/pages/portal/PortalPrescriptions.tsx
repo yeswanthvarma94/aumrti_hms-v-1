@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Download } from "lucide-react";
+import { buildHospitalPrintHeader, fetchHospitalPrintInfo, getPrintFooter } from "@/lib/printHeader";
 import type { PortalSession } from "./PortalLogin";
 
 const FREQ_MAP: Record<string, string> = {
@@ -39,18 +40,21 @@ const PortalPrescriptions: React.FC<{ session: PortalSession }> = ({ session }) 
     })();
   }, [session]);
 
-  const printRx = (rx: any) => {
+  const printRx = async (rx: any) => {
     const drugs: any[] = Array.isArray(rx.drugs) ? rx.drugs : [];
     const dateStr = rx.prescription_date
-      ? new Date(rx.prescription_date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+      ? new Date(rx.prescription_date).toLocaleDateString("en-GB") // DD/MM/YYYY
       : "—";
+
+    const header = await buildHospitalPrintHeader(session.hospitalId);
+    const hInfo = await fetchHospitalPrintInfo(session.hospitalId);
 
     const rows = drugs
       .map(
         (d: any, i: number) =>
           `<tr>
             <td style="padding:6px 8px;border-bottom:1px solid #E2E8F0;">${i + 1}</td>
-            <td style="padding:6px 8px;border-bottom:1px solid #E2E8F0;font-weight:600;">${d.drug_name || d.name || "—"}</td>
+            <td style="padding:6px 8px;border-bottom:1px solid #E2E8F0;font-weight:600;">${d.drug_name || d.name || "—"}${d.strength ? ` ${d.strength}` : ""}</td>
             <td style="padding:6px 8px;border-bottom:1px solid #E2E8F0;">${d.dose || "—"}</td>
             <td style="padding:6px 8px;border-bottom:1px solid #E2E8F0;">${d.route || "—"}</td>
             <td style="padding:6px 8px;border-bottom:1px solid #E2E8F0;">${FREQ_MAP[d.frequency?.toUpperCase()] || d.frequency || "—"}</td>
@@ -61,17 +65,16 @@ const PortalPrescriptions: React.FC<{ session: PortalSession }> = ({ session }) 
       .join("");
 
     const html = `<!DOCTYPE html><html><head><title>Prescription</title>
-      <style>@media print{body{margin:0}@page{size:A4;margin:16mm}}</style></head>
-      <body style="font-family:system-ui,sans-serif;color:#0F172A;max-width:720px;margin:0 auto;padding:20px;">
-        <div style="text-align:center;border-bottom:2px solid #0E7B7B;padding-bottom:12px;margin-bottom:16px;">
-          <h2 style="margin:0;color:#0E7B7B;">${session.hospitalName}</h2>
-          <p style="font-size:18px;font-weight:700;margin:8px 0 0;">PRESCRIPTION / e-Rx</p>
-        </div>
-        <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:12px;">
-          <div><b>Patient:</b> ${session.fullName}<br/><b>UHID:</b> ${session.uhid}</div>
-          <div style="text-align:right;"><b>Date:</b> ${dateStr}<br/><b>Doctor:</b> Dr. ${rx.doctorName}</div>
-        </div>
-        <table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:8px;">
+      <style>@media print{body{margin:0}@page{size:A4;margin:14mm}}</style></head>
+      <body style="font-family:system-ui,sans-serif;color:#0F172A;max-width:760px;margin:0 auto;padding:20px;">
+        ${header}
+        <h2 style="text-align:center;margin:0 0 12px;color:#1B3A6B;letter-spacing:1px;font-size:16px;">PRESCRIPTION / e-Rx</h2>
+        <table width="100%" style="font-size:12px;margin-bottom:10px;"><tr>
+          <td style="width:60%;"><b>Patient:</b> ${session.fullName}<br/><b>UHID:</b> ${session.uhid}</td>
+          <td style="width:40%;text-align:right;"><b>Date:</b> ${dateStr}</td>
+        </tr></table>
+        <div style="font-size:24px;font-weight:700;color:#1B3A6B;margin:8px 0 4px;">℞</div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:4px;">
           <thead><tr style="background:#F1F5F9;">
             <th style="padding:8px;text-align:left;">#</th>
             <th style="padding:8px;text-align:left;">Drug Name</th>
@@ -82,11 +85,21 @@ const PortalPrescriptions: React.FC<{ session: PortalSession }> = ({ session }) 
             <th style="padding:8px;text-align:left;">Instructions</th>
           </tr></thead><tbody>${rows}</tbody>
         </table>
-        ${rx.advice_notes ? `<div style="margin-top:16px;padding:10px;background:#F8FAFC;border-radius:8px;font-size:12px;"><b>Instructions:</b> ${rx.advice_notes}</div>` : ""}
-        ${rx.review_date ? `<p style="margin-top:12px;font-size:12px;color:#0E7B7B;"><b>Follow-up:</b> ${new Date(rx.review_date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</p>` : ""}
-        <div style="margin-top:32px;border-top:1px solid #E2E8F0;padding-top:12px;font-size:10px;color:#94A3B8;text-align:center;">
-          This is a computer-generated prescription. Please consult your doctor before making changes.
-        </div>
+        ${rx.advice_notes ? `<div style="margin-top:16px;padding:10px;background:#F8FAFC;border-radius:8px;font-size:12px;"><b>Advice:</b> ${rx.advice_notes}</div>` : ""}
+        ${rx.review_date ? `<p style="margin-top:12px;font-size:12px;color:#1B3A6B;"><b>Follow-up:</b> ${new Date(rx.review_date).toLocaleDateString("en-GB")}</p>` : ""}
+        <table width="100%" style="margin-top:36px;font-size:11px;">
+          <tr><td style="width:60%;"></td>
+            <td style="width:40%;text-align:right;border-top:1px solid #0F172A;padding-top:4px;">
+              <b>Dr. ${rx.doctorName || "—"}</b><br/>
+              ${rx.doctorRegNo ? `Reg. No: ${rx.doctorRegNo}<br/>` : ""}
+              Signature &amp; Stamp
+            </td>
+          </tr>
+        </table>
+        <p style="margin-top:14px;font-size:10px;color:#94A3B8;text-align:center;font-style:italic;">
+          Not valid without doctor's signature and stamp.
+        </p>
+        ${getPrintFooter(hInfo.emergency_phone || hInfo.phone)}
       </body></html>`;
 
     const w = window.open("", "_blank", "noopener,noreferrer");
