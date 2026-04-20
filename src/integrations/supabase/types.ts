@@ -14016,6 +14016,41 @@ export type Database = {
           },
         ]
       }
+      procurement_settings: {
+        Row: {
+          auto_approve_po: boolean | null
+          auto_approve_threshold: number | null
+          default_lead_time_days: number | null
+          hospital_id: string
+          notify_vendor_on_approval: boolean | null
+          updated_at: string | null
+        }
+        Insert: {
+          auto_approve_po?: boolean | null
+          auto_approve_threshold?: number | null
+          default_lead_time_days?: number | null
+          hospital_id: string
+          notify_vendor_on_approval?: boolean | null
+          updated_at?: string | null
+        }
+        Update: {
+          auto_approve_po?: boolean | null
+          auto_approve_threshold?: number | null
+          default_lead_time_days?: number | null
+          hospital_id?: string
+          notify_vendor_on_approval?: boolean | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "procurement_settings_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: true
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       purchase_orders: {
         Row: {
           approved_by: string | null
@@ -16339,6 +16374,70 @@ export type Database = {
             columns: ["vaccine_id"]
             isOneToOne: false
             referencedRelation: "vaccine_master"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vendor_items: {
+        Row: {
+          created_at: string | null
+          hospital_id: string
+          id: string
+          is_preferred: boolean | null
+          item_id: string
+          last_po_date: string | null
+          lead_time_days: number | null
+          notes: string | null
+          unit_price: number
+          updated_at: string | null
+          vendor_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          hospital_id: string
+          id?: string
+          is_preferred?: boolean | null
+          item_id: string
+          last_po_date?: string | null
+          lead_time_days?: number | null
+          notes?: string | null
+          unit_price?: number
+          updated_at?: string | null
+          vendor_id: string
+        }
+        Update: {
+          created_at?: string | null
+          hospital_id?: string
+          id?: string
+          is_preferred?: boolean | null
+          item_id?: string
+          last_po_date?: string | null
+          lead_time_days?: number | null
+          notes?: string | null
+          unit_price?: number
+          updated_at?: string | null
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_items_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_items_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_items_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
             referencedColumns: ["id"]
           },
         ]
