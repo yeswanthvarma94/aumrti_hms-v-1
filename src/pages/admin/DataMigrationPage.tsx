@@ -133,6 +133,7 @@ const DataMigrationPage: React.FC = () => {
   const [viewLogs, setViewLogs] = useState<MigrationLog[]>([]);
   const [rollbackJob, setRollbackJob] = useState<MigrationJob | null>(null);
   const [rollbackLoading, setRollbackLoading] = useState(false);
+  const [rollbackConfirmText, setRollbackConfirmText] = useState("");
   const [wizardEntity, setWizardEntity] = useState<string | null>(null);
 
   useEffect(() => { loadData(); }, []);
