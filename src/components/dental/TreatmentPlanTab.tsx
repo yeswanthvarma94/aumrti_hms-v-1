@@ -60,7 +60,7 @@ const TreatmentPlanTab: React.FC<TreatmentPlanTabProps> = ({ patientId, hospital
   const [showAdd, setShowAdd] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<TreatmentItem>({
-    tooth_number: "", procedure: "", priority: "soon", cost: 0, sessions: 1, status: "planned",
+    tooth_number: "", procedure: "", icd10_code: "", priority: "soon", cost: 0, sessions: 1, status: "planned",
   });
 
   useEffect(() => { loadPlan(); }, [patientId]);
@@ -84,7 +84,7 @@ const TreatmentPlanTab: React.FC<TreatmentPlanTabProps> = ({ patientId, hospital
   const addItem = () => {
     if (!form.procedure) return;
     setItems(prev => [...prev, { ...form }]);
-    setForm({ tooth_number: "", procedure: "", priority: "soon", cost: 0, sessions: 1, status: "planned" });
+    setForm({ tooth_number: "", procedure: "", icd10_code: "", priority: "soon", cost: 0, sessions: 1, status: "planned" });
     setShowAdd(false);
   };
 
