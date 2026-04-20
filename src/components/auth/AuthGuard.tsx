@@ -33,7 +33,7 @@ const AuthGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   }
 
   if (status === "unauthenticated") {
-    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+    return <Navigate to="/login" state={{ from: currentPath }} replace />;
   }
 
   return <>{children}</>;
