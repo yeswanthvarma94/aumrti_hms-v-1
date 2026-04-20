@@ -88,6 +88,8 @@ const InboxPage: React.FC = () => {
   const [composePhone, setComposePhone] = useState("");
   const [composeMsg, setComposeMsg] = useState("");
   const [composeName, setComposeName] = useState("");
+  const [staffOptions, setStaffOptions] = useState<StaffOpt[]>([]);
+  const [tagInput, setTagInput] = useState("");
   const threadEndRef = useRef<HTMLDivElement>(null);
 
   // ── Load data
