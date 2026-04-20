@@ -10,6 +10,8 @@ import ConsultationTab from "@/components/ayush/ConsultationTab";
 import PrakritiTab from "@/components/ayush/PrakritiTab";
 import PanchakarmaTab from "@/components/ayush/PanchakarmaTab";
 import PrescriptionsTab from "@/components/ayush/PrescriptionsTab";
+import HomeopathyTab from "@/components/ayush/HomeopathyTab";
+import MoAyushReportTab from "@/components/ayush/MoAyushReportTab";
 import WalkInModal from "@/components/opd/WalkInModal";
 
 type AyushSystem = "ayurveda" | "homeopathy" | "unani" | "siddha" | "yoga";
@@ -155,6 +157,8 @@ export default function AyushPage() {
           <TabsTrigger value="prakriti">🧬 Prakriti</TabsTrigger>
           <TabsTrigger value="panchakarma">🛁 Panchakarma</TabsTrigger>
           <TabsTrigger value="prescriptions">💊 Prescriptions</TabsTrigger>
+          <TabsTrigger value="homeopathy">🧪 Homeopathy</TabsTrigger>
+          <TabsTrigger value="reports">📊 Reports</TabsTrigger>
         </TabsList>
         <TabsContent value="consultation" className="flex-1 overflow-hidden m-0 p-0">
           <ConsultationTab system={system} showNew={showNewConsult} onShowNewDone={() => setShowNewConsult(false)} />
@@ -167,6 +171,12 @@ export default function AyushPage() {
         </TabsContent>
         <TabsContent value="prescriptions" className="flex-1 overflow-hidden m-0 p-0">
           <PrescriptionsTab system={system} />
+        </TabsContent>
+        <TabsContent value="homeopathy" className="flex-1 overflow-hidden m-0 p-0">
+          <HomeopathyTab />
+        </TabsContent>
+        <TabsContent value="reports" className="flex-1 overflow-hidden m-0 p-0">
+          <MoAyushReportTab />
         </TabsContent>
       </Tabs>
 

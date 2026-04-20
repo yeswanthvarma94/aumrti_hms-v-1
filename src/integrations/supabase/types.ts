@@ -1251,6 +1251,59 @@ export type Database = {
           },
         ]
       }
+      ayush_homeopathy_cases: {
+        Row: {
+          consultation_date: string | null
+          created_at: string | null
+          follow_up_date: string | null
+          hospital_id: string
+          id: string
+          notes: string | null
+          patient_id: string
+          practitioner_id: string | null
+          prescribed_potency: string | null
+          prescribed_remedy: string | null
+          rubrics: Json | null
+          suggested_remedies: Json | null
+        }
+        Insert: {
+          consultation_date?: string | null
+          created_at?: string | null
+          follow_up_date?: string | null
+          hospital_id: string
+          id?: string
+          notes?: string | null
+          patient_id: string
+          practitioner_id?: string | null
+          prescribed_potency?: string | null
+          prescribed_remedy?: string | null
+          rubrics?: Json | null
+          suggested_remedies?: Json | null
+        }
+        Update: {
+          consultation_date?: string | null
+          created_at?: string | null
+          follow_up_date?: string | null
+          hospital_id?: string
+          id?: string
+          notes?: string | null
+          patient_id?: string
+          practitioner_id?: string | null
+          prescribed_potency?: string | null
+          prescribed_remedy?: string | null
+          rubrics?: Json | null
+          suggested_remedies?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ayush_homeopathy_cases_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bank_accounts: {
         Row: {
           account_name: string
