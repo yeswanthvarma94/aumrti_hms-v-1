@@ -6444,6 +6444,7 @@ export type Database = {
           package_name: string
           package_type: string
           price: number
+          stations: Json | null
           target_gender: string | null
           total_components: number | null
           validity_days: number | null
@@ -6464,6 +6465,7 @@ export type Database = {
           package_name: string
           package_type?: string
           price: number
+          stations?: Json | null
           target_gender?: string | null
           total_components?: number | null
           validity_days?: number | null
@@ -6484,6 +6486,7 @@ export type Database = {
           package_name?: string
           package_type?: string
           price?: number
+          stations?: Json | null
           target_gender?: string | null
           total_components?: number | null
           validity_days?: number | null
@@ -11584,6 +11587,7 @@ export type Database = {
           report_url: string | null
           scheduled_date: string
           scheduled_time: string | null
+          station_progress: Json | null
           status: string | null
         }
         Insert: {
@@ -11604,6 +11608,7 @@ export type Database = {
           report_url?: string | null
           scheduled_date: string
           scheduled_time?: string | null
+          station_progress?: Json | null
           status?: string | null
         }
         Update: {
@@ -11624,6 +11629,7 @@ export type Database = {
           report_url?: string | null
           scheduled_date?: string
           scheduled_time?: string | null
+          station_progress?: Json | null
           status?: string | null
         }
         Relationships: [
