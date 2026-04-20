@@ -13,8 +13,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
-import { GraduationCap, CheckCircle2, AlertTriangle, XCircle, Clock, Download, Printer, Send, Users, Plus, BookOpen, Loader2 } from 'lucide-react';
+import { GraduationCap, CheckCircle2, AlertTriangle, XCircle, Clock, Download, Printer, Send, Users, Plus, BookOpen, Loader2, FileQuestion, FileSpreadsheet } from 'lucide-react';
 import { format, addMonths, differenceInDays, isPast, isBefore, addDays } from 'date-fns';
+import QuizBuilderModal from '@/components/lms/QuizBuilderModal';
+import { printCertificate as printCertCard } from '@/lib/certificatePrint';
 
 interface Course {
   id: string;
