@@ -350,12 +350,36 @@ const DataMigrationPage: React.FC = () => {
               <AlertTriangle size={18} className="text-destructive" /> Confirm Rollback
             </DialogTitle>
           </DialogHeader>
-          <p className="text-sm">
-            This will DELETE <strong>{rollbackJob?.imported_rows}</strong> records that were imported in job "<strong>{rollbackJob?.job_name}</strong>". This cannot be undone.
-          </p>
+          <div className="space-y-3">
+            <p className="text-sm">
+              This will permanently delete <strong>{rollbackJob?.imported_rows}</strong> imported{" "}
+              <strong>{rollbackJob?.entity_type}</strong> records from job{" "}
+              "<strong>{rollbackJob?.job_name}</strong>". This cannot be undone.
+            </p>
+            <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 space-y-2">
+              <Label htmlFor="rollback-confirm" className="text-xs font-semibold text-destructive">
+                Type <span className="font-mono">CONFIRM</span> to proceed
+              </Label>
+              <Input
+                id="rollback-confirm"
+                autoFocus
+                value={rollbackConfirmText}
+                onChange={(e) => setRollbackConfirmText(e.target.value)}
+                placeholder="CONFIRM"
+                className="h-9 font-mono"
+                disabled={rollbackLoading}
+              />
+            </div>
+          </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setRollbackJob(null)}>Cancel</Button>
-            <Button variant="destructive" onClick={handleRollback} disabled={rollbackLoading}>
+            <Button variant="outline" onClick={() => { setRollbackJob(null); setRollbackConfirmText(""); }} disabled={rollbackLoading}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleRollback}
+              disabled={rollbackLoading || rollbackConfirmText.trim().toUpperCase() !== "CONFIRM"}
+            >
               {rollbackLoading ? "Rolling back..." : "Confirm Rollback"}
             </Button>
           </DialogFooter>
