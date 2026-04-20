@@ -1,13 +1,14 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Bot, Loader2, FileText, AlertTriangle } from "lucide-react";
+import { Bot, Loader2, FileText, AlertTriangle, Printer } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { callAI } from "@/lib/aiProvider";
 import { toast } from "sonner";
 import { logNABHEvidence } from "@/lib/nabh-evidence";
 import { logAudit } from "@/lib/auditLog";
 import { formatDateIST } from "@/lib/dateUtils";
+import { buildHospitalPrintHeader, fetchHospitalPrintInfo, getPrintFooter } from "@/lib/printHeader";
 
 interface Props {
   admissionId: string;
