@@ -982,6 +982,101 @@ export type Database = {
           },
         ]
       }
+      assets: {
+        Row: {
+          accumulated_depreciation: number | null
+          asset_code: string
+          asset_name: string
+          category: string
+          created_at: string | null
+          current_book_value: number | null
+          department: string | null
+          depreciation_method: string | null
+          description: string | null
+          disposal_amount: number | null
+          disposal_date: string | null
+          disposal_reason: string | null
+          hospital_id: string
+          id: string
+          insurance_expiry_date: string | null
+          insurance_policy_number: string | null
+          insurance_premium: number | null
+          it_block_category: string | null
+          location: string | null
+          purchase_cost: number
+          purchase_date: string
+          salvage_value: number | null
+          status: string | null
+          useful_life_years: number | null
+          vendor_id: string | null
+          wdv_rate: number | null
+        }
+        Insert: {
+          accumulated_depreciation?: number | null
+          asset_code: string
+          asset_name: string
+          category: string
+          created_at?: string | null
+          current_book_value?: number | null
+          department?: string | null
+          depreciation_method?: string | null
+          description?: string | null
+          disposal_amount?: number | null
+          disposal_date?: string | null
+          disposal_reason?: string | null
+          hospital_id: string
+          id?: string
+          insurance_expiry_date?: string | null
+          insurance_policy_number?: string | null
+          insurance_premium?: number | null
+          it_block_category?: string | null
+          location?: string | null
+          purchase_cost: number
+          purchase_date: string
+          salvage_value?: number | null
+          status?: string | null
+          useful_life_years?: number | null
+          vendor_id?: string | null
+          wdv_rate?: number | null
+        }
+        Update: {
+          accumulated_depreciation?: number | null
+          asset_code?: string
+          asset_name?: string
+          category?: string
+          created_at?: string | null
+          current_book_value?: number | null
+          department?: string | null
+          depreciation_method?: string | null
+          description?: string | null
+          disposal_amount?: number | null
+          disposal_date?: string | null
+          disposal_reason?: string | null
+          hospital_id?: string
+          id?: string
+          insurance_expiry_date?: string | null
+          insurance_policy_number?: string | null
+          insurance_premium?: number | null
+          it_block_category?: string | null
+          location?: string | null
+          purchase_cost?: number
+          purchase_date?: string
+          salvage_value?: number | null
+          status?: string | null
+          useful_life_years?: number | null
+          vendor_id?: string | null
+          wdv_rate?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assets_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_log: {
         Row: {
           action: string
