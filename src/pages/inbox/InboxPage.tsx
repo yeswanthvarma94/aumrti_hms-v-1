@@ -349,6 +349,11 @@ const InboxPage: React.FC = () => {
               >
                 <Icon size={16} className="shrink-0" />
                 <span className="flex-1 text-left">{sec.label}</span>
+                {sec.key === "all" && breachedCount > 0 && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-destructive text-destructive-foreground animate-pulse" title="SLA breached">
+                    !{breachedCount}
+                  </span>
+                )}
                 {count > 0 && (
                   <span className={cn(
                     "text-[10px] px-1.5 py-0.5 rounded-full font-bold min-w-[20px] text-center",
