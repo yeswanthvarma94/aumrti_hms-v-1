@@ -81,9 +81,10 @@ const categoryColors: Record<string, string> = {
 };
 
 export default function LMSPage() {
-  const { hospitalId, loading: hospitalLoading } = useHospitalId();
+  const { hospitalId, role: currentUserRole, loading: hospitalLoading } = useHospitalId();
   const [searchParams, setSearchParams] = useSearchParams();
   const isAdmin = searchParams.get('admin') === 'true';
+  const canManage = currentUserRole === 'super_admin' || currentUserRole === 'hospital_admin';
 
 
   const [courses, setCourses] = useState<Course[]>([]);
@@ -91,10 +92,16 @@ export default function LMSPage() {
   const [certificates, setCertificates] = useState<Certificate[]>([]);
   const [staffUsers, setStaffUsers] = useState<StaffUser[]>([]);
   const [departments, setDepartments] = useState<{ id: string; name: string }[]>([]);
+  const [hospitalName, setHospitalName] = useState('Hospital');
+  const [questionCounts, setQuestionCounts] = useState<Record<string, number>>({});
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUserName, setCurrentUserName] = useState('Staff');
   const [filter, setFilter] = useState('all');
   const [loading, setLoading] = useState(true);
+
+  // Quiz builder
+  const [builderOpen, setBuilderOpen] = useState(false);
+  const [builderCourse, setBuilderCourse] = useState<Course | null>(null);
 
   // Quiz state
   const [quizOpen, setQuizOpen] = useState(false);
