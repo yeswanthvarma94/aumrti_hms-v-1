@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useHospitalId } from "@/hooks/useHospitalId";
+import { STALE_MASTER, STALE_REALTIME } from "@/hooks/queries/staleTimes";
 import { ScanLine } from "lucide-react";
 import RadiologyWorklist from "@/components/radiology/RadiologyWorklist";
 import NewRadiologyOrderModal from "@/components/radiology/NewRadiologyOrderModal";
@@ -38,85 +41,81 @@ export interface Modality {
 
 const RadiologyPage: React.FC = () => {
   const { toast } = useToast();
-  const [orders, setOrders] = useState<RadiologyOrder[]>([]);
-  const [modalities, setModalities] = useState<Modality[]>([]);
+  const { hospitalId } = useHospitalId();
+  const queryClient = useQueryClient();
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [filterModality, setFilterModality] = useState("all");
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split("T")[0]);
   const [showNewOrder, setShowNewOrder] = useState(false);
-  const [hospitalId, setHospitalId] = useState<string | null>(null);
 
-  const fetchHospitalId = useCallback(async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const { data } = await supabase
-      .from("users")
-      .select("hospital_id")
-      .eq("auth_user_id", user.id)
-      .limit(1)
-      .maybeSingle();
-    if (data) setHospitalId(data.hospital_id);
-  }, []);
+  const { data: modalities = [] } = useQuery({
+    queryKey: ["radiology-modalities", hospitalId],
+    enabled: !!hospitalId,
+    staleTime: STALE_MASTER,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("radiology_modalities")
+        .select("id, name, modality_type, is_active")
+        .eq("hospital_id", hospitalId as string)
+        .eq("is_active", true)
+        .order("name");
+      if (error) { console.error("Radiology modalities fetch error:", error.message); throw error; }
+      return (data || []) as Modality[];
+    },
+  });
 
-  const fetchModalities = useCallback(async () => {
-    if (!hospitalId) return;
-    const { data, error } = await supabase
-      .from("radiology_modalities")
-      .select("*")
-      .eq("hospital_id", hospitalId)
-      .eq("is_active", true)
-      .order("name");
-    if (error) { console.error("Radiology modalities fetch error:", error.message); return; }
-    setModalities(data || []);
-  }, [hospitalId]);
+  const { data: orders = [], refetch } = useQuery({
+    queryKey: ["radiology-orders", hospitalId, selectedDate, filterModality],
+    enabled: !!hospitalId,
+    staleTime: STALE_REALTIME,
+    placeholderData: (prev) => prev,
+    queryFn: async () => {
+      let query = supabase
+        .from("radiology_orders")
+        .select(`
+          id, priority, status, order_date, order_time, study_name, body_part,
+          clinical_history, indication, modality_type, modality_id,
+          accession_number, is_pcpndt, patient_id, ordered_by, dicom_pacs_url,
+          patients (full_name, uhid, gender, dob, phone, blood_group),
+          ordered_by_user:users!radiology_orders_ordered_by_fkey (full_name),
+          radiology_modalities (name, modality_type),
+          radiology_reports (id, is_signed)
+        `)
+        .eq("hospital_id", hospitalId as string)
+        .eq("order_date", selectedDate)
+        .neq("status", "cancelled")
+        .order("order_time", { ascending: true });
 
-  const fetchOrders = useCallback(async () => {
-    if (!hospitalId) return;
-    let query = supabase
-      .from("radiology_orders")
-      .select(`
-        id, priority, status, order_date, order_time, study_name, body_part,
-        clinical_history, indication, modality_type, modality_id,
-        accession_number, is_pcpndt, patient_id, ordered_by, dicom_pacs_url,
-        patients (full_name, uhid, gender, dob, phone, blood_group),
-        ordered_by_user:users!radiology_orders_ordered_by_fkey (full_name),
-        radiology_modalities (name, modality_type),
-        radiology_reports (id, is_signed)
-      `)
-      .eq("hospital_id", hospitalId)
-      .eq("order_date", selectedDate)
-      .neq("status", "cancelled")
-      .order("order_time", { ascending: true });
+      if (filterModality !== "all") {
+        query = query.eq("modality_type", filterModality);
+      }
 
-    if (filterModality !== "all") {
-      query = query.eq("modality_type", filterModality);
-    }
-
-    const { data, error } = await query;
-
-    if (error) {
-      console.error("Radiology orders fetch error:", error);
-    } else {
+      const { data, error } = await query;
+      if (error) {
+        console.error("Radiology orders fetch error:", error);
+        throw error;
+      }
       const sorted = (data || []).sort((a: any, b: any) => {
         const p: Record<string, number> = { stat: 0, urgent: 1, routine: 2 };
         return (p[a.priority] ?? 2) - (p[b.priority] ?? 2);
       });
-      setOrders(sorted as any);
-    }
-  }, [hospitalId, selectedDate, filterModality]);
+      return sorted as unknown as RadiologyOrder[];
+    },
+  });
 
-  useEffect(() => { fetchHospitalId(); }, [fetchHospitalId]);
-  useEffect(() => { if (hospitalId) { fetchModalities(); fetchOrders(); } }, [hospitalId, fetchModalities, fetchOrders]);
+  const fetchOrders = useCallback(() => { refetch(); }, [refetch]);
 
   // Realtime
   useEffect(() => {
     if (!hospitalId) return;
     const channel = supabase
       .channel("radiology-realtime")
-      .on("postgres_changes", { event: "*", schema: "public", table: "radiology_orders", filter: `hospital_id=eq.${hospitalId}` }, () => fetchOrders())
+      .on("postgres_changes", { event: "*", schema: "public", table: "radiology_orders", filter: `hospital_id=eq.${hospitalId}` }, () => {
+        queryClient.invalidateQueries({ queryKey: ["radiology-orders", hospitalId] });
+      })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [hospitalId, fetchOrders]);
+  }, [hospitalId, queryClient]);
 
   const selectedOrder = orders.find((o) => o.id === selectedOrderId) || null;
 
@@ -129,7 +128,6 @@ const RadiologyPage: React.FC = () => {
 
   return (
     <div className="flex h-full overflow-hidden">
-      {/* Left: Worklist */}
       <RadiologyWorklist
         orders={orders}
         modalities={modalities}
@@ -143,7 +141,6 @@ const RadiologyPage: React.FC = () => {
         onNewOrder={() => setShowNewOrder(true)}
       />
 
-      {/* Right: Workspace */}
       {selectedOrder && hospitalId ? (
         <RadiologyReportingWorkspace
           order={selectedOrder}
@@ -160,7 +157,6 @@ const RadiologyPage: React.FC = () => {
         </div>
       )}
 
-      {/* New Order Modal */}
       {showNewOrder && hospitalId && (
         <NewRadiologyOrderModal
           hospitalId={hospitalId}

@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { generateBillNumber } from "@/hooks/useBillNumber";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useHospitalId } from "@/hooks/useHospitalId";
+import { STALE_OPERATIONAL } from "@/hooks/queries/staleTimes";
 import { cn } from "@/lib/utils";
 import { autoPullAdmissionCharges as autoPullAdmissionChargesUtil } from "@/lib/ipdBilling";
 
@@ -42,11 +45,10 @@ export interface BillRecord {
 
 const BillingPage: React.FC = () => {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [hospitalId, setHospitalId] = useState<string | null>(null);
-  const [bills, setBills] = useState<BillRecord[]>([]);
+  const { hospitalId } = useHospitalId();
   const [selectedBillId, setSelectedBillId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
   const [showNewBill, setShowNewBill] = useState(false);
   const [showAdvance, setShowAdvance] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
@@ -54,19 +56,138 @@ const BillingPage: React.FC = () => {
   const [dischargeBillCreated, setDischargeBillCreated] = useState(false);
   const [activeTab, setActiveTab] = useState("bills");
 
-  useEffect(() => {
-    const loadHospital = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data } = await supabase
-        .from("users")
-        .select("hospital_id")
-        .eq("auth_user_id", user.id)
-        .maybeSingle();
-      if (data?.hospital_id) setHospitalId(data.hospital_id);
-    };
-    loadHospital();
-  }, []);
+  const billsQueryKey = ["billing-bills", hospitalId, statusFilter, dateFilter];
+
+  const { data: bills = [], isLoading: loading, refetch } = useQuery({
+    queryKey: billsQueryKey,
+    enabled: !!hospitalId,
+    staleTime: STALE_OPERATIONAL,
+    placeholderData: (prev) => prev,
+    queryFn: async () => {
+      let dateStart: string;
+      const now = new Date();
+      const todayStr = now.toISOString().slice(0, 10);
+
+      switch (dateFilter) {
+        case "yesterday": {
+          const y = new Date(now); y.setDate(y.getDate() - 1);
+          dateStart = y.toISOString().slice(0, 10); break;
+        }
+        case "week": {
+          const w = new Date(now); w.setDate(w.getDate() - 7);
+          dateStart = w.toISOString().slice(0, 10); break;
+        }
+        case "month": {
+          const m = new Date(now); m.setMonth(m.getMonth() - 1);
+          dateStart = m.toISOString().slice(0, 10); break;
+        }
+        default:
+          dateStart = todayStr;
+      }
+
+      let query = supabase
+        .from("bills")
+        .select("id, bill_number, patient_id, encounter_id, admission_id, bill_type, bill_date, bill_status, subtotal, discount_percent, discount_amount, gst_amount, total_amount, advance_received, insurance_amount, patient_payable, paid_amount, balance_due, payment_status, notes, irn, irn_generated_at, created_at, patients!inner(full_name, uhid)")
+        .eq("hospital_id", hospitalId as string)
+        .gte("bill_date", dateStart)
+        .order("created_at", { ascending: false });
+
+      if (statusFilter !== "all") {
+        query = query.eq("payment_status", statusFilter);
+      }
+
+      const { data, error } = await query;
+      if (error) {
+        console.error(error);
+        throw error;
+      }
+
+      const realBills: BillRecord[] = (data || []).map((b: any) => ({
+        id: b.id,
+        bill_number: b.bill_number,
+        patient_id: b.patient_id,
+        patient_name: b.patients?.full_name || "Unknown",
+        uhid: b.patients?.uhid || "",
+        encounter_id: b.encounter_id,
+        admission_id: b.admission_id,
+        bill_type: b.bill_type,
+        bill_date: b.bill_date,
+        bill_status: b.bill_status,
+        subtotal: Number(b.subtotal) || 0,
+        discount_percent: Number(b.discount_percent) || 0,
+        discount_amount: Number(b.discount_amount) || 0,
+        gst_amount: Number(b.gst_amount) || 0,
+        total_amount: Number(b.total_amount) || 0,
+        advance_received: Number(b.advance_received) || 0,
+        insurance_amount: Number(b.insurance_amount) || 0,
+        patient_payable: Number(b.patient_payable) || 0,
+        paid_amount: Number(b.paid_amount) || 0,
+        balance_due: Number(b.balance_due) || 0,
+        payment_status: b.payment_status,
+        notes: b.notes,
+        irn: b.irn || null,
+        irn_generated_at: b.irn_generated_at || null,
+        created_at: b.created_at,
+      }));
+
+      // Find active admissions WITHOUT an IPD bill — surface as virtual "Pending IPD" rows
+      let virtualBills: BillRecord[] = [];
+      if (statusFilter === "all" || statusFilter === "unpaid") {
+        const { data: activeAdms } = await supabase
+          .from("admissions")
+          .select("id, admitted_at, admission_number, patient_id, patients!inner(full_name, uhid)")
+          .eq("hospital_id", hospitalId as string)
+          .eq("status", "active");
+
+        const admissionsWithBills = new Set(
+          realBills.filter((b) => b.bill_type === "ipd" && b.admission_id).map((b) => b.admission_id)
+        );
+        const { data: existingIpd } = await supabase
+          .from("bills")
+          .select("admission_id")
+          .eq("hospital_id", hospitalId as string)
+          .eq("bill_type", "ipd")
+          .not("admission_id", "is", null);
+        (existingIpd || []).forEach((b: any) => admissionsWithBills.add(b.admission_id));
+
+        virtualBills = (activeAdms || [])
+          .filter((a: any) => !admissionsWithBills.has(a.id))
+          .map((a: any) => ({
+            id: `pending:${a.id}`,
+            bill_number: `IPD-${a.admission_number || a.id.slice(0, 8)}`,
+            patient_id: a.patient_id,
+            patient_name: a.patients?.full_name || "Unknown",
+            uhid: a.patients?.uhid || "",
+            encounter_id: null,
+            admission_id: a.id,
+            bill_type: "ipd",
+            bill_date: (a.admitted_at || new Date().toISOString()).slice(0, 10),
+            bill_status: "pending_ipd",
+            subtotal: 0,
+            discount_percent: 0,
+            discount_amount: 0,
+            gst_amount: 0,
+            total_amount: 0,
+            advance_received: 0,
+            insurance_amount: 0,
+            patient_payable: 0,
+            paid_amount: 0,
+            balance_due: 0,
+            payment_status: "unpaid",
+            notes: null,
+            irn: null,
+            irn_generated_at: null,
+            created_at: a.admitted_at || new Date().toISOString(),
+          }));
+      }
+
+      return [...virtualBills, ...realBills];
+    },
+  });
+
+  const fetchBills = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: ["billing-bills", hospitalId] });
+  }, [queryClient, hospitalId]);
 
   // Handle discharge billing URL params: /billing?action=new&admission_id=X&type=ipd
   useEffect(() => {
@@ -79,11 +200,29 @@ const BillingPage: React.FC = () => {
     }
   }, [hospitalId, searchParams, dischargeBillCreated]);
 
+  const autoPullAdmissionCharges = async (billId: string, admissionId: string) => {
+    if (!hospitalId) return;
+    const result = await autoPullAdmissionChargesUtil(billId, admissionId, hospitalId);
+    if (!result.ok) {
+      toast({
+        title: "Failed to pull some admission charges",
+        description: result.error || "Bill totals could not be updated",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (result.usedFallbackRate) {
+      toast({
+        title: "Using fallback rates",
+        description: "Some service rates are not configured. Set them in Settings → Service Rates.",
+      });
+    }
+  };
+
   const createDischargeBill = async (admissionId: string) => {
     if (!hospitalId) return;
     setDischargeBillCreated(true);
 
-    // Check if bill already exists for this admission
     const { data: existing } = await supabase
       .from("bills")
       .select("id")
@@ -101,7 +240,6 @@ const BillingPage: React.FC = () => {
       return;
     }
 
-    // Get admission + patient info
     const { data: admission } = await supabase
       .from("admissions")
       .select("*, patients(id, full_name, uhid)")
@@ -131,7 +269,6 @@ const BillingPage: React.FC = () => {
       return;
     }
 
-    // Auto-pull charges for this admission
     await autoPullAdmissionCharges(newBill.id, admissionId);
 
     toast({ title: `IPD Discharge Bill #${billNumber} created with auto-pulled charges` });
@@ -139,162 +276,6 @@ const BillingPage: React.FC = () => {
     setSelectedBillId(newBill.id);
     setSearchParams({});
   };
-
-  const autoPullAdmissionCharges = async (billId: string, admissionId: string) => {
-    if (!hospitalId) return;
-    const result = await autoPullAdmissionChargesUtil(billId, admissionId, hospitalId);
-    if (!result.ok) {
-      toast({
-        title: "Failed to pull some admission charges",
-        description: result.error || "Bill totals could not be updated",
-        variant: "destructive",
-      });
-      return;
-    }
-    if (result.usedFallbackRate) {
-      toast({
-        title: "Using fallback rates",
-        description: "Some service rates are not configured. Set them in Settings → Service Rates.",
-      });
-    }
-  };
-
-  const fetchBills = useCallback(async () => {
-    if (!hospitalId) return;
-    setLoading(true);
-
-    let dateStart: string;
-    const now = new Date();
-    const todayStr = now.toISOString().slice(0, 10);
-
-    switch (dateFilter) {
-      case "yesterday": {
-        const y = new Date(now);
-        y.setDate(y.getDate() - 1);
-        dateStart = y.toISOString().slice(0, 10);
-        break;
-      }
-      case "week": {
-        const w = new Date(now);
-        w.setDate(w.getDate() - 7);
-        dateStart = w.toISOString().slice(0, 10);
-        break;
-      }
-      case "month": {
-        const m = new Date(now);
-        m.setMonth(m.getMonth() - 1);
-        dateStart = m.toISOString().slice(0, 10);
-        break;
-      }
-      default:
-        dateStart = todayStr;
-    }
-
-    let query = supabase
-      .from("bills")
-      .select("*, patients!inner(full_name, uhid)")
-      .eq("hospital_id", hospitalId)
-      .gte("bill_date", dateStart)
-      .order("created_at", { ascending: false });
-
-    if (statusFilter !== "all") {
-      query = query.eq("payment_status", statusFilter);
-    }
-
-    const { data, error } = await query;
-    if (error) {
-      console.error(error);
-      setLoading(false);
-      return;
-    }
-
-    const realBills: BillRecord[] = (data || []).map((b: any) => ({
-      id: b.id,
-      bill_number: b.bill_number,
-      patient_id: b.patient_id,
-      patient_name: b.patients?.full_name || "Unknown",
-      uhid: b.patients?.uhid || "",
-      encounter_id: b.encounter_id,
-      admission_id: b.admission_id,
-      bill_type: b.bill_type,
-      bill_date: b.bill_date,
-      bill_status: b.bill_status,
-      subtotal: Number(b.subtotal) || 0,
-      discount_percent: Number(b.discount_percent) || 0,
-      discount_amount: Number(b.discount_amount) || 0,
-      gst_amount: Number(b.gst_amount) || 0,
-      total_amount: Number(b.total_amount) || 0,
-      advance_received: Number(b.advance_received) || 0,
-      insurance_amount: Number(b.insurance_amount) || 0,
-      patient_payable: Number(b.patient_payable) || 0,
-      paid_amount: Number(b.paid_amount) || 0,
-      balance_due: Number(b.balance_due) || 0,
-      payment_status: b.payment_status,
-      notes: b.notes,
-      irn: b.irn || null,
-      irn_generated_at: b.irn_generated_at || null,
-      created_at: b.created_at,
-    }));
-
-    // Find active admissions WITHOUT an IPD bill — surface as virtual "Pending IPD" rows
-    let virtualBills: BillRecord[] = [];
-    if (statusFilter === "all" || statusFilter === "unpaid") {
-      const { data: activeAdms } = await supabase
-        .from("admissions")
-        .select("id, admitted_at, admission_number, patient_id, patients!inner(full_name, uhid)")
-        .eq("hospital_id", hospitalId)
-        .eq("status", "active");
-
-      const admissionsWithBills = new Set(
-        realBills.filter((b) => b.bill_type === "ipd" && b.admission_id).map((b) => b.admission_id)
-      );
-      // Also check bills that fall outside the date filter
-      const { data: existingIpd } = await supabase
-        .from("bills")
-        .select("admission_id")
-        .eq("hospital_id", hospitalId)
-        .eq("bill_type", "ipd")
-        .not("admission_id", "is", null);
-      (existingIpd || []).forEach((b: any) => admissionsWithBills.add(b.admission_id));
-
-      virtualBills = (activeAdms || [])
-        .filter((a: any) => !admissionsWithBills.has(a.id))
-        .map((a: any) => ({
-          id: `pending:${a.id}`,
-          bill_number: `IPD-${a.admission_number || a.id.slice(0, 8)}`,
-          patient_id: a.patient_id,
-          patient_name: a.patients?.full_name || "Unknown",
-          uhid: a.patients?.uhid || "",
-          encounter_id: null,
-          admission_id: a.id,
-          bill_type: "ipd",
-          bill_date: (a.admitted_at || new Date().toISOString()).slice(0, 10),
-          bill_status: "pending_ipd",
-          subtotal: 0,
-          discount_percent: 0,
-          discount_amount: 0,
-          gst_amount: 0,
-          total_amount: 0,
-          advance_received: 0,
-          insurance_amount: 0,
-          patient_payable: 0,
-          paid_amount: 0,
-          balance_due: 0,
-          payment_status: "unpaid",
-          notes: null,
-          irn: null,
-          irn_generated_at: null,
-          created_at: a.admitted_at || new Date().toISOString(),
-        }));
-    }
-
-    setBills([...virtualBills, ...realBills]);
-    setLoading(false);
-  }, [hospitalId, statusFilter, dateFilter]);
-
-  useEffect(() => {
-    fetchBills();
-  }, [fetchBills]);
 
   const selectedBill = bills.find((b) => b.id === selectedBillId) || null;
 

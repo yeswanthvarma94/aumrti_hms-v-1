@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useHospitalId } from "@/hooks/useHospitalId";
+import { STALE_REALTIME } from "@/hooks/queries/staleTimes";
 import { Pill, ShoppingCart, Package, ClipboardList, BarChart3, Bell, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import PharmacyStockTab from "@/components/pharmacy/PharmacyStockTab";
 import PharmacyNDPSTab from "@/components/pharmacy/PharmacyNDPSTab";
@@ -19,41 +21,35 @@ type PharmacyTab = "dispense" | "stock" | "ndps" | "reports";
 const PharmacyPage: React.FC = () => {
   const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [hospitalId, setHospitalId] = useState<string | null>(null);
+  const { hospitalId } = useHospitalId();
+  const queryClient = useQueryClient();
   const [mode, setMode] = useState<PharmacyMode>(
     (searchParams.get("mode") as PharmacyMode) || "ip"
   );
   const [activeTab, setActiveTab] = useState<PharmacyTab>(
     (searchParams.get("tab") as PharmacyTab) || "dispense"
   );
-  const [alertCount, setAlertCount] = useState(0);
   const [showAlerts, setShowAlerts] = useState(false);
   const [showReceiveStock, setShowReceiveStock] = useState(false);
 
-  const fetchHospitalId = useCallback(async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const { data } = await supabase
-      .from("users")
-      .select("hospital_id")
-      .eq("auth_user_id", user.id)
-      .limit(1)
-      .maybeSingle();
-    if (data) setHospitalId(data.hospital_id);
-  }, []);
+  const { data: alertCount = 0 } = useQuery({
+    queryKey: ["pharmacy-alert-count", hospitalId],
+    enabled: !!hospitalId,
+    staleTime: STALE_REALTIME,
+    placeholderData: (prev) => prev,
+    queryFn: async () => {
+      const { count } = await supabase
+        .from("pharmacy_stock_alerts")
+        .select("id", { count: "exact", head: true })
+        .eq("hospital_id", hospitalId as string)
+        .eq("is_acknowledged", false);
+      return count || 0;
+    },
+  });
 
-  const fetchAlertCount = useCallback(async () => {
-    if (!hospitalId) return;
-    const { count } = await supabase
-      .from("pharmacy_stock_alerts")
-      .select("id", { count: "exact", head: true })
-      .eq("hospital_id", hospitalId)
-      .eq("is_acknowledged", false);
-    setAlertCount(count || 0);
-  }, [hospitalId]);
-
-  useEffect(() => { fetchHospitalId(); }, [fetchHospitalId]);
-  useEffect(() => { if (hospitalId) fetchAlertCount(); }, [hospitalId, fetchAlertCount]);
+  const refetchAlertCount = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["pharmacy-alert-count", hospitalId] });
+  }, [queryClient, hospitalId]);
 
   const handleModeChange = (m: PharmacyMode) => {
     setMode(m);
@@ -180,14 +176,14 @@ const PharmacyPage: React.FC = () => {
       {showAlerts && hospitalId && (
         <StockAlertsDrawer
           hospitalId={hospitalId}
-          onClose={() => { setShowAlerts(false); fetchAlertCount(); }}
+          onClose={() => { setShowAlerts(false); refetchAlertCount(); }}
         />
       )}
       {showReceiveStock && hospitalId && (
         <ReceiveStockModal
           hospitalId={hospitalId}
           onClose={() => setShowReceiveStock(false)}
-          onSaved={() => { setShowReceiveStock(false); fetchAlertCount(); toast({ title: "Stock received successfully" }); }}
+          onSaved={() => { setShowReceiveStock(false); refetchAlertCount(); toast({ title: "Stock received successfully" }); }}
         />
       )}
     </div>

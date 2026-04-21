@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useHospitalId } from "@/hooks/useHospitalId";
 import { sendWhatsApp } from "@/lib/whatsapp-send";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -75,7 +76,7 @@ const SECTIONS: { key: Section; label: string; icon: React.ElementType; channelF
 
 const InboxPage: React.FC = () => {
   const { toast } = useToast();
-  const [hospitalId, setHospitalId] = useState<string | null>(null);
+  const { hospitalId } = useHospitalId();
   const [messages, setMessages] = useState<InboxMsg[]>([]);
   const [activeSection, setActiveSection] = useState<Section>("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -94,17 +95,12 @@ const InboxPage: React.FC = () => {
 
   // ── Load data
   useEffect(() => {
+    if (!hospitalId) return;
     (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data: ud } = await supabase.from("users").select("hospital_id").eq("auth_user_id", user.id).maybeSingle();
-      if (!ud) return;
-      setHospitalId(ud.hospital_id);
-
       const { data } = await supabase
         .from("inbox_messages")
         .select("*")
-        .eq("hospital_id", ud.hospital_id)
+        .eq("hospital_id", hospitalId)
         .order("created_at", { ascending: false })
         .limit(200);
       if (data) setMessages(data as any);
@@ -112,12 +108,12 @@ const InboxPage: React.FC = () => {
       const { data: staff } = await supabase
         .from("users")
         .select("id, full_name, role")
-        .eq("hospital_id", ud.hospital_id)
+        .eq("hospital_id", hospitalId)
         .in("role", ["receptionist", "billing_staff", "doctor", "hospital_admin", "nurse"])
         .order("full_name");
       if (staff) setStaffOptions(staff as StaffOpt[]);
     })();
-  }, []);
+  }, [hospitalId]);
 
   // ── Realtime: also handle UPDATE so SLA/assignment changes propagate
   useEffect(() => {

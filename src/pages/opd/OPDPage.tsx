@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useHospitalId } from "@/hooks/useHospitalId";
+import { STALE_REALTIME } from "@/hooks/queries/staleTimes";
 import TokenQueue from "@/components/opd/TokenQueue";
 import ConsultationWorkspace from "@/components/opd/ConsultationWorkspace";
 import PatientSummary from "@/components/opd/PatientSummary";
@@ -26,58 +29,68 @@ export interface OpdToken {
 }
 
 const OPDPage: React.FC = () => {
-  const [tokens, setTokens] = useState<OpdToken[]>([]);
   const [selectedTokenId, setSelectedTokenId] = useState<string | null>(null);
   const [showPatientDetails, setShowPatientDetails] = useState(false);
-  const [hospitalId, setHospitalId] = useState<string | null>(null);
+  const { hospitalId, role: userRole } = useHospitalId();
   const [userId, setUserId] = useState<string | null>(null);
-  const [userRole, setUserRole] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  const fetchTokens = useCallback(async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setLoading(false); return; }
-    const { data: userData, error: userErr } = await supabase.from("users").select("id, hospital_id, role").eq("auth_user_id", user.id).maybeSingle();
-    if (userErr || !userData) { console.error("OPD user fetch error:", userErr?.message); setLoading(false); return; }
-    setUserId(userData.id);
-    setHospitalId(userData.hospital_id);
-    setUserRole(userData.role);
+  // Resolve internal users.id once (cached via useHospitalId already returns role+hospital_id;
+  // we still need users.id for doctor filtering). One-time fetch, then never re-runs.
+  useEffect(() => {
+    if (!hospitalId || userId) return;
+    let cancelled = false;
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase.from("users").select("id").eq("auth_user_id", user.id).maybeSingle();
+      if (!cancelled && data) setUserId(data.id);
+    })();
+    return () => { cancelled = true; };
+  }, [hospitalId, userId]);
 
-    const today = new Date().toISOString().split("T")[0];
-    let query = supabase
-      .from("opd_tokens")
-      .select("*, patient:patients(full_name, phone, uhid, gender, dob, blood_group, allergies, chronic_conditions, insurance_id, address), doctor:users!opd_tokens_doctor_id_fkey(full_name), department:departments(name)")
-      .eq("hospital_id", userData.hospital_id)
-      .eq("visit_date", today)
-      .order("created_at", { ascending: true });
+  const today = new Date().toISOString().split("T")[0];
 
-    if (userData.role === "doctor") {
-      query = query.eq("doctor_id", userData.id);
-    }
+  const { data: tokens = [], isLoading: loading, refetch } = useQuery({
+    queryKey: ["opd-tokens", hospitalId, today, userRole, userId],
+    enabled: !!hospitalId && (userRole !== "doctor" || !!userId),
+    staleTime: STALE_REALTIME,
+    placeholderData: (prev) => prev,
+    queryFn: async () => {
+      let query = supabase
+        .from("opd_tokens")
+        .select("*, patient:patients(full_name, phone, uhid, gender, dob, blood_group, allergies, chronic_conditions, insurance_id, address), doctor:users!opd_tokens_doctor_id_fkey(full_name), department:departments(name)")
+        .eq("hospital_id", hospitalId as string)
+        .eq("visit_date", today)
+        .order("created_at", { ascending: true });
 
-    const { data, error } = await query;
+      if (userRole === "doctor" && userId) {
+        query = query.eq("doctor_id", userId);
+      }
 
-    if (error) {
-      console.error("Error fetching tokens:", error);
-      toast({ title: "Failed to load OPD queue", description: "Please try again.", variant: "destructive" });
-      setLoading(false);
-      return;
-    }
-    setTokens((data as unknown as OpdToken[]) || []);
-    setLoading(false);
-  }, []);
+      const { data, error } = await query;
+      if (error) {
+        console.error("Error fetching tokens:", error);
+        toast({ title: "Failed to load OPD queue", description: "Please try again.", variant: "destructive" });
+        throw error;
+      }
+      return (data as unknown as OpdToken[]) || [];
+    },
+  });
 
-  useEffect(() => { fetchTokens(); }, [fetchTokens]);
+  const fetchTokens = useCallback(() => { refetch(); }, [refetch]);
 
   useEffect(() => {
     if (!hospitalId) return;
     const channel = supabase
       .channel("opd-tokens-realtime")
-      .on("postgres_changes", { event: "*", schema: "public", table: "opd_tokens", filter: `hospital_id=eq.${hospitalId}` }, () => fetchTokens())
+      .on("postgres_changes", { event: "*", schema: "public", table: "opd_tokens", filter: `hospital_id=eq.${hospitalId}` }, () => {
+        queryClient.invalidateQueries({ queryKey: ["opd-tokens", hospitalId] });
+      })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [hospitalId, fetchTokens]);
+  }, [hospitalId, queryClient]);
 
   const selectedToken = tokens.find((t) => t.id === selectedTokenId) || null;
 

@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { getHospitalIdAsync } from "@/hooks/useHospitalId";
 
 export interface DashboardKPIs {
   totalPatients: number;
@@ -35,12 +36,10 @@ export function useDashboardData() {
 
   const fetchAll = useCallback(async () => {
     try {
-      // Resolve hospital_id before any queries
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { setLoading(false); return; }
+      // Resolve hospital_id from cached source (avoids per-call users query)
       if (!hospitalIdRef.current) {
-        const { data } = await supabase.from("users").select("hospital_id").eq("auth_user_id", user.id).maybeSingle();
-        if (data) hospitalIdRef.current = data.hospital_id;
+        const hid = await getHospitalIdAsync();
+        if (hid) hospitalIdRef.current = hid;
       }
       const hid = hospitalIdRef.current;
       if (!hid) { setLoading(false); return; }
