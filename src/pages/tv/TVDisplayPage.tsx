@@ -149,7 +149,7 @@ const TVDisplayPage: React.FC = () => {
       <div className="w-[60%] flex flex-col p-8">
         {/* Header */}
         <div className="text-center mb-6">
-          {hospital?.logo_url && <img src={hospital.logo_url} alt="Logo" className="h-16 mx-auto mb-3 brightness-0 invert" />}
+          {hospital?.logo_url && <img src={hospital.logo_url} alt="Logo" width={64} height={64} loading="eager" decoding="async" className="h-16 mx-auto mb-3 brightness-0 invert" />}
           <h1 className="text-2xl font-bold tracking-wide">OPD Token Queue</h1>
           <p className="text-xl text-white/70 font-mono mt-1">{format(now, "hh:mm:ss a")}</p>
         </div>

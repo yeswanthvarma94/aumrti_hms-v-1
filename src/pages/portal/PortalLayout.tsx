@@ -48,7 +48,7 @@ const PortalLayout: React.FC<PortalLayoutProps> = ({
       >
         <div className="flex items-center gap-2">
           {hospitalLogo ? (
-            <img src={hospitalLogo} alt="" className="h-7 w-7 rounded object-contain" />
+            <img src={hospitalLogo} alt="" width={28} height={28} loading="eager" decoding="async" className="h-7 w-7 rounded object-contain" />
           ) : (
             <div className="h-7 w-7 rounded flex items-center justify-center" style={{ background: "#0E7B7B" }}>
               <span className="text-white text-xs font-bold">H</span>
