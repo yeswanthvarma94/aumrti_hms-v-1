@@ -173,8 +173,9 @@ const SettingsICDCodesPage: React.FC = () => {
       return;
     }
     const reader = new FileReader();
-    reader.onload = (ev) => {
+    reader.onload = async (ev) => {
       try {
+        const XLSX = await loadXLSX();
         const wb = XLSX.read(ev.target?.result, { type: "binary" });
         const ws = wb.Sheets[wb.SheetNames[0]];
         const json = XLSX.utils.sheet_to_json<Record<string, any>>(ws);
@@ -314,7 +315,8 @@ const SettingsICDCodesPage: React.FC = () => {
     loadCodes();
   };
 
-  const downloadTemplate = () => {
+  const downloadTemplate = async () => {
+    const XLSX = await loadXLSX();
     const ws = XLSX.utils.aoa_to_sheet([
       ["code", "description", "category", "is_billable"],
       ["A01.0", "Typhoid fever", "Infectious Diseases", "true"],

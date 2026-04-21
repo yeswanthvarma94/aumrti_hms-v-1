@@ -772,7 +772,8 @@ ${vouchers}
                   const blob = new Blob([JSON.stringify(gstr1Json, null, 2)], { type: "application/json" });
                   const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `GSTR1_${dateRange.start}_${dateRange.end}.json`; a.click();
                 }}><Download className="h-3 w-3 mr-1" />GSTR-1 JSON</Button>
-                <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => {
+                <Button size="sm" variant="outline" className="text-xs h-7" onClick={async () => {
+                  const XLSX = await loadXLSX();
                   const ws = XLSX.utils.json_to_sheet(gstr1Data);
                   const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "GSTR-1");
                   XLSX.writeFile(wb, `GSTR1_${dateRange.start}_${dateRange.end}.xlsx`);
@@ -920,7 +921,8 @@ ${vouchers}
                 <CardTitle className="text-sm">TDS Summary — Form 26Q Preparation</CardTitle>
                 <p className="text-xs text-muted-foreground">{dateRange.start} to {dateRange.end}</p>
               </div>
-              <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => {
+              <Button size="sm" variant="outline" className="text-xs h-7" onClick={async () => {
+                const XLSX = await loadXLSX();
                 const ws = XLSX.utils.json_to_sheet(tdsData);
                 const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "TDS-26Q");
                 XLSX.writeFile(wb, `TDS_26Q_${dateRange.start}_${dateRange.end}.xlsx`);
