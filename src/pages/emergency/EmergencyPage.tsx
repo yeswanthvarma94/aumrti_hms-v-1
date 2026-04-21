@@ -75,14 +75,16 @@ const EmergencyPage: React.FC = () => {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // Realtime
+  // Realtime — stable channel, only re-subscribes on hospitalId change
+  const fetchDataRef = useRef(fetchData);
+  useEffect(() => { fetchDataRef.current = fetchData; }, [fetchData]);
   useEffect(() => {
     if (!hospitalId) return;
-    const ch = supabase.channel(`ed-realtime-${hospitalId}-${Math.random().toString(36).slice(2, 10)}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "ed_visits", filter: `hospital_id=eq.${hospitalId}` }, () => fetchData())
+    const ch = supabase.channel(`ed-realtime-${hospitalId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "ed_visits", filter: `hospital_id=eq.${hospitalId}` }, () => fetchDataRef.current())
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [hospitalId, fetchData]);
+  }, [hospitalId]);
 
   // Refresh minutes_ago every minute
   useEffect(() => {
