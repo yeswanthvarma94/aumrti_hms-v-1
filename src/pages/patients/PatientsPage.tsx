@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useHospitalId } from "@/hooks/useHospitalId";
 import { useDebounce } from "@/hooks/useDebounce";
+import { useHospitalId } from "@/hooks/useHospitalId";
+import { STALE_OPERATIONAL } from "@/hooks/queries/staleTimes";
 import { Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -44,6 +46,8 @@ const filterLabels: { key: FilterPeriod; label: string }[] = [
   { key: "month", label: "This Month" },
 ];
 
+const PAGE_SIZE = 50;
+
 function getAge(dob: string | null): string {
   if (!dob) return "—";
   const diff = Date.now() - new Date(dob).getTime();
@@ -54,10 +58,8 @@ function getAge(dob: string | null): string {
 const PatientsPage: React.FC = () => {
   const { toast } = useToast();
   const { hospitalId, loading: hidLoading } = useHospitalId();
+  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [patients, setPatients] = useState<Patient[]>([]);
-  const [totalCount, setTotalCount] = useState(0);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 300);
   const [filter, setFilter] = useState<FilterPeriod>("all");
@@ -66,7 +68,63 @@ const PatientsPage: React.FC = () => {
   const [timelinePatient, setTimelinePatient] = useState<Patient | null>(null);
   const [showInactive, setShowInactive] = useState(false);
   const [page, setPage] = useState(0);
-  const PAGE_SIZE = 50;
+
+  // Reset page when filters change
+  useEffect(() => { setPage(0); }, [debouncedSearch, filter, showInactive]);
+
+  const queryKey = ["patients-list", hospitalId, debouncedSearch, filter, showInactive, page];
+
+  const { data, isLoading: loading } = useQuery({
+    queryKey,
+    enabled: !!hospitalId,
+    staleTime: STALE_OPERATIONAL,
+    placeholderData: (prev) => prev,
+    queryFn: async () => {
+      let query = supabase
+        .from("patients")
+        .select("id, uhid, full_name, phone, gender, dob, blood_group, allergies, chronic_conditions, insurance_id, abha_id, address, emergency_contact_name, emergency_contact_phone, created_at, is_active", { count: "exact" })
+        .eq("hospital_id", hospitalId as string)
+        .order("created_at", { ascending: false });
+
+      if (!showInactive) {
+        query = query.neq("is_active", false);
+      }
+
+      if (debouncedSearch.trim()) {
+        const trimmed = debouncedSearch.trim();
+        if (/^\d{10,}$/.test(trimmed)) {
+          query = query.eq("phone", trimmed);
+        } else {
+          const q = `%${trimmed}%`;
+          query = query.or(`full_name.ilike.${q},phone.ilike.${q},uhid.ilike.${q}`);
+        }
+      }
+
+      if (filter === "today") {
+        query = query.gte("created_at", new Date(new Date().setHours(0, 0, 0, 0)).toISOString());
+      } else if (filter === "week") {
+        const d = new Date(); d.setDate(d.getDate() - 7);
+        query = query.gte("created_at", d.toISOString());
+      } else if (filter === "month") {
+        const d = new Date(); d.setMonth(d.getMonth() - 1);
+        query = query.gte("created_at", d.toISOString());
+      }
+
+      const { data, count, error } = await query.range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+      if (error) {
+        toast({ title: "Error loading patients", description: error.message, variant: "destructive" });
+        throw error;
+      }
+      return { rows: (data as Patient[]) || [], count: count ?? 0 };
+    },
+  });
+
+  const patients = data?.rows || [];
+  const totalCount = data?.count || 0;
+
+  const refresh = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["patients-list", hospitalId] });
+  }, [queryClient, hospitalId]);
 
   // Deep-link: auto-open patient by ?id= param
   useEffect(() => {
@@ -79,68 +137,7 @@ const PatientsPage: React.FC = () => {
       });
   }, [hospitalId]);
 
-  const fetchPatients = useCallback(async (append = false) => {
-    if (!hospitalId) return;
-    if (!append) setLoading(true);
-    const currentPage = append ? page : 0;
-    let query = supabase
-      .from("patients")
-      .select("*", { count: "exact" })
-      .eq("hospital_id", hospitalId)
-      .order("created_at", { ascending: false });
-
-    // Filter active/inactive
-    if (!showInactive) {
-      query = query.neq("is_active", false);
-    }
-
-    if (debouncedSearch.trim()) {
-      const trimmed = debouncedSearch.trim();
-      if (/^\d{10,}$/.test(trimmed)) {
-        query = query.eq("phone", trimmed);
-      } else {
-        const q = `%${trimmed}%`;
-        query = query.or(`full_name.ilike.${q},phone.ilike.${q},uhid.ilike.${q}`);
-      }
-    }
-
-    if (filter === "today") {
-      query = query.gte("created_at", new Date(new Date().setHours(0, 0, 0, 0)).toISOString());
-    } else if (filter === "week") {
-      const d = new Date(); d.setDate(d.getDate() - 7);
-      query = query.gte("created_at", d.toISOString());
-    } else if (filter === "month") {
-      const d = new Date(); d.setMonth(d.getMonth() - 1);
-      query = query.gte("created_at", d.toISOString());
-    }
-
-    const { data, count, error } = await query.range(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE - 1);
-    if (error) {
-      toast({ title: "Error loading patients", description: error.message, variant: "destructive" });
-    } else {
-      if (append) {
-        setPatients((prev) => [...prev, ...((data as Patient[]) || [])]);
-      } else {
-        setPatients((data as Patient[]) || []);
-      }
-      setTotalCount(count ?? 0);
-    }
-    setLoading(false);
-  }, [debouncedSearch, filter, toast, hospitalId, page, showInactive]);
-
-  useEffect(() => {
-    setPage(0);
-    fetchPatients();
-  }, [debouncedSearch, filter, hospitalId, showInactive]);
-
-  const loadMore = () => {
-    const nextPage = page + 1;
-    setPage(nextPage);
-  };
-
-  useEffect(() => {
-    if (page > 0) fetchPatients(true);
-  }, [page]);
+  const loadMore = () => setPage((p) => p + 1);
 
   if (hidLoading) return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   if (!hospitalId) return null;
@@ -195,7 +192,7 @@ const PatientsPage: React.FC = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {loading ? (
+            {loading && patients.length === 0 ? (
               <TableRow><TableCell colSpan={7} className="text-center py-16 text-muted-foreground">Loading…</TableCell></TableRow>
             ) : patients.length === 0 ? (
               <TableRow>
@@ -234,22 +231,22 @@ const PatientsPage: React.FC = () => {
             )}
           </TableBody>
         </Table>
-        {!loading && patients.length < totalCount && (
+        {!loading && patients.length > 0 && (page + 1) * PAGE_SIZE < totalCount && (
           <div className="flex justify-center py-3 border-t border-border">
             <Button variant="outline" size="sm" onClick={loadMore}>
-              Load More ({patients.length} of {totalCount})
+              Load More ({(page + 1) * PAGE_SIZE} of {totalCount})
             </Button>
           </div>
         )}
       </div>
 
-      {showRegister && <PatientRegistrationModal onClose={() => setShowRegister(false)} onSuccess={() => { setShowRegister(false); fetchPatients(); }} />}
+      {showRegister && <PatientRegistrationModal onClose={() => setShowRegister(false)} onSuccess={() => { setShowRegister(false); refresh(); }} />}
       {selectedPatient && (
         <PatientDetailDrawer
           patient={selectedPatient}
           onClose={() => setSelectedPatient(null)}
-          onUpdated={() => { setSelectedPatient(null); fetchPatients(); }}
-          onDeleted={() => { setSelectedPatient(null); fetchPatients(); }}
+          onUpdated={() => { setSelectedPatient(null); refresh(); }}
+          onDeleted={() => { setSelectedPatient(null); refresh(); }}
         />
       )}
       {timelinePatient && (
