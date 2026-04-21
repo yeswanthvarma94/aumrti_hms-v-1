@@ -142,10 +142,10 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           {/* Public routes */}
-          <Route path="/" element={<LandingPage />} />
+          <Route path="/" element={<SuspenseWrap><LandingPage /></SuspenseWrap>} />
           <Route path="/pay/:token" element={<SuspenseWrap><PaymentLandingPage /></SuspenseWrap>} />
           <Route path="/portal/*" element={<SuspenseWrap><PatientPortal /></SuspenseWrap>} />
-          <Route path="/login" element={<LoginPage />} />
+          <Route path="/login" element={<SuspenseWrap><LoginPage /></SuspenseWrap>} />
           <Route path="/register" element={<SuspenseWrap><Register /></SuspenseWrap>} />
           <Route path="/setup/onboarding" element={<AuthGuard><SuspenseWrap><OnboardingWizard /></SuspenseWrap></AuthGuard>} />
           <Route path="/design-system" element={<SuspenseWrap><DesignSystem /></SuspenseWrap>} />
