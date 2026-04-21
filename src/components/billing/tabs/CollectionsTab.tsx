@@ -13,7 +13,7 @@ import {
   Link2, CalendarDays, MessageSquare, HandCoins, RefreshCw,
   Copy, ExternalLink, AlertTriangle, CheckCircle2, Megaphone, QrCode
 } from "lucide-react";
-import { QRCodeSVG } from "qrcode.react";
+const QRCodeSVG = React.lazy(() => import("qrcode.react").then(m => ({ default: m.QRCodeSVG })));
 import CollectionCampaignModal from "@/components/billing/CollectionCampaignModal";
 
 interface OutstandingBill {
@@ -722,7 +722,9 @@ const CollectionsTab: React.FC<CollectionsTabProps> = ({ hospitalId }) => {
                   </div>
 
                   <div className="flex justify-center">
-                    <QRCodeSVG value={generatedPayUrl} size={120} />
+                    <React.Suspense fallback={<div style={{ width: 120, height: 120 }} className="bg-muted animate-pulse rounded" />}>
+                      <QRCodeSVG value={generatedPayUrl} size={120} />
+                    </React.Suspense>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2">

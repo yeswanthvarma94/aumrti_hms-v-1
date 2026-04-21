@@ -1,4 +1,4 @@
-import * as XLSX from "xlsx";
+// xlsx is dynamically imported inside downloadXlsxTemplate() to keep it out of the eager bundle.
 
 export type MigrationEntity = "patients" | "staff" | "services" | "drugs" | "vendors" | "lab_tests";
 
@@ -89,7 +89,8 @@ export const TEMPLATE_SPECS: Record<MigrationEntity, { label: string; columns: C
  * Generate a styled .xlsx template with header, sample row, and instructions row.
  * Required columns are highlighted yellow. Triggers browser download.
  */
-export function downloadXlsxTemplate(entity: MigrationEntity) {
+export async function downloadXlsxTemplate(entity: MigrationEntity) {
+  const XLSX = await import("xlsx");
   const spec = TEMPLATE_SPECS[entity];
   const headers = spec.columns.map((c) => c.label);
   const sample = spec.columns.map((c) => c.sample);

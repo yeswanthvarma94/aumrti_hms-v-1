@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
-import * as XLSX from "xlsx";
+// xlsx is loaded on demand inside the export handler
+const loadXLSX = () => import("xlsx");
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -625,8 +626,9 @@ const ReportViewerModal: React.FC<{ data: any; onClose: () => void; onMarkSubmit
         </div>
 
         <DialogFooter className="flex gap-2">
-          <Button size="sm" className="text-xs" variant="outline" onClick={() => {
+          <Button size="sm" className="text-xs" variant="outline" onClick={async () => {
           try {
+              const XLSX = await loadXLSX();
               const wb = XLSX.utils.book_new();
               const rows: any[] = [];
               const addSection = (title: string, obj: Record<string, any>) => {
