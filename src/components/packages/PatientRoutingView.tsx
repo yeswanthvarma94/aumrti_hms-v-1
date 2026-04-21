@@ -154,7 +154,9 @@ export default function PatientRoutingView({ bookingId, open, onClose, onUpdated
               </div>
               <div className="flex flex-col items-center gap-1">
                 <div className="bg-background p-2 rounded border">
-                  <QRCodeSVG value={qrUrl} size={88} />
+                  <Suspense fallback={<div style={{ width: 88, height: 88 }} className="bg-muted animate-pulse rounded" />}>
+                    <QRCodeSVG value={qrUrl} size={88} />
+                  </Suspense>
                 </div>
                 <p className="text-[10px] text-muted-foreground">Scan to open</p>
               </div>
