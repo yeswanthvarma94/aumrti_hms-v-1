@@ -74,7 +74,7 @@ const EmergencyPage: React.FC = () => {
 
     setVisits(mapped);
     setLoading(false);
-  }, []);
+  }, [hospitalId, hospitalLoading]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 

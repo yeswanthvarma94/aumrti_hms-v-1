@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Bell, MessageSquare, AlertTriangle, Check, X, ExternalLink } from "lucide-react";
+import { Bell, MessageSquare, AlertTriangle, Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
