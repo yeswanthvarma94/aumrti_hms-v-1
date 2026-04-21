@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useHospitalId } from "@/hooks/useHospitalId";
+import { STALE_REALTIME } from "@/hooks/queries/staleTimes";
 import { Microscope } from "lucide-react";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import LabQueuePanel from "@/components/lab/LabQueuePanel";
 import LabInfoPanel from "@/components/lab/LabInfoPanel";
 import LabResultWorkspace from "@/components/lab/LabResultWorkspace";
@@ -25,65 +27,62 @@ interface LabOrder {
 
 const LabPage: React.FC = () => {
   const { toast } = useToast();
-  const [orders, setOrders] = useState<LabOrder[]>([]);
+  const { hospitalId } = useHospitalId();
+  const queryClient = useQueryClient();
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [filterTab, setFilterTab] = useState("all");
   const [showNewOrder, setShowNewOrder] = useState(false);
-  const [hospitalId, setHospitalId] = useState<string | null>(null);
+  const [mainTab, setMainTab] = useState<"worklist" | "qc">("worklist");
 
-  const fetchHospitalId = useCallback(async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const { data, error } = await supabase
-      .from("users")
-      .select("hospital_id")
-      .eq("auth_user_id", user.id)
-      .limit(1)
-      .maybeSingle();
-    if (error) { console.error("Lab hospital fetch error:", error.message); return; }
-    if (data) setHospitalId(data.hospital_id);
-  }, []);
+  const today = new Date().toISOString().split("T")[0];
 
-  const fetchOrders = useCallback(async () => {
-    if (!hospitalId) return;
-    const today = new Date().toISOString().split("T")[0];
-    const { data, error } = await supabase
-      .from("lab_orders")
-      .select(`
-        id, priority, status, order_date, order_time, clinical_notes, patient_id, ordered_by,
-        patients (full_name, uhid, gender, dob, phone, blood_group),
-        ordered_by_user:users!lab_orders_ordered_by_fkey (full_name),
-        lab_order_items (id, status, result_flag, result_value, test_id, lab_test_master:lab_test_master!lab_order_items_test_id_fkey (tat_minutes))
-      `)
-      .eq("hospital_id", hospitalId)
-      .eq("order_date", today)
-      .neq("status", "cancelled")
-      .order("order_time", { ascending: true });
+  const { data: orders = [], refetch } = useQuery({
+    queryKey: ["lab-orders", hospitalId, today],
+    enabled: !!hospitalId,
+    staleTime: STALE_REALTIME,
+    placeholderData: (prev) => prev,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("lab_orders")
+        .select(`
+          id, priority, status, order_date, order_time, clinical_notes, patient_id, ordered_by,
+          patients (full_name, uhid, gender, dob, phone, blood_group),
+          ordered_by_user:users!lab_orders_ordered_by_fkey (full_name),
+          lab_order_items (id, status, result_flag, result_value, test_id, lab_test_master:lab_test_master!lab_order_items_test_id_fkey (tat_minutes))
+        `)
+        .eq("hospital_id", hospitalId as string)
+        .eq("order_date", today)
+        .neq("status", "cancelled")
+        .order("order_time", { ascending: true });
 
-    if (error) {
-      console.error("Lab orders fetch error:", error);
-    } else {
+      if (error) {
+        console.error("Lab orders fetch error:", error);
+        throw error;
+      }
       const sorted = (data || []).sort((a: any, b: any) => {
         const p: Record<string, number> = { stat: 0, urgent: 1, routine: 2 };
         return (p[a.priority] ?? 2) - (p[b.priority] ?? 2);
       });
-      setOrders(sorted as any);
-    }
-  }, [hospitalId]);
+      return sorted as unknown as LabOrder[];
+    },
+  });
 
-  useEffect(() => { fetchHospitalId(); }, [fetchHospitalId]);
-  useEffect(() => { fetchOrders(); }, [fetchOrders]);
+  const fetchOrders = useCallback(() => { refetch(); }, [refetch]);
 
   // Realtime
   useEffect(() => {
     if (!hospitalId) return;
     const channel = supabase
       .channel("lab-realtime")
-      .on("postgres_changes", { event: "*", schema: "public", table: "lab_orders", filter: `hospital_id=eq.${hospitalId}` }, () => fetchOrders())
-      .on("postgres_changes", { event: "*", schema: "public", table: "lab_order_items", filter: `hospital_id=eq.${hospitalId}` }, () => fetchOrders())
+      .on("postgres_changes", { event: "*", schema: "public", table: "lab_orders", filter: `hospital_id=eq.${hospitalId}` }, () => {
+        queryClient.invalidateQueries({ queryKey: ["lab-orders", hospitalId] });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "lab_order_items", filter: `hospital_id=eq.${hospitalId}` }, () => {
+        queryClient.invalidateQueries({ queryKey: ["lab-orders", hospitalId] });
+      })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [hospitalId, fetchOrders]);
+  }, [hospitalId, queryClient]);
 
   const filteredOrders = orders.filter((o) => {
     if (filterTab === "all") return true;
@@ -99,8 +98,6 @@ const LabPage: React.FC = () => {
   const statCount = orders.filter((o) => o.priority === "stat").length;
   const urgentCount = orders.filter((o) => o.priority === "urgent").length;
   const routineCount = orders.filter((o) => o.priority === "routine").length;
-
-  const [mainTab, setMainTab] = useState<"worklist" | "qc">("worklist");
 
   return (
     <div className="flex flex-col" style={{ height: "calc(100vh - 56px)" }}>
@@ -124,7 +121,6 @@ const LabPage: React.FC = () => {
         <LabQCDashboard hospitalId={hospitalId} />
       ) : (
         <div className="flex flex-1 overflow-hidden">
-          {/* Left: Queue */}
           <LabQueuePanel
             orders={filteredOrders}
             selectedOrderId={selectedOrderId}
@@ -137,7 +133,6 @@ const LabPage: React.FC = () => {
             onNewOrder={() => setShowNewOrder(true)}
           />
 
-          {/* Center: Workspace */}
           {selectedOrder ? (
             <LabResultWorkspace order={selectedOrder} onRefresh={fetchOrders} />
           ) : (
@@ -150,12 +145,10 @@ const LabPage: React.FC = () => {
             </div>
           )}
 
-          {/* Right: Info */}
           <LabInfoPanel selectedOrder={selectedOrder} onSelectOrder={setSelectedOrderId} />
         </div>
       )}
 
-      {/* New Order Modal */}
       {showNewOrder && hospitalId && (
         <NewLabOrderModal
           hospitalId={hospitalId}
