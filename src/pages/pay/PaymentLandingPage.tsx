@@ -131,7 +131,7 @@ const PaymentLandingPage: React.FC = () => {
         {/* Header */}
         <div className="bg-primary text-primary-foreground px-6 py-5 text-center">
           {link.hospital_logo && (
-            <img src={link.hospital_logo} alt="" className="h-10 mx-auto mb-2 rounded" />
+            <img src={link.hospital_logo} alt="" width={40} height={40} loading="eager" decoding="async" className="h-10 mx-auto mb-2 rounded" />
           )}
           <h1 className="text-lg font-bold">{link.hospital_name}</h1>
           <p className="text-xs opacity-80 mt-1">Secure Bill Payment</p>

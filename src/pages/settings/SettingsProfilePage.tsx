@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { STALE_MASTER } from "@/hooks/queries/staleTimes";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -19,6 +20,7 @@ const SettingsProfilePage: React.FC = () => {
 
   const { data: hospital } = useQuery({
     queryKey: ["settings-hospital"],
+    staleTime: STALE_MASTER,
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return null;

@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { STALE_MASTER } from "@/hooks/queries/staleTimes";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Plus, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -16,6 +17,7 @@ const SettingsDrugsPage: React.FC = () => {
 
   const { data: drugs, isLoading } = useQuery({
     queryKey: ["settings-drugs"],
+    staleTime: STALE_MASTER,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("drug_master")

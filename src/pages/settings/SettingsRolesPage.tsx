@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { STALE_MASTER } from "@/hooks/queries/staleTimes";
 import { useToast } from "@/hooks/use-toast";
 import { useHospitalId } from "@/hooks/useHospitalId";
 import {
@@ -148,6 +149,7 @@ const SettingsRolesPage: React.FC = () => {
   /* ── Fetch roles ── */
   const { data: roles = [] } = useQuery({
     queryKey: ["role-permissions", hospitalId],
+    staleTime: STALE_MASTER,
     queryFn: async () => {
       if (!hospitalId) return [];
       const { data, error } = await supabase
@@ -170,6 +172,7 @@ const SettingsRolesPage: React.FC = () => {
   };
   const { data: staffCounts = {} } = useQuery({
     queryKey: ["staff-role-counts", hospitalId],
+    staleTime: STALE_MASTER,
     queryFn: async () => {
       if (!hospitalId) return {};
       const { data, error } = await supabase.from("users").select("role").eq("hospital_id", hospitalId);

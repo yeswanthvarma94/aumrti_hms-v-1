@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { STALE_MASTER, STALE_REALTIME } from "@/hooks/queries/staleTimes";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Plus, X, BedDouble } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -33,6 +34,7 @@ const SettingsWardsPage: React.FC = () => {
 
   const { data: wards, isLoading } = useQuery({
     queryKey: ["settings-wards"],
+    staleTime: STALE_MASTER,
     queryFn: async () => {
       const { data, error } = await (supabase as any).from("wards").select("id, name, type, total_beds, is_active, rate_per_day").order("name");
       if (error) throw error;
@@ -42,6 +44,7 @@ const SettingsWardsPage: React.FC = () => {
 
   const { data: bedStats } = useQuery({
     queryKey: ["settings-bed-stats"],
+    staleTime: STALE_REALTIME,
     queryFn: async () => {
       const { data, error } = await supabase.from("beds").select("id, ward_id, status, is_active").eq("is_active", true);
       if (error) throw error;
@@ -52,6 +55,7 @@ const SettingsWardsPage: React.FC = () => {
   const { data: wardBeds } = useQuery({
     queryKey: ["settings-ward-beds", managingWard?.id],
     enabled: !!managingWard,
+    staleTime: STALE_REALTIME,
     queryFn: async () => {
       const { data, error } = await supabase.from("beds").select("id, bed_number, status, is_active")
         .eq("ward_id", managingWard!.id).order("bed_number");

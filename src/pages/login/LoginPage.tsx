@@ -221,7 +221,7 @@ const LoginPage: React.FC = () => {
         style={{ backgroundColor: panelColor }}
       >
         {brand?.logo_url ? (
-          <img src={brand.logo_url} alt="logo" className="h-10 object-contain mb-2" />
+          <img src={brand.logo_url} alt="logo" width={40} height={40} loading="eager" decoding="async" className="h-10 object-contain mb-2" />
         ) : (
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" className="mb-2">
             <path d="M3 21h18M9 8h1M9 12h1M9 16h1M14 8h1M14 12h1M14 16h1M5 21V5a2 2 0 012-2h10a2 2 0 012 2v16" />

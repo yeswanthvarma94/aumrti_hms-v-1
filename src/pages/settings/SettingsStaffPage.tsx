@@ -2,6 +2,7 @@ import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { STALE_MASTER } from "@/hooks/queries/staleTimes";
 import { useToast } from "@/hooks/use-toast";
 import {
   ArrowLeft, Plus, X, Users, Stethoscope, HeartPulse,
@@ -109,6 +110,7 @@ const SettingsStaffPage: React.FC = () => {
   /* ─── Queries ─── */
   const { data: users, isLoading } = useQuery({
     queryKey: ["settings-staff"],
+    staleTime: STALE_MASTER,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("users")
@@ -121,6 +123,7 @@ const SettingsStaffPage: React.FC = () => {
 
   const { data: departments } = useQuery({
     queryKey: ["settings-departments-list"],
+    staleTime: STALE_MASTER,
     queryFn: async () => {
       const { data } = await supabase.from("departments").select("id, name").eq("is_active", true).order("name");
       return data ?? [];
@@ -129,6 +132,7 @@ const SettingsStaffPage: React.FC = () => {
 
   const { data: wards } = useQuery({
     queryKey: ["settings-wards-list"],
+    staleTime: STALE_MASTER,
     queryFn: async () => {
       const { data } = await supabase.from("wards").select("id, name").eq("is_active", true).order("name");
       return data ?? [];
@@ -137,6 +141,7 @@ const SettingsStaffPage: React.FC = () => {
 
   const { data: customRoles } = useQuery({
     queryKey: ["settings-custom-roles"],
+    staleTime: STALE_MASTER,
     queryFn: async () => {
       const { data } = await (supabase as any).from("role_permissions")
         .select("role_name, role_label, is_system_role")

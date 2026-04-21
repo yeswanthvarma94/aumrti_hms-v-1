@@ -184,7 +184,7 @@ const PortalLogin: React.FC<PortalLoginProps> = ({ hospitalId, onLogin }) => {
       {/* Hospital Branding */}
       <div className="w-full flex flex-col items-center pt-16 pb-8" style={{ background: "linear-gradient(180deg, #0E7B7B 0%, #0A6363 100%)" }}>
         {hospitalBrand.logo_url ? (
-          <img src={hospitalBrand.logo_url} alt="" className="h-20 w-20 rounded-2xl object-contain bg-white/10 p-2 mb-3" />
+          <img src={hospitalBrand.logo_url} alt="" width={80} height={80} loading="eager" decoding="async" className="h-20 w-20 rounded-2xl object-contain bg-white/10 p-2 mb-3" />
         ) : (
           <div className="h-20 w-20 rounded-2xl bg-white/20 flex items-center justify-center mb-3">
             <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5">

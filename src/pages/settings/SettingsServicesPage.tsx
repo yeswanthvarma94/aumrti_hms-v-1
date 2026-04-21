@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { STALE_MASTER } from "@/hooks/queries/staleTimes";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Plus, X, Receipt } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -58,6 +59,7 @@ const SettingsServicesPage: React.FC = () => {
 
   const { data: services, isLoading } = useQuery({
     queryKey: ["settings-services"],
+    staleTime: STALE_MASTER,
     queryFn: async () => {
       const { data, error } = await supabase.from("service_master")
         .select("id, name, category, fee, follow_up_fee, is_active, gst_applicable")
@@ -69,6 +71,7 @@ const SettingsServicesPage: React.FC = () => {
 
   const { data: departments } = useQuery({
     queryKey: ["settings-dept-for-services"],
+    staleTime: STALE_MASTER,
     queryFn: async () => {
       const { data } = await supabase.from("departments").select("id, name").eq("is_active", true).order("name");
       return data ?? [];
@@ -77,6 +80,7 @@ const SettingsServicesPage: React.FC = () => {
 
   const { data: serviceRates } = useQuery({
     queryKey: ["settings-service-rates"],
+    staleTime: STALE_MASTER,
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("service_rates")

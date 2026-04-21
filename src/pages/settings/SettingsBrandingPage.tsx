@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { STALE_MASTER } from "@/hooks/queries/staleTimes";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Upload, X, Monitor, Smartphone, Printer, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -55,6 +56,7 @@ const SettingsBrandingPage: React.FC = () => {
 
   const { data: hospital } = useQuery({
     queryKey: ["hospital-branding"],
+    staleTime: STALE_MASTER,
     queryFn: async () => {
       const { data: user } = await supabase.from("users").select("hospital_id").limit(1).maybeSingle();
       if (!user) return null;
