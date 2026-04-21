@@ -12,6 +12,7 @@ import AuthGuard from "@/components/auth/AuthGuard";
 import RoleGuard from "@/components/auth/RoleGuard";
 import ModuleErrorBoundary from "@/components/auth/ModuleErrorBoundary";
 import { ROUTE_ROLES } from "@/lib/routeRoles";
+import { BranchProvider } from "@/contexts/BranchContext";
 
 const Register = lazy(() => import("./pages/register"));
 const OnboardingWizard = lazy(() => import("./pages/setup/OnboardingWizard"));
@@ -140,6 +141,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <BranchProvider>
         <Routes>
           {/* Public routes */}
           <Route path="/" element={<SuspenseWrap><LandingPage /></SuspenseWrap>} />
