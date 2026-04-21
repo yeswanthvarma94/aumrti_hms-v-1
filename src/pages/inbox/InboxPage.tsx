@@ -481,6 +481,18 @@ const InboxPage: React.FC = () => {
               );
             })
           )}
+          {messages.length < totalMessages && (
+            <div className="flex justify-center py-3">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={loadMoreMessages}
+                disabled={loadingMore}
+              >
+                {loadingMore ? "Loading…" : `Load older (${messages.length} of ${totalMessages})`}
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
