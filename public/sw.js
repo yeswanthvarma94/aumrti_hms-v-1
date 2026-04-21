@@ -1,7 +1,8 @@
-// Aumrti HMS — Service Worker
-// Cache-first for static assets, network-first for Supabase API.
-const CACHE_NAME = 'aumrti-hms-v1';
-const STATIC_ASSETS = ['/', '/index.html', '/favicon.ico', '/manifest.json'];
+// Aumrti HMS — Service Worker v2
+// Network-first for HTML/navigations (prevents stale shell pointing to deleted JS chunks).
+// Cache-first for hashed static assets. Network-first for Supabase API.
+const CACHE_NAME = 'aumrti-hms-v2';
+const STATIC_ASSETS = ['/favicon.ico', '/manifest.json'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -20,17 +21,16 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Only handle GET
   if (event.request.method !== 'GET') return;
 
   const url = new URL(event.request.url);
 
-  // Never cache OAuth or auth callback routes
+  // Never intercept OAuth or auth callback routes
   if (url.pathname.startsWith('/~oauth') || url.pathname.startsWith('/auth/callback')) {
     return;
   }
 
-  // Network-first for Supabase API calls
+  // Network-first for Supabase API
   if (url.hostname.includes('supabase.co')) {
     event.respondWith(
       fetch(event.request).catch(() =>
@@ -47,10 +47,35 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Cache-first for same-origin static assets
-  if (url.origin === self.location.origin) {
+  if (url.origin !== self.location.origin) return;
+
+  const isNavigation =
+    event.request.mode === 'navigate' ||
+    (event.request.headers.get('accept') || '').includes('text/html') ||
+    url.pathname.endsWith('.html');
+
+  // Network-first for HTML / navigations — always get fresh shell with current chunk hashes
+  if (isNavigation) {
     event.respondWith(
-      caches.match(event.request).then((cached) => cached || fetch(event.request))
+      fetch(event.request).catch(() =>
+        caches.match(event.request).then((cached) => cached || caches.match('/'))
+      )
     );
+    return;
   }
+
+  // Cache-first for hashed static assets (JS, CSS, fonts, images)
+  event.respondWith(
+    caches.match(event.request).then(
+      (cached) =>
+        cached ||
+        fetch(event.request).then((res) => {
+          if (res.ok && res.type === 'basic') {
+            const copy = res.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+          }
+          return res;
+        })
+    )
+  );
 });

@@ -31,18 +31,19 @@ export function useDashboardData() {
   const [kpis, setKpis] = useState<DashboardKPIs>(empty);
   const [loading, setLoading] = useState(true);
   const [seeding, setSeeding] = useState(false);
+  const [hospitalId, setHospitalId] = useState<string | null>(null);
   const { toast } = useToast();
-  const hospitalIdRef = useRef<string | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const fetchAll = useCallback(async () => {
+  const fetchAll = useCallback(async (hidOverride?: string) => {
     try {
-      // Resolve hospital_id from cached source (avoids per-call users query)
-      if (!hospitalIdRef.current) {
-        const hid = await getHospitalIdAsync();
-        if (hid) hospitalIdRef.current = hid;
+      const hid = hidOverride || hospitalId;
+      if (!hid) {
+        const resolved = await getHospitalIdAsync();
+        if (!resolved) { setLoading(false); return; }
+        setHospitalId(resolved);
+        return; // effect will re-run fetch with new hid
       }
-      const hid = hospitalIdRef.current;
-      if (!hid) { setLoading(false); return; }
 
       const today = new Date().toISOString().split("T")[0];
       const now = new Date();
@@ -50,30 +51,20 @@ export function useDashboardData() {
       const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
       const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
 
-      // Fire all queries in parallel with Promise.allSettled for resilience
       const results = await Promise.allSettled([
-        // 0: Total patients
         supabase.from("patients").select("*", { count: "exact", head: true }).eq("hospital_id", hid),
-        // 1: Patients today
         supabase.from("patients").select("*", { count: "exact", head: true }).eq("hospital_id", hid)
           .gte("created_at", today + "T00:00:00").lt("created_at", today + "T23:59:59.999Z"),
-        // 2: Beds
         supabase.from("beds").select("status").eq("hospital_id", hid),
-        // 3: OPD visits today
         supabase.from("opd_visits").select("status").eq("hospital_id", hid).eq("visit_date", today),
-        // 4: Revenue MTD
         supabase.from("bills").select("paid_amount").eq("hospital_id", hid).gte("bill_date", monthStart),
-        // 5: Revenue last month
         supabase.from("bills").select("paid_amount").eq("hospital_id", hid)
           .gte("bill_date", lastMonth.toISOString().split("T")[0])
           .lte("bill_date", lastMonthEnd.toISOString().split("T")[0]),
-        // 6: Total doctors
         supabase.from("users").select("*", { count: "exact", head: true }).eq("hospital_id", hid)
           .eq("role", "doctor").eq("is_active", true),
-        // 7: On leave
         supabase.from("staff_attendance").select("*", { count: "exact", head: true }).eq("hospital_id", hid)
           .eq("attendance_date", today).eq("status", "leave"),
-        // 8: Critical alerts
         supabase.from("clinical_alerts").select("id", { count: "exact", head: true }).eq("hospital_id", hid)
           .eq("is_acknowledged", false),
       ]);
@@ -117,7 +108,13 @@ export function useDashboardData() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [hospitalId]);
+
+  // Debounced refetch — coalesces bursts of realtime events
+  const debouncedFetch = useCallback(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => { fetchAll(); }, 500);
+  }, [fetchAll]);
 
   const seedData = useCallback(async () => {
     setSeeding(true);
@@ -140,24 +137,26 @@ export function useDashboardData() {
     fetchAll();
   }, [fetchAll]);
 
-  // Realtime subscriptions
+  // Realtime — stable channel, only re-subscribes when hospitalId actually changes
   useEffect(() => {
-    const hid = hospitalIdRef.current;
-    if (!hid) return;
+    if (!hospitalId) return;
 
-    const channel = supabase.channel(`dashboard-realtime-${hid}-${Math.random().toString(36).slice(2, 10)}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "beds", filter: `hospital_id=eq.${hid}` }, () => fetchAll())
-      .on("postgres_changes", { event: "*", schema: "public", table: "opd_visits", filter: `hospital_id=eq.${hid}` }, () => fetchAll())
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "clinical_alerts", filter: `hospital_id=eq.${hid}` }, (payload: any) => {
-        fetchAll();
+    const channel = supabase.channel(`dashboard-realtime-${hospitalId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "beds", filter: `hospital_id=eq.${hospitalId}` }, () => debouncedFetch())
+      .on("postgres_changes", { event: "*", schema: "public", table: "opd_visits", filter: `hospital_id=eq.${hospitalId}` }, () => debouncedFetch())
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "clinical_alerts", filter: `hospital_id=eq.${hospitalId}` }, (payload: any) => {
+        debouncedFetch();
         if (payload.new?.severity === "critical") {
           toast({ title: "🚨 Critical Alert", description: payload.new.alert_message, variant: "destructive" });
         }
       })
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
-  }, [fetchAll, toast, loading]); // re-subscribe when hospitalId is available after loading
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      supabase.removeChannel(channel);
+    };
+  }, [hospitalId, debouncedFetch, toast]);
 
   return { kpis, loading, seeding, seedData, refetch: fetchAll };
 }
