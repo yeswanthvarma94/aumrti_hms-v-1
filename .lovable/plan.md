@@ -1,70 +1,102 @@
 
 
-# Diagnosis: Why the app is slow / tabs not opening
+# Why the app is still slow / "stuck until hard refresh"
 
-## Primary culprit — Dashboard realtime loop (Phase 7.3 regression)
+The Phase 7 realtime fix worked — that loop is dead. But two **separate** problems remain that produce the exact symptoms you're seeing.
 
-`src/hooks/useDashboardData.ts` lines 144–160:
-- The realtime `useEffect` lists `loading` in its dependency array.
-- The channel name uses `Math.random()` so every re-run creates a brand-new channel.
-- Inside the channel handlers, every postgres event calls `fetchAll()`, which flips `loading` → effect re-runs → channel torn down + recreated with a new random id → reconnect handshake → queries refire.
+## Root cause #1 — Stale Service Worker (this is why "hard refresh fixes it")
 
-Net effect: as soon as you land on `/dashboard`, the page enters a **realtime → fetch → setState → re-subscribe** loop that hammers Supabase, blocks the main thread with re-renders, and starves every other page (because the React Query cache, network and Supabase realtime socket are shared globally). This matches your symptom of "tabs not even opening" — the browser tab is too busy reconnecting and re-fetching to render anything else.
+Last round we shipped `sw.js` v2 (network-first HTML). But users already have v1 installed in their browser. The v2 worker installs in the background and only takes control on the **next** navigation, not the current page. Until the user hard-refreshes, v1 keeps serving the cached `index.html` that points to JS chunk hashes which no longer exist on the published build → infinite "loading" spinner / blank tabs.
 
-## Secondary issues found
+This perfectly matches: *"only sometimes when I hard refresh the browser it again restarts and starts to work"*.
 
-1. **`Math.random()` in channel names everywhere** (`useDashboardData`, `IPDPage`, `EmergencyPage`). React 18 StrictMode mounts effects twice in dev → 2 channels per page per mount. Combined with normal remounts, the realtime socket accumulates dozens of dead/duplicate subscriptions.
-2. **EmergencyPage `fetchData` not memoised against `hospitalId`** — it re-creates on every render and is in the realtime effect's deps, so the channel re-subscribes on every parent re-render once an ED event fires.
-3. **Service worker caches `/index.html`** with `cache-first` (`public/sw.js` line 51). After Phase 6's chunk-name changes were published, browsers that already have the old SW are serving the old `index.html` which references hashed JS files that no longer exist → blank/slow page until the SW updates. The SW also has no version bump since v1.
-4. **Bundle-level eager imports**: `App.tsx` lazy-loads route pages, but `LandingPage` and `LoginPage` are imported eagerly at the top, so they ship in the initial JS even when the user is already authenticated.
+The fix is to make v2 **forcibly take over and trigger a one-time auto-reload** of all open tabs the moment it activates. After this is shipped + republished once, every user gets the new SW automatically and never has to hard-refresh again.
 
-## What to fix (in this order)
+## Root cause #2 — Duplicate user-record queries on every navigation
 
-### Fix 1 — Stop the dashboard realtime loop (biggest win)
-In `src/hooks/useDashboardData.ts`:
-- Remove `loading` from the realtime effect's dependency array.
-- Use a stable channel name: `dashboard-realtime-${hid}` (drop `Math.random()`).
-- Track `hid` via state (not ref) so the effect re-runs only when `hid` actually changes from null → uuid.
-- Debounce the realtime → `fetchAll` calls (e.g. coalesce events within 500 ms) so a burst of bed/opd inserts doesn't trigger 10 sequential refetches.
+`useHospitalId` already caches the user's `hospital_id` + `role` in TanStack Query (cache forever). But:
 
-### Fix 2 — Stable channel names + correct deps
-- `IPDPage.tsx` line 137: drop `Math.random()` suffix → `ipd-realtime-${hospitalId}`.
-- `EmergencyPage.tsx` line 81: same change → `ed-realtime-${hospitalId}`. Also wrap `fetchData` so its identity is stable across renders or remove it from the realtime effect's deps and call a ref-stored version.
+- `AppHeader.tsx` lines 71–83 → independently re-queries `users` on every mount.
+- `AppSidebar.tsx` lines 63–76 → independently re-queries `users` on every mount.
+- `EmergencyPage.tsx` line 40 → also re-queries `users` instead of using `useHospitalId`.
 
-### Fix 3 — Bump the service worker and stop caching `index.html`
-In `public/sw.js`:
-- Bump `CACHE_NAME` to `'aumrti-hms-v2'` so old caches get purged on activate.
-- Remove `'/index.html'` and `'/'` from `STATIC_ASSETS`.
-- Switch the same-origin handler to **network-first for `.html` and navigation requests** (cache-first only for hashed JS/CSS/fonts/images). This prevents the "old shell points to deleted JS chunks" failure mode going forward.
+So every time a tab opens, the auth-critical path fires **3 redundant Supabase queries** in serial before the page can render. Combined with the next issue, this is enough to make pages feel "stuck".
 
-### Fix 4 — Trim the eager bundle
-In `src/App.tsx`:
-- Convert `LandingPage` and `LoginPage` to `lazy()` like every other route. They're only needed when unauthenticated, but they're currently shipped in every initial load including the dashboard.
+## Root cause #3 — Notification centre polling on every page
 
-## Out of scope for this fix (noted, not done)
+`NotificationCentre.tsx` polls 2 tables every 30 seconds on **every authenticated page**. With 30+ open tabs across a hospital, plus realtime channels per page, the Supabase HTTP pool saturates and pages start timing out.
 
-- The 4 security findings shown in the Security panel (client-side OTP, open hospital-registration endpoint, missing Razorpay signature verification, AI keys leaked to browser) are real and serious but unrelated to the slowness. Worth fixing in a separate plan.
+Switching to **realtime subscriptions** (which we already use elsewhere) eliminates the polling entirely.
 
-## If the fix doesn't help — rollback option
+## Root cause #4 — Brittle preview-host detection in `registerSW.ts`
 
-You can roll back without me doing anything: open the chat **History** tab and pick a checkpoint from before "Phase 7" started (look for the message just before "Continue phase 7"). That message-level revert restores the project files atomically. After reverting, click **Publish → Update** to push the rolled-back build live.
+The expression on line 21 is:
+```ts
+host.includes('lovable.app') === false && host.includes('lovable')
+```
+Operator-precedence bug — works by coincidence today but will silently flip if Lovable changes hostnames. Needs to be a clean allow-list.
+
+---
+
+# The fix (5 small, isolated edits)
+
+### Fix A — `public/sw.js` : force-takeover + auto-reload all tabs on update
+- Already calls `clients.claim()`. Add a `postMessage('SW_ACTIVATED')` to all clients on activate.
+- Bump cache name to `aumrti-hms-v3` so v2 caches are wiped on activate.
+
+### Fix B — `src/lib/registerSW.ts` : listen for SW activation and reload once
+- Add `navigator.serviceWorker.addEventListener('controllerchange', …)` that does a single `window.location.reload()` (guarded with `sessionStorage` so it only fires once per session).
+- Rewrite the host check as a clean allow-list of preview hosts (no boolean ambiguity).
+
+### Fix C — `src/components/layout/AppHeader.tsx` : use cached user record
+- Delete the local `supabase.from('users')…` query. Read `hospitalId` and user info from `useHospitalId()` (already cached forever).
+
+### Fix D — `src/components/layout/AppSidebar.tsx` : use cached user record
+- Same change. Read `userName`/`role` via `useHospitalId()` extended (or via a tiny `useCurrentUser()` reusing the same TanStack Query cache key) instead of re-querying `users`.
+
+### Fix E — `src/components/layout/NotificationCentre.tsx` : realtime instead of 30s poll
+- Drop the 30 s `setInterval`.
+- Subscribe via `supabase.channel('notif-${hospitalId}')` to `whatsapp_notifications` and `clinical_alerts` (filtered by `hospital_id`). Initial fetch on mount; realtime keeps it fresh.
+- Reuses the existing realtime socket — zero extra cost.
+
+### Fix F (small, optional) — `src/pages/emergency/EmergencyPage.tsx`
+- Replace local `users` lookup at line 40 with `useHospitalId()` for consistency.
+
+---
+
+# What this delivers
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| Pages don't open until hard refresh | Stale SW v1 still serving old chunks | Fix A + B (SW v3 + auto-reload) |
+| First load after navigation feels stuck | 3 duplicate `users` queries blocking | Fix C + D + F |
+| App degrades over time when left open | 30 s notification polling | Fix E (realtime) |
+| Future host changes silently break SW | Brittle preview-host check | Fix B (clean allow-list) |
+
+After these are merged + published **once**, every existing user's browser will:
+1. Download SW v3 in the background
+2. Auto-reload exactly once when v3 takes over
+3. From then on, get fresh `index.html` on every navigation — no more "stuck pages"
+
+## Risk & rollback
+- All 5 files are isolated, no shared state changes.
+- If anything regresses, revert just that file from chat **History**.
+- Zero database changes. Zero auth changes.
+
+## Files touched
+- `public/sw.js`
+- `src/lib/registerSW.ts`
+- `src/components/layout/AppHeader.tsx`
+- `src/components/layout/AppSidebar.tsx`
+- `src/components/layout/NotificationCentre.tsx`
+- `src/pages/emergency/EmergencyPage.tsx`
+
+## If even this doesn't help — rollback option
+You can roll the whole project back without me touching anything: open the chat **History** tab and pick a checkpoint from before "Continue phase 7". That restores the project files atomically. Then click **Publish → Update** to push it live.
 
 ```xml
 <lov-actions>
   <lov-open-history>View History</lov-open-history>
 </lov-actions>
 ```
-
-## Risk & rollback for the fix itself
-
-- All four fixes are isolated edits to 4 files. If any single one regresses, revert just that file from the History view.
-- After applying, hard-refresh the published site once (Ctrl+Shift+R) so the new SW activates and clears the v1 cache.
-
-## Files touched
-
-- `src/hooks/useDashboardData.ts` — kill the realtime loop, debounce refetches.
-- `src/pages/ipd/IPDPage.tsx` — stable channel name.
-- `src/pages/emergency/EmergencyPage.tsx` — stable channel name + memoised fetch.
-- `public/sw.js` — version bump, drop HTML caching, network-first for navigations.
-- `src/App.tsx` — lazy-load LandingPage and LoginPage.
 
