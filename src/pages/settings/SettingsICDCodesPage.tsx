@@ -15,7 +15,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useHospitalId } from "@/hooks/useHospitalId";
 import { toast } from "@/hooks/use-toast";
 import { Search, Upload, Download, Plus, Trash2, Eye, Package, FileText, CheckCircle2, AlertTriangle, Loader2 } from "lucide-react";
-import * as XLSX from "xlsx";
+// xlsx is loaded on demand inside handlers below
+const loadXLSX = () => import("xlsx");
 
 interface CodeSet {
   id: string;

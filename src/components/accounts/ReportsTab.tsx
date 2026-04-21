@@ -9,7 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Printer, FileSpreadsheet, FileText, Bot, CheckCircle2, XCircle, ChevronDown, ChevronRight, Loader2, Download } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { callAI } from "@/lib/aiProvider";
-import * as XLSX from "xlsx";
+// xlsx is loaded on demand inside export handlers
+const loadXLSX = () => import("xlsx");
 import TrialBalanceTab from "./TrialBalanceTab";
 
 interface Props {
