@@ -12,6 +12,8 @@ interface BranchContextValue {
   selectedBranchId: string | null;
   branches: Branch[];
   role: string | null;
+  fullName: string | null;
+  userId: string | null;
   canSwitch: boolean;
   loading: boolean;
   setSelectedBranchId: (id: string) => void;
@@ -29,6 +31,8 @@ export const BranchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   );
   const [branches, setBranches] = useState<Branch[]>([]);
   const [role, setRole] = useState<string | null>(null);
+  const [fullName, setFullName] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const queryClient = useQueryClient();
 
@@ -39,12 +43,14 @@ export const BranchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
       const { data: u } = await supabase
         .from("users")
-        .select("hospital_id, role")
+        .select("id, hospital_id, role, full_name")
         .eq("auth_user_id", user.id)
         .maybeSingle();
 
       const userRole = (u?.role as string) || null;
       setRole(userRole);
+      setFullName((u?.full_name as string) || null);
+      setUserId((u?.id as string) || null);
 
       const isMulti = userRole ? MULTI_BRANCH_ROLES.includes(userRole) : false;
 
@@ -99,6 +105,8 @@ export const BranchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       selectedBranchId,
       branches,
       role,
+      fullName,
+      userId,
       canSwitch,
       loading,
       setSelectedBranchId,
