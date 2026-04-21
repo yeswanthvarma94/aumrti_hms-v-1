@@ -49,12 +49,26 @@ const NotificationCentre: React.FC<{ hospitalId: string | null }> = ({ hospitalI
     setAlerts(data || []);
   }, [hospitalId]);
 
+  // Initial fetch + realtime subscription (replaces 30s polling).
   useEffect(() => {
+    if (!hospitalId) return;
     fetchPending();
     fetchAlerts();
-    const interval = setInterval(() => { fetchPending(); fetchAlerts(); }, 30000);
-    return () => clearInterval(interval);
-  }, [fetchPending, fetchAlerts]);
+    const ch = supabase
+      .channel(`notif-${hospitalId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "whatsapp_notifications", filter: `hospital_id=eq.${hospitalId}` },
+        () => fetchPending()
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "clinical_alerts", filter: `hospital_id=eq.${hospitalId}` },
+        () => fetchAlerts()
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [hospitalId, fetchPending, fetchAlerts]);
 
   const handleSend = async (id: string, waUrl: string) => {
     window.open(waUrl, "_blank", "noopener,noreferrer");

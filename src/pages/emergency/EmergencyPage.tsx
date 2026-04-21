@@ -5,6 +5,7 @@ import EmergencyHeader from "@/components/emergency/EmergencyHeader";
 import TriageBoard from "@/components/emergency/TriageBoard";
 import EmergencyWorkspace from "@/components/emergency/EmergencyWorkspace";
 import EmergencyRegistrationModal from "@/components/emergency/EmergencyRegistrationModal";
+import { useHospitalId } from "@/hooks/useHospitalId";
 
 export interface EDVisit {
   id: string;
@@ -26,25 +27,27 @@ export interface EDVisit {
 }
 
 const EmergencyPage: React.FC = () => {
-  const [hospitalId, setHospitalId] = useState<string | null>(null);
+  const { hospitalId, loading: hospitalLoading } = useHospitalId();
   const [userId, setUserId] = useState<string | null>(null);
   const [visits, setVisits] = useState<EDVisit[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showRegModal, setShowRegModal] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const fetchData = useCallback(async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setLoading(false); return; }
-    setUserId(user.id);
-    const { data: ud, error: udErr } = await supabase.from("users").select("hospital_id").eq("auth_user_id", user.id).maybeSingle();
-    if (udErr || !ud) { console.error("ED user fetch error:", udErr?.message); setLoading(false); return; }
-    setHospitalId(ud.hospital_id);
+  // Capture auth user id once for downstream actions
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => setUserId(user?.id ?? null));
+  }, []);
 
+  const fetchData = useCallback(async () => {
+    if (!hospitalId) {
+      if (!hospitalLoading) setLoading(false);
+      return;
+    }
     const { data, error } = await supabase
       .from("ed_visits")
       .select("*, patient:patients(full_name)")
-      .eq("hospital_id", ud.hospital_id)
+      .eq("hospital_id", hospitalId)
       .eq("is_active", true)
       .order("arrival_time", { ascending: false });
 

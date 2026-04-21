@@ -8,6 +8,7 @@ interface UserRecord {
   id: string
   hospital_id: string | null
   role: string | null
+  full_name: string | null
 }
 
 /**
@@ -18,7 +19,7 @@ interface UserRecord {
 async function fetchCurrentUserRecord(authUserId: string): Promise<UserRecord | null> {
   const { data, error } = await supabase
     .from('users')
-    .select('id, hospital_id, role')
+    .select('id, hospital_id, role, full_name')
     .eq('auth_user_id', authUserId)
     .maybeSingle()
   if (error) {
@@ -102,6 +103,8 @@ export function useHospitalId() {
   return {
     hospitalId,
     role: data?.role ?? null,
+    fullName: data?.full_name ?? null,
+    userId: data?.id ?? null,
     loading,
   }
 }
