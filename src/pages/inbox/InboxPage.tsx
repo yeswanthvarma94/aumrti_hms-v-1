@@ -74,6 +74,8 @@ const SECTIONS: { key: Section; label: string; icon: React.ElementType; channelF
   { key: "resolved", label: "Resolved", icon: Check },
 ];
 
+const INBOX_PAGE_SIZE = 200;
+
 const InboxPage: React.FC = () => {
   const { toast } = useToast();
   const { hospitalId } = useHospitalId();
@@ -91,19 +93,24 @@ const InboxPage: React.FC = () => {
   const [composeName, setComposeName] = useState("");
   const [staffOptions, setStaffOptions] = useState<StaffOpt[]>([]);
   const [tagInput, setTagInput] = useState("");
+  const [messageLimit, setMessageLimit] = useState(INBOX_PAGE_SIZE);
+  const [totalMessages, setTotalMessages] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
   const threadEndRef = useRef<HTMLDivElement>(null);
 
   // ── Load data
   useEffect(() => {
     if (!hospitalId) return;
     (async () => {
-      const { data } = await supabase
+      const { data, count } = await supabase
         .from("inbox_messages")
-        .select("id, hospital_id, patient_id, channel, direction, subject, message_body, sender_name, sender_phone, is_read, is_starred, assigned_to, priority, tags, parent_id, status, resolved_at, resolved_by, created_at, sla_deadline, sla_breached")
+        .select("id, hospital_id, patient_id, channel, direction, subject, message_body, sender_name, sender_phone, is_read, is_starred, assigned_to, priority, tags, parent_id, status, resolved_at, resolved_by, created_at, sla_deadline, sla_breached", { count: "exact" })
         .eq("hospital_id", hospitalId)
         .order("created_at", { ascending: false })
-        .limit(200);
+        .limit(messageLimit);
       if (data) setMessages(data as any);
+      if (typeof count === "number") setTotalMessages(count);
+      setLoadingMore(false);
 
       const { data: staff } = await supabase
         .from("users")
@@ -113,7 +120,13 @@ const InboxPage: React.FC = () => {
         .order("full_name");
       if (staff) setStaffOptions(staff as StaffOpt[]);
     })();
-  }, [hospitalId]);
+  }, [hospitalId, messageLimit]);
+
+  const loadMoreMessages = useCallback(() => {
+    if (loadingMore || messages.length >= totalMessages) return;
+    setLoadingMore(true);
+    setMessageLimit((n) => n + INBOX_PAGE_SIZE);
+  }, [loadingMore, messages.length, totalMessages]);
 
   // ── Realtime: also handle UPDATE so SLA/assignment changes propagate
   useEffect(() => {

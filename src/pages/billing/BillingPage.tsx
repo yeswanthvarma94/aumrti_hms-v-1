@@ -90,7 +90,8 @@ const BillingPage: React.FC = () => {
         .select("id, bill_number, patient_id, encounter_id, admission_id, bill_type, bill_date, bill_status, subtotal, discount_percent, discount_amount, gst_amount, total_amount, advance_received, insurance_amount, patient_payable, paid_amount, balance_due, payment_status, notes, irn, irn_generated_at, created_at, patients!inner(full_name, uhid)")
         .eq("hospital_id", hospitalId as string)
         .gte("bill_date", dateStart)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .limit(200);
 
       if (statusFilter !== "all") {
         query = query.eq("payment_status", statusFilter);
