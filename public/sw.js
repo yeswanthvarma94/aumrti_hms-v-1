@@ -1,7 +1,7 @@
-// Aumrti HMS — Service Worker v2
-// Network-first for HTML/navigations (prevents stale shell pointing to deleted JS chunks).
-// Cache-first for hashed static assets. Network-first for Supabase API.
-const CACHE_NAME = 'aumrti-hms-v2';
+// Aumrti HMS — Service Worker v3
+// Network-first for HTML/navigations. Cache-first for hashed static assets.
+// Force-takeover + broadcast SW_ACTIVATED so open tabs auto-reload exactly once.
+const CACHE_NAME = 'aumrti-hms-v3';
 const STATIC_ASSETS = ['/favicon.ico', '/manifest.json'];
 
 self.addEventListener('install', (event) => {
@@ -13,11 +13,16 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
-    )
+    (async () => {
+      const keys = await caches.keys();
+      await Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)));
+      await self.clients.claim();
+      const clients = await self.clients.matchAll({ type: 'window' });
+      clients.forEach((client) => {
+        try { client.postMessage({ type: 'SW_ACTIVATED', cache: CACHE_NAME }); } catch {}
+      });
+    })()
   );
-  self.clients.claim();
 });
 
 self.addEventListener('fetch', (event) => {

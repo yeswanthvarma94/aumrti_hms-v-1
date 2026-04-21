@@ -1,15 +1,16 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   Home, LayoutGrid, UserPlus, Stethoscope, BedDouble,
-  FlaskConical, Pill, Receipt, BarChart3, Inbox, Settings,
-  LogOut, HeartPulse, Activity, FolderOpen, X, CalendarDays, Building2,
+  FlaskConical, Receipt, BarChart3, Inbox, Settings,
+  LogOut, HeartPulse, FolderOpen, X, CalendarDays, Building2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "./SidebarContext";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useHospitalId } from "@/hooks/useHospitalId";
 import BranchSwitcher from "./BranchSwitcher";
 
 interface SidebarItem {
@@ -54,26 +55,15 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ isMobileOverlay, onClose }) => 
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [userName, setUserName] = useState("User");
-  const [userRole, setUserRole] = useState("");
-  const [userInitials, setUserInitials] = useState("U");
+  const { fullName, role } = useHospitalId();
+  const userName = fullName || "User";
+  const userRole = role || "";
+  const userInitials = React.useMemo(() => {
+    const parts = (fullName || "U").split(" ");
+    return parts.map((p) => p[0]).join("").toUpperCase().slice(0, 2);
+  }, [fullName]);
 
   const isCollapsed = isMobileOverlay ? false : collapsed;
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) return;
-      supabase.from("users").select("full_name, role").eq("auth_user_id", user.id).maybeSingle()
-        .then(({ data }) => {
-          if (data) {
-            setUserName(data.full_name || "User");
-            setUserRole(data.role || "");
-            const parts = (data.full_name || "U").split(" ");
-            setUserInitials(parts.map((p: string) => p[0]).join("").toUpperCase().slice(0, 2));
-          }
-        });
-    });
-  }, []);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();

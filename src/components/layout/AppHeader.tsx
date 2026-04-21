@@ -7,6 +7,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useHospitalId } from "@/hooks/useHospitalId";
 import NotificationCentre from "./NotificationCentre";
 import {
   DropdownMenu,
@@ -49,8 +50,11 @@ const AppHeader: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [online, setOnline] = useState(navigator.onLine);
-  const [hospitalId, setHospitalId] = useState<string | null>(null);
-  const [userInitials, setUserInitials] = useState("U");
+  const { hospitalId, fullName } = useHospitalId();
+  const userInitials = React.useMemo(() => {
+    const parts = (fullName || "U").split(" ");
+    return parts.map((p) => p[0]).join("").toUpperCase().slice(0, 2);
+  }, [fullName]);
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window !== "undefined") {
       return localStorage.getItem("hms_theme") === "dark";
@@ -67,20 +71,6 @@ const AppHeader: React.FC = () => {
       localStorage.setItem("hms_theme", "light");
     }
   }, [darkMode]);
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) return;
-      supabase.from("users").select("hospital_id, full_name").eq("auth_user_id", user.id).maybeSingle()
-        .then(({ data }) => {
-          if (data) {
-            setHospitalId(data.hospital_id);
-            const parts = (data.full_name || "U").split(" ");
-            setUserInitials(parts.map((p: string) => p[0]).join("").toUpperCase().slice(0, 2));
-          }
-        });
-    });
-  }, []);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
