@@ -99,7 +99,7 @@ const InboxPage: React.FC = () => {
     (async () => {
       const { data } = await supabase
         .from("inbox_messages")
-        .select("*")
+        .select("id, hospital_id, patient_id, channel, direction, subject, message_body, sender_name, sender_phone, is_read, is_starred, assigned_to, priority, tags, parent_id, status, resolved_at, resolved_by, created_at, sla_deadline, sla_breached")
         .eq("hospital_id", hospitalId)
         .order("created_at", { ascending: false })
         .limit(200);
@@ -142,7 +142,7 @@ const InboxPage: React.FC = () => {
     (async () => {
       const { data } = await supabase
         .from("inbox_messages")
-        .select("*")
+        .select("id, hospital_id, patient_id, channel, direction, subject, message_body, sender_name, sender_phone, is_read, is_starred, assigned_to, priority, tags, parent_id, status, resolved_at, resolved_by, created_at, sla_deadline, sla_breached")
         .eq("hospital_id", hospitalId)
         .or(`id.eq.${rootId},parent_id.eq.${rootId}`)
         .order("created_at", { ascending: true });
