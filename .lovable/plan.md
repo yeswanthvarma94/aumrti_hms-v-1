@@ -1,56 +1,51 @@
 
-# Phase 3 — Replace `SELECT *` on List Views
 
-Goal: Reduce JSON payload sizes by 30–60% on the highest-traffic list pages by selecting only the columns each list actually renders. Detail/edit drawers keep `select('*')` since they fetch a single row.
+# Fix: White screen on published `/login` (and likely other routes)
 
-## Scope
+## What's happening
 
-Only **list views** are touched. Single-row fetches (drawers, edit modals, RPC inputs) are left alone — they're already cheap.
+- Preview URL (`*.lovableproject.com/login`) renders fine — console proves `LoginPage` mounted there.
+- Published URL (`preview--aumrtihmsv1.lovable.app/login`) is fully blank, no error UI.
+- ErrorBoundary did not catch — meaning rendering never started in the production build.
 
-## Files to modify
+## Root cause
 
-| File | Current `.select('*')` site | Columns to keep |
-|---|---|---|
-| `src/pages/billing/BillingPage.tsx` | bills list query | `id, bill_number, bill_type, bill_date, total_amount, paid_amount, payment_status, bill_status, admission_id, patient_id, encounter_id, created_at` + `patient:patients(full_name, uhid, phone)` |
-| `src/components/billing/BillQueue.tsx` | bills list (if present) | same column set as above |
-| `src/pages/patients/PatientsPage.tsx` | patients list | `id, uhid, full_name, phone, gender, date_of_birth, blood_group, is_active, created_at` |
-| `src/pages/ipd/IPDPage.tsx` | admissions list | `id, admission_number, admission_date, ward_id, bed_id, patient_id, status, medical_cleared, billing_cleared, pharmacy_cleared` + `patient:patients(full_name, uhid)` |
-| `src/pages/opd/OPDPage.tsx` | opd_tokens / encounters list | `id, token_number, status, patient_id, doctor_id, department_id, created_at` + `patient:patients(full_name, uhid)` |
-| `src/pages/lab/LabPage.tsx` | lab_orders list | `id, order_number, order_date, status, priority, patient_id, ordered_by` + `patient:patients(full_name, uhid)` |
-| `src/pages/radiology/RadiologyPage.tsx` | radiology_orders list | `id, order_number, modality, study_type, status, scheduled_at, patient_id` + `patient:patients(full_name, uhid)` |
-| `src/components/pharmacy/ip/DispensingWorkspace.tsx` | pharmacy_dispensing list (queue view only) | `id, status, admission_id, drug_id, batch_id, quantity, dispensed_at, patient_id` + `patient:patients(full_name, uhid)` |
-| `src/pages/inbox/InboxPage.tsx` | inbox_messages list | `id, channel, direction, subject, preview, status, sentiment, patient_id, created_at` |
-| `src/pages/mrd/MRDPage.tsx` (audit log section) | `audit_log` list | `id, action, entity_type, entity_id, user_id, created_at, summary` |
+Phase 6 added an aggressive `manualChunks` config in `vite.config.ts` that splits `node_modules` into 9+ vendor chunks (`vendor-react`, `vendor-router`, `vendor-radix`, `vendor-query`, `vendor-supabase`, `vendor-charts`, `vendor-date`, `vendor-icons`, `vendor-forms`, `vendor-misc`).
 
-## Pattern applied everywhere
+In production this breaks because:
+1. Libraries like `react-router-dom`, `@radix-ui/*`, `@tanstack/react-query`, `@hookform/resolvers` import React at module-init time.
+2. When Rollup splits them into separate chunks, the **chunk load order is non-deterministic**. If `vendor-radix` or `vendor-router` evaluates before `vendor-react`, React is `undefined` → silent ESM init failure → blank screen, no caught error.
+3. This only affects the production bundle. Vite's dev server ignores `manualChunks` entirely, which is why preview works.
 
-```ts
-// before
-.select('*')
+This pattern is a well-known footgun with `manualChunks` + React ecosystem libs.
 
-// after — list view
-.select('id, <only-displayed-columns>, patient:patients(full_name, uhid)')
-```
+## Fix
 
-## What is explicitly NOT changed
+Simplify `vite.config.ts` to one of two safe states:
 
-- `PatientDetailDrawer`, `BillDetailPanel`, edit modals, discharge stepper detail fetches — still `select('*')`.
-- Background hooks that hydrate cache for one row at a time.
-- Any query that feeds a print/export — keep full row to avoid breaking templates.
-- No DB changes. No new indexes. No RLS edits.
+**Option A (recommended)** — remove `manualChunks` entirely. Rollup's default code-splitting already keeps shared deps in shared chunks and is correct by construction. We keep `chunkSizeWarningLimit: 1000` so big route chunks don't warn.
 
-## Verification
+**Option B** — keep ONE combined `vendor` chunk for everything in `node_modules`. Avoids the ordering problem because all libs share one chunk and load together.
 
-1. Open each affected list page, confirm rows render identically to before.
-2. Open a detail drawer from each list, confirm full data still loads (drawer uses its own `select('*')`).
-3. Check Network tab on `/billing` and `/patients`: response size for the list query should be visibly smaller.
-4. Run the OPD walk-in → bill → token flow, IPD admit → discharge flow, and a pharmacy dispense to confirm nothing reads a column we removed.
+Going with **Option A** — it's the proven-safe default and our route-level `lazy()` splits already deliver the bundle-size win Phase 6 was targeting.
 
-## Risk & rollback
+### File change
 
-- Risk: a downstream component reads a field we dropped from the list query. Mitigation: the column lists above are derived from what each list's JSX actually renders; anything else is fetched on demand by the detail view.
-- Rollback: each file change is isolated — revert the one query if a regression appears.
+`vite.config.ts` — remove the entire `rollupOptions.output.manualChunks` block; keep `chunkSizeWarningLimit: 1000` and the rest of the config unchanged.
 
-## After Phase 3
+## Why this is the right call
 
-Phase 4 (server-side pagination) builds on these slimmer queries by adding `.range()` + `{ count: 'exact' }` to the same list sites.
+- Restores the published app immediately.
+- Route-level `lazy()` (already in `App.tsx` for ~70 routes) is doing the real heavy lifting for code splitting.
+- The marginal cache benefit of vendor splitting is not worth a hard production outage.
+- Zero risk to dev/preview (which already ignored manualChunks).
+
+## After the fix
+
+- Republish from the Lovable Publish menu so the production bundle picks up the new config.
+- /login, /, and every other route should render normally on `preview--aumrtihmsv1.lovable.app`.
+
+## Out of scope (handled separately if you want)
+
+- The `Function components cannot be given refs` warnings on `LandingPage` and `LoginPage` are non-fatal and unrelated to the white screen. Can be cleaned up later by wrapping the offending custom components with `React.forwardRef`.
+
