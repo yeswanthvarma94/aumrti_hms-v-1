@@ -13,7 +13,8 @@ import {
   Link2, CalendarDays, MessageSquare, HandCoins, RefreshCw,
   Copy, ExternalLink, AlertTriangle, CheckCircle2, Megaphone, QrCode
 } from "lucide-react";
-import { QRCodeSVG } from "qrcode.react";
+import React, { Suspense, lazy } from "react";
+const QRCodeSVG = lazy(() => import("qrcode.react").then(m => ({ default: m.QRCodeSVG })));
 import CollectionCampaignModal from "@/components/billing/CollectionCampaignModal";
 
 interface OutstandingBill {

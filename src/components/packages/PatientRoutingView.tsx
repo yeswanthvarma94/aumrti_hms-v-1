@@ -6,7 +6,8 @@ import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { CheckCircle2, Clock, PlayCircle, Activity, FlaskConical, Stethoscope, Scan, ArrowRight, Loader2 } from "lucide-react";
-import { QRCodeSVG } from "qrcode.react";
+import { Suspense, lazy } from "react";
+const QRCodeSVG = lazy(() => import("qrcode.react").then(m => ({ default: m.QRCodeSVG })));
 
 interface Station {
   order: number;
