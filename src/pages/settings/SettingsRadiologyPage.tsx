@@ -10,6 +10,7 @@ import { Plus, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { STALE_MASTER } from "@/hooks/queries/staleTimes";
 import { useHospitalId } from "@/hooks/useHospitalId";
 
 const SettingsRadiologyPage: React.FC = () => {
@@ -22,6 +23,7 @@ const SettingsRadiologyPage: React.FC = () => {
 
   const { data: modalities = [], isLoading } = useQuery({
     queryKey: ["settings-radiology-modalities", hospitalId],
+    staleTime: STALE_MASTER,
     queryFn: async () => {
       if (!hospitalId) return [];
       const { data, error } = await supabase

@@ -2,6 +2,7 @@ import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { STALE_MASTER } from "@/hooks/queries/staleTimes";
 import { useToast } from "@/hooks/use-toast";
 import { useHospitalId } from "@/hooks/useHospitalId";
 import { ArrowLeft, Plus, X, Building2 } from "lucide-react";
@@ -29,6 +30,7 @@ const SettingsDepartmentsPage: React.FC = () => {
 
   const { data: departments, isLoading } = useQuery({
     queryKey: ["settings-departments"],
+    staleTime: STALE_MASTER,
     queryFn: async () => {
       const { data, error } = await supabase.from("departments").select("id, name, type, is_active, head_doctor_id").order("name");
       if (error) throw error;
@@ -40,6 +42,7 @@ const SettingsDepartmentsPage: React.FC = () => {
 
   const { data: doctors } = useQuery({
     queryKey: ["settings-doctors-list", hospitalId],
+    staleTime: STALE_MASTER,
     queryFn: async () => {
       if (!hospitalId) return [];
       const { data } = await supabase.from("users").select("id, full_name").eq("hospital_id", hospitalId).eq("role", "doctor").eq("is_active", true).order("full_name");
