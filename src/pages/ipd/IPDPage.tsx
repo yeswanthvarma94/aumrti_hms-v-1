@@ -134,7 +134,7 @@ const IPDPage: React.FC = () => {
 
   useEffect(() => {
     if (!hospitalId) return;
-    const ch = supabase.channel(`ipd-realtime-${hospitalId}-${Math.random().toString(36).slice(2, 10)}`)
+    const ch = supabase.channel(`ipd-realtime-${hospitalId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "beds", filter: `hospital_id=eq.${hospitalId}` }, () => {
         queryClient.invalidateQueries({ queryKey: ["ipd-beds-admissions", hospitalId] });
       })
