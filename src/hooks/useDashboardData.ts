@@ -145,7 +145,7 @@ export function useDashboardData() {
     const hid = hospitalIdRef.current;
     if (!hid) return;
 
-    const channel = supabase.channel("dashboard-realtime")
+    const channel = supabase.channel(`dashboard-realtime-${hid}-${Math.random().toString(36).slice(2, 10)}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "beds", filter: `hospital_id=eq.${hid}` }, () => fetchAll())
       .on("postgres_changes", { event: "*", schema: "public", table: "opd_visits", filter: `hospital_id=eq.${hid}` }, () => fetchAll())
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "clinical_alerts", filter: `hospital_id=eq.${hid}` }, (payload: any) => {
