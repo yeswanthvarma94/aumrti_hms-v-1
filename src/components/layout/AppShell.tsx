@@ -7,7 +7,6 @@ import AppHeader from "./AppHeader";
 import MobileTabBar from "./MobileTabBar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { VoiceScribeProvider } from "@/contexts/VoiceScribeContext";
-import { BranchProvider } from "@/contexts/BranchContext";
 import VoiceScribePanel from "@/components/voice/VoiceScribePanel";
 import CommandPalette from "./CommandPalette";
 import IdleTimer from "@/components/auth/IdleTimer";
@@ -70,11 +69,9 @@ const ShellContent: React.FC = () => {
 
 const AppShell: React.FC = () => (
   <VoiceScribeProvider>
-    <BranchProvider>
-      <SidebarProvider>
-        <ShellContent />
-      </SidebarProvider>
-    </BranchProvider>
+    <SidebarProvider>
+      <ShellContent />
+    </SidebarProvider>
   </VoiceScribeProvider>
 );
 
