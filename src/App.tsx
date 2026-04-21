@@ -12,7 +12,6 @@ import AuthGuard from "@/components/auth/AuthGuard";
 import RoleGuard from "@/components/auth/RoleGuard";
 import ModuleErrorBoundary from "@/components/auth/ModuleErrorBoundary";
 import { ROUTE_ROLES } from "@/lib/routeRoles";
-import { BranchProvider } from "@/contexts/BranchContext";
 
 const Register = lazy(() => import("./pages/register"));
 const OnboardingWizard = lazy(() => import("./pages/setup/OnboardingWizard"));
@@ -141,13 +140,12 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <BranchProvider>
         <Routes>
           {/* Public routes */}
-          <Route path="/" element={<SuspenseWrap><LandingPage /></SuspenseWrap>} />
+          <Route path="/" element={<LandingPage />} />
           <Route path="/pay/:token" element={<SuspenseWrap><PaymentLandingPage /></SuspenseWrap>} />
           <Route path="/portal/*" element={<SuspenseWrap><PatientPortal /></SuspenseWrap>} />
-          <Route path="/login" element={<SuspenseWrap><LoginPage /></SuspenseWrap>} />
+          <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<SuspenseWrap><Register /></SuspenseWrap>} />
           <Route path="/setup/onboarding" element={<AuthGuard><SuspenseWrap><OnboardingWizard /></SuspenseWrap></AuthGuard>} />
           <Route path="/design-system" element={<SuspenseWrap><DesignSystem /></SuspenseWrap>} />
@@ -240,7 +238,6 @@ const App = () => (
 
           <Route path="*" element={<NotFound />} />
         </Routes>
-        </BranchProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

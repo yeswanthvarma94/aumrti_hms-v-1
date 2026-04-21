@@ -1,80 +1,102 @@
 
 
-# Fix: `useBranch must be used within BranchProvider` on every page
+# Why the app is still slow / "stuck until hard refresh"
 
-## Root cause
+The Phase 7 realtime fix worked — that loop is dead. But two **separate** problems remain that produce the exact symptoms you're seeing.
 
-Patch 1 changed `useHospitalId()` to read from `BranchContext`. Two guard components call it:
+## Root cause #1 — Stale Service Worker (this is why "hard refresh fixes it")
 
-- `src/components/auth/AuthGuard.tsx` line 13 → `useHospitalId()`
-- `src/components/auth/RoleGuard.tsx` line 15 → `useHospitalId()`
+Last round we shipped `sw.js` v2 (network-first HTML). But users already have v1 installed in their browser. The v2 worker installs in the background and only takes control on the **next** navigation, not the current page. Until the user hard-refreshes, v1 keeps serving the cached `index.html` that points to JS chunk hashes which no longer exist on the published build → infinite "loading" spinner / blank tabs.
 
-But `BranchProvider` is mounted **inside** `AppShell` (line 73 of `AppShell.tsx`), and `AuthGuard` **wraps** `AppShell`:
+This perfectly matches: *"only sometimes when I hard refresh the browser it again restarts and starts to work"*.
 
-```text
-<AuthGuard>             ← uses useHospitalId() — NO PROVIDER YET → CRASH
-  <AppShell>
-    <BranchProvider>    ← provider lives here
-      <RoleGuard>       ← uses useHospitalId() — would also crash
-        <Page />
+The fix is to make v2 **forcibly take over and trigger a one-time auto-reload** of all open tabs the moment it activates. After this is shipped + republished once, every user gets the new SW automatically and never has to hard-refresh again.
+
+## Root cause #2 — Duplicate user-record queries on every navigation
+
+`useHospitalId` already caches the user's `hospital_id` + `role` in TanStack Query (cache forever). But:
+
+- `AppHeader.tsx` lines 71–83 → independently re-queries `users` on every mount.
+- `AppSidebar.tsx` lines 63–76 → independently re-queries `users` on every mount.
+- `EmergencyPage.tsx` line 40 → also re-queries `users` instead of using `useHospitalId`.
+
+So every time a tab opens, the auth-critical path fires **3 redundant Supabase queries** in serial before the page can render. Combined with the next issue, this is enough to make pages feel "stuck".
+
+## Root cause #3 — Notification centre polling on every page
+
+`NotificationCentre.tsx` polls 2 tables every 30 seconds on **every authenticated page**. With 30+ open tabs across a hospital, plus realtime channels per page, the Supabase HTTP pool saturates and pages start timing out.
+
+Switching to **realtime subscriptions** (which we already use elsewhere) eliminates the polling entirely.
+
+## Root cause #4 — Brittle preview-host detection in `registerSW.ts`
+
+The expression on line 21 is:
+```ts
+host.includes('lovable.app') === false && host.includes('lovable')
 ```
+Operator-precedence bug — works by coincidence today but will silently flip if Lovable changes hostnames. Needs to be a clean allow-list.
 
-So every authenticated route crashes immediately, and the ErrorBoundary shows "Something went wrong / useBranch must be used within BranchProvider".
+---
 
-## Fix (single small change, 2 files)
+# The fix (5 small, isolated edits)
 
-### 1. `src/App.tsx` — hoist `BranchProvider` to the top of the route tree
+### Fix A — `public/sw.js` : force-takeover + auto-reload all tabs on update
+- Already calls `clients.claim()`. Add a `postMessage('SW_ACTIVATED')` to all clients on activate.
+- Bump cache name to `aumrti-hms-v3` so v2 caches are wiped on activate.
 
-Wrap the entire `<Routes>` block in `<BranchProvider>` so it's available to **every** route, including the AuthGuard and RoleGuard above AppShell.
+### Fix B — `src/lib/registerSW.ts` : listen for SW activation and reload once
+- Add `navigator.serviceWorker.addEventListener('controllerchange', …)` that does a single `window.location.reload()` (guarded with `sessionStorage` so it only fires once per session).
+- Rewrite the host check as a clean allow-list of preview hosts (no boolean ambiguity).
 
-```tsx
-<BrowserRouter>
-  <BranchProvider>
-    <Routes>
-      ...all routes...
-    </Routes>
-  </BranchProvider>
-</BrowserRouter>
-```
+### Fix C — `src/components/layout/AppHeader.tsx` : use cached user record
+- Delete the local `supabase.from('users')…` query. Read `hospitalId` and user info from `useHospitalId()` (already cached forever).
 
-This is safe for public routes (`/`, `/login`, `/portal`, `/pay/:token`) because `BranchProvider`'s internal load is wrapped in try/catch and short-circuits when there's no auth session — it just sets `loading=false` and returns null values. Zero extra work for public pages, no crashes.
+### Fix D — `src/components/layout/AppSidebar.tsx` : use cached user record
+- Same change. Read `userName`/`role` via `useHospitalId()` extended (or via a tiny `useCurrentUser()` reusing the same TanStack Query cache key) instead of re-querying `users`.
 
-### 2. `src/components/layout/AppShell.tsx` — remove the inner `BranchProvider`
+### Fix E — `src/components/layout/NotificationCentre.tsx` : realtime instead of 30s poll
+- Drop the 30 s `setInterval`.
+- Subscribe via `supabase.channel('notif-${hospitalId}')` to `whatsapp_notifications` and `clinical_alerts` (filtered by `hospital_id`). Initial fetch on mount; realtime keeps it fresh.
+- Reuses the existing realtime socket — zero extra cost.
 
-Since the provider is now at the top, remove it from `AppShell` to avoid nested providers (which would silently shadow the outer one and reset state on every shell mount):
+### Fix F (small, optional) — `src/pages/emergency/EmergencyPage.tsx`
+- Replace local `users` lookup at line 40 with `useHospitalId()` for consistency.
 
-```tsx
-const AppShell: React.FC = () => (
-  <VoiceScribeProvider>
-    <SidebarProvider>
-      <ShellContent />
-    </SidebarProvider>
-  </VoiceScribeProvider>
-);
-```
+---
 
-## Why this is the right fix (not band-aids)
+# What this delivers
 
-- **Don't strip `useHospitalId()` from AuthGuard** — it's the prefetch that makes navigation feel instant for downstream pages.
-- **Don't make `useBranch()` return safe defaults outside a provider** — that hides real bugs and the Patch 1 contract is "always inside BranchProvider".
-- **Don't duplicate provider into AuthGuard** — would create two parallel branch states.
+| Symptom | Cause | Fix |
+|---|---|---|
+| Pages don't open until hard refresh | Stale SW v1 still serving old chunks | Fix A + B (SW v3 + auto-reload) |
+| First load after navigation feels stuck | 3 duplicate `users` queries blocking | Fix C + D + F |
+| App degrades over time when left open | 30 s notification polling | Fix E (realtime) |
+| Future host changes silently break SW | Brittle preview-host check | Fix B (clean allow-list) |
 
-Hoisting once at the app root is the simplest, cheapest, and matches how the other context (`QueryClientProvider`, `TooltipProvider`) is scoped.
-
-## Verification after applying
-
-1. `/login` loads cleanly (no error boundary).
-2. `/dashboard` loads after login (AuthGuard + RoleGuard both have provider in scope).
-3. Branch switcher in the sidebar still works (provider state preserved across navigation since it's now above `AppShell`).
-4. Console: zero "useBranch must be used within BranchProvider" errors.
-
-## Files touched
-
-- `src/App.tsx` — wrap `<Routes>` in `<BranchProvider>` (and import).
-- `src/components/layout/AppShell.tsx` — remove the now-redundant inner `<BranchProvider>` wrapper.
+After these are merged + published **once**, every existing user's browser will:
+1. Download SW v3 in the background
+2. Auto-reload exactly once when v3 takes over
+3. From then on, get fresh `index.html` on every navigation — no more "stuck pages"
 
 ## Risk & rollback
+- All 5 files are isolated, no shared state changes.
+- If anything regresses, revert just that file from chat **History**.
+- Zero database changes. Zero auth changes.
 
-- 2 isolated edits, both reversible from chat **History** if anything regresses.
-- Zero database changes, zero auth changes.
+## Files touched
+- `public/sw.js`
+- `src/lib/registerSW.ts`
+- `src/components/layout/AppHeader.tsx`
+- `src/components/layout/AppSidebar.tsx`
+- `src/components/layout/NotificationCentre.tsx`
+- `src/pages/emergency/EmergencyPage.tsx`
+
+## If even this doesn't help — rollback option
+You can roll the whole project back without me touching anything: open the chat **History** tab and pick a checkpoint from before "Continue phase 7". That restores the project files atomically. Then click **Publish → Update** to push it live.
+
+```xml
+<lov-actions>
+  <lov-open-history>View History</lov-open-history>
+</lov-actions>
+```
 
