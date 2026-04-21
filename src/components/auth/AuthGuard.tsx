@@ -8,8 +8,8 @@ const AuthGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [status, setStatus] = useState<"loading" | "authenticated" | "unauthenticated">("loading");
   const currentPath = typeof window !== "undefined" ? window.location.pathname : "/";
 
-  // Pre-fetch user's hospital_id and role so downstream guards (RoleGuard) can use it
-  // without each one re-querying the users table.
+  // Pre-fetch the user's hospital_id and role so downstream guards (RoleGuard) and
+  // pages can read it from the TanStack Query cache without re-querying on every nav.
   useHospitalId();
 
   useEffect(() => {
@@ -40,4 +40,3 @@ const AuthGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 };
 
 export default AuthGuard;
-
