@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { useCountUp } from "@/hooks/useCountUp";
+import { useHospitalId } from "@/hooks/useHospitalId";
 import { cn } from "@/lib/utils";
 import RevenueChart from "@/components/dashboard/RevenueChart";
 import BedOccupancy from "@/components/dashboard/BedOccupancy";
@@ -24,7 +25,6 @@ import BedsDrillDown from "@/components/dashboard/drilldowns/BedsDrillDown";
 import OPDDrillDown from "@/components/dashboard/drilldowns/OPDDrillDown";
 import AlertsDrillDown from "@/components/dashboard/drilldowns/AlertsDrillDown";
 import DoctorsDrillDown from "@/components/dashboard/drilldowns/DoctorsDrillDown";
-import { supabase } from "@/integrations/supabase/client";
 import ChronicFollowupAlert from "@/components/dashboard/ChronicFollowupAlert";
 
 function formatRevenue(amount: number): string {
@@ -90,18 +90,7 @@ const Dashboard: React.FC = () => {
   const lastUpdated = useLastUpdated(loading);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerConfig, setDrawerConfig] = useState<DrillDownConfig | null>(null);
-  const [hospitalId, setHospitalId] = useState<string | null>(null);
-
-  useEffect(() => {
-    const getHospitalId = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data } = await supabase.from("users").select("hospital_id").eq("auth_user_id", user.id).maybeSingle();
-        if (data) setHospitalId(data.hospital_id);
-      }
-    };
-    getHospitalId();
-  }, []);
+  const { hospitalId } = useHospitalId();
 
   const occupancyPct = kpis.bedsTotal > 0 ? Math.round((kpis.bedsOccupied / kpis.bedsTotal) * 100) : 0;
   const revChange = revenueChange(kpis.revenueMTD, kpis.revenueLastMonth);
