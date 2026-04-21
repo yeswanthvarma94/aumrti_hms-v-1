@@ -1,51 +1,70 @@
 
 
-# Fix: White screen on published `/login` (and likely other routes)
+# Diagnosis: Why the app is slow / tabs not opening
 
-## What's happening
+## Primary culprit — Dashboard realtime loop (Phase 7.3 regression)
 
-- Preview URL (`*.lovableproject.com/login`) renders fine — console proves `LoginPage` mounted there.
-- Published URL (`preview--aumrtihmsv1.lovable.app/login`) is fully blank, no error UI.
-- ErrorBoundary did not catch — meaning rendering never started in the production build.
+`src/hooks/useDashboardData.ts` lines 144–160:
+- The realtime `useEffect` lists `loading` in its dependency array.
+- The channel name uses `Math.random()` so every re-run creates a brand-new channel.
+- Inside the channel handlers, every postgres event calls `fetchAll()`, which flips `loading` → effect re-runs → channel torn down + recreated with a new random id → reconnect handshake → queries refire.
 
-## Root cause
+Net effect: as soon as you land on `/dashboard`, the page enters a **realtime → fetch → setState → re-subscribe** loop that hammers Supabase, blocks the main thread with re-renders, and starves every other page (because the React Query cache, network and Supabase realtime socket are shared globally). This matches your symptom of "tabs not even opening" — the browser tab is too busy reconnecting and re-fetching to render anything else.
 
-Phase 6 added an aggressive `manualChunks` config in `vite.config.ts` that splits `node_modules` into 9+ vendor chunks (`vendor-react`, `vendor-router`, `vendor-radix`, `vendor-query`, `vendor-supabase`, `vendor-charts`, `vendor-date`, `vendor-icons`, `vendor-forms`, `vendor-misc`).
+## Secondary issues found
 
-In production this breaks because:
-1. Libraries like `react-router-dom`, `@radix-ui/*`, `@tanstack/react-query`, `@hookform/resolvers` import React at module-init time.
-2. When Rollup splits them into separate chunks, the **chunk load order is non-deterministic**. If `vendor-radix` or `vendor-router` evaluates before `vendor-react`, React is `undefined` → silent ESM init failure → blank screen, no caught error.
-3. This only affects the production bundle. Vite's dev server ignores `manualChunks` entirely, which is why preview works.
+1. **`Math.random()` in channel names everywhere** (`useDashboardData`, `IPDPage`, `EmergencyPage`). React 18 StrictMode mounts effects twice in dev → 2 channels per page per mount. Combined with normal remounts, the realtime socket accumulates dozens of dead/duplicate subscriptions.
+2. **EmergencyPage `fetchData` not memoised against `hospitalId`** — it re-creates on every render and is in the realtime effect's deps, so the channel re-subscribes on every parent re-render once an ED event fires.
+3. **Service worker caches `/index.html`** with `cache-first` (`public/sw.js` line 51). After Phase 6's chunk-name changes were published, browsers that already have the old SW are serving the old `index.html` which references hashed JS files that no longer exist → blank/slow page until the SW updates. The SW also has no version bump since v1.
+4. **Bundle-level eager imports**: `App.tsx` lazy-loads route pages, but `LandingPage` and `LoginPage` are imported eagerly at the top, so they ship in the initial JS even when the user is already authenticated.
 
-This pattern is a well-known footgun with `manualChunks` + React ecosystem libs.
+## What to fix (in this order)
 
-## Fix
+### Fix 1 — Stop the dashboard realtime loop (biggest win)
+In `src/hooks/useDashboardData.ts`:
+- Remove `loading` from the realtime effect's dependency array.
+- Use a stable channel name: `dashboard-realtime-${hid}` (drop `Math.random()`).
+- Track `hid` via state (not ref) so the effect re-runs only when `hid` actually changes from null → uuid.
+- Debounce the realtime → `fetchAll` calls (e.g. coalesce events within 500 ms) so a burst of bed/opd inserts doesn't trigger 10 sequential refetches.
 
-Simplify `vite.config.ts` to one of two safe states:
+### Fix 2 — Stable channel names + correct deps
+- `IPDPage.tsx` line 137: drop `Math.random()` suffix → `ipd-realtime-${hospitalId}`.
+- `EmergencyPage.tsx` line 81: same change → `ed-realtime-${hospitalId}`. Also wrap `fetchData` so its identity is stable across renders or remove it from the realtime effect's deps and call a ref-stored version.
 
-**Option A (recommended)** — remove `manualChunks` entirely. Rollup's default code-splitting already keeps shared deps in shared chunks and is correct by construction. We keep `chunkSizeWarningLimit: 1000` so big route chunks don't warn.
+### Fix 3 — Bump the service worker and stop caching `index.html`
+In `public/sw.js`:
+- Bump `CACHE_NAME` to `'aumrti-hms-v2'` so old caches get purged on activate.
+- Remove `'/index.html'` and `'/'` from `STATIC_ASSETS`.
+- Switch the same-origin handler to **network-first for `.html` and navigation requests** (cache-first only for hashed JS/CSS/fonts/images). This prevents the "old shell points to deleted JS chunks" failure mode going forward.
 
-**Option B** — keep ONE combined `vendor` chunk for everything in `node_modules`. Avoids the ordering problem because all libs share one chunk and load together.
+### Fix 4 — Trim the eager bundle
+In `src/App.tsx`:
+- Convert `LandingPage` and `LoginPage` to `lazy()` like every other route. They're only needed when unauthenticated, but they're currently shipped in every initial load including the dashboard.
 
-Going with **Option A** — it's the proven-safe default and our route-level `lazy()` splits already deliver the bundle-size win Phase 6 was targeting.
+## Out of scope for this fix (noted, not done)
 
-### File change
+- The 4 security findings shown in the Security panel (client-side OTP, open hospital-registration endpoint, missing Razorpay signature verification, AI keys leaked to browser) are real and serious but unrelated to the slowness. Worth fixing in a separate plan.
 
-`vite.config.ts` — remove the entire `rollupOptions.output.manualChunks` block; keep `chunkSizeWarningLimit: 1000` and the rest of the config unchanged.
+## If the fix doesn't help — rollback option
 
-## Why this is the right call
+You can roll back without me doing anything: open the chat **History** tab and pick a checkpoint from before "Phase 7" started (look for the message just before "Continue phase 7"). That message-level revert restores the project files atomically. After reverting, click **Publish → Update** to push the rolled-back build live.
 
-- Restores the published app immediately.
-- Route-level `lazy()` (already in `App.tsx` for ~70 routes) is doing the real heavy lifting for code splitting.
-- The marginal cache benefit of vendor splitting is not worth a hard production outage.
-- Zero risk to dev/preview (which already ignored manualChunks).
+```xml
+<lov-actions>
+  <lov-open-history>View History</lov-open-history>
+</lov-actions>
+```
 
-## After the fix
+## Risk & rollback for the fix itself
 
-- Republish from the Lovable Publish menu so the production bundle picks up the new config.
-- /login, /, and every other route should render normally on `preview--aumrtihmsv1.lovable.app`.
+- All four fixes are isolated edits to 4 files. If any single one regresses, revert just that file from the History view.
+- After applying, hard-refresh the published site once (Ctrl+Shift+R) so the new SW activates and clears the v1 cache.
 
-## Out of scope (handled separately if you want)
+## Files touched
 
-- The `Function components cannot be given refs` warnings on `LandingPage` and `LoginPage` are non-fatal and unrelated to the white screen. Can be cleaned up later by wrapping the offending custom components with `React.forwardRef`.
+- `src/hooks/useDashboardData.ts` — kill the realtime loop, debounce refetches.
+- `src/pages/ipd/IPDPage.tsx` — stable channel name.
+- `src/pages/emergency/EmergencyPage.tsx` — stable channel name + memoised fetch.
+- `public/sw.js` — version bump, drop HTML caching, network-first for navigations.
+- `src/App.tsx` — lazy-load LandingPage and LoginPage.
 
