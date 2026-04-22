@@ -12,6 +12,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { recalculateBillTotalsSafe } from "@/lib/billTotals";
 import { Plus, Save } from "lucide-react";
+import {
+  findActivePackageForService,
+  countPackageSessionsUsed,
+  type ActivePackageInfo,
+} from "@/lib/sessionPackageGuard";
+import PackageExhaustedModal from "@/components/shared/PackageExhaustedModal";
 
 const PROCEDURES = [
   "Scaling & Polishing", "Filling (Composite)", "Filling (Amalgam)", "Root Canal Treatment",
@@ -62,6 +68,8 @@ const TreatmentPlanTab: React.FC<TreatmentPlanTabProps> = ({ patientId, hospital
   const [form, setForm] = useState<TreatmentItem>({
     tooth_number: "", procedure: "", icd10_code: "", priority: "soon", cost: 0, sessions: 1, status: "planned",
   });
+  const [exhaustedPkg, setExhaustedPkg] = useState<ActivePackageInfo | null>(null);
+  const [pendingCompleteIdx, setPendingCompleteIdx] = useState<number | null>(null);
 
   useEffect(() => { loadPlan(); }, [patientId]);
 
@@ -88,65 +96,88 @@ const TreatmentPlanTab: React.FC<TreatmentPlanTabProps> = ({ patientId, hospital
     setShowAdd(false);
   };
 
-  const updateItemStatus = async (idx: number, status: TreatmentItem["status"]) => {
-    setItems(prev => prev.map((item, i) => i === idx ? { ...item, status } : item));
-    if (status === "completed") {
-      const item = items[idx];
-      toast({ title: `₹${item.cost.toLocaleString("en-IN")} billed to patient account` });
+  const _doCompleteItem = async (idx: number) => {
+    const item = items[idx];
+    if (!item) return;
+    setItems(prev => prev.map((it, i) => i === idx ? { ...it, status: "completed" } : it));
+    toast({ title: `₹${item.cost.toLocaleString("en-IN")} billed to patient account` });
 
-      // Auto-create dental bill
-      if (item.cost > 0) {
-        const { data: currentPlan } = await supabase
-          .from("dental_treatment_plans")
-          .select("patient_id, chart_id")
-          .eq("id", planId!)
-          .maybeSingle();
+    if (item.cost > 0) {
+      const { data: currentPlan } = await supabase
+        .from("dental_treatment_plans")
+        .select("patient_id, chart_id")
+        .eq("id", planId!)
+        .maybeSingle();
 
-        const today = new Date().toISOString().split("T")[0];
-        const billNum = await generateBillNumber(hospitalId, "DENT");
+      const today = new Date().toISOString().split("T")[0];
+      const billNum = await generateBillNumber(hospitalId, "DENT");
+      const gst = Math.round(Number(item.cost) * 0.18 * 100) / 100;
 
-        const gst = Math.round(Number(item.cost) * 0.18 * 100) / 100;
+      const { data: newBill } = await supabase.from("bills").insert({
+        hospital_id: hospitalId,
+        patient_id: currentPlan?.patient_id,
+        bill_number: billNum,
+        bill_type: "opd",
+        bill_date: today,
+        bill_status: "final",
+        payment_status: "unpaid",
+        total_amount: Number(item.cost) + gst,
+        balance_due: Number(item.cost) + gst,
+        subtotal: Number(item.cost), gst_amount: gst,
+        taxable_amount: Number(item.cost), patient_payable: Number(item.cost) + gst,
+      }).select("id").maybeSingle();
 
-        const { data: newBill } = await supabase.from("bills").insert({
-          hospital_id: hospitalId,
-          patient_id: currentPlan?.patient_id,
-          bill_number: billNum,
-          bill_type: "opd",
-          bill_date: today,
-          bill_status: "final",
-          payment_status: "unpaid",
-          total_amount: Number(item.cost) + gst,
-          balance_due: Number(item.cost) + gst,
-          subtotal: Number(item.cost), gst_amount: gst,
-          taxable_amount: Number(item.cost), patient_payable: Number(item.cost) + gst,
-        }).select("id").maybeSingle();
+      if (newBill) {
+        await (supabase as any).from("bill_line_items").insert({
+          hospital_id: hospitalId, bill_id: newBill.id,
+          item_type: "dental",
+          description: `Dental: ${item.procedure} — Tooth ${item.tooth_number}`,
+          quantity: 1, unit_rate: Number(item.cost),
+          taxable_amount: Number(item.cost), gst_percent: 18,
+          gst_amount: gst, total_amount: Number(item.cost) + gst,
+          source_module: "dental",
+        });
 
-        if (newBill) {
-          await (supabase as any).from("bill_line_items").insert({
-            hospital_id: hospitalId, bill_id: newBill.id,
-            item_type: "dental",
-            description: `Dental: ${item.procedure} — Tooth ${item.tooth_number}`,
-            quantity: 1, unit_rate: Number(item.cost),
-            taxable_amount: Number(item.cost), gst_percent: 18,
-            gst_amount: gst, total_amount: Number(item.cost) + gst,
-            source_module: "dental",
-          });
+        await recalculateBillTotalsSafe(newBill.id);
 
-          await recalculateBillTotalsSafe(newBill.id);
-
-          const { data: { user: authUser } } = await supabase.auth.getUser();
-          await autoPostJournalEntry({
-            triggerEvent: "bill_finalized_dental",
-            sourceModule: "dental",
-            sourceId: newBill.id,
-            amount: Number(item.cost) + gst,
-            description: `Dental Revenue - ${item.procedure}`,
-            hospitalId,
-            postedBy: authUser?.id || "",
-          });
-        }
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        await autoPostJournalEntry({
+          triggerEvent: "bill_finalized_dental",
+          sourceModule: "dental",
+          sourceId: newBill.id,
+          amount: Number(item.cost) + gst,
+          description: `Dental Revenue - ${item.procedure}`,
+          hospitalId,
+          postedBy: authUser?.id || "",
+        });
       }
     }
+  };
+
+  const updateItemStatus = async (idx: number, status: TreatmentItem["status"]) => {
+    if (status !== "completed") {
+      setItems(prev => prev.map((item, i) => i === idx ? { ...item, status } : item));
+      return;
+    }
+
+    // Package guard before billing this completion
+    if (patientId && hospitalId) {
+      try {
+        const pkg = await findActivePackageForService(patientId, hospitalId, "dental");
+        if (pkg) {
+          const used = await countPackageSessionsUsed(pkg, patientId, hospitalId, "dental");
+          if (used >= pkg.sessionsIncluded) {
+            setExhaustedPkg({ ...pkg, sessionsUsed: used });
+            setPendingCompleteIdx(idx);
+            return;
+          }
+        }
+      } catch (e) {
+        console.warn("Dental package guard skipped:", (e as Error).message);
+      }
+    }
+
+    await _doCompleteItem(idx);
   };
 
   const totalCost = items.reduce((s, i) => s + (i.cost || 0), 0);
@@ -309,6 +340,25 @@ const TreatmentPlanTab: React.FC<TreatmentPlanTabProps> = ({ patientId, hospital
           </div>
         </DialogContent>
       </Dialog>
+
+      {exhaustedPkg && (
+        <PackageExhaustedModal
+          open={!!exhaustedPkg}
+          onOpenChange={(o) => { if (!o) { setExhaustedPkg(null); setPendingCompleteIdx(null); } }}
+          packageName={exhaustedPkg.packageName}
+          sessionsIncluded={exhaustedPkg.sessionsIncluded}
+          sessionsUsed={exhaustedPkg.sessionsUsed}
+          ratePerSession={exhaustedPkg.ratePerSession}
+          serviceLabel="dental procedure"
+          onCancel={() => { setExhaustedPkg(null); setPendingCompleteIdx(null); }}
+          onBillAsExtra={async () => {
+            const idx = pendingCompleteIdx;
+            setExhaustedPkg(null);
+            setPendingCompleteIdx(null);
+            if (idx !== null) await _doCompleteItem(idx);
+          }}
+        />
+      )}
     </div>
   );
 };

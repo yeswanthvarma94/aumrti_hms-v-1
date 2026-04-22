@@ -12,6 +12,7 @@ import PeriodontalTab from "@/components/dental/PeriodontalTab";
 import TreatmentPlanTab from "@/components/dental/TreatmentPlanTab";
 import LabOrdersTab from "@/components/dental/LabOrdersTab";
 import type { ChartData } from "@/components/dental/FDIToothChart";
+import { getPatientSessionBillingCounts } from "@/lib/sessionPackageGuard";
 
 interface DentalToken {
   id: string;
@@ -63,6 +64,7 @@ const DentalPage: React.FC = () => {
   const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [billingCounts, setBillingCounts] = useState<Record<string, { billed: number; unbilled: number; total: number }>>({});
 
   // Chart state
   const [chartData, setChartData] = useState<ChartData>({});
@@ -118,6 +120,25 @@ const DentalPage: React.FC = () => {
     }
     setTokens((data as unknown as DentalToken[]) || []);
     setLoading(false);
+
+    // Load per-patient dental billing counts (best-effort)
+    const tokenList = (data as unknown as DentalToken[]) || [];
+    const patientIds = [...new Set(tokenList.map(t => t.patient?.id || t.patient_id).filter(Boolean) as string[])];
+    if (patientIds.length > 0) {
+      const counts: Record<string, { billed: number; unbilled: number; total: number }> = {};
+      await Promise.all(
+        patientIds.map(async (pid) => {
+          try {
+            counts[pid] = await getPatientSessionBillingCounts(pid, userData.hospital_id, "dental");
+          } catch (e) {
+            console.warn("Dental billing count failed:", (e as Error).message);
+          }
+        })
+      );
+      setBillingCounts(counts);
+    } else {
+      setBillingCounts({});
+    }
   }, [toast]);
 
   useEffect(() => { fetchTokens(); }, [fetchTokens]);
@@ -218,7 +239,10 @@ const DentalPage: React.FC = () => {
                   </p>
                 </div>
               ) : (
-                filtered.map((t) => (
+                filtered.map((t) => {
+                  const pid = t.patient?.id || t.patient_id;
+                  const bc = pid ? billingCounts[pid] : undefined;
+                  return (
                   <button
                     key={t.id}
                     onClick={() => selectToken(t)}
@@ -238,6 +262,14 @@ const DentalPage: React.FC = () => {
                       <p className="text-[10px] text-muted-foreground">
                         {t.patient?.uhid} · {t.patient?.gender || "—"} · {calcAge(t.patient?.dob ?? null)}
                       </p>
+                      {bc && bc.total > 0 && (
+                        <Badge
+                          variant="outline"
+                          className={`text-[9px] mt-0.5 ${bc.unbilled > 0 ? "border-amber-500 text-amber-600" : "border-emerald-500 text-emerald-600"}`}
+                        >
+                          ₹ {bc.billed} billed / {bc.unbilled} unbilled
+                        </Badge>
+                      )}
                     </div>
                     {statusLabel[t.status] && (
                       <Badge variant="outline" className="text-[9px] shrink-0">
@@ -245,7 +277,8 @@ const DentalPage: React.FC = () => {
                       </Badge>
                     )}
                   </button>
-                ))
+                  );
+                })
               )}
             </div>
           </ScrollArea>
