@@ -433,6 +433,16 @@ const TelemedicinePage: React.FC = () => {
       </div>
 
       <ScheduleTeleconsultModal open={showSchedule} onOpenChange={setShowSchedule} onCreated={fetchSessions} />
+
+      {paymentSession && hospitalId && (
+        <TelePaymentModal
+          open={!!paymentSession}
+          onOpenChange={(o) => !o && setPaymentSession(null)}
+          session={paymentSession}
+          hospitalId={hospitalId}
+          onPaid={fetchSessions}
+        />
+      )}
     </div>
   );
 };
