@@ -54,15 +54,37 @@ const TelemedicinePage: React.FC = () => {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("teleconsult_sessions")
       .select("*, patients(full_name, uhid, phone, gender)")
       .eq("hospital_id", hospitalId)
       .gte("scheduled_at", today.toISOString())
       .lt("scheduled_at", tomorrow.toISOString())
       .order("scheduled_at", { ascending: true });
-    setSessions(data || []);
-  }, [hospitalId]);
+    if (error) {
+      console.error("Failed to load sessions:", error.message);
+      toast({ title: "Failed to load teleconsults", variant: "destructive" });
+      return;
+    }
+    const list = data || [];
+    setSessions(list);
+
+    // Fetch bill payment statuses for sessions that have a bill_id
+    const billIds = list.map((s: any) => s.bill_id).filter(Boolean);
+    if (billIds.length > 0) {
+      const { data: bills } = await (supabase as any)
+        .from("bills")
+        .select("id, payment_status, total_amount")
+        .in("id", billIds);
+      const map: Record<string, { payment_status: string; total_amount: number }> = {};
+      (bills || []).forEach((b: any) => {
+        map[b.id] = { payment_status: b.payment_status, total_amount: Number(b.total_amount || 0) };
+      });
+      setBillStatusMap(map);
+    } else {
+      setBillStatusMap({});
+    }
+  }, [hospitalId, toast]);
 
   useEffect(() => { fetchSessions(); }, [fetchSessions]);
 
