@@ -62,6 +62,7 @@ const ITEMS: CheckItem[] = [
   { id: "e2e_journey", label: "Test patient journey: Register → OPD → Lab → Result → Bill → Payment", auto: false, group: "technical" },
   { id: "whatsapp_test", label: "WhatsApp notifications working (send test message)", auto: false, group: "technical" },
   { id: "analytics_data", label: "Analytics dashboard showing data", auto: true, group: "technical" },
+  { id: "bill_number_dedup", label: "Bill Number Deduplication — Run before go-live", auto: false, link: "/admin/bill-number-audit", linkLabel: "Run audit →", group: "technical" },
 ];
 
 const GoLiveChecklistPage: React.FC = () => {

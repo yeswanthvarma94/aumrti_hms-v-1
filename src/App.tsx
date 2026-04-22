@@ -76,6 +76,7 @@ const DesignSystem = lazy(() => import("./pages/DesignSystem"));
 const PatientPortal = lazy(() => import("./pages/portal/PatientPortal"));
 const GoLiveChecklistPage = lazy(() => import("./pages/admin/GoLiveChecklistPage"));
 const DataMigrationPage = lazy(() => import("./pages/admin/DataMigrationPage"));
+const BillNumberAuditPage = lazy(() => import("./pages/admin/BillNumberAuditPage"));
 const AccountsPage = lazy(() => import("./pages/accounts/AccountsPage"));
 const OpeningBalancesPage = lazy(() => import("./pages/accounts/OpeningBalancesPage"));
 const BloodBankPage = lazy(() => import("./pages/blood-bank/BloodBankPage"));
@@ -251,6 +252,7 @@ const App = () => (
             <Route path="/assets" element={<RG path="/assets"><SM name="Assets"><AssetsPage /></SM></RG>} />
             <Route path="/admin/go-live" element={<RG path="/admin/go-live"><SM name="Go-Live Checklist"><GoLiveChecklistPage /></SM></RG>} />
             <Route path="/admin/data-migration" element={<RG path="/admin/data-migration"><SM name="Data Migration"><DataMigrationPage /></SM></RG>} />
+            <Route path="/admin/bill-number-audit" element={<RG path="/admin/bill-number-audit"><SM name="Bill Number Audit"><BillNumberAuditPage /></SM></RG>} />
           </Route>
 
           <Route path="*" element={<NotFound />} />
