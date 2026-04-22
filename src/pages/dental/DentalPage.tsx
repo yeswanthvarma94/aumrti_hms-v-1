@@ -12,6 +12,7 @@ import PeriodontalTab from "@/components/dental/PeriodontalTab";
 import TreatmentPlanTab from "@/components/dental/TreatmentPlanTab";
 import LabOrdersTab from "@/components/dental/LabOrdersTab";
 import type { ChartData } from "@/components/dental/FDIToothChart";
+import { getPatientSessionBillingCounts } from "@/lib/sessionPackageGuard";
 
 interface DentalToken {
   id: string;
