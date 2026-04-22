@@ -14,9 +14,10 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import {
   Video, Phone, Plus, Monitor, Square, ClipboardList,
-  User, Clock, Send, CheckCircle2, X
+  User, Clock, Send, CheckCircle2, X, IndianRupee, CreditCard
 } from "lucide-react";
 import ScheduleTeleconsultModal from "@/components/telemedicine/ScheduleTeleconsultModal";
+import TelePaymentModal from "@/components/telemedicine/TelePaymentModal";
 
 interface RxItem { drug: string; dose: string; frequency: string; days: string; }
 
@@ -33,9 +34,11 @@ const TelemedicinePage: React.FC = () => {
   const { toast } = useToast();
   const { hospitalId } = useHospitalId();
   const [sessions, setSessions] = useState<any[]>([]);
+  const [billStatusMap, setBillStatusMap] = useState<Record<string, { payment_status: string; total_amount: number }>>({});
   const [tab, setTab] = useState("waiting");
   const [activeSession, setActiveSession] = useState<any>(null);
   const [showSchedule, setShowSchedule] = useState(false);
+  const [paymentSession, setPaymentSession] = useState<any>(null);
   const [callSeconds, setCallSeconds] = useState(0);
   const [notes, setNotes] = useState("");
   const [rx, setRx] = useState<RxItem[]>([]);
@@ -51,15 +54,37 @@ const TelemedicinePage: React.FC = () => {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("teleconsult_sessions")
       .select("*, patients(full_name, uhid, phone, gender)")
       .eq("hospital_id", hospitalId)
       .gte("scheduled_at", today.toISOString())
       .lt("scheduled_at", tomorrow.toISOString())
       .order("scheduled_at", { ascending: true });
-    setSessions(data || []);
-  }, [hospitalId]);
+    if (error) {
+      console.error("Failed to load sessions:", error.message);
+      toast({ title: "Failed to load teleconsults", variant: "destructive" });
+      return;
+    }
+    const list = data || [];
+    setSessions(list);
+
+    // Fetch bill payment statuses for sessions that have a bill_id
+    const billIds = list.map((s: any) => s.bill_id).filter(Boolean);
+    if (billIds.length > 0) {
+      const { data: bills } = await (supabase as any)
+        .from("bills")
+        .select("id, payment_status, total_amount")
+        .in("id", billIds);
+      const map: Record<string, { payment_status: string; total_amount: number }> = {};
+      (bills || []).forEach((b: any) => {
+        map[b.id] = { payment_status: b.payment_status, total_amount: Number(b.total_amount || 0) };
+      });
+      setBillStatusMap(map);
+    } else {
+      setBillStatusMap({});
+    }
+  }, [hospitalId, toast]);
 
   useEffect(() => { fetchSessions(); }, [fetchSessions]);
 
@@ -248,7 +273,11 @@ const TelemedicinePage: React.FC = () => {
           {filtered.length === 0 && (
             <p className="text-xs text-muted-foreground text-center py-8">No sessions</p>
           )}
-          {filtered.map(s => (
+          {filtered.map(s => {
+            const billInfo = s.bill_id ? billStatusMap[s.bill_id] : null;
+            const isPaid = billInfo?.payment_status === "paid";
+            const hasBill = !!s.bill_id;
+            return (
             <div
               key={s.id}
               onClick={() => s.status !== "completed" && joinCall(s)}
@@ -257,7 +286,7 @@ const TelemedicinePage: React.FC = () => {
                 activeSession?.id === s.id && "border-primary bg-primary/5"
               )}
             >
-              <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center justify-between mb-1 gap-1">
                 <span className="text-sm font-medium truncate">{s.patients?.full_name || "Patient"}</span>
                 <Badge variant="secondary" className={cn("text-[10px]", statusColors[s.status])}>
                   {s.status === "waiting" && <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-500 mr-1 animate-pulse" />}
@@ -267,13 +296,41 @@ const TelemedicinePage: React.FC = () => {
               <p className="text-xs text-muted-foreground">
                 {format(new Date(s.scheduled_at), "hh:mm a")} · {s.duration_minutes} min
               </p>
+              {hasBill && (
+                <div className="mt-1.5 flex items-center gap-1">
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "text-[10px] gap-1",
+                      isPaid
+                        ? "border-emerald-500 text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30"
+                        : "border-amber-500 text-amber-600 bg-amber-50 dark:bg-amber-950/30"
+                    )}
+                  >
+                    <IndianRupee size={10} />
+                    {isPaid ? "Billed" : "Pending"}
+                    {billInfo?.total_amount ? ` ${Number(billInfo.total_amount).toLocaleString("en-IN")}` : ""}
+                  </Badge>
+                </div>
+              )}
               {(s.status === "waiting" || s.status === "scheduled") && (
                 <Button size="sm" className="mt-2 w-full gap-1 h-7 text-xs bg-emerald-600 hover:bg-emerald-700" onClick={e => { e.stopPropagation(); joinCall(s); }}>
                   <Video size={12} /> Join Call
                 </Button>
               )}
+              {s.status === "completed" && hasBill && !isPaid && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="mt-2 w-full gap-1 h-7 text-xs border-amber-500 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+                  onClick={e => { e.stopPropagation(); setPaymentSession(s); }}
+                >
+                  <CreditCard size={12} /> Confirm Payment
+                </Button>
+              )}
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
@@ -376,6 +433,16 @@ const TelemedicinePage: React.FC = () => {
       </div>
 
       <ScheduleTeleconsultModal open={showSchedule} onOpenChange={setShowSchedule} onCreated={fetchSessions} />
+
+      {paymentSession && hospitalId && (
+        <TelePaymentModal
+          open={!!paymentSession}
+          onOpenChange={(o) => !o && setPaymentSession(null)}
+          session={paymentSession}
+          hospitalId={hospitalId}
+          onPaid={fetchSessions}
+        />
+      )}
     </div>
   );
 };
