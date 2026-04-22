@@ -4,9 +4,10 @@ import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Send, Bot, Package } from "lucide-react";
+import { Send, Bot, Package, Layers } from "lucide-react";
 import DenialPredictorPanel from "@/components/insurance/DenialPredictorPanel";
 import ClaimBundleGenerator from "@/components/insurance/ClaimBundleGenerator";
+import BundledClaimModal from "@/components/insurance/BundledClaimModal";
 
 interface ClaimRow {
   bill_id: string;
@@ -26,6 +27,7 @@ const ClaimsToSubmit: React.FC = () => {
   const [submitting, setSubmitting] = useState<string | null>(null);
   const [selectedForReview, setSelectedForReview] = useState<ClaimRow | null>(null);
   const [bundleFor, setBundleFor] = useState<ClaimRow | null>(null);
+  const [bundledOpen, setBundledOpen] = useState(false);
   const [hospitalId, setHospitalId] = useState<string>("");
   const { toast } = useToast();
 
@@ -124,6 +126,15 @@ const ClaimsToSubmit: React.FC = () => {
 
   return (
     <div className="h-full overflow-auto p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <div>
+          <h2 className="text-[14px] font-bold text-foreground">Claims Ready to Submit</h2>
+          <p className="text-[11px] text-muted-foreground">Single-bill claims below, or bundle multiple bills from one admission.</p>
+        </div>
+        <Button size="sm" className="gap-1.5" onClick={() => setBundledOpen(true)} disabled={!hospitalId}>
+          <Layers size={14} /> New Bundled Claim
+        </Button>
+      </div>
       <div className="bg-background rounded-lg border border-border">
         <Table>
           <TableHeader>
@@ -203,6 +214,15 @@ const ClaimsToSubmit: React.FC = () => {
           tpaName={bundleFor.tpa_name}
           hospitalId={hospitalId}
           onSubmitted={() => { setBundleFor(null); loadData(); }}
+        />
+      )}
+
+      {bundledOpen && hospitalId && (
+        <BundledClaimModal
+          open={bundledOpen}
+          onClose={() => setBundledOpen(false)}
+          hospitalId={hospitalId}
+          onSubmitted={() => { setBundledOpen(false); loadData(); }}
         />
       )}
     </div>
