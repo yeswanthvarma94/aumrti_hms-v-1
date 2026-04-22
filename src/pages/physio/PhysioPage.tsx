@@ -20,7 +20,14 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { format } from "date-fns";
-import { Plus, ClipboardList, Calendar, BarChart3, Dumbbell, FileText, Activity, CheckCircle, Clock, User, Printer, MessageSquare, Loader2 } from "lucide-react";
+import { Plus, ClipboardList, Calendar, BarChart3, Dumbbell, FileText, Activity, CheckCircle, Clock, User, Printer, MessageSquare, Loader2, IndianRupee } from "lucide-react";
+import {
+  findActivePackageForService,
+  countPackageSessionsUsed,
+  getPatientSessionBillingCounts,
+  type ActivePackageInfo,
+} from "@/lib/sessionPackageGuard";
+import PackageExhaustedModal from "@/components/shared/PackageExhaustedModal";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip, ResponsiveContainer } from "recharts";
 
 const MODALITIES = ["UST", "IFT", "TENS", "SWD", "Traction", "Exercise", "Manual Therapy", "Hot Pack", "Cold Pack", "Wax Bath", "Hydrotherapy", "Balance Training"];
@@ -96,6 +103,11 @@ const PhysioPage: React.FC = () => {
 
   // Active referrals for dropdowns
   const [activeRefList, setActiveRefList] = useState<any[]>([]);
+
+  // Package guard + per-referral billing counts
+  const [exhaustedPkg, setExhaustedPkg] = useState<ActivePackageInfo | null>(null);
+  const [pendingBookForm, setPendingBookForm] = useState<typeof sForm | null>(null);
+  const [billingCounts, setBillingCounts] = useState<Record<string, { billed: number; unbilled: number; total: number }>>({});
 
   const loadKPIs = useCallback(async () => {
     const today = format(new Date(), "yyyy-MM-dd");
@@ -180,30 +192,54 @@ const PhysioPage: React.FC = () => {
     if (selectedRef?.id === id) setSelectedRef({ ...selectedRef, status: "accepted" });
   };
 
-  // Book session
-  const bookSession = async () => {
-    if (!sForm.referral_id) { toast({ title: "Select a referral", variant: "destructive" }); return; }
-    const ref = activeRefList.find(r => r.id === sForm.referral_id);
+  // Book session — internal write
+  const _doBookSession = async (form: typeof sForm) => {
+    const ref = activeRefList.find(r => r.id === form.referral_id);
     const { data: u } = await supabase.auth.getUser();
     const { error } = await supabase.from("physio_sessions").insert({
       hospital_id: hospitalId,
-      referral_id: sForm.referral_id,
+      referral_id: form.referral_id,
       patient_id: ref?.patient_id,
       therapist_id: u.user?.id,
-      session_date: sForm.session_date,
-      session_time: sForm.session_time,
-      duration_minutes: parseInt(sForm.duration),
-      session_type: sForm.session_type,
-      modalities_used: sForm.modalities,
+      session_date: form.session_date,
+      session_time: form.session_time,
+      duration_minutes: parseInt(form.duration),
+      session_type: form.session_type,
+      modalities_used: form.modalities,
     });
-    if (error) { toast({ title: "Failed", description: error.message, variant: "destructive" }); return; }
-    // Update referral status
-    await supabase.from("physio_referrals").update({ status: "in_progress" }).eq("id", sForm.referral_id);
+    if (error) {
+      console.error("Failed to book physio session:", error.message);
+      toast({ title: "Failed", description: error.message, variant: "destructive" });
+      return;
+    }
+    await supabase.from("physio_referrals").update({ status: "in_progress" }).eq("id", form.referral_id);
     toast({ title: "Session booked" });
     setSessionModal(false);
     setSForm({ referral_id: "", session_date: format(new Date(), "yyyy-MM-dd"), session_time: "09:00", duration: "30", session_type: "in_clinic", modalities: [] });
-    loadSessions(); loadKPIs();
+    loadSessions(); loadKPIs(); loadReferrals();
   };
+
+  const bookSession = async () => {
+    if (!sForm.referral_id) { toast({ title: "Select a referral", variant: "destructive" }); return; }
+    const ref = activeRefList.find(r => r.id === sForm.referral_id);
+    if (hospitalId && ref?.patient_id) {
+      try {
+        const pkg = await findActivePackageForService(ref.patient_id, hospitalId, "physio");
+        if (pkg) {
+          const used = await countPackageSessionsUsed(pkg, ref.patient_id, hospitalId, "physio");
+          if (used >= pkg.sessionsIncluded) {
+            setExhaustedPkg({ ...pkg, sessionsUsed: used });
+            setPendingBookForm(sForm);
+            return;
+          }
+        }
+      } catch (e) {
+        console.warn("Physio package guard skipped:", (e as Error).message);
+      }
+    }
+    await _doBookSession(sForm);
+  };
+
 
   // Physio billing
   const createPhysioBill = async (session: any) => {
@@ -459,7 +495,9 @@ const PhysioPage: React.FC = () => {
               </div>
               <ScrollArea className="flex-1">
                 {referrals.length === 0 && <p className="p-4 text-sm text-muted-foreground text-center">No referrals</p>}
-                {referrals.map(r => (
+                {referrals.map(r => {
+                  const bc = billingCounts[r.patient_id];
+                  return (
                   <button key={r.id} onClick={() => setSelectedRef(r)}
                     className={`w-full text-left p-3 border-b hover:bg-muted/50 transition ${selectedRef?.id === r.id ? "bg-muted" : ""}`}>
                     <div className="flex items-center gap-2 mb-1">
@@ -468,9 +506,18 @@ const PhysioPage: React.FC = () => {
                     </div>
                     <p className="text-sm font-medium truncate">{r.diagnosis}</p>
                     <p className="text-xs text-muted-foreground">{r.total_sessions_done || 0}/{r.total_sessions_planned || "?"} sessions</p>
+                    {bc && bc.total > 0 && (
+                      <Badge
+                        variant="outline"
+                        className={`text-[10px] mt-1 ${bc.unbilled > 0 ? "border-amber-500 text-amber-600" : "border-emerald-500 text-emerald-600"}`}
+                      >
+                        ₹ {bc.billed} billed / {bc.unbilled} unbilled
+                      </Badge>
+                    )}
                     <p className="text-[10px] text-muted-foreground mt-1">{format(new Date(r.created_at), "dd/MM/yy")}</p>
                   </button>
-                ))}
+                  );
+                })}
               </ScrollArea>
             </div>
             <div className="flex-1 border rounded-lg overflow-hidden">
@@ -938,6 +985,25 @@ const PhysioPage: React.FC = () => {
           <DialogFooter><Button onClick={saveHEP} disabled={hepExercises.length === 0}>Save HEP</Button></DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {exhaustedPkg && (
+        <PackageExhaustedModal
+          open={!!exhaustedPkg}
+          onOpenChange={(o) => { if (!o) { setExhaustedPkg(null); setPendingBookForm(null); } }}
+          packageName={exhaustedPkg.packageName}
+          sessionsIncluded={exhaustedPkg.sessionsIncluded}
+          sessionsUsed={exhaustedPkg.sessionsUsed}
+          ratePerSession={exhaustedPkg.ratePerSession}
+          serviceLabel="physio session"
+          onCancel={() => { setExhaustedPkg(null); setPendingBookForm(null); }}
+          onBillAsExtra={async () => {
+            const form = pendingBookForm;
+            setExhaustedPkg(null);
+            setPendingBookForm(null);
+            if (form) await _doBookSession(form);
+          }}
+        />
+      )}
     </div>
   );
 };

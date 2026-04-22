@@ -15,6 +15,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Play, CheckCircle, ShieldX, Plus, Pencil, Power } from "lucide-react";
+import {
+  findActivePackageForService,
+  countPackageSessionsUsed,
+  type ActivePackageInfo,
+} from "@/lib/sessionPackageGuard";
+import PackageExhaustedModal from "@/components/shared/PackageExhaustedModal";
 
 interface Props { onRefresh: () => void }
 
@@ -78,6 +84,9 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
   const [ufAchieved, setUfAchieved] = useState("");
   const [complications, setComplications] = useState<string[]>([]);
   const [sessionNotes, setSessionNotes] = useState("");
+
+  // Package guard
+  const [exhaustedPkg, setExhaustedPkg] = useState<ActivePackageInfo | null>(null);
 
   const fetchData = async () => {
     const [mRes, sRes, pRes] = await Promise.all([
@@ -152,24 +161,15 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
     return null;
   };
 
-  const startSession = async () => {
+  const _doStartSession = async () => {
     if (!selectedPatient || !startMachine) return;
-
-    // Dialyzer reuse check
-    if (dialyzerId) {
-      const reuseBlock = await checkDialyzerReuse(dialyzerId, selectedPatient.id);
-      if (reuseBlock) {
-        setSafetyBlock(reuseBlock);
-        return;
-      }
-    }
 
     const { data: user } = await supabase.from("users").select("id, hospital_id").limit(1).maybeSingle();
     if (!user) return;
 
     const ufGoal = selectedPatient.dry_weight_kg ? Math.round((parseFloat(preWeight) - selectedPatient.dry_weight_kg) * 1000) : null;
 
-    await (supabase as any).from("dialysis_sessions").insert({
+    const { error: insErr } = await (supabase as any).from("dialysis_sessions").insert({
       hospital_id: user.hospital_id,
       dialysis_patient_id: selectedPatient.id,
       machine_id: startMachine.id,
@@ -189,6 +189,11 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
       status: "in_progress",
       performed_by: user.id,
     });
+    if (insErr) {
+      console.error("Failed to start dialysis session:", insErr.message);
+      toast({ title: "Failed to start session", description: insErr.message, variant: "destructive" });
+      return;
+    }
 
     await (supabase as any).from("dialysis_machines").update({ status: "in_use", current_patient_id: selectedPatient.patient_id }).eq("id", startMachine.id);
 
@@ -197,6 +202,40 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
     fetchData();
     onRefresh();
   };
+
+  const startSession = async () => {
+    if (!selectedPatient || !startMachine) return;
+
+    // Dialyzer reuse check
+    if (dialyzerId) {
+      const reuseBlock = await checkDialyzerReuse(dialyzerId, selectedPatient.id);
+      if (reuseBlock) {
+        setSafetyBlock(reuseBlock);
+        return;
+      }
+    }
+
+    // Package exhaustion guard
+    const { data: user } = await supabase.from("users").select("hospital_id").limit(1).maybeSingle();
+    const hospitalId = user?.hospital_id;
+    if (hospitalId && selectedPatient.patient_id) {
+      try {
+        const pkg = await findActivePackageForService(selectedPatient.patient_id, hospitalId, "dialysis");
+        if (pkg) {
+          const used = await countPackageSessionsUsed(pkg, selectedPatient.patient_id, hospitalId, "dialysis");
+          if (used >= pkg.sessionsIncluded) {
+            setExhaustedPkg({ ...pkg, sessionsUsed: used });
+            return; // Wait for modal decision
+          }
+        }
+      } catch (e) {
+        console.warn("Package guard skipped:", (e as Error).message);
+      }
+    }
+
+    await _doStartSession();
+  };
+
 
   const createDialysisBill = async (session: any, hospitalId: string) => {
     const { data: dialysisPatient } = await (supabase as any)
@@ -652,6 +691,23 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
           )}
         </DialogContent>
       </Dialog>
+
+      {exhaustedPkg && (
+        <PackageExhaustedModal
+          open={!!exhaustedPkg}
+          onOpenChange={(o) => !o && setExhaustedPkg(null)}
+          packageName={exhaustedPkg.packageName}
+          sessionsIncluded={exhaustedPkg.sessionsIncluded}
+          sessionsUsed={exhaustedPkg.sessionsUsed}
+          ratePerSession={exhaustedPkg.ratePerSession}
+          serviceLabel="dialysis session"
+          onCancel={() => setExhaustedPkg(null)}
+          onBillAsExtra={async () => {
+            setExhaustedPkg(null);
+            await _doStartSession();
+          }}
+        />
+      )}
     </div>
   );
 };
