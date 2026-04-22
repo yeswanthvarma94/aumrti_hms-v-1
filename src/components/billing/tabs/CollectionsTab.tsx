@@ -421,6 +421,30 @@ const CollectionsTab: React.FC<CollectionsTabProps> = ({ hospitalId }) => {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
+      {/* Today's OPD Collections KPI card */}
+      <div className="px-4 pt-3 flex-shrink-0">
+        <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3 flex items-center justify-between">
+          <div>
+            <p className="text-[10px] font-bold uppercase text-emerald-700 dark:text-emerald-400 tracking-wide">
+              Today's OPD Collections
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">Bills paid today (bill_type = OPD)</p>
+          </div>
+          <div className="flex items-center gap-6">
+            <div className="text-right">
+              <p className="text-[10px] uppercase text-muted-foreground">Bills</p>
+              <p className="text-2xl font-bold font-mono">{opdToday.count}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-[10px] uppercase text-muted-foreground">Amount</p>
+              <p className="text-2xl font-bold font-mono text-emerald-700 dark:text-emerald-400">
+                {fmt(opdToday.amount)}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* KPI pills */}
       <div className="flex gap-2 px-4 py-3 border-b border-border flex-shrink-0 flex-wrap">
         <Badge variant="outline" className="text-xs px-3 py-1.5 font-mono">Total: {fmt(totalOutstanding)}</Badge>
