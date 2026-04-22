@@ -305,11 +305,13 @@ const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onT
     }
   }, [token, hospitalId, userId, encounterId]);
 
-  // Sync investigation orders to real DB tables
+  // Sync investigation orders to real DB tables + auto-create draft bills
   const syncInvestigationOrders = useCallback(async (data: PrescriptionData, eid: string) => {
     if (!hospitalId || !userId || !token) return;
     try {
       const { syncLabOrders, syncRadiologyOrders } = await import("@/lib/investigationSync");
+      const { autoBillOpdInvestigation, getInvestigationRate } = await import("@/lib/investigationBilling");
+
       const labCount = await syncLabOrders({
         hospitalId, patientId: token.patient_id, orderedBy: userId,
         encounterId: eid, admissionId: null,
@@ -320,13 +322,60 @@ const ConsultationWorkspace: React.FC<Props> = ({ token, hospitalId, userId, onT
         encounterId: eid, admissionId: null,
         items: data.radiology_orders,
       });
+
+      // Auto-create draft bills (skips IPD via admissionId=null check inside helper)
+      try {
+        if (labCount > 0 && data.lab_orders.length > 0) {
+          const labLineItems = await Promise.all(
+            data.lab_orders.map(async (lo) => {
+              const { rate, gstPercent } = await getInvestigationRate(hospitalId, lo.test_name, "lab");
+              return {
+                description: lo.test_name,
+                itemType: "lab_test" as const,
+                unitRate: rate,
+                quantity: 1,
+                gstPercent,
+              };
+            })
+          );
+          await autoBillOpdInvestigation({
+            hospitalId, patientId: token.patient_id, encounterId: eid, admissionId: null,
+            orderedBy: userId, lineItems: labLineItems,
+            billPrefix: "LAB", sourceModule: "lab", sourceId: eid,
+          });
+        }
+        if (radCount > 0 && data.radiology_orders.length > 0) {
+          const radLineItems = await Promise.all(
+            data.radiology_orders.map(async (ro) => {
+              const { rate, gstPercent } = await getInvestigationRate(hospitalId, ro.study_name, "radiology");
+              return {
+                description: ro.study_name,
+                itemType: "radiology" as const,
+                unitRate: rate,
+                quantity: 1,
+                gstPercent,
+              };
+            })
+          );
+          await autoBillOpdInvestigation({
+            hospitalId, patientId: token.patient_id, encounterId: eid, admissionId: null,
+            orderedBy: userId, lineItems: radLineItems,
+            billPrefix: "RAD", sourceModule: "radiology", sourceId: eid,
+          });
+        }
+      } catch (billErr) {
+        console.error("Investigation auto-bill error (non-blocking):", billErr);
+      }
+
       if (labCount > 0 || radCount > 0) {
-        
+        toast({
+          title: `${labCount} lab test${labCount === 1 ? "" : "s"} and ${radCount} imaging order${radCount === 1 ? "" : "s"} sent to Lab/Radiology with draft bills created.`,
+        });
       }
     } catch (err) {
       console.error("Investigation sync error (non-blocking):", err);
     }
-  }, [hospitalId, userId, token]);
+  }, [hospitalId, userId, token, toast]);
 
   // Auto-save prescription
   const autoSavePrescription = useCallback(async (data: PrescriptionData) => {
