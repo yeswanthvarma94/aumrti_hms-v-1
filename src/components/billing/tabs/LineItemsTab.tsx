@@ -362,6 +362,18 @@ const LineItemsTab: React.FC<Props> = ({ bill, hospitalId, lineItems, loading, o
         )}
       </div>
 
+      {/* Package excess check — IPD bills linked to an admission with a package */}
+      {bill.admission_id && hospitalId && (
+        <div className="px-4 pt-2">
+          <PackageExcessCheck
+            key={`pkgexcess-${lineItems.length}`}
+            admissionId={bill.admission_id}
+            hospitalId={hospitalId}
+            variant="inline"
+          />
+        </div>
+      )}
+
       {/* AI Leakage Scanner */}
       <LeakageScanner bill={bill} hospitalId={hospitalId} lineItems={lineItems} onRefresh={onRefresh} />
 
