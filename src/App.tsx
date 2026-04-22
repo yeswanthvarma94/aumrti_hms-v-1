@@ -12,6 +12,8 @@ import AuthGuard from "@/components/auth/AuthGuard";
 import RoleGuard from "@/components/auth/RoleGuard";
 import ModuleErrorBoundary from "@/components/auth/ModuleErrorBoundary";
 import { ROUTE_ROLES } from "@/lib/routeRoles";
+import { AuthProvider } from "@/context/AuthContext";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const Register = lazy(() => import("./pages/register"));
 const OnboardingWizard = lazy(() => import("./pages/setup/OnboardingWizard"));
@@ -106,10 +108,11 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 2 * 60 * 1000,
-      gcTime: 10 * 60 * 1000,
+      gcTime: 30 * 60 * 1000,
       retry: 1,
       refetchOnWindowFocus: false,
       refetchOnReconnect: true,
+      refetchOnMount: false,
     },
     mutations: {
       retry: 0,
@@ -117,8 +120,21 @@ const queryClient = new QueryClient({
   },
 });
 
+/** Lightweight skeleton shown while a lazy route bundle loads. */
+const PageSkeleton = () => (
+  <div className="h-full w-full p-6 space-y-4">
+    <Skeleton className="h-8 w-64" />
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <Skeleton key={i} className="h-28 w-full" />
+      ))}
+    </div>
+    <Skeleton className="h-72 w-full" />
+  </div>
+);
+
 const SuspenseWrap = ({ children }: { children: React.ReactNode }) => (
-  <Suspense fallback={<div />}>{children}</Suspense>
+  <Suspense fallback={<PageSkeleton />}>{children}</Suspense>
 );
 
 const RG = ({ path, children }: { path: string; children: React.ReactNode }) => {
@@ -130,16 +146,17 @@ const RG = ({ path, children }: { path: string; children: React.ReactNode }) => 
 /** Wraps a lazy module in both ErrorBoundary (crash isolation) and Suspense (loading) */
 const SM = ({ name, children }: { name: string; children: React.ReactNode }) => (
   <ModuleErrorBoundary moduleName={name}>
-    <Suspense fallback={<div />}>{children}</Suspense>
+    <Suspense fallback={<PageSkeleton />}>{children}</Suspense>
   </ModuleErrorBoundary>
 );
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
+    <AuthProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
         <Routes>
           {/* Public routes */}
           <Route path="/" element={<LandingPage />} />
