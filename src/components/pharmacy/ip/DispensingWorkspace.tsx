@@ -15,6 +15,7 @@ import ADRCheckPanel from "./ADRCheckPanel";
 import AllergyBanner from "@/components/clinical/AllergyBanner";
 import { logNABHEvidence } from "@/lib/nabh-evidence";
 import type { PrescriptionItem } from "./PrescriptionQueue";
+import EmergencyDispensePanel from "./EmergencyDispensePanel";
 
 interface DrugRow {
   drug_name: string;
@@ -691,6 +692,15 @@ const DispensingWorkspace: React.FC<Props> = ({ hospitalId, prescription, onDisp
           )}
         </Button>
       </div>
+
+      {/* Emergency / Verbal Order Dispense — independent of regular prescription flow */}
+      <EmergencyDispensePanel
+        hospitalId={hospitalId}
+        admissionId={prescription.admission_id}
+        patientId={prescription.patient_id}
+        patientName={patient?.full_name}
+        onDispensed={onDispensed}
+      />
     </div>
   );
 };
