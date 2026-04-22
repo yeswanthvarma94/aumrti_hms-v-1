@@ -355,6 +355,16 @@ const IPDOverviewTab: React.FC<Props> = ({ admissionId, hospitalId, onTabChange,
                 <div className="bg-destructive/10 border border-destructive/30 rounded p-2 text-center">
                   <p className="text-[11px] text-destructive font-medium">⚠ Billing not cleared. Clear billing before generating discharge summary.</p>
                 </div>
+              ) : pkgExcessBlocking ? (
+                <div className="bg-amber-50 border border-amber-300 rounded p-2 space-y-1">
+                  <p className="text-[11px] text-amber-800 font-semibold flex items-center gap-1">
+                    <AlertTriangle className="h-3 w-3" /> Package excess of ₹{pkgExcessAmount.toLocaleString("en-IN")} pending.
+                  </p>
+                  <Button size="sm" variant="outline" className="text-[11px] h-7 w-full border-amber-400 text-amber-800 hover:bg-amber-100"
+                    onClick={() => setPkgExcessOpen(true)}>
+                    Resolve Package Excess
+                  </Button>
+                </div>
               ) : (
                 <DischargeSummaryGenerator
                   admissionId={admissionId}
@@ -381,6 +391,18 @@ const IPDOverviewTab: React.FC<Props> = ({ admissionId, hospitalId, onTabChange,
           medications={medications.map((m) => ({ drug_name: m.drug_name, dose: m.dose, frequency: m.frequency }))}
           followupDate={null}
           restrictions={null}
+        />
+      )}
+
+      {pkgExcessOpen && pkgId && hospitalId && (
+        <PackageExcessModal
+          open={pkgExcessOpen}
+          onClose={() => setPkgExcessOpen(false)}
+          admissionId={admissionId}
+          packageId={pkgId}
+          hospitalId={hospitalId}
+          patientId={pkgPatientId}
+          onResolved={() => setPkgCheckTrigger((n) => n + 1)}
         />
       )}
     </div>
