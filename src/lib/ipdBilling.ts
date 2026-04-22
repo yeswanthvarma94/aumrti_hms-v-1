@@ -508,3 +508,198 @@ export async function autoPullAdmissionCharges(
 
   return { ok: true, insertedCount, usedFallbackRate };
 }
+
+// ---------------------------------------------------------------------------
+// Bill Completeness Check (used by IPD discharge stepper before Billing step)
+// ---------------------------------------------------------------------------
+
+export type BillCompletenessSeverity = "warning" | "info";
+
+export interface BillCompletenessIssue {
+  code:
+    | "no_bill"
+    | "ward_charges_missing"
+    | "lab_results_unbilled"
+    | "pharmacy_unconsolidated"
+    | "nursing_unbilled";
+  message: string;
+  severity: BillCompletenessSeverity;
+  /** Tab/section to deep-link the user to. Used by IPDOverviewTab "Fix Now" button. */
+  fixTarget?: "billing" | "lab" | "pharmacy" | "nursing";
+  /** Optional count for messaging context. */
+  count?: number;
+}
+
+export interface BillCompletenessResult {
+  complete: boolean;
+  billId: string | null;
+  issues: BillCompletenessIssue[];
+}
+
+/**
+ * Pre-flight check for IPD discharge billing step. Surfaces missing/unbilled
+ * charges so staff can fix them before the Billing step is actionable.
+ * Read-only — never mutates data. Caller decides how to act on the result.
+ */
+export async function checkIPDBillCompleteness(
+  admissionId: string,
+  hospitalId: string
+): Promise<BillCompletenessResult> {
+  const issues: BillCompletenessIssue[] = [];
+
+  // (a) Does an IPD bill exist?
+  const { data: bill, error: billErr } = await (supabase as any)
+    .from("bills")
+    .select("id, bill_status, payment_status")
+    .eq("hospital_id", hospitalId)
+    .eq("admission_id", admissionId)
+    .eq("bill_type", "ipd")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (billErr) {
+    console.error("Bill completeness: bill lookup failed:", billErr.message);
+  }
+
+  if (!bill) {
+    return {
+      complete: false,
+      billId: null,
+      issues: [
+        {
+          code: "no_bill",
+          severity: "warning",
+          message: "No IPD bill found for this admission.",
+          fixTarget: "billing",
+        },
+      ],
+    };
+  }
+
+  const billId: string = bill.id;
+
+  // Pre-fetch bill line items once for downstream checks.
+  const { data: lineItems } = await (supabase as any)
+    .from("bill_line_items")
+    .select("item_type, description, source_module, source_record_id, quantity")
+    .eq("bill_id", billId);
+
+  const items = (lineItems as Array<{
+    item_type: string | null;
+    description: string | null;
+    source_module: string | null;
+    source_record_id: string | null;
+    quantity: number | null;
+  }>) || [];
+
+  // (b) Ward charges line item present?
+  const { data: admission } = await supabase
+    .from("admissions")
+    .select("admitted_at")
+    .eq("id", admissionId)
+    .maybeSingle();
+
+  const admittedAt = admission?.admitted_at ? new Date(admission.admitted_at) : null;
+  let expectedWardDays = 1;
+  if (admittedAt) {
+    const ms = Date.now() - admittedAt.getTime();
+    expectedWardDays = Math.max(1, Math.ceil(ms / 86_400_000));
+  }
+
+  const hasWardCharge = items.some(
+    (it) => it.item_type === "room_charge" || it.item_type === "ward_charge"
+  );
+  if (!hasWardCharge) {
+    issues.push({
+      code: "ward_charges_missing",
+      severity: "warning",
+      message: `Ward charges not added (${expectedWardDays} day${expectedWardDays === 1 ? "" : "s"}).`,
+      fixTarget: "billing",
+      count: expectedWardDays,
+    });
+  }
+
+  // (c) Reported lab orders not in bill_line_items?
+  const { data: labOrders } = await (supabase as any)
+    .from("lab_orders")
+    .select("id")
+    .eq("hospital_id", hospitalId)
+    .eq("admission_id", admissionId);
+
+  const labOrderIds = (labOrders || []).map((o: { id: string }) => o.id);
+  let unbilledLabCount = 0;
+  if (labOrderIds.length > 0) {
+    const { data: reportedItems } = await (supabase as any)
+      .from("lab_order_items")
+      .select("id, status")
+      .in("lab_order_id", labOrderIds)
+      .eq("status", "reported");
+
+    const reportedIds = new Set(
+      (reportedItems || []).map((li: { id: string }) => li.id)
+    );
+    const billedLabIds = new Set(
+      items
+        .filter((it) => (it.source_module || "").toLowerCase() === "lab" && it.source_record_id)
+        .map((it) => it.source_record_id as string)
+    );
+
+    for (const id of reportedIds) {
+      if (!billedLabIds.has(id as string)) unbilledLabCount += 1;
+    }
+  }
+  if (unbilledLabCount > 0) {
+    issues.push({
+      code: "lab_results_unbilled",
+      severity: "warning",
+      message: `${unbilledLabCount} lab result${unbilledLabCount === 1 ? "" : "s"} reported but not included in final bill.`,
+      fixTarget: "lab",
+      count: unbilledLabCount,
+    });
+  }
+
+  // (d) Dispensed pharmacy not consolidated into this IPD bill?
+  // A pharmacy line on the IPD bill is identified by source_module='pharmacy'.
+  const { data: dispensed } = await (supabase as any)
+    .from("pharmacy_dispensing")
+    .select("id, status")
+    .eq("hospital_id", hospitalId)
+    .eq("admission_id", admissionId)
+    .eq("status", "dispensed");
+
+  const hasPharmacyConsolidated = items.some(
+    (it) => (it.source_module || "").toLowerCase() === "pharmacy"
+  );
+  if ((dispensed?.length || 0) > 0 && !hasPharmacyConsolidated) {
+    issues.push({
+      code: "pharmacy_unconsolidated",
+      severity: "warning",
+      message: "Pharmacy charges pending consolidation into the IPD bill.",
+      fixTarget: "pharmacy",
+      count: dispensed?.length || 0,
+    });
+  }
+
+  // (e) Nursing procedures not billed?
+  const { data: nursingProcs } = await (supabase as any)
+    .from("nursing_procedures")
+    .select("id, billed")
+    .eq("hospital_id", hospitalId)
+    .eq("admission_id", admissionId);
+
+  const unbilledNursing = (nursingProcs || []).filter(
+    (np: { billed: boolean | null }) => !np.billed
+  ).length;
+  if (unbilledNursing > 0) {
+    issues.push({
+      code: "nursing_unbilled",
+      severity: "warning",
+      message: `${unbilledNursing} nursing procedure${unbilledNursing === 1 ? "" : "s"} not billed.`,
+      fixTarget: "nursing",
+      count: unbilledNursing,
+    });
+  }
+
+  return { complete: issues.length === 0, billId, issues };
+}
