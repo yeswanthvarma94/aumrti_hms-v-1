@@ -64,6 +64,7 @@ const DentalPage: React.FC = () => {
   const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [billingCounts, setBillingCounts] = useState<Record<string, { billed: number; unbilled: number; total: number }>>({});
 
   // Chart state
   const [chartData, setChartData] = useState<ChartData>({});
