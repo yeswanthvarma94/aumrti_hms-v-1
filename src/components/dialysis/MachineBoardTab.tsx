@@ -691,6 +691,23 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
           )}
         </DialogContent>
       </Dialog>
+
+      {exhaustedPkg && (
+        <PackageExhaustedModal
+          open={!!exhaustedPkg}
+          onOpenChange={(o) => !o && setExhaustedPkg(null)}
+          packageName={exhaustedPkg.packageName}
+          sessionsIncluded={exhaustedPkg.sessionsIncluded}
+          sessionsUsed={exhaustedPkg.sessionsUsed}
+          ratePerSession={exhaustedPkg.ratePerSession}
+          serviceLabel="dialysis session"
+          onCancel={() => setExhaustedPkg(null)}
+          onBillAsExtra={async () => {
+            setExhaustedPkg(null);
+            await _doStartSession();
+          }}
+        />
+      )}
     </div>
   );
 };
