@@ -15,8 +15,6 @@ interface DrugMatch {
   id: string;
   drug_name: string;
   generic_name?: string | null;
-  strength?: string | null;
-  dosage_form?: string | null;
   is_ndps: boolean;
   drug_schedule?: string | null;
 }
@@ -66,7 +64,7 @@ const EmergencyDispensePanel: React.FC<Props> = ({ hospitalId, admissionId, pati
       setSearching(true);
       const { data, error } = await supabase
         .from("drug_master")
-        .select("id, drug_name, generic_name, strength, dosage_form, is_ndps, drug_schedule")
+        .select("id, drug_name, generic_name, is_ndps, drug_schedule")
         .eq("hospital_id", hospitalId)
         .or(`drug_name.ilike.%${search}%,generic_name.ilike.%${search}%`)
         .limit(8);
@@ -75,7 +73,7 @@ const EmergencyDispensePanel: React.FC<Props> = ({ hospitalId, admissionId, pati
         toast.error("Drug search failed. Please try again.");
         setMatches([]);
       } else {
-        setMatches((data || []) as DrugMatch[]);
+        setMatches(((data || []) as unknown) as DrugMatch[]);
       }
       setSearching(false);
     }, 300);
@@ -87,8 +85,6 @@ const EmergencyDispensePanel: React.FC<Props> = ({ hospitalId, admissionId, pati
   const pickDrug = async (d: DrugMatch) => {
     setSelectedDrug(d);
     setSearch(d.drug_name);
-    setStrength(d.strength || "");
-    setForm(d.dosage_form || "");
     setMatches([]);
 
     // Pull latest batch (FEFO) for pricing
@@ -300,10 +296,10 @@ const EmergencyDispensePanel: React.FC<Props> = ({ hospitalId, admissionId, pati
   const isNdps = selectedDrug?.is_ndps === true;
 
   return (
-    <div className="flex-shrink-0 border-t-2 border-amber-500/40 bg-amber-50/40 dark:bg-amber-950/20 px-5 py-3">
+    <div className="flex-shrink-0 border-t-2 border-warning/40 bg-warning/5 px-5 py-3">
       <div className="flex items-center gap-2 mb-2">
-        <Zap size={16} className="text-amber-600" />
-        <h3 className="text-[13px] font-bold text-amber-900 dark:text-amber-200 uppercase tracking-wide">
+        <Zap size={16} className="text-warning" />
+        <h3 className="text-[13px] font-bold text-warning uppercase tracking-wide">
           Emergency / Verbal Order Dispense
         </h3>
         <span className="text-[10px] text-muted-foreground">— Use only when prescription unavailable</span>
@@ -412,7 +408,7 @@ const EmergencyDispensePanel: React.FC<Props> = ({ hospitalId, admissionId, pati
           disabled={submitting || !selectedDrug || isNdps}
           className={cn(
             "col-span-2 h-9 text-[12px] font-bold",
-            "bg-amber-600 hover:bg-amber-700 text-white"
+            "bg-warning text-warning-foreground hover:bg-warning/90"
           )}
         >
           {submitting ? <><Loader2 size={12} className="mr-1 animate-spin" />Saving</> : <><Zap size={12} className="mr-1" />Dispense</>}
