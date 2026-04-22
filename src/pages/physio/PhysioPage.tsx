@@ -192,30 +192,54 @@ const PhysioPage: React.FC = () => {
     if (selectedRef?.id === id) setSelectedRef({ ...selectedRef, status: "accepted" });
   };
 
-  // Book session
-  const bookSession = async () => {
-    if (!sForm.referral_id) { toast({ title: "Select a referral", variant: "destructive" }); return; }
-    const ref = activeRefList.find(r => r.id === sForm.referral_id);
+  // Book session — internal write
+  const _doBookSession = async (form: typeof sForm) => {
+    const ref = activeRefList.find(r => r.id === form.referral_id);
     const { data: u } = await supabase.auth.getUser();
     const { error } = await supabase.from("physio_sessions").insert({
       hospital_id: hospitalId,
-      referral_id: sForm.referral_id,
+      referral_id: form.referral_id,
       patient_id: ref?.patient_id,
       therapist_id: u.user?.id,
-      session_date: sForm.session_date,
-      session_time: sForm.session_time,
-      duration_minutes: parseInt(sForm.duration),
-      session_type: sForm.session_type,
-      modalities_used: sForm.modalities,
+      session_date: form.session_date,
+      session_time: form.session_time,
+      duration_minutes: parseInt(form.duration),
+      session_type: form.session_type,
+      modalities_used: form.modalities,
     });
-    if (error) { toast({ title: "Failed", description: error.message, variant: "destructive" }); return; }
-    // Update referral status
-    await supabase.from("physio_referrals").update({ status: "in_progress" }).eq("id", sForm.referral_id);
+    if (error) {
+      console.error("Failed to book physio session:", error.message);
+      toast({ title: "Failed", description: error.message, variant: "destructive" });
+      return;
+    }
+    await supabase.from("physio_referrals").update({ status: "in_progress" }).eq("id", form.referral_id);
     toast({ title: "Session booked" });
     setSessionModal(false);
     setSForm({ referral_id: "", session_date: format(new Date(), "yyyy-MM-dd"), session_time: "09:00", duration: "30", session_type: "in_clinic", modalities: [] });
-    loadSessions(); loadKPIs();
+    loadSessions(); loadKPIs(); loadReferrals();
   };
+
+  const bookSession = async () => {
+    if (!sForm.referral_id) { toast({ title: "Select a referral", variant: "destructive" }); return; }
+    const ref = activeRefList.find(r => r.id === sForm.referral_id);
+    if (hospitalId && ref?.patient_id) {
+      try {
+        const pkg = await findActivePackageForService(ref.patient_id, hospitalId, "physio");
+        if (pkg) {
+          const used = await countPackageSessionsUsed(pkg, ref.patient_id, hospitalId, "physio");
+          if (used >= pkg.sessionsIncluded) {
+            setExhaustedPkg({ ...pkg, sessionsUsed: used });
+            setPendingBookForm(sForm);
+            return;
+          }
+        }
+      } catch (e) {
+        console.warn("Physio package guard skipped:", (e as Error).message);
+      }
+    }
+    await _doBookSession(sForm);
+  };
+
 
   // Physio billing
   const createPhysioBill = async (session: any) => {
