@@ -278,6 +278,17 @@ const IPDOverviewTab: React.FC<Props> = ({ admissionId, hospitalId, onTabChange,
             <Receipt className="h-3 w-3" /> View / Update IPD Bill
           </Button>
 
+          {pkgId && pkgExcessAmount > 0 && (
+            <button
+              onClick={() => setPkgExcessOpen(true)}
+              className="mb-3 text-[11px] flex items-center justify-between gap-1 px-2 py-1 rounded border border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100"
+            >
+              <span className="flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3" /> Package excess detected
+              </span>
+              <span className="font-semibold">₹{pkgExcessAmount.toLocaleString("en-IN")}</span>
+            </button>
+          )}
           {/* Stepper */}
           <div className="flex items-center gap-1 w-full mb-3">
             {steps.map((step, i) => {
