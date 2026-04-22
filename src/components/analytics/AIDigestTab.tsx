@@ -1,81 +1,49 @@
-import React, { useState, useEffect } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import React, { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format, subDays, addDays } from "date-fns";
 import { Bot, ChevronLeft, ChevronRight, RefreshCw, Send, Loader2, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useHospital } from "@/hooks/useHospitalId";
+import type { DashboardKPIs } from "@/hooks/useDashboardData";
 
-async function getHospitalId(): Promise<string | null> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
-  const { data } = await supabase.from("users").select("hospital_id").eq("auth_user_id", user.id).maybeSingle();
-  return data?.hospital_id || null;
-}
-
-async function getHospitalName(): Promise<string> {
-  const hospitalId = await getHospitalId();
-  if (!hospitalId) return "Hospital";
-  const { data } = await supabase.from("hospitals").select("name").eq("id", hospitalId).maybeSingle();
-  return data?.name || "Hospital";
-}
-
-// Fetch today's live KPIs for the snapshot panel
-async function fetchTodayKPIs(hospitalId: string, dateStr: string) {
-  const yesterday = format(subDays(new Date(dateStr), 1), "yyyy-MM-dd");
-  const [opdRes, revRes, revYestRes, bedsOccRes, bedsTotalRes, pendingRes, labPendRes, alertsRes] = await Promise.all([
-    supabase.from("opd_encounters").select("id").eq("hospital_id", hospitalId)
-      .gte("created_at", dateStr).lte("created_at", dateStr + "T23:59:59"),
-    supabase.from("bills").select("paid_amount").eq("hospital_id", hospitalId)
-      .eq("bill_date", dateStr).in("payment_status", ["paid", "partial"]),
-    supabase.from("bills").select("paid_amount").eq("hospital_id", hospitalId)
-      .eq("bill_date", yesterday).in("payment_status", ["paid", "partial"]),
-    supabase.from("beds").select("id").eq("hospital_id", hospitalId).eq("is_active", true).eq("status", "occupied"),
-    supabase.from("beds").select("id").eq("hospital_id", hospitalId).eq("is_active", true),
-    supabase.from("bills").select("balance_due").eq("hospital_id", hospitalId).in("payment_status", ["unpaid", "partial"]),
-    supabase.from("lab_order_items").select("id").eq("hospital_id", hospitalId).in("status", ["ordered", "collected"]),
-    supabase.from("clinical_alerts").select("id").eq("hospital_id", hospitalId).eq("is_acknowledged", false),
-  ]);
-
-  const sum = (rows: any[] | null, f: string) => (rows || []).reduce((s, r) => s + (Number(r[f]) || 0), 0);
-  const opdCount = opdRes.data?.length || 0;
-  const opdYest = 0; // Simplified
-  const revenue = sum(revRes.data, "paid_amount");
-  const revenueYest = sum(revYestRes.data, "paid_amount");
-  const occupiedBeds = bedsOccRes.data?.length || 0;
-  const totalBeds = bedsTotalRes.data?.length || 0;
-  const bedOccPct = totalBeds > 0 ? Math.round((occupiedBeds / totalBeds) * 100) : 0;
-  const pending = sum(pendingRes.data, "balance_due");
-  const labPending = labPendRes.data?.length || 0;
-  const critAlerts = alertsRes.data?.length || 0;
-
+// Build the same KPI rows + snapshot the AI digest needs, but from already-cached
+// dashboard data instead of re-querying 8 tables every time the tab opens.
+function buildKpiViewModel(kpis: DashboardKPIs | undefined) {
+  if (!kpis) return null;
+  const revenue = kpis.revenueMTD;
+  const revenueYest = kpis.revenueLastMonth;
+  const bedOccPct = kpis.bedsTotal > 0 ? Math.round((kpis.bedsOccupied / kpis.bedsTotal) * 100) : 0;
   const revChange = revenueYest > 0 ? Math.round(((revenue - revenueYest) / revenueYest) * 100) : 0;
 
   return {
     rows: [
-      { label: "OPD Patients", today: String(opdCount), vs: opdCount > opdYest ? `+${opdCount - opdYest} ↑` : `${opdCount - opdYest}`, ok: true },
-      { label: "Revenue Collected", today: `₹${(revenue / 100000).toFixed(1)}L`, vs: `${revChange >= 0 ? "↑" : "↓"} ${Math.abs(revChange)}%`, ok: revChange >= 0 },
-      { label: "Bed Occupancy", today: `${bedOccPct}%`, vs: `${occupiedBeds}/${totalBeds}`, ok: bedOccPct >= 60 },
-      { label: "Pending Bills", today: `₹${(pending / 100000).toFixed(1)}L`, vs: `${pendingRes.data?.length || 0} bills`, ok: pending < 500000 },
-      { label: "Lab Pending", today: String(labPending), vs: "tests", ok: labPending < 10 },
-      { label: "Critical Alerts", today: String(critAlerts), vs: "unack.", ok: critAlerts === 0 },
+      { label: "OPD Patients", today: String(kpis.opdActive), vs: `${kpis.opdSeen} seen`, ok: true },
+      { label: "Revenue (MTD)", today: `₹${(revenue / 100000).toFixed(1)}L`, vs: `${revChange >= 0 ? "↑" : "↓"} ${Math.abs(revChange)}%`, ok: revChange >= 0 },
+      { label: "Bed Occupancy", today: `${bedOccPct}%`, vs: `${kpis.bedsOccupied}/${kpis.bedsTotal}`, ok: bedOccPct >= 60 },
+      { label: "Doctors on Duty", today: String(kpis.doctorsOnDuty), vs: `${kpis.doctorsOnLeave} on leave`, ok: kpis.doctorsOnDuty > 0 },
+      { label: "Patients Today", today: String(kpis.patientsToday), vs: `${kpis.totalPatients} total`, ok: true },
+      { label: "Critical Alerts", today: String(kpis.criticalAlerts), vs: "unack.", ok: kpis.criticalAlerts === 0 },
     ],
     snapshot: {
-      opd_patients: opdCount,
-      revenue_today: revenue,
-      revenue_yesterday: revenueYest,
+      opd_patients: kpis.opdActive,
+      opd_seen: kpis.opdSeen,
+      revenue_mtd: revenue,
+      revenue_last_month: revenueYest,
       bed_occupancy_pct: bedOccPct,
-      pending_bills: pending,
-      lab_pending: labPending,
-      critical_alerts: critAlerts,
-      occupied_beds: occupiedBeds,
-      total_beds: totalBeds,
+      occupied_beds: kpis.bedsOccupied,
+      total_beds: kpis.bedsTotal,
+      patients_today: kpis.patientsToday,
+      doctors_on_duty: kpis.doctorsOnDuty,
+      doctors_on_leave: kpis.doctorsOnLeave,
+      critical_alerts: kpis.criticalAlerts,
     },
   };
 }
 
-// Anomaly detection (compare today vs simple baseline)
+// Anomaly detection (simple thresholds)
 function detectAnomalies(snapshot: Record<string, number>) {
   const anomalies: Array<{
     metric: string; type: "spike" | "drop"; value: number; severity: "high" | "medium";
@@ -87,58 +55,51 @@ function detectAnomalies(snapshot: Record<string, number>) {
   if (snapshot.bed_occupancy_pct > 95) {
     anomalies.push({ metric: "Bed Occupancy", type: "spike", value: snapshot.bed_occupancy_pct, severity: "medium" });
   }
-  if (snapshot.lab_pending > 20) {
-    anomalies.push({ metric: "Lab Backlog", type: "spike", value: snapshot.lab_pending, severity: "medium" });
-  }
   return anomalies;
 }
 
 const AIDigestTab: React.FC = () => {
+  const { hospitalId, hospitalName } = useHospital();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [isGenerating, setIsGenerating] = useState(false);
-  const queryClient = useQueryClient();
   const dateStr = format(selectedDate, "yyyy-MM-dd");
   const dateLabel = format(selectedDate, "EEEE, dd MMMM yyyy");
 
-  // Fetch existing digest
+  // Fetch existing digest (cached for 5 min — rarely regenerated)
   const { data: digest, refetch: refetchDigest } = useQuery({
-    queryKey: ["analytics-digest", dateStr],
+    queryKey: ["analytics-digest", hospitalId, dateStr],
+    enabled: !!hospitalId,
+    staleTime: 5 * 60 * 1000,
     queryFn: async () => {
-      const hospitalId = await getHospitalId();
-      if (!hospitalId) return null;
       const { data } = await supabase.from("ai_digests")
         .select("*")
-        .eq("hospital_id", hospitalId)
+        .eq("hospital_id", hospitalId as string)
         .eq("digest_date", dateStr)
         .maybeSingle();
       return data;
     },
   });
 
-  // Fetch today's KPIs
-  const { data: kpiData } = useQuery({
-    queryKey: ["analytics-digest-kpis", dateStr],
-    queryFn: async () => {
-      const hospitalId = await getHospitalId();
-      if (!hospitalId) return null;
-      return fetchTodayKPIs(hospitalId, dateStr);
-    },
+  // Read KPIs straight from the dashboard cache — no extra query.
+  // (Dashboard hook populates this key with `useDashboardData` on /dashboard.)
+  const { data: dashboardKpis } = useQuery<DashboardKPIs>({
+    queryKey: ["dashboard-kpis", hospitalId, dateStr],
+    enabled: false, // cache-only read
   });
 
+  const kpiData = buildKpiViewModel(dashboardKpis);
   const anomalies = kpiData ? detectAnomalies(kpiData.snapshot) : [];
 
   const generateDigest = async () => {
     setIsGenerating(true);
     try {
-      const hospitalId = await getHospitalId();
-      const hospitalName = await getHospitalName();
       if (!hospitalId) throw new Error("No hospital");
 
       const kpis = kpiData?.snapshot || {};
 
       const { data: fnData, error: fnError } = await supabase.functions.invoke("ai-executive-digest", {
         body: {
-          hospital_name: hospitalName,
+          hospital_name: hospitalName || "Hospital",
           date: dateStr,
           snapshot: kpis,
           anomalies,
