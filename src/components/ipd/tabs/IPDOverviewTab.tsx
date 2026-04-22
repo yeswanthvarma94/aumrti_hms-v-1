@@ -155,6 +155,15 @@ const IPDOverviewTab: React.FC<Props> = ({ admissionId, hospitalId, onTabChange,
     })();
   }, [admissionId, billingCleared]);
 
+  // Package excess gating — block discharge Summary if an unpaid/unwaived
+  // package_excess bill exists for this admission.
+  useEffect(() => {
+    if (!admissionId || !hospitalId) return;
+    isPackageExcessBlocking(admissionId, hospitalId)
+      .then(setPackageExcessBlocking)
+      .catch((e) => console.error("Package excess gate check failed:", e));
+  }, [admissionId, hospitalId, billingCleared, dischargeSummaryDone]);
+
   const steps = [
     { key: "medical", label: "Medical", icon: Stethoscope, done: medicalCleared, color: "text-blue-600" },
     { key: "billing", label: "Billing", icon: CreditCard, done: billingCleared, color: "text-emerald-600" },
