@@ -58,9 +58,13 @@ interface Props {
   bill: BillRecord | null;
   hospitalId: string | null;
   onRefresh: () => void;
+  initialTab?: "items" | "payments" | "insurance";
 }
 
-const BillEditor: React.FC<Props> = ({ bill, hospitalId, onRefresh }) => {
+const BillEditor: React.FC<Props> = ({ bill, hospitalId, onRefresh, initialTab = "items" }) => {
+  const [activeTab, setActiveTab] = useState<string>(initialTab);
+  // Whenever a new bill is opened with a requested initial tab, switch
+  useEffect(() => { setActiveTab(initialTab); }, [bill?.id, initialTab]);
   const { toast } = useToast();
   const { show: showWaNotif, card: waCard } = useWhatsAppNotification();
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
@@ -361,7 +365,7 @@ const BillEditor: React.FC<Props> = ({ bill, hospitalId, onRefresh }) => {
       <RevenueIntelligencePanel bill={bill} hospitalId={hospitalId} lineItems={lineItems} />
 
       {/* Tabs */}
-      <Tabs defaultValue="items" className="flex-1 flex flex-col overflow-hidden">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
         <TabsList className="bg-card border-b border-border rounded-none h-11 px-5 flex-shrink-0">
           <TabsTrigger value="items" className="text-xs">Line Items</TabsTrigger>
           <TabsTrigger value="payments" className="text-xs">Payments</TabsTrigger>

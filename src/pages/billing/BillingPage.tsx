@@ -14,6 +14,7 @@ import BillEditor from "@/components/billing/BillEditor";
 import NewBillModal from "@/components/billing/NewBillModal";
 import AdvanceReceiptModal from "@/components/billing/AdvanceReceiptModal";
 import CollectionsTab from "@/components/billing/tabs/CollectionsTab";
+import PendingOPDTab from "@/components/billing/tabs/PendingOPDTab";
 
 export interface BillRecord {
   id: string;
@@ -55,6 +56,14 @@ const BillingPage: React.FC = () => {
   const [dateFilter, setDateFilter] = useState("today");
   const [dischargeBillCreated, setDischargeBillCreated] = useState(false);
   const [activeTab, setActiveTab] = useState("bills");
+  const [editorInitialTab, setEditorInitialTab] = useState<"items" | "payments" | "insurance">("items");
+  const [hospitalName, setHospitalName] = useState<string>("");
+
+  useEffect(() => {
+    if (!hospitalId) return;
+    supabase.from("hospitals").select("name").eq("id", hospitalId).maybeSingle()
+      .then(({ data }) => setHospitalName(data?.name || ""));
+  }, [hospitalId]);
 
   const billsQueryKey = ["billing-bills", hospitalId, statusFilter, dateFilter];
 
@@ -297,6 +306,12 @@ const BillingPage: React.FC = () => {
         >Bills</button>
         <button
           className={cn("px-3 py-1.5 text-xs font-bold rounded-md transition-colors",
+            activeTab === "pending-opd" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+          )}
+          onClick={() => setActiveTab("pending-opd")}
+        >🩺 Pending OPD</button>
+        <button
+          className={cn("px-3 py-1.5 text-xs font-bold rounded-md transition-colors",
             activeTab === "collections" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
           )}
           onClick={() => setActiveTab("collections")}
@@ -316,6 +331,7 @@ const BillingPage: React.FC = () => {
                 createDischargeBill(admissionId);
               } else {
                 setSelectedBillId(id);
+                setEditorInitialTab("items");
               }
             }}
             statusFilter={statusFilter}
@@ -332,8 +348,23 @@ const BillingPage: React.FC = () => {
             bill={selectedBill}
             hospitalId={hospitalId}
             onRefresh={fetchBills}
+            initialTab={editorInitialTab}
           />
         </div>
+      ) : activeTab === "pending-opd" ? (
+        hospitalId && (
+          <PendingOPDTab
+            hospitalId={hospitalId}
+            hospitalName={hospitalName}
+            onCollectNow={(billId) => {
+              setEditorInitialTab("payments");
+              setSelectedBillId(billId);
+              setActiveTab("bills");
+              // Make sure the bill is loaded into the queue (it may be outside current date filter)
+              fetchBills();
+            }}
+          />
+        )
       ) : (
         hospitalId && <CollectionsTab hospitalId={hospitalId} />
       )}
