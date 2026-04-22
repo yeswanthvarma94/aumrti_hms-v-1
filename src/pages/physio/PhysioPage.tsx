@@ -20,7 +20,14 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { format } from "date-fns";
-import { Plus, ClipboardList, Calendar, BarChart3, Dumbbell, FileText, Activity, CheckCircle, Clock, User, Printer, MessageSquare, Loader2 } from "lucide-react";
+import { Plus, ClipboardList, Calendar, BarChart3, Dumbbell, FileText, Activity, CheckCircle, Clock, User, Printer, MessageSquare, Loader2, IndianRupee } from "lucide-react";
+import {
+  findActivePackageForService,
+  countPackageSessionsUsed,
+  getPatientSessionBillingCounts,
+  type ActivePackageInfo,
+} from "@/lib/sessionPackageGuard";
+import PackageExhaustedModal from "@/components/shared/PackageExhaustedModal";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip, ResponsiveContainer } from "recharts";
 
 const MODALITIES = ["UST", "IFT", "TENS", "SWD", "Traction", "Exercise", "Manual Therapy", "Hot Pack", "Cold Pack", "Wax Bath", "Hydrotherapy", "Balance Training"];
