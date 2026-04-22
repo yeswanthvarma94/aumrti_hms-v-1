@@ -273,7 +273,11 @@ const TelemedicinePage: React.FC = () => {
           {filtered.length === 0 && (
             <p className="text-xs text-muted-foreground text-center py-8">No sessions</p>
           )}
-          {filtered.map(s => (
+          {filtered.map(s => {
+            const billInfo = s.bill_id ? billStatusMap[s.bill_id] : null;
+            const isPaid = billInfo?.payment_status === "paid";
+            const hasBill = !!s.bill_id;
+            return (
             <div
               key={s.id}
               onClick={() => s.status !== "completed" && joinCall(s)}
@@ -282,7 +286,7 @@ const TelemedicinePage: React.FC = () => {
                 activeSession?.id === s.id && "border-primary bg-primary/5"
               )}
             >
-              <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center justify-between mb-1 gap-1">
                 <span className="text-sm font-medium truncate">{s.patients?.full_name || "Patient"}</span>
                 <Badge variant="secondary" className={cn("text-[10px]", statusColors[s.status])}>
                   {s.status === "waiting" && <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-500 mr-1 animate-pulse" />}
@@ -292,13 +296,41 @@ const TelemedicinePage: React.FC = () => {
               <p className="text-xs text-muted-foreground">
                 {format(new Date(s.scheduled_at), "hh:mm a")} · {s.duration_minutes} min
               </p>
+              {hasBill && (
+                <div className="mt-1.5 flex items-center gap-1">
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "text-[10px] gap-1",
+                      isPaid
+                        ? "border-emerald-500 text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30"
+                        : "border-amber-500 text-amber-600 bg-amber-50 dark:bg-amber-950/30"
+                    )}
+                  >
+                    <IndianRupee size={10} />
+                    {isPaid ? "Billed" : "Pending"}
+                    {billInfo?.total_amount ? ` ${Number(billInfo.total_amount).toLocaleString("en-IN")}` : ""}
+                  </Badge>
+                </div>
+              )}
               {(s.status === "waiting" || s.status === "scheduled") && (
                 <Button size="sm" className="mt-2 w-full gap-1 h-7 text-xs bg-emerald-600 hover:bg-emerald-700" onClick={e => { e.stopPropagation(); joinCall(s); }}>
                   <Video size={12} /> Join Call
                 </Button>
               )}
+              {s.status === "completed" && hasBill && !isPaid && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="mt-2 w-full gap-1 h-7 text-xs border-amber-500 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+                  onClick={e => { e.stopPropagation(); setPaymentSession(s); }}
+                >
+                  <CreditCard size={12} /> Confirm Payment
+                </Button>
+              )}
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
