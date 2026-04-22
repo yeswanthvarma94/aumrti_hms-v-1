@@ -10,6 +10,7 @@ import type { BillRecord } from "@/pages/billing/BillingPage";
 import type { LineItem } from "@/components/billing/BillEditor";
 import LeakageScanner from "@/components/billing/LeakageScanner";
 import UnbilledServicesModal from "@/components/billing/UnbilledServicesModal";
+import PackageExcessCheck from "@/components/packages/PackageExcessCheck";
 import { autoPullAdmissionCharges } from "@/lib/ipdBilling";
 import { formatINR } from "@/lib/currency";
 
