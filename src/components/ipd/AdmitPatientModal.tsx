@@ -9,6 +9,7 @@ import { AlertTriangle, Info } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { logAudit } from "@/lib/auditLog";
 import { generateBillNumber } from "@/hooks/useBillNumber";
+import { autoPostJournalEntry } from "@/lib/accounting";
 
 interface Props {
   open: boolean;
@@ -258,7 +259,7 @@ const AdmitPatientModal: React.FC<Props> = ({ open, onClose, hospitalId, presele
           .maybeSingle();
         if (!existingIpdBill) {
           const billNumber = await generateBillNumber(hospitalId, "BILL");
-          await supabase.from("bills").insert({
+          const { data: draftBill } = await supabase.from("bills").insert({
             hospital_id: hospitalId,
             bill_number: billNumber,
             patient_id: selectedPatient.id,
@@ -266,7 +267,26 @@ const AdmitPatientModal: React.FC<Props> = ({ open, onClose, hospitalId, presele
             bill_type: "ipd",
             bill_status: "draft",
             payment_status: "unpaid",
-          });
+          }).select("id").maybeSingle();
+
+          // Audit-rule: post journal entry for every bill insert.
+          // Draft bills carry zero amount; revenue posts later on charges/payment.
+          if (draftBill?.id) {
+            try {
+              await autoPostJournalEntry({
+                triggerEvent: "bill_finalized_ipd",
+                sourceModule: "ipd",
+                sourceId: draftBill.id,
+                amount: 0,
+                description: `IPD Draft Bill - ${billNumber}`,
+                hospitalId,
+                postedBy: null as any,
+              });
+            } catch (jeErr) {
+              console.error("Journal posting failed for draft IPD bill:", jeErr);
+              toast({ title: "Draft bill created. Accounting sync pending — please verify.", variant: "destructive" });
+            }
+          }
         }
       } catch (e: any) {
         console.error("Failed to auto-create draft IPD bill:", e?.message || e);

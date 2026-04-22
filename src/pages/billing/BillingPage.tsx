@@ -8,6 +8,7 @@ import { useHospitalId } from "@/hooks/useHospitalId";
 import { STALE_OPERATIONAL } from "@/hooks/queries/staleTimes";
 import { cn } from "@/lib/utils";
 import { autoPullAdmissionCharges as autoPullAdmissionChargesUtil } from "@/lib/ipdBilling";
+import { autoPostJournalEntry } from "@/lib/accounting";
 
 import BillQueue from "@/components/billing/BillQueue";
 import BillEditor from "@/components/billing/BillEditor";
@@ -280,6 +281,31 @@ const BillingPage: React.FC = () => {
     }
 
     await autoPullAdmissionCharges(newBill.id, admissionId);
+
+    // Audit-rule: post journal entry after IPD discharge bill creation.
+    // Read the post-pull total so the entry reflects real charges.
+    try {
+      const { data: pulled } = await supabase
+        .from("bills")
+        .select("total_amount, bill_number")
+        .eq("id", newBill.id)
+        .maybeSingle();
+      const amount = Number(pulled?.total_amount) || 0;
+      if (amount > 0) {
+        await autoPostJournalEntry({
+          triggerEvent: "bill_finalized_ipd",
+          sourceModule: "ipd",
+          sourceId: newBill.id,
+          amount,
+          description: `IPD Revenue - Bill ${pulled?.bill_number || billNumber}`,
+          hospitalId,
+          postedBy: userData?.id || "",
+        });
+      }
+    } catch (jeErr) {
+      console.error("Journal posting failed for IPD discharge bill:", jeErr);
+      toast({ title: "Discharge bill created. Accounting sync pending — please verify.", variant: "destructive" });
+    }
 
     toast({ title: `IPD Discharge Bill #${billNumber} created with auto-pulled charges` });
     await fetchBills();

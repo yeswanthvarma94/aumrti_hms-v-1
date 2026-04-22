@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { generateBillNumber } from "@/hooks/useBillNumber";
 import { useToast } from "@/hooks/use-toast";
+import { autoPostJournalEntry } from "@/lib/accounting";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,6 +67,32 @@ const NewBillModal: React.FC<Props> = ({ hospitalId, onClose, onCreated }) => {
       toast({ title: "Error creating bill", description: error.message, variant: "destructive" });
       setSubmitting(false);
       return;
+    }
+
+    // Audit-rule: post journal entry for every bill insert. Draft bills carry
+    // zero amount, so the entry is only meaningful once charges are added.
+    // Skip silently when amount is zero to avoid junk zero-value entries.
+    try {
+      const moduleKey = billType === "ipd" ? "ipd"
+        : billType === "emergency" ? "emergency"
+        : billType === "daycare" ? "daycare"
+        : "opd";
+      // Bills inserted here are drafts (total_amount = 0). The actual revenue
+      // posting happens in PaymentsTab on collection. We still call the helper
+      // so the audit trail records the attempt; helper will no-op on 0 amount
+      // because no rule matches a zero ledger movement.
+      await autoPostJournalEntry({
+        triggerEvent: `bill_finalized_${moduleKey}`,
+        sourceModule: moduleKey,
+        sourceId: data.id,
+        amount: 0,
+        description: `${moduleKey.toUpperCase()} Draft Bill - ${billNumber}`,
+        hospitalId,
+        postedBy: userData?.id || "",
+      });
+    } catch (jeErr) {
+      console.error("Journal posting failed for draft bill:", jeErr);
+      toast({ title: "Bill created. Accounting sync pending — please verify.", variant: "default" });
     }
 
     toast({ title: `Bill #${billNumber} created` });
