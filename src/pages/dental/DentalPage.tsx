@@ -239,7 +239,10 @@ const DentalPage: React.FC = () => {
                   </p>
                 </div>
               ) : (
-                filtered.map((t) => (
+                filtered.map((t) => {
+                  const pid = t.patient?.id || t.patient_id;
+                  const bc = pid ? billingCounts[pid] : undefined;
+                  return (
                   <button
                     key={t.id}
                     onClick={() => selectToken(t)}
@@ -259,6 +262,14 @@ const DentalPage: React.FC = () => {
                       <p className="text-[10px] text-muted-foreground">
                         {t.patient?.uhid} · {t.patient?.gender || "—"} · {calcAge(t.patient?.dob ?? null)}
                       </p>
+                      {bc && bc.total > 0 && (
+                        <Badge
+                          variant="outline"
+                          className={`text-[9px] mt-0.5 ${bc.unbilled > 0 ? "border-amber-500 text-amber-600" : "border-emerald-500 text-emerald-600"}`}
+                        >
+                          ₹ {bc.billed} billed / {bc.unbilled} unbilled
+                        </Badge>
+                      )}
                     </div>
                     {statusLabel[t.status] && (
                       <Badge variant="outline" className="text-[9px] shrink-0">
@@ -266,7 +277,8 @@ const DentalPage: React.FC = () => {
                       </Badge>
                     )}
                   </button>
-                ))
+                  );
+                })
               )}
             </div>
           </ScrollArea>
