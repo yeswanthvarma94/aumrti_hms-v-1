@@ -37,6 +37,7 @@ const IPDOverviewTab: React.FC<Props> = ({ admissionId, hospitalId, onTabChange,
   const [pkgExcessBlocking, setPkgExcessBlocking] = useState(false);
   const [pkgExcessAmount, setPkgExcessAmount] = useState(0);
   const [pkgCheckTrigger, setPkgCheckTrigger] = useState(0);
+  const [pkgPatientId, setPkgPatientId] = useState<string>("");
   useEffect(() => {
     if (!admissionId) return;
     const loadStatus = async () => {
@@ -108,6 +109,9 @@ const IPDOverviewTab: React.FC<Props> = ({ admissionId, hospitalId, onTabChange,
     if (!admissionId || !hospitalId) return;
     let cancelled = false;
     (async () => {
+      const { data: adm } = await supabase
+        .from("admissions").select("patient_id").eq("id", admissionId).maybeSingle();
+      if (!cancelled && adm?.patient_id) setPkgPatientId(adm.patient_id);
       const id = await resolvePackageIdForAdmission(admissionId, hospitalId);
       if (cancelled) return;
       setPkgId(id);
