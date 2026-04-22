@@ -162,12 +162,12 @@ const SettingsRazorpayPage: React.FC = () => {
 
       <div className="mb-6">
         {connected === true && (
-          <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 border border-green-200 rounded-lg px-4 py-2.5">
+          <div className="flex items-center gap-2 text-sm text-success bg-success/10 border border-success/30 rounded-lg px-4 py-2.5">
             <CheckCircle2 size={16} /> Connected — {config.mode === "live" ? "Live" : "Test"} Mode
           </div>
         )}
         {connected === false && (
-          <div className="flex items-center gap-2 text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2.5">
+          <div className="flex items-center gap-2 text-sm text-warning bg-warning/10 border border-warning/30 rounded-lg px-4 py-2.5">
             <AlertTriangle size={16} /> Not configured or invalid credentials
           </div>
         )}
