@@ -495,7 +495,9 @@ const PhysioPage: React.FC = () => {
               </div>
               <ScrollArea className="flex-1">
                 {referrals.length === 0 && <p className="p-4 text-sm text-muted-foreground text-center">No referrals</p>}
-                {referrals.map(r => (
+                {referrals.map(r => {
+                  const bc = billingCounts[r.patient_id];
+                  return (
                   <button key={r.id} onClick={() => setSelectedRef(r)}
                     className={`w-full text-left p-3 border-b hover:bg-muted/50 transition ${selectedRef?.id === r.id ? "bg-muted" : ""}`}>
                     <div className="flex items-center gap-2 mb-1">
@@ -504,9 +506,18 @@ const PhysioPage: React.FC = () => {
                     </div>
                     <p className="text-sm font-medium truncate">{r.diagnosis}</p>
                     <p className="text-xs text-muted-foreground">{r.total_sessions_done || 0}/{r.total_sessions_planned || "?"} sessions</p>
+                    {bc && bc.total > 0 && (
+                      <Badge
+                        variant="outline"
+                        className={`text-[10px] mt-1 ${bc.unbilled > 0 ? "border-amber-500 text-amber-600" : "border-emerald-500 text-emerald-600"}`}
+                      >
+                        ₹ {bc.billed} billed / {bc.unbilled} unbilled
+                      </Badge>
+                    )}
                     <p className="text-[10px] text-muted-foreground mt-1">{format(new Date(r.created_at), "dd/MM/yy")}</p>
                   </button>
-                ))}
+                  );
+                })}
               </ScrollArea>
             </div>
             <div className="flex-1 border rounded-lg overflow-hidden">
@@ -974,6 +985,25 @@ const PhysioPage: React.FC = () => {
           <DialogFooter><Button onClick={saveHEP} disabled={hepExercises.length === 0}>Save HEP</Button></DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {exhaustedPkg && (
+        <PackageExhaustedModal
+          open={!!exhaustedPkg}
+          onOpenChange={(o) => { if (!o) { setExhaustedPkg(null); setPendingBookForm(null); } }}
+          packageName={exhaustedPkg.packageName}
+          sessionsIncluded={exhaustedPkg.sessionsIncluded}
+          sessionsUsed={exhaustedPkg.sessionsUsed}
+          ratePerSession={exhaustedPkg.ratePerSession}
+          serviceLabel="physio session"
+          onCancel={() => { setExhaustedPkg(null); setPendingBookForm(null); }}
+          onBillAsExtra={async () => {
+            const form = pendingBookForm;
+            setExhaustedPkg(null);
+            setPendingBookForm(null);
+            if (form) await _doBookSession(form);
+          }}
+        />
+      )}
     </div>
   );
 };
