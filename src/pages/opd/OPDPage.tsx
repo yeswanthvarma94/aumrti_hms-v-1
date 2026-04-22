@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useHospitalId } from "@/hooks/useHospitalId";
-import { STALE_REALTIME } from "@/hooks/queries/staleTimes";
+
 import TokenQueue from "@/components/opd/TokenQueue";
 import ConsultationWorkspace from "@/components/opd/ConsultationWorkspace";
 import PatientSummary from "@/components/opd/PatientSummary";
@@ -55,7 +55,8 @@ const OPDPage: React.FC = () => {
   const { data: tokens = [], isLoading: loading, refetch } = useQuery({
     queryKey: ["opd-tokens", hospitalId, today, userRole, userId],
     enabled: !!hospitalId && (userRole !== "doctor" || !!userId),
-    staleTime: STALE_REALTIME,
+    staleTime: 0,
+    gcTime: 60_000,
     placeholderData: (prev) => prev,
     queryFn: async () => {
       let query = supabase
@@ -63,7 +64,8 @@ const OPDPage: React.FC = () => {
         .select("*, patient:patients(full_name, phone, uhid, gender, dob, blood_group, allergies, chronic_conditions, insurance_id, address), doctor:users!opd_tokens_doctor_id_fkey(full_name), department:departments(name)")
         .eq("hospital_id", hospitalId as string)
         .eq("visit_date", today)
-        .order("created_at", { ascending: true });
+        .order("created_at", { ascending: true })
+        .range(0, 99);
 
       if (userRole === "doctor" && userId) {
         query = query.eq("doctor_id", userId);
@@ -83,14 +85,38 @@ const OPDPage: React.FC = () => {
 
   useEffect(() => {
     if (!hospitalId) return;
+    const queryKey = ["opd-tokens", hospitalId, today, userRole, userId];
     const channel = supabase
       .channel("opd-tokens-realtime")
-      .on("postgres_changes", { event: "*", schema: "public", table: "opd_tokens", filter: `hospital_id=eq.${hospitalId}` }, () => {
-        queryClient.invalidateQueries({ queryKey: ["opd-tokens", hospitalId] });
-      })
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "opd_tokens", filter: `hospital_id=eq.${hospitalId}` },
+        (payload: any) => {
+          // Optimistically patch the single changed token in the cache so we don't
+          // re-fetch the whole list (and lose nested patient/doctor/department joins).
+          const updated = payload.new;
+          if (!updated?.id) return;
+          queryClient.setQueryData<OpdToken[] | undefined>(queryKey, (prev) => {
+            if (!prev) return prev;
+            return prev.map((t) =>
+              t.id === updated.id ? { ...t, ...updated, patient: t.patient, doctor: t.doctor, department: t.department } : t
+            );
+          });
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "opd_tokens", filter: `hospital_id=eq.${hospitalId}` },
+        () => { queryClient.invalidateQueries({ queryKey: ["opd-tokens", hospitalId] }); }
+      )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "opd_tokens", filter: `hospital_id=eq.${hospitalId}` },
+        () => { queryClient.invalidateQueries({ queryKey: ["opd-tokens", hospitalId] }); }
+      )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [hospitalId, queryClient]);
+  }, [hospitalId, queryClient, today, userRole, userId]);
 
   const selectedToken = tokens.find((t) => t.id === selectedTokenId) || null;
 
