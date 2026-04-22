@@ -1,102 +1,74 @@
 
 
-# Why the app is still slow / "stuck until hard refresh"
+# Per-Hospital API Configuration — Razorpay, Sarvam, Hospital Registration
 
-The Phase 7 realtime fix worked — that loop is dead. But two **separate** problems remain that produce the exact symptoms you're seeing.
+## What changes for the user
 
-## Root cause #1 — Stale Service Worker (this is why "hard refresh fixes it")
+Each hospital admin will configure their own credentials inside **Settings → API Configuration Hub**. No global keys to paste, no popup asking you for secrets.
 
-Last round we shipped `sw.js` v2 (network-first HTML). But users already have v1 installed in their browser. The v2 worker installs in the background and only takes control on the **next** navigation, not the current page. Until the user hard-refreshes, v1 keeps serving the cached `index.html` that points to JS chunk hashes which no longer exist on the published build → infinite "loading" spinner / blank tabs.
-
-This perfectly matches: *"only sometimes when I hard refresh the browser it again restarts and starts to work"*.
-
-The fix is to make v2 **forcibly take over and trigger a one-time auto-reload** of all open tabs the moment it activates. After this is shipped + republished once, every user gets the new SW automatically and never has to hard-refresh again.
-
-## Root cause #2 — Duplicate user-record queries on every navigation
-
-`useHospitalId` already caches the user's `hospital_id` + `role` in TanStack Query (cache forever). But:
-
-- `AppHeader.tsx` lines 71–83 → independently re-queries `users` on every mount.
-- `AppSidebar.tsx` lines 63–76 → independently re-queries `users` on every mount.
-- `EmergencyPage.tsx` line 40 → also re-queries `users` instead of using `useHospitalId`.
-
-So every time a tab opens, the auth-critical path fires **3 redundant Supabase queries** in serial before the page can render. Combined with the next issue, this is enough to make pages feel "stuck".
-
-## Root cause #3 — Notification centre polling on every page
-
-`NotificationCentre.tsx` polls 2 tables every 30 seconds on **every authenticated page**. With 30+ open tabs across a hospital, plus realtime channels per page, the Supabase HTTP pool saturates and pages start timing out.
-
-Switching to **realtime subscriptions** (which we already use elsewhere) eliminates the polling entirely.
-
-## Root cause #4 — Brittle preview-host detection in `registerSW.ts`
-
-The expression on line 21 is:
-```ts
-host.includes('lovable.app') === false && host.includes('lovable')
-```
-Operator-precedence bug — works by coincidence today but will silently flip if Lovable changes hostnames. Needs to be a clean allow-list.
-
----
-
-# The fix (5 small, isolated edits)
-
-### Fix A — `public/sw.js` : force-takeover + auto-reload all tabs on update
-- Already calls `clients.claim()`. Add a `postMessage('SW_ACTIVATED')` to all clients on activate.
-- Bump cache name to `aumrti-hms-v3` so v2 caches are wiped on activate.
-
-### Fix B — `src/lib/registerSW.ts` : listen for SW activation and reload once
-- Add `navigator.serviceWorker.addEventListener('controllerchange', …)` that does a single `window.location.reload()` (guarded with `sessionStorage` so it only fires once per session).
-- Rewrite the host check as a clean allow-list of preview hosts (no boolean ambiguity).
-
-### Fix C — `src/components/layout/AppHeader.tsx` : use cached user record
-- Delete the local `supabase.from('users')…` query. Read `hospitalId` and user info from `useHospitalId()` (already cached forever).
-
-### Fix D — `src/components/layout/AppSidebar.tsx` : use cached user record
-- Same change. Read `userName`/`role` via `useHospitalId()` extended (or via a tiny `useCurrentUser()` reusing the same TanStack Query cache key) instead of re-querying `users`.
-
-### Fix E — `src/components/layout/NotificationCentre.tsx` : realtime instead of 30s poll
-- Drop the 30 s `setInterval`.
-- Subscribe via `supabase.channel('notif-${hospitalId}')` to `whatsapp_notifications` and `clinical_alerts` (filtered by `hospital_id`). Initial fetch on mount; realtime keeps it fresh.
-- Reuses the existing realtime socket — zero extra cost.
-
-### Fix F (small, optional) — `src/pages/emergency/EmergencyPage.tsx`
-- Replace local `users` lookup at line 40 with `useHospitalId()` for consistency.
-
----
-
-# What this delivers
-
-| Symptom | Cause | Fix |
+| Service | Where it's configured | Stored in |
 |---|---|---|
-| Pages don't open until hard refresh | Stale SW v1 still serving old chunks | Fix A + B (SW v3 + auto-reload) |
-| First load after navigation feels stuck | 3 duplicate `users` queries blocking | Fix C + D + F |
-| App degrades over time when left open | 30 s notification polling | Fix E (realtime) |
-| Future host changes silently break SW | Brittle preview-host check | Fix B (clean allow-list) |
+| Razorpay (Key ID + Key Secret + Webhook Secret + UPI ID + Mode) | `Settings → Razorpay Payments` (rebuilt) and mirrored in `Settings → API Hub` | `api_configurations` table, scoped by `hospital_id`, RLS-protected |
+| Sarvam (API Key) | `Settings → API Hub → Sarvam (Voice)` | Same table, same scoping |
+| Hospital Registration token | **Per-hospital is impossible** (hospital doesn't exist yet at signup). See note below. | — |
 
-After these are merged + published **once**, every existing user's browser will:
-1. Download SW v3 in the background
-2. Auto-reload exactly once when v3 takes over
-3. From then on, get fresh `index.html` on every navigation — no more "stuck pages"
+## Why the existing setup almost works already
+
+- The `api_configurations` table is already live with per-hospital RLS (one row per hospital × service).
+- `APIConfigHubPage` already renders a generic "add key" drawer for any entry in `KNOWN_SERVICES` — Razorpay and Sarvam are already in that list.
+- `aiProvider.ts` already reads AI keys from this table per hospital.
+
+What's missing is: (a) a real Razorpay settings page wired to this table, and (b) edge functions reading the per-hospital row instead of a single platform secret.
+
+## Files to change
+
+### 1. `src/pages/settings/SettingsRazorpayPage.tsx` — rebuild
+Replace the static stub with a real page that:
+- Loads the hospital's existing Razorpay row from `api_configurations` (`service_key = 'razorpay'`).
+- Fields: Mode (Test/Live), Key ID, Key Secret, **Webhook Secret**, UPI ID, Allow Part Payments, Auto-send Receipt.
+- Save → upsert into `api_configurations`.
+- "Test Connection" → calls Razorpay `/v1/payments` with the entered key (already pattern-matched in API Hub for other providers).
+- Show webhook URL to paste into Razorpay dashboard: `https://<project>.functions.supabase.co/razorpay-webhook?hospital_id=<this hospital's id>`.
+
+### 2. `supabase/functions/razorpay-webhook/index.ts` — read per-hospital secret
+- Accept `hospital_id` from query string (or from the bill's `hospital_id` after lookup).
+- Fetch that hospital's row from `api_configurations` using the service-role client.
+- Verify the `X-Razorpay-Signature` header using **that hospital's webhook secret** (HMAC-SHA256 of raw body).
+- Reject with 401 if signature fails. Then continue with the existing reconciliation logic.
+
+### 3. `supabase/functions/sarvam-transcribe/index.ts` — read per-hospital key
+- Require an authenticated user JWT (already passed by `supabase.functions.invoke`).
+- Resolve the caller's `hospital_id` via the `users` table (service-role lookup by `auth_user_id`).
+- Read that hospital's Sarvam row from `api_configurations`. Use `config.api_key`.
+- Fall back to env `SARVAM_API_KEY` only if no hospital row exists (kept for backward compatibility; can be removed later).
+
+### 4. `supabase/functions/bhashini-transcribe/index.ts` — same per-hospital pattern
+Mirror the Sarvam change so Bhashini works the same way.
+
+### 5. Hospital Registration token — **revised approach**
+A registration secret can't be per-hospital because the hospital doesn't exist when the form is submitted. Two clean options:
+
+- **Option A (recommended):** Drop the secret entirely and protect `register-hospital` with: Cloudflare Turnstile (invisible CAPTCHA) + IP rate-limit (5 signups / hour / IP) inside the edge function. Zero credentials for hospital admins to manage.
+- **Option B:** Keep one platform-level `HOSPITAL_REGISTRATION_TOKEN` secret only you (the platform owner) hold, sent automatically by the public registration page. No hospital ever sees or configures it.
+
+Default to **Option A** unless you tell me otherwise.
+
+### 6. `src/components/voice/VoiceDictationButton.tsx` — no change needed
+Already invokes the edge function; once #3 reads from `api_configurations`, this works hospital-by-hospital.
+
+## Behavior after the fix
+
+- Hospital A admin pastes their Razorpay test key → only Hospital A's bills use it.
+- Hospital B admin pastes a different live key → only Hospital B's webhooks are verified with Hospital B's webhook secret.
+- Sarvam voice scribe uses each hospital's own quota.
+- New hospital signup is protected by CAPTCHA + IP rate limit, no secret to manage.
 
 ## Risk & rollback
-- All 5 files are isolated, no shared state changes.
-- If anything regresses, revert just that file from chat **History**.
-- Zero database changes. Zero auth changes.
+- All 4 edge functions keep env-var fallback for one release so existing flows don't break mid-deploy.
+- UI changes are isolated to one new page (`SettingsRazorpayPage`) and don't touch billing logic.
+- If a hospital hasn't configured Razorpay yet, the `Pay` button shows "Razorpay not configured — go to Settings" instead of failing silently.
 
-## Files touched
-- `public/sw.js`
-- `src/lib/registerSW.ts`
-- `src/components/layout/AppHeader.tsx`
-- `src/components/layout/AppSidebar.tsx`
-- `src/components/layout/NotificationCentre.tsx`
-- `src/pages/emergency/EmergencyPage.tsx`
-
-## If even this doesn't help — rollback option
-You can roll the whole project back without me touching anything: open the chat **History** tab and pick a checkpoint from before "Continue phase 7". That restores the project files atomically. Then click **Publish → Update** to push it live.
-
-```xml
-<lov-actions>
-  <lov-open-history>View History</lov-open-history>
-</lov-actions>
-```
+## Out of scope
+- Migrating existing single-secret deployments — handled by the env-var fallback.
+- AI keys (Claude/OpenAI/Gemini) — already per-hospital via this same table.
 
