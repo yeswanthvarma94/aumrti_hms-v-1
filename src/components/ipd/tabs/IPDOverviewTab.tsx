@@ -32,7 +32,11 @@ const IPDOverviewTab: React.FC<Props> = ({ admissionId, hospitalId, onTabChange,
   const [admDiagnosis, setAdmDiagnosis] = useState("");
   const [savingStep, setSavingStep] = useState<string | null>(null);
   const [billingPrecheckCleared, setBillingPrecheckCleared] = useState(false);
-
+  const [pkgId, setPkgId] = useState<string | null>(null);
+  const [pkgExcessOpen, setPkgExcessOpen] = useState(false);
+  const [pkgExcessBlocking, setPkgExcessBlocking] = useState(false);
+  const [pkgExcessAmount, setPkgExcessAmount] = useState(0);
+  const [pkgCheckTrigger, setPkgCheckTrigger] = useState(0);
   useEffect(() => {
     if (!admissionId) return;
     const loadStatus = async () => {
