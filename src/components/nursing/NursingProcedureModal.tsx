@@ -55,7 +55,11 @@ export default function NursingProcedureModal({ open, onClose, hospitalId, defau
         .ilike("name", `%${procedureName.replace(/[()]/g, "").split(" ").slice(0, 2).join("%")}%`)
         .eq("item_type", "nursing_procedure").limit(1).maybeSingle();
 
-      const unitRate = svc?.fee ? Number(svc.fee) : 150;
+      const rateFound = !!svc?.fee;
+      if (!rateFound) {
+        toast.warning("Procedure logged but rate not found in Services master. Please update settings.");
+      }
+      const unitRate = rateFound ? Number(svc!.fee) : 150;
       const gstPct = svc?.gst_applicable ? (Number(svc.gst_percent) || 0) : 0;
       const totalFee = roundCurrency(unitRate * quantity);
       const gstAmt = calcGST(totalFee, gstPct);
