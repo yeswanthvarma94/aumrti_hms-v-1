@@ -34,9 +34,11 @@ const TelemedicinePage: React.FC = () => {
   const { toast } = useToast();
   const { hospitalId } = useHospitalId();
   const [sessions, setSessions] = useState<any[]>([]);
+  const [billStatusMap, setBillStatusMap] = useState<Record<string, { payment_status: string; total_amount: number }>>({});
   const [tab, setTab] = useState("waiting");
   const [activeSession, setActiveSession] = useState<any>(null);
   const [showSchedule, setShowSchedule] = useState(false);
+  const [paymentSession, setPaymentSession] = useState<any>(null);
   const [callSeconds, setCallSeconds] = useState(0);
   const [notes, setNotes] = useState("");
   const [rx, setRx] = useState<RxItem[]>([]);
