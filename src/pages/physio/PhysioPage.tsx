@@ -104,6 +104,11 @@ const PhysioPage: React.FC = () => {
   // Active referrals for dropdowns
   const [activeRefList, setActiveRefList] = useState<any[]>([]);
 
+  // Package guard + per-referral billing counts
+  const [exhaustedPkg, setExhaustedPkg] = useState<ActivePackageInfo | null>(null);
+  const [pendingBookForm, setPendingBookForm] = useState<typeof sForm | null>(null);
+  const [billingCounts, setBillingCounts] = useState<Record<string, { billed: number; unbilled: number; total: number }>>({});
+
   const loadKPIs = useCallback(async () => {
     const today = format(new Date(), "yyyy-MM-dd");
     const [a, s, p, e] = await Promise.all([
