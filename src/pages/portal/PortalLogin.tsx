@@ -23,7 +23,6 @@ const PortalLogin: React.FC<PortalLoginProps> = ({ hospitalId, onLogin }) => {
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [generatedOtp, setGeneratedOtp] = useState("");
   const [resendTimer, setResendTimer] = useState(0);
   const [hospitalBrand, setHospitalBrand] = useState<{ name: string; logo_url: string | null }>({ name: "Hospital", logo_url: null });
   const [sessionId, setSessionId] = useState("");
@@ -74,11 +73,10 @@ const PortalLogin: React.FC<PortalLoginProps> = ({ hospitalId, onLogin }) => {
 
     setFoundPatient(patient);
 
-    // Generate OTP
+    // Generate OTP (kept only locally to populate WhatsApp message; never rendered in UI)
     const otpCode = String(Math.floor(100000 + Math.random() * 900000));
-    setGeneratedOtp(otpCode);
 
-    // Store in DB
+    // Store in DB (this is the source of truth used at verification time)
     const { data: sess } = await supabase
       .from("patient_portal_sessions")
       .insert({
@@ -130,9 +128,23 @@ const PortalLogin: React.FC<PortalLoginProps> = ({ hospitalId, onLogin }) => {
     setLoading(true);
     setError("");
 
-    if (code !== generatedOtp) {
-      setError("Incorrect code. Try again.");
-      // Shake animation
+    // Verify against the database session row (server-side source of truth)
+    if (!sessionId) {
+      setError("Session expired. Please request a new code.");
+      setLoading(false);
+      return;
+    }
+
+    const { data: session, error: sessErr } = await supabase
+      .from("patient_portal_sessions")
+      .select("otp_code, otp_expires_at, otp_verified")
+      .eq("id", sessionId)
+      .maybeSingle();
+
+    const expired = session?.otp_expires_at && new Date(session.otp_expires_at as string).getTime() < Date.now();
+
+    if (sessErr || !session || (session as any).otp_code !== code || expired) {
+      setError(expired ? "Code expired. Please request a new one." : "Incorrect code. Try again.");
       const container = document.getElementById("otp-container");
       container?.classList.add("animate-shake");
       setTimeout(() => container?.classList.remove("animate-shake"), 500);
@@ -140,17 +152,15 @@ const PortalLogin: React.FC<PortalLoginProps> = ({ hospitalId, onLogin }) => {
       return;
     }
 
-    // Update session
-    if (sessionId) {
-      const token = crypto.randomUUID();
-      await supabase
-        .from("patient_portal_sessions")
-        .update({ otp_verified: true, session_token: token } as any)
-        .eq("id", sessionId);
+    // Mark verified + issue session token
+    const token = crypto.randomUUID();
+    await supabase
+      .from("patient_portal_sessions")
+      .update({ otp_verified: true, session_token: token } as any)
+      .eq("id", sessionId);
 
-      localStorage.setItem("portal_session_token", token);
-      localStorage.setItem("portal_patient_id", foundPatient.id);
-    }
+    localStorage.setItem("portal_session_token", token);
+    localStorage.setItem("portal_patient_id", foundPatient.id);
 
     // Fetch hospital branding
     const { data: hospital } = await supabase
@@ -276,11 +286,6 @@ const PortalLogin: React.FC<PortalLoginProps> = ({ hospitalId, onLogin }) => {
                   />
                 ))}
               </div>
-
-              {/* Show OTP for testing */}
-              <p className="text-xs text-center" style={{ color: "#94A3B8" }}>
-                Demo OTP: <span className="font-mono font-bold" style={{ color: "#0F172A" }}>{generatedOtp}</span>
-              </p>
 
               {error && (
                 <p className="text-[12px] px-3 py-2 rounded-lg text-center" style={{ color: "#DC2626", background: "#FEF2F2" }}>
