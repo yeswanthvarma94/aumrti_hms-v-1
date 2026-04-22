@@ -168,28 +168,28 @@ export async function checkPackageExcess(
     : 0;
 
   // 3. All non-cancelled bills for this admission (incl. existing excess bill)
-  const { data: bills, error: billsErr } = await supabase
+  const { data: billsRaw, error: billsErr } = await (supabase as any)
     .from("bills")
-    .select("id, bill_type, bill_status, payment_status, total_amount, net_amount")
+    .select("id, bill_type, bill_status, payment_status, total_amount")
     .eq("admission_id", admissionId)
     .eq("hospital_id", hospitalId);
   if (billsErr) {
     console.error("checkPackageExcess: bills fetch failed", billsErr.message);
     return { ...empty, error: billsErr.message };
   }
+  const bills: any[] = Array.isArray(billsRaw) ? billsRaw : [];
 
-  const existingExcessBill = (bills || []).find(
+  const existingExcessBill = bills.find(
     (b: any) =>
-      b.bill_type === "package_excess" &&
-      b.bill_status !== "cancelled",
+      b.bill_type === "package_excess" && b.bill_status !== "cancelled",
   );
   const excessBillExists = !!existingExcessBill;
   const excessBillUnpaidId =
-    excessBillExists && existingExcessBill!.payment_status !== "paid"
-      ? existingExcessBill!.id
+    excessBillExists && existingExcessBill.payment_status !== "paid"
+      ? (existingExcessBill.id as string)
       : undefined;
 
-  const billIds = (bills || [])
+  const billIds = bills
     .filter(
       (b: any) =>
         b.bill_status !== "cancelled" && b.bill_type !== "package_excess",
