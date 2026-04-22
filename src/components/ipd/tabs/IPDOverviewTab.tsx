@@ -337,12 +337,28 @@ const IPDOverviewTab: React.FC<Props> = ({ admissionId, hospitalId, onTabChange,
                   <p className="text-[11px] text-destructive font-medium">⚠ Billing not cleared. Clear billing before generating discharge summary.</p>
                 </div>
               ) : (
-                <DischargeSummaryGenerator
-                  admissionId={admissionId}
-                  hospitalId={hospitalId}
-                  billingCleared={billingCleared}
-                  onSummaryDone={() => setDischargeSummaryDone(true)}
-                />
+                <div className="space-y-2">
+                  <PackageExcessCheck
+                    admissionId={admissionId}
+                    hospitalId={hospitalId}
+                    autoOpen
+                    onResolved={() => setPackageExcessBlocking(false)}
+                  />
+                  {packageExcessBlocking ? (
+                    <div className="bg-destructive/10 border border-destructive/30 rounded p-2 text-center">
+                      <p className="text-[11px] text-destructive font-medium">
+                        ⚠ Package excess bill is unpaid / not waived. Resolve above before generating discharge summary.
+                      </p>
+                    </div>
+                  ) : (
+                    <DischargeSummaryGenerator
+                      admissionId={admissionId}
+                      hospitalId={hospitalId}
+                      billingCleared={billingCleared}
+                      onSummaryDone={() => setDischargeSummaryDone(true)}
+                    />
+                  )}
+                </div>
               )
             )}
             {currentStep === 4 && (
