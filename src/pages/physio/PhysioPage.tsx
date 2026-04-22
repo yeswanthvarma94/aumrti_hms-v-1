@@ -131,6 +131,25 @@ const PhysioPage: React.FC = () => {
     const { data } = await q.limit(100);
     setReferrals(data || []);
 
+    // Compute per-patient billing counts (sessions billed vs unbilled)
+    if (data && data.length > 0 && hospitalId) {
+      const uniquePatientIds = [...new Set(data.map((r: any) => r.patient_id).filter(Boolean))];
+      const counts: Record<string, { billed: number; unbilled: number; total: number }> = {};
+      await Promise.all(
+        uniquePatientIds.map(async (pid: string) => {
+          try {
+            const c = await getPatientSessionBillingCounts(pid, hospitalId, "physio");
+            counts[pid] = c;
+          } catch (e) {
+            console.warn("Physio billing count failed:", (e as Error).message);
+          }
+        })
+      );
+      setBillingCounts(counts);
+    } else {
+      setBillingCounts({});
+    }
+
     // Active refs for dropdowns
     const { data: active } = await supabase.from("physio_referrals").select("id, patient_id, diagnosis").eq("hospital_id", hospitalId).in("status", ["accepted", "in_progress"]);
     // Enrich with patient names
@@ -142,7 +161,7 @@ const PhysioPage: React.FC = () => {
     } else {
       setActiveRefList([]);
     }
-  }, [refFilter]);
+  }, [refFilter, hospitalId]);
 
   const loadRefSessions = useCallback(async (refId: string) => {
     const { data } = await supabase.from("physio_sessions").select("*").eq("referral_id", refId).order("session_date", { ascending: false });
