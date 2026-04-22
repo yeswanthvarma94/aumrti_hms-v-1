@@ -14,6 +14,7 @@ import BillEditor from "@/components/billing/BillEditor";
 import NewBillModal from "@/components/billing/NewBillModal";
 import AdvanceReceiptModal from "@/components/billing/AdvanceReceiptModal";
 import CollectionsTab from "@/components/billing/tabs/CollectionsTab";
+import PendingOPDTab from "@/components/billing/tabs/PendingOPDTab";
 
 export interface BillRecord {
   id: string;
@@ -55,6 +56,14 @@ const BillingPage: React.FC = () => {
   const [dateFilter, setDateFilter] = useState("today");
   const [dischargeBillCreated, setDischargeBillCreated] = useState(false);
   const [activeTab, setActiveTab] = useState("bills");
+  const [editorInitialTab, setEditorInitialTab] = useState<"items" | "payments" | "insurance">("items");
+  const [hospitalName, setHospitalName] = useState<string>("");
+
+  useEffect(() => {
+    if (!hospitalId) return;
+    supabase.from("hospitals").select("name").eq("id", hospitalId).maybeSingle()
+      .then(({ data }) => setHospitalName(data?.name || ""));
+  }, [hospitalId]);
 
   const billsQueryKey = ["billing-bills", hospitalId, statusFilter, dateFilter];
 
