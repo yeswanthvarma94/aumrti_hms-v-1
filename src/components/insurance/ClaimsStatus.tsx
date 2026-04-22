@@ -185,6 +185,7 @@ const ClaimsStatus: React.FC = () => {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="text-[11px] w-8" />
               <TableHead className="text-[11px]">Claim #</TableHead>
               <TableHead className="text-[11px]">Patient</TableHead>
               <TableHead className="text-[11px]">TPA</TableHead>
@@ -197,43 +198,75 @@ const ClaimsStatus: React.FC = () => {
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableRow><TableCell colSpan={8} className="text-center text-sm py-8">Loading...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={9} className="text-center text-sm py-8">Loading...</TableCell></TableRow>
             ) : claims.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="p-0 h-48">
+                <TableCell colSpan={9} className="p-0 h-48">
                   <EmptyState icon="🏥" title="No claims to show" description="Insurance claims from billing will appear here" />
                 </TableCell>
               </TableRow>
-            ) : claims.map(c => (
-              <TableRow key={c.id}>
-                <TableCell className="text-xs font-mono">{c.claim_number || "—"}</TableCell>
-                <TableCell className="text-[13px] font-medium">{c.patient_name}</TableCell>
-                <TableCell className="text-xs">{c.tpa_name}</TableCell>
-                <TableCell className="text-[13px] font-bold tabular-nums">₹{c.claimed_amount.toLocaleString("en-IN")}</TableCell>
-                <TableCell className="text-xs tabular-nums">
-                  {c.approved_amount ? `₹${c.approved_amount.toLocaleString("en-IN")}` : "—"}
-                </TableCell>
-                <TableCell>{statusBadge(c.status)}</TableCell>
-                <TableCell className="text-xs tabular-nums text-muted-foreground">
-                  {c.submitted_at ? differenceInDays(new Date(), new Date(c.submitted_at)) : "—"}
-                </TableCell>
-                <TableCell>
-                  <div className="flex gap-1">
-                    {(c.status === "approved" || c.status === "partially_approved") && (
-                      <Button size="sm" variant="outline" className="text-[10px] h-6" onClick={() => recordSettlement(c)}>💰 Settle</Button>
-                    )}
-                    {c.status === "rejected" && (
-                      <>
-                        <Button size="sm" variant="outline" className="text-[10px] h-6" onClick={() => setAppealClaim(c)}>📝 Appeal</Button>
-                        <Button size="sm" variant="outline" className="text-[10px] h-6" onClick={() => setDenialModal(c)}>📋 Log Denial</Button>
-                        <Button size="sm" variant="outline" className="text-[10px] h-6">Resubmit</Button>
-                        <Button size="sm" variant="ghost" className="text-[10px] h-6 text-destructive" onClick={() => writeOff(c)}>Write Off</Button>
-                      </>
-                    )}
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
+            ) : claims.map(c => {
+              const bundle = c.documents_submitted && typeof c.documents_submitted === "object" ? c.documents_submitted : null;
+              const bundledCount = Array.isArray(bundle?.included_bill_ids) ? bundle.included_bill_ids.length : 0;
+              const isExpanded = expandedId === c.id;
+              return (
+                <React.Fragment key={c.id}>
+                  <TableRow>
+                    <TableCell className="px-1">
+                      <button
+                        onClick={() => setExpandedId(isExpanded ? null : c.id)}
+                        className="p-1 rounded hover:bg-muted transition-colors"
+                        aria-label={isExpanded ? "Collapse" : "Expand bundled bills"}
+                      >
+                        {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                      </button>
+                    </TableCell>
+                    <TableCell className="text-xs font-mono">
+                      <div className="flex items-center gap-1.5">
+                        <span>{c.claim_number || "—"}</span>
+                        {bundledCount > 1 && (
+                          <Badge variant="outline" className="text-[9px] gap-0.5 px-1 py-0 h-4">
+                            <Package size={9} /> {bundledCount}
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-[13px] font-medium">{c.patient_name}</TableCell>
+                    <TableCell className="text-xs">{c.tpa_name}</TableCell>
+                    <TableCell className="text-[13px] font-bold tabular-nums">₹{c.claimed_amount.toLocaleString("en-IN")}</TableCell>
+                    <TableCell className="text-xs tabular-nums">
+                      {c.approved_amount ? `₹${c.approved_amount.toLocaleString("en-IN")}` : "—"}
+                    </TableCell>
+                    <TableCell>{statusBadge(c.status)}</TableCell>
+                    <TableCell className="text-xs tabular-nums text-muted-foreground">
+                      {c.submitted_at ? differenceInDays(new Date(), new Date(c.submitted_at)) : "—"}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        {(c.status === "approved" || c.status === "partially_approved") && (
+                          <Button size="sm" variant="outline" className="text-[10px] h-6" onClick={() => recordSettlement(c)}>💰 Settle</Button>
+                        )}
+                        {c.status === "rejected" && (
+                          <>
+                            <Button size="sm" variant="outline" className="text-[10px] h-6" onClick={() => setAppealClaim(c)}>📝 Appeal</Button>
+                            <Button size="sm" variant="outline" className="text-[10px] h-6" onClick={() => setDenialModal(c)}>📋 Log Denial</Button>
+                            <Button size="sm" variant="outline" className="text-[10px] h-6">Resubmit</Button>
+                            <Button size="sm" variant="ghost" className="text-[10px] h-6 text-destructive" onClick={() => writeOff(c)}>Write Off</Button>
+                          </>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                  {isExpanded && (
+                    <TableRow>
+                      <TableCell colSpan={9} className="bg-muted/20 p-3">
+                        <BundledBillsView claimId={c.id} bundle={bundle} fallbackBillId={c.bill_id} />
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </React.Fragment>
+              );
+            })}
           </TableBody>
         </Table>
       </div>
