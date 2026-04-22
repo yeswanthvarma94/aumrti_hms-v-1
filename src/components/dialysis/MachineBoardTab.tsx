@@ -113,7 +113,31 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
       sRes.data.forEach((s: any) => { map[s.machine_id] = s; });
       setActiveSessions(map);
     }
-    if (pRes.data) setPatients(pRes.data);
+    if (pRes.data) {
+      setPatients(pRes.data);
+
+      // Best-effort billing count load for the patient picker
+      try {
+        const { data: u } = await supabase.from("users").select("hospital_id").limit(1).maybeSingle();
+        const hid = u?.hospital_id;
+        if (hid) {
+          const ids = [...new Set(pRes.data.map((p: any) => p.patient_id).filter(Boolean))];
+          const counts: Record<string, { billed: number; unbilled: number; total: number }> = {};
+          await Promise.all(
+            ids.map(async (pid: string) => {
+              try {
+                counts[pid] = await getPatientSessionBillingCounts(pid, hid, "dialysis");
+              } catch (e) {
+                console.warn("Dialysis billing count failed:", (e as Error).message);
+              }
+            })
+          );
+          setBillingCounts(counts);
+        }
+      } catch (e) {
+        console.warn("Dialysis billing counts skipped:", (e as Error).message);
+      }
+    }
   };
 
   useEffect(() => { fetchData(); const iv = setInterval(fetchData, 60000); return () => clearInterval(iv); }, []);
@@ -555,18 +579,29 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
               <Label className="text-xs font-semibold">Select Patient</Label>
               <Input value={patientSearch} onChange={e => setPatientSearch(e.target.value)} placeholder="Search by name or UHID..." className="h-9" />
               <div className="max-h-48 overflow-y-auto border border-border rounded space-y-0.5 p-1">
-                {filteredPatients.map(p => (
+                {filteredPatients.map(p => {
+                  const bc = p.patient_id ? billingCounts[p.patient_id] : undefined;
+                  return (
                   <button key={p.id} onClick={() => selectPatient(p)}
-                    className="w-full text-left p-2 rounded hover:bg-muted text-xs flex items-center justify-between">
-                    <div>
+                    className="w-full text-left p-2 rounded hover:bg-muted text-xs flex items-center justify-between gap-2">
+                    <div className="min-w-0">
                       <span className="font-medium">{p.patients?.full_name}</span>
                       <span className="text-muted-foreground ml-2">{p.patients?.uhid}</span>
+                      {bc && bc.total > 0 && (
+                        <Badge
+                          variant="outline"
+                          className={`ml-2 text-[9px] ${bc.unbilled > 0 ? "border-amber-500 text-amber-600" : "border-emerald-500 text-emerald-600"}`}
+                        >
+                          ₹ {bc.billed} billed / {bc.unbilled} unbilled
+                        </Badge>
+                      )}
                     </div>
-                    <Badge className={`text-[9px] ${TYPE_STYLE[p.machine_type_required]?.bg} ${TYPE_STYLE[p.machine_type_required]?.text}`}>
+                    <Badge className={`text-[9px] shrink-0 ${TYPE_STYLE[p.machine_type_required]?.bg} ${TYPE_STYLE[p.machine_type_required]?.text}`}>
                       {p.machine_type_required.toUpperCase()}
                     </Badge>
                   </button>
-                ))}
+                  );
+                })}
                 {filteredPatients.length === 0 && <p className="text-xs text-muted-foreground p-2 text-center">No patients found</p>}
               </div>
             </div>
