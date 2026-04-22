@@ -18,6 +18,7 @@ import { Play, CheckCircle, ShieldX, Plus, Pencil, Power } from "lucide-react";
 import {
   findActivePackageForService,
   countPackageSessionsUsed,
+  getPatientSessionBillingCounts,
   type ActivePackageInfo,
 } from "@/lib/sessionPackageGuard";
 import PackageExhaustedModal from "@/components/shared/PackageExhaustedModal";
@@ -87,6 +88,7 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
 
   // Package guard
   const [exhaustedPkg, setExhaustedPkg] = useState<ActivePackageInfo | null>(null);
+  const [billingCounts, setBillingCounts] = useState<Record<string, { billed: number; unbilled: number; total: number }>>({});
 
   const fetchData = async () => {
     const [mRes, sRes, pRes] = await Promise.all([
