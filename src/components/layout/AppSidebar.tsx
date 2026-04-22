@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useHospitalId } from "@/hooks/useHospitalId";
+import { useQueryClient } from "@tanstack/react-query";
 import BranchSwitcher from "./BranchSwitcher";
 
 interface SidebarItem {
@@ -55,7 +56,8 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ isMobileOverlay, onClose }) => 
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { fullName, role } = useHospitalId();
+  const { fullName, role, hospitalId } = useHospitalId();
+  const queryClient = useQueryClient();
   const userName = fullName || "User";
   const userRole = role || "";
   const userInitials = React.useMemo(() => {
@@ -76,6 +78,36 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ isMobileOverlay, onClose }) => 
     if (onClose) onClose();
   };
 
+  // Prefetch the primary data query for hovered route so it's already loading
+  // by the time the user clicks. No-op when data is fresh in cache.
+  const handlePrefetch = (path: string) => {
+    if (!hospitalId) return;
+    const today = new Date().toISOString().split("T")[0];
+    const prefetch = (queryKey: unknown[], staleTime = 30_000) =>
+      queryClient.prefetchQuery({ queryKey, staleTime });
+
+    switch (path) {
+      case "/dashboard":
+        prefetch(["dashboard-kpis", hospitalId, today]);
+        break;
+      case "/opd":
+        prefetch(["opd-tokens", hospitalId, today], 0);
+        break;
+      case "/ipd":
+        prefetch(["ipd-beds", hospitalId], 0);
+        break;
+      case "/billing":
+        prefetch(["billing-bills", hospitalId]);
+        break;
+      case "/lab":
+        prefetch(["lab-orders", hospitalId]);
+        break;
+      case "/patients":
+        prefetch(["patients-list", hospitalId], 60_000);
+        break;
+    }
+  };
+
   const renderItem = (item: SidebarItem) => {
     const Icon = item.icon;
     const active = location.pathname === item.path;
@@ -85,6 +117,7 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ isMobileOverlay, onClose }) => 
       <button
         key={item.path}
         onClick={() => handleNav(item.path)}
+        onMouseEnter={() => handlePrefetch(item.path)}
         className={cn(
           "flex items-center gap-3 min-h-[44px] w-full rounded-lg px-3 text-sm font-medium transition-colors text-left",
           active
