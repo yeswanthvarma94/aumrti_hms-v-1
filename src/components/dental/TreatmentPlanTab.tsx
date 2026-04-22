@@ -340,6 +340,25 @@ const TreatmentPlanTab: React.FC<TreatmentPlanTabProps> = ({ patientId, hospital
           </div>
         </DialogContent>
       </Dialog>
+
+      {exhaustedPkg && (
+        <PackageExhaustedModal
+          open={!!exhaustedPkg}
+          onOpenChange={(o) => { if (!o) { setExhaustedPkg(null); setPendingCompleteIdx(null); } }}
+          packageName={exhaustedPkg.packageName}
+          sessionsIncluded={exhaustedPkg.sessionsIncluded}
+          sessionsUsed={exhaustedPkg.sessionsUsed}
+          ratePerSession={exhaustedPkg.ratePerSession}
+          serviceLabel="dental procedure"
+          onCancel={() => { setExhaustedPkg(null); setPendingCompleteIdx(null); }}
+          onBillAsExtra={async () => {
+            const idx = pendingCompleteIdx;
+            setExhaustedPkg(null);
+            setPendingCompleteIdx(null);
+            if (idx !== null) await _doCompleteItem(idx);
+          }}
+        />
+      )}
     </div>
   );
 };
