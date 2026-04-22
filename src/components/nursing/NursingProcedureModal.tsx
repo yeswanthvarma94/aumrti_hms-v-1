@@ -151,7 +151,7 @@ export default function NursingProcedureModal({ open, onClose, hospitalId, defau
       // Post journal entry
       if (billId) {
         await autoPostJournalEntry({
-          triggerEvent: activeAdmissionId ? "bill_finalized_ipd" : "bill_finalized_opd",
+          triggerEvent: "bill_finalized_nursing",
           sourceModule: "nursing", sourceId: billId, amount: grandTotal,
           description: `Nursing Procedure: ${procedureName}`,
           hospitalId, postedBy: userId || "",
