@@ -8,6 +8,8 @@ import DischargeInstructions from "@/components/ipd/DischargeInstructions";
 import DischargeSummaryGenerator from "@/components/ipd/DischargeSummaryGenerator";
 import DischargeTATTimer from "@/components/ipd/DischargeTATTimer";
 import BillCompletenessCheck from "@/components/ipd/BillCompletenessCheck";
+import PackageExcessCheck from "@/components/packages/PackageExcessCheck";
+import { isPackageExcessBlocking } from "@/lib/packageBilling";
 
 interface Props {
   admissionId: string;
@@ -30,6 +32,7 @@ const IPDOverviewTab: React.FC<Props> = ({ admissionId, hospitalId, onTabChange,
   const [admDiagnosis, setAdmDiagnosis] = useState("");
   const [savingStep, setSavingStep] = useState<string | null>(null);
   const [billingPrecheckCleared, setBillingPrecheckCleared] = useState(false);
+  const [packageExcessBlocking, setPackageExcessBlocking] = useState(false);
 
   useEffect(() => {
     if (!admissionId) return;
@@ -151,6 +154,15 @@ const IPDOverviewTab: React.FC<Props> = ({ admissionId, hospitalId, onTabChange,
       setBalanceDue(Math.max(0, totalBilled - totalPaid));
     })();
   }, [admissionId, billingCleared]);
+
+  // Package excess gating — block discharge Summary if an unpaid/unwaived
+  // package_excess bill exists for this admission.
+  useEffect(() => {
+    if (!admissionId || !hospitalId) return;
+    isPackageExcessBlocking(admissionId, hospitalId)
+      .then(setPackageExcessBlocking)
+      .catch((e) => console.error("Package excess gate check failed:", e));
+  }, [admissionId, hospitalId, billingCleared, dischargeSummaryDone]);
 
   const steps = [
     { key: "medical", label: "Medical", icon: Stethoscope, done: medicalCleared, color: "text-blue-600" },
@@ -325,12 +337,28 @@ const IPDOverviewTab: React.FC<Props> = ({ admissionId, hospitalId, onTabChange,
                   <p className="text-[11px] text-destructive font-medium">⚠ Billing not cleared. Clear billing before generating discharge summary.</p>
                 </div>
               ) : (
-                <DischargeSummaryGenerator
-                  admissionId={admissionId}
-                  hospitalId={hospitalId}
-                  billingCleared={billingCleared}
-                  onSummaryDone={() => setDischargeSummaryDone(true)}
-                />
+                <div className="space-y-2">
+                  <PackageExcessCheck
+                    admissionId={admissionId}
+                    hospitalId={hospitalId}
+                    autoOpen
+                    onResolved={() => setPackageExcessBlocking(false)}
+                  />
+                  {packageExcessBlocking ? (
+                    <div className="bg-destructive/10 border border-destructive/30 rounded p-2 text-center">
+                      <p className="text-[11px] text-destructive font-medium">
+                        ⚠ Package excess bill is unpaid / not waived. Resolve above before generating discharge summary.
+                      </p>
+                    </div>
+                  ) : (
+                    <DischargeSummaryGenerator
+                      admissionId={admissionId}
+                      hospitalId={hospitalId}
+                      billingCleared={billingCleared}
+                      onSummaryDone={() => setDischargeSummaryDone(true)}
+                    />
+                  )}
+                </div>
               )
             )}
             {currentStep === 4 && (

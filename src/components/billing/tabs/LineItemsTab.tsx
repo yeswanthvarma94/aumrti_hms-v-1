@@ -10,6 +10,7 @@ import type { BillRecord } from "@/pages/billing/BillingPage";
 import type { LineItem } from "@/components/billing/BillEditor";
 import LeakageScanner from "@/components/billing/LeakageScanner";
 import UnbilledServicesModal from "@/components/billing/UnbilledServicesModal";
+import PackageExcessCheck from "@/components/packages/PackageExcessCheck";
 import { autoPullAdmissionCharges } from "@/lib/ipdBilling";
 import { formatINR } from "@/lib/currency";
 
@@ -360,6 +361,18 @@ const LineItemsTab: React.FC<Props> = ({ bill, hospitalId, lineItems, loading, o
           </div>
         )}
       </div>
+
+      {/* Package excess check — IPD bills linked to an admission with a package */}
+      {bill.admission_id && hospitalId && (
+        <div className="px-4 pt-2">
+          <PackageExcessCheck
+            key={`pkgexcess-${lineItems.length}`}
+            admissionId={bill.admission_id}
+            hospitalId={hospitalId}
+            variant="inline"
+          />
+        </div>
+      )}
 
       {/* AI Leakage Scanner */}
       <LeakageScanner bill={bill} hospitalId={hospitalId} lineItems={lineItems} onRefresh={onRefresh} />
