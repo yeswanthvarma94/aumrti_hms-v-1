@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -6,18 +7,60 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+async function resolveHospitalCredentials(req: Request): Promise<{ apiKey: string; userId: string } | null> {
+  try {
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) return null;
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+
+    const userClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: userData } = await userClient.auth.getUser();
+    if (!userData?.user) return null;
+
+    const admin = createClient(supabaseUrl, serviceRoleKey);
+    const { data: userRow } = await admin
+      .from("users")
+      .select("hospital_id")
+      .eq("auth_user_id", userData.user.id)
+      .maybeSingle();
+    if (!userRow?.hospital_id) return null;
+
+    const { data: cfg } = await admin
+      .from("api_configurations")
+      .select("config")
+      .eq("hospital_id", userRow.hospital_id)
+      .eq("service_key", "bhashini")
+      .maybeSingle();
+
+    const c = (cfg?.config as any) || {};
+    if (!c.api_key || !c.user_id) return null;
+    return { apiKey: c.api_key, userId: c.user_id };
+  } catch (err) {
+    console.error("resolveHospitalCredentials error:", err);
+    return null;
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const bhashiniApiKey = Deno.env.get("BHASHINI_API_KEY");
-    const bhashiniUserId = Deno.env.get("BHASHINI_USER_ID");
+    const hospitalCreds = await resolveHospitalCredentials(req);
+    const bhashiniApiKey = hospitalCreds?.apiKey || Deno.env.get("BHASHINI_API_KEY");
+    const bhashiniUserId = hospitalCreds?.userId || Deno.env.get("BHASHINI_USER_ID");
 
     if (!bhashiniApiKey || !bhashiniUserId) {
       return new Response(
-        JSON.stringify({ error: "BHASHINI_API_KEY and BHASHINI_USER_ID not configured. Get credentials from bhashini.gov.in" }),
+        JSON.stringify({
+          error: "Bhashini credentials not configured for your hospital. Go to Settings → API Configuration Hub → Bhashini to add your credentials (api_key + user_id).",
+        }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -42,7 +85,6 @@ serve(async (req) => {
 
     const bhashiniLang = langMap[language_code] || language_code.split("-")[0];
 
-    // Step 1: Get ASR pipeline config from ULCA
     const pipelineRes = await fetch(
       "https://meity-auth.ulcacontrib.org/ulca/apis/v0/model/getModelsPipeline",
       {
@@ -82,13 +124,9 @@ serve(async (req) => {
       );
     }
 
-    // Step 2: Call ASR inference
     const asrRes = await fetch(serviceUrl, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: inferenceApiKey,
-      },
+      headers: { "Content-Type": "application/json", Authorization: inferenceApiKey },
       body: JSON.stringify({
         pipelineTasks: [{
           taskType: "asr",
@@ -99,9 +137,7 @@ serve(async (req) => {
             samplingRate: 16000,
           },
         }],
-        inputData: {
-          audio: [{ audioContent: audio_base64 }],
-        },
+        inputData: { audio: [{ audioContent: audio_base64 }] },
       }),
     });
 
