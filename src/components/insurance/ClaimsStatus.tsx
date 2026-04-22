@@ -12,6 +12,8 @@ import { differenceInDays, format } from "date-fns";
 import EmptyState from "@/components/EmptyState";
 import AppealLetterModal from "./AppealLetterModal";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import { ChevronDown, ChevronRight, Package } from "lucide-react";
+import BundledBillsView from "./BundledBillsView";
 
 interface Claim {
   id: string;
@@ -24,6 +26,8 @@ interface Claim {
   status: string;
   submitted_at: string | null;
   denial_reason: string | null;
+  bill_id: string | null;
+  documents_submitted: any;
 }
 
 const statusOptions = ["all", "submitted", "under_review", "approved", "partially_approved", "rejected", "settled", "written_off"];
@@ -41,6 +45,7 @@ const ClaimsStatus: React.FC = () => {
   const [denialCategory, setDenialCategory] = useState("");
   const [denialStats, setDenialStats] = useState<{ category: string; count: number }[]>([]);
   const [topDenialsByTPA, setTopDenialsByTPA] = useState<{ tpa: string; reasons: string[] }[]>([]);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => { loadData(); loadDenialStats(); }, [filter]);
@@ -68,6 +73,8 @@ const ClaimsStatus: React.FC = () => {
       status: c.status,
       submitted_at: c.submitted_at,
       denial_reason: c.denial_reason,
+      bill_id: c.bill_id ?? null,
+      documents_submitted: c.documents_submitted ?? null,
     })));
     setLoading(false);
   };
