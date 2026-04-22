@@ -7,6 +7,7 @@ import { toast } from "@/hooks/use-toast";
 import DischargeInstructions from "@/components/ipd/DischargeInstructions";
 import DischargeSummaryGenerator from "@/components/ipd/DischargeSummaryGenerator";
 import DischargeTATTimer from "@/components/ipd/DischargeTATTimer";
+import BillCompletenessCheck from "@/components/ipd/BillCompletenessCheck";
 
 interface Props {
   admissionId: string;
