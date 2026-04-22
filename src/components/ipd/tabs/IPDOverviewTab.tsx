@@ -8,6 +8,8 @@ import DischargeInstructions from "@/components/ipd/DischargeInstructions";
 import DischargeSummaryGenerator from "@/components/ipd/DischargeSummaryGenerator";
 import DischargeTATTimer from "@/components/ipd/DischargeTATTimer";
 import BillCompletenessCheck from "@/components/ipd/BillCompletenessCheck";
+import PackageExcessCheck from "@/components/packages/PackageExcessCheck";
+import { isPackageExcessBlocking } from "@/lib/packageBilling";
 
 interface Props {
   admissionId: string;
@@ -30,6 +32,7 @@ const IPDOverviewTab: React.FC<Props> = ({ admissionId, hospitalId, onTabChange,
   const [admDiagnosis, setAdmDiagnosis] = useState("");
   const [savingStep, setSavingStep] = useState<string | null>(null);
   const [billingPrecheckCleared, setBillingPrecheckCleared] = useState(false);
+  const [packageExcessBlocking, setPackageExcessBlocking] = useState(false);
 
   useEffect(() => {
     if (!admissionId) return;
