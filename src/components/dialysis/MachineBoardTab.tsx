@@ -85,6 +85,9 @@ const MachineBoardTab: React.FC<Props> = ({ onRefresh }) => {
   const [complications, setComplications] = useState<string[]>([]);
   const [sessionNotes, setSessionNotes] = useState("");
 
+  // Package guard
+  const [exhaustedPkg, setExhaustedPkg] = useState<ActivePackageInfo | null>(null);
+
   const fetchData = async () => {
     const [mRes, sRes, pRes] = await Promise.all([
       (supabase as any).from("dialysis_machines").select("*").eq("is_active", true).order("machine_name"),
