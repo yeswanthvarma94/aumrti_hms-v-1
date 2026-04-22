@@ -1,15 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Activity, Pill, ClipboardList, CheckCircle2, Stethoscope, CreditCard, Package, FileText, Loader2, Receipt, AlertTriangle } from "lucide-react";
+import { Activity, Pill, ClipboardList, CheckCircle2, Stethoscope, CreditCard, Package, FileText, Loader2, Receipt } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import DischargeInstructions from "@/components/ipd/DischargeInstructions";
 import DischargeSummaryGenerator from "@/components/ipd/DischargeSummaryGenerator";
 import DischargeTATTimer from "@/components/ipd/DischargeTATTimer";
 import BillCompletenessCheck from "@/components/ipd/BillCompletenessCheck";
-import PackageExcessModal from "@/components/packages/PackageExcessModal";
-import { checkPackageExcess, resolvePackageIdForAdmission } from "@/lib/packageBilling";
 
 interface Props {
   admissionId: string;
@@ -32,12 +30,7 @@ const IPDOverviewTab: React.FC<Props> = ({ admissionId, hospitalId, onTabChange,
   const [admDiagnosis, setAdmDiagnosis] = useState("");
   const [savingStep, setSavingStep] = useState<string | null>(null);
   const [billingPrecheckCleared, setBillingPrecheckCleared] = useState(false);
-  const [pkgId, setPkgId] = useState<string | null>(null);
-  const [pkgExcessOpen, setPkgExcessOpen] = useState(false);
-  const [pkgExcessBlocking, setPkgExcessBlocking] = useState(false);
-  const [pkgExcessAmount, setPkgExcessAmount] = useState(0);
-  const [pkgCheckTrigger, setPkgCheckTrigger] = useState(0);
-  const [pkgPatientId, setPkgPatientId] = useState<string>("");
+
   useEffect(() => {
     if (!admissionId) return;
     const loadStatus = async () => {
@@ -103,34 +96,6 @@ const IPDOverviewTab: React.FC<Props> = ({ admissionId, hospitalId, onTabChange,
       .order("created_at", { ascending: false })
       .then(({ data }) => setMedications(data || []));
   }, [admissionId, hospitalId]);
-
-  // Package excess detection — runs at discharge initiation and on demand.
-  useEffect(() => {
-    if (!admissionId || !hospitalId) return;
-    let cancelled = false;
-    (async () => {
-      const { data: adm } = await supabase
-        .from("admissions").select("patient_id").eq("id", admissionId).maybeSingle();
-      if (!cancelled && adm?.patient_id) setPkgPatientId(adm.patient_id);
-      const id = await resolvePackageIdForAdmission(admissionId, hospitalId);
-      if (cancelled) return;
-      setPkgId(id);
-      if (!id) {
-        setPkgExcessBlocking(false);
-        setPkgExcessAmount(0);
-        return;
-      }
-      const r = await checkPackageExcess(admissionId, id, hospitalId);
-      if (cancelled || !r.ok) return;
-      setPkgExcessAmount(r.excessAmount);
-      const blocking =
-        r.excessItems.length > 0 &&
-        !r.waived &&
-        (!r.excessBillExists || !!r.excessBillUnpaidId);
-      setPkgExcessBlocking(blocking);
-    })();
-    return () => { cancelled = true; };
-  }, [admissionId, hospitalId, pkgCheckTrigger, billingCleared]);
 
   const updateAdmission = async (field: string, value: boolean) => {
     setSavingStep(field);
@@ -278,17 +243,6 @@ const IPDOverviewTab: React.FC<Props> = ({ admissionId, hospitalId, onTabChange,
             <Receipt className="h-3 w-3" /> View / Update IPD Bill
           </Button>
 
-          {pkgId && pkgExcessAmount > 0 && (
-            <button
-              onClick={() => setPkgExcessOpen(true)}
-              className="mb-3 text-[11px] flex items-center justify-between gap-1 px-2 py-1 rounded border border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100"
-            >
-              <span className="flex items-center gap-1">
-                <AlertTriangle className="h-3 w-3" /> Package excess detected
-              </span>
-              <span className="font-semibold">₹{pkgExcessAmount.toLocaleString("en-IN")}</span>
-            </button>
-          )}
           {/* Stepper */}
           <div className="flex items-center gap-1 w-full mb-3">
             {steps.map((step, i) => {
@@ -370,16 +324,6 @@ const IPDOverviewTab: React.FC<Props> = ({ admissionId, hospitalId, onTabChange,
                 <div className="bg-destructive/10 border border-destructive/30 rounded p-2 text-center">
                   <p className="text-[11px] text-destructive font-medium">⚠ Billing not cleared. Clear billing before generating discharge summary.</p>
                 </div>
-              ) : pkgExcessBlocking ? (
-                <div className="bg-amber-50 border border-amber-300 rounded p-2 space-y-1">
-                  <p className="text-[11px] text-amber-800 font-semibold flex items-center gap-1">
-                    <AlertTriangle className="h-3 w-3" /> Package excess of ₹{pkgExcessAmount.toLocaleString("en-IN")} pending.
-                  </p>
-                  <Button size="sm" variant="outline" className="text-[11px] h-7 w-full border-amber-400 text-amber-800 hover:bg-amber-100"
-                    onClick={() => setPkgExcessOpen(true)}>
-                    Resolve Package Excess
-                  </Button>
-                </div>
               ) : (
                 <DischargeSummaryGenerator
                   admissionId={admissionId}
@@ -406,18 +350,6 @@ const IPDOverviewTab: React.FC<Props> = ({ admissionId, hospitalId, onTabChange,
           medications={medications.map((m) => ({ drug_name: m.drug_name, dose: m.dose, frequency: m.frequency }))}
           followupDate={null}
           restrictions={null}
-        />
-      )}
-
-      {pkgExcessOpen && pkgId && hospitalId && (
-        <PackageExcessModal
-          open={pkgExcessOpen}
-          onClose={() => setPkgExcessOpen(false)}
-          admissionId={admissionId}
-          packageId={pkgId}
-          hospitalId={hospitalId}
-          patientId={pkgPatientId}
-          onResolved={() => setPkgCheckTrigger((n) => n + 1)}
         />
       )}
     </div>
