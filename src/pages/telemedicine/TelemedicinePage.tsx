@@ -14,9 +14,10 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import {
   Video, Phone, Plus, Monitor, Square, ClipboardList,
-  User, Clock, Send, CheckCircle2, X
+  User, Clock, Send, CheckCircle2, X, IndianRupee, CreditCard
 } from "lucide-react";
 import ScheduleTeleconsultModal from "@/components/telemedicine/ScheduleTeleconsultModal";
+import TelePaymentModal from "@/components/telemedicine/TelePaymentModal";
 
 interface RxItem { drug: string; dose: string; frequency: string; days: string; }
 
