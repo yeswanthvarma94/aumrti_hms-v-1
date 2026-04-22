@@ -285,10 +285,33 @@ const IPDOverviewTab: React.FC<Props> = ({ admissionId, hospitalId, onTabChange,
               </Button>
             )}
             {currentStep === 1 && (
-              <Button size="sm" variant="outline" className="text-[11px] h-7 w-full border-amber-300 text-amber-700 hover:bg-amber-50"
-                onClick={() => navigate(`/billing?action=new&admission_id=${admissionId}&type=ipd`)}>
-                <CreditCard className="h-3 w-3 mr-1" /> Finalise Billing →
-              </Button>
+              <div className="space-y-2">
+                {hospitalId && (
+                  <BillCompletenessCheck
+                    admissionId={admissionId}
+                    hospitalId={hospitalId}
+                    onCleared={(overridden) => {
+                      setBillingPrecheckCleared(true);
+                      if (overridden) {
+                        toast({
+                          title: "Bill completeness overridden — proceeding to billing.",
+                        });
+                      }
+                    }}
+                  />
+                )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-[11px] h-7 w-full border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-50"
+                  disabled={!billingPrecheckCleared}
+                  onClick={() =>
+                    navigate(`/billing?action=new&admission_id=${admissionId}&type=ipd`)
+                  }
+                >
+                  <CreditCard className="h-3 w-3 mr-1" /> Finalise Billing →
+                </Button>
+              </div>
             )}
             {currentStep === 2 && (
               <Button size="sm" className="text-[11px] h-7 w-full bg-violet-600 hover:bg-violet-700" onClick={handlePharmacyClear} disabled={savingStep === "pharmacy_cleared"}>
