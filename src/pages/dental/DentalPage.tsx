@@ -120,6 +120,25 @@ const DentalPage: React.FC = () => {
     }
     setTokens((data as unknown as DentalToken[]) || []);
     setLoading(false);
+
+    // Load per-patient dental billing counts (best-effort)
+    const tokenList = (data as unknown as DentalToken[]) || [];
+    const patientIds = [...new Set(tokenList.map(t => t.patient?.id || t.patient_id).filter(Boolean) as string[])];
+    if (patientIds.length > 0) {
+      const counts: Record<string, { billed: number; unbilled: number; total: number }> = {};
+      await Promise.all(
+        patientIds.map(async (pid) => {
+          try {
+            counts[pid] = await getPatientSessionBillingCounts(pid, userData.hospital_id, "dental");
+          } catch (e) {
+            console.warn("Dental billing count failed:", (e as Error).message);
+          }
+        })
+      );
+      setBillingCounts(counts);
+    } else {
+      setBillingCounts({});
+    }
   }, [toast]);
 
   useEffect(() => { fetchTokens(); }, [fetchTokens]);
