@@ -63,6 +63,7 @@ const CollectionsTab: React.FC<CollectionsTabProps> = ({ hospitalId }) => {
   const [emiPlans, setEmiPlans] = useState<EMIPlan[]>([]);
   const [payLinks, setPayLinks] = useState<PayLink[]>([]);
   const [loading, setLoading] = useState(true);
+  const [opdToday, setOpdToday] = useState<{ count: number; amount: number }>({ count: 0, amount: 0 });
 
   // Filters
   const [billTypeFilter, setBillTypeFilter] = useState("all");
@@ -170,6 +171,27 @@ const CollectionsTab: React.FC<CollectionsTabProps> = ({ hospitalId }) => {
       link_token: l.link_token,
       short_url: l.short_url,
     })));
+
+    // Today's OPD Collections KPI — bills paid today (bill_type=opd)
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const { data: opdPaidToday, error: opdErr } = await supabase
+      .from("bills")
+      .select("paid_amount")
+      .eq("hospital_id", hospitalId)
+      .eq("bill_type", "opd")
+      .eq("payment_status", "paid")
+      .eq("bill_date", todayStr);
+
+    if (opdErr) {
+      console.error("Failed to load today's OPD collections:", opdErr.message);
+      setOpdToday({ count: 0, amount: 0 });
+    } else {
+      const rows = opdPaidToday || [];
+      setOpdToday({
+        count: rows.length,
+        amount: rows.reduce((s, r: any) => s + (Number(r.paid_amount) || 0), 0),
+      });
+    }
 
     setLoading(false);
   }, [hospitalId]);
