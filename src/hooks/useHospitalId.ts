@@ -11,6 +11,11 @@ interface UserRecord {
   full_name: string | null
 }
 
+interface HospitalRecord {
+  name: string | null
+  logo_url: string | null
+}
+
 /**
  * Fetches the current user's id, hospital_id, and role from the `users` table.
  * Cached forever (staleTime: Infinity) and invalidated only on auth state changes.
@@ -27,6 +32,19 @@ async function fetchCurrentUserRecord(authUserId: string): Promise<UserRecord | 
     return null
   }
   return data as UserRecord | null
+}
+
+async function fetchHospitalRecord(hospitalId: string): Promise<HospitalRecord | null> {
+  const { data, error } = await supabase
+    .from('hospitals')
+    .select('name, logo_url')
+    .eq('id', hospitalId)
+    .maybeSingle()
+  if (error) {
+    console.error('useHospitalId: fetch hospital error:', error.message)
+    return null
+  }
+  return (data as HospitalRecord) ?? null
 }
 
 export function useCurrentUserRecord(authUserId: string | null | undefined) {
@@ -46,6 +64,9 @@ export function useCurrentUserRecord(authUserId: string | null | undefined) {
  * Backwards-compatible hook used across the app.
  * Returns the same `{ hospitalId, role, loading }` shape as before, but is now
  * cached via TanStack Query so route navigations don't re-query the users table.
+ *
+ * Also caches hospital name/logo so the dashboard, header, and patient portal
+ * can read branding without an extra DB roundtrip.
  */
 export function useHospitalId() {
   const queryClient = useQueryClient()
@@ -67,6 +88,7 @@ export function useHospitalId() {
         if (prev !== newId) {
           // Auth identity changed — invalidate cached user record
           queryClient.invalidateQueries({ queryKey: ['current-user'] })
+          queryClient.invalidateQueries({ queryKey: ['hospital-record'] })
         }
         return newId
       })
@@ -92,22 +114,42 @@ export function useHospitalId() {
 
   const { data, isLoading, isFetching } = useCurrentUserRecord(authUserId)
 
+  const defaultHospitalId = data?.hospital_id ?? null
+  const hospitalId = branchOverride || defaultHospitalId
+
+  // Cache hospital branding for 1 hour — almost never changes.
+  const { data: hospital } = useQuery({
+    queryKey: ['hospital-record', hospitalId],
+    queryFn: () => fetchHospitalRecord(hospitalId as string),
+    enabled: !!hospitalId,
+    staleTime: 60 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  })
+
   // Loading: while we don't yet know auth state, OR while the user record query is in-flight on first load
   const loading =
     authUserId === undefined ||
     (authUserId !== null && isLoading && !data && isFetching)
-
-  const defaultHospitalId = data?.hospital_id ?? null
-  const hospitalId = branchOverride || defaultHospitalId
 
   return {
     hospitalId,
     role: data?.role ?? null,
     fullName: data?.full_name ?? null,
     userId: data?.id ?? null,
+    hospitalName: hospital?.name ?? null,
+    hospitalLogo: hospital?.logo_url ?? null,
     loading,
   }
 }
+
+/**
+ * Preferred alias going forward — same data as `useHospitalId()` but the name
+ * better reflects that it returns the full hospital context (id, name, logo,
+ * user id, role, full name).
+ */
+export const useHospital = useHospitalId
 
 // Standalone async function for non-hook contexts (callable from event handlers)
 export async function getHospitalIdAsync(): Promise<string | null> {
