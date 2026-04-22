@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Activity, Pill, ClipboardList, CheckCircle2, Stethoscope, CreditCard, Package, FileText, Loader2, Receipt } from "lucide-react";
+import { Activity, Pill, ClipboardList, CheckCircle2, Stethoscope, CreditCard, Package, FileText, Loader2, Receipt, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import DischargeInstructions from "@/components/ipd/DischargeInstructions";
 import DischargeSummaryGenerator from "@/components/ipd/DischargeSummaryGenerator";
 import DischargeTATTimer from "@/components/ipd/DischargeTATTimer";
 import BillCompletenessCheck from "@/components/ipd/BillCompletenessCheck";
+import PackageExcessModal from "@/components/packages/PackageExcessModal";
+import { checkPackageExcess, resolvePackageIdForAdmission } from "@/lib/packageBilling";
 
 interface Props {
   admissionId: string;
