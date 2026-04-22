@@ -103,6 +103,31 @@ const IPDOverviewTab: React.FC<Props> = ({ admissionId, hospitalId, onTabChange,
       .then(({ data }) => setMedications(data || []));
   }, [admissionId, hospitalId]);
 
+  // Package excess detection — runs at discharge initiation and on demand.
+  useEffect(() => {
+    if (!admissionId || !hospitalId) return;
+    let cancelled = false;
+    (async () => {
+      const id = await resolvePackageIdForAdmission(admissionId, hospitalId);
+      if (cancelled) return;
+      setPkgId(id);
+      if (!id) {
+        setPkgExcessBlocking(false);
+        setPkgExcessAmount(0);
+        return;
+      }
+      const r = await checkPackageExcess(admissionId, id, hospitalId);
+      if (cancelled || !r.ok) return;
+      setPkgExcessAmount(r.excessAmount);
+      const blocking =
+        r.excessItems.length > 0 &&
+        !r.waived &&
+        (!r.excessBillExists || !!r.excessBillUnpaidId);
+      setPkgExcessBlocking(blocking);
+    })();
+    return () => { cancelled = true; };
+  }, [admissionId, hospitalId, pkgCheckTrigger, billingCleared]);
+
   const updateAdmission = async (field: string, value: boolean) => {
     setSavingStep(field);
     const { error } = await supabase.from("admissions").update({ [field]: value } as any).eq("id", admissionId);
