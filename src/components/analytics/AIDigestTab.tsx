@@ -59,51 +59,47 @@ function detectAnomalies(snapshot: Record<string, number>) {
 }
 
 const AIDigestTab: React.FC = () => {
+  const { hospitalId, hospitalName } = useHospital();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [isGenerating, setIsGenerating] = useState(false);
-  const queryClient = useQueryClient();
   const dateStr = format(selectedDate, "yyyy-MM-dd");
   const dateLabel = format(selectedDate, "EEEE, dd MMMM yyyy");
 
-  // Fetch existing digest
+  // Fetch existing digest (cached for 5 min — rarely regenerated)
   const { data: digest, refetch: refetchDigest } = useQuery({
-    queryKey: ["analytics-digest", dateStr],
+    queryKey: ["analytics-digest", hospitalId, dateStr],
+    enabled: !!hospitalId,
+    staleTime: 5 * 60 * 1000,
     queryFn: async () => {
-      const hospitalId = await getHospitalId();
-      if (!hospitalId) return null;
       const { data } = await supabase.from("ai_digests")
         .select("*")
-        .eq("hospital_id", hospitalId)
+        .eq("hospital_id", hospitalId as string)
         .eq("digest_date", dateStr)
         .maybeSingle();
       return data;
     },
   });
 
-  // Fetch today's KPIs
-  const { data: kpiData } = useQuery({
-    queryKey: ["analytics-digest-kpis", dateStr],
-    queryFn: async () => {
-      const hospitalId = await getHospitalId();
-      if (!hospitalId) return null;
-      return fetchTodayKPIs(hospitalId, dateStr);
-    },
+  // Read KPIs straight from the dashboard cache — no extra query.
+  // (Dashboard hook populates this key with `useDashboardData` on /dashboard.)
+  const { data: dashboardKpis } = useQuery<DashboardKPIs>({
+    queryKey: ["dashboard-kpis", hospitalId, dateStr],
+    enabled: false, // cache-only read
   });
 
+  const kpiData = buildKpiViewModel(dashboardKpis);
   const anomalies = kpiData ? detectAnomalies(kpiData.snapshot) : [];
 
   const generateDigest = async () => {
     setIsGenerating(true);
     try {
-      const hospitalId = await getHospitalId();
-      const hospitalName = await getHospitalName();
       if (!hospitalId) throw new Error("No hospital");
 
       const kpis = kpiData?.snapshot || {};
 
       const { data: fnData, error: fnError } = await supabase.functions.invoke("ai-executive-digest", {
         body: {
-          hospital_name: hospitalName,
+          hospital_name: hospitalName || "Hospital",
           date: dateStr,
           snapshot: kpis,
           anomalies,
