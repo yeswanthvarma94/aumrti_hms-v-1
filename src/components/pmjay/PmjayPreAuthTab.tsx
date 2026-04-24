@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { ClipboardList, Send, Bot, FileText, CheckCircle2, RefreshCw, Plus, X, ShieldCheck, Loader2, AlertCircle, Search } from "lucide-react";
 import { callAI } from "@/lib/aiProvider";
+import { useHospitalId } from "@/hooks/useHospitalId";
 
 interface PreAuth {
   id: string;
@@ -70,6 +71,7 @@ const PmjayPreAuthTab: React.FC<Props> = ({ showNewForm, onFormClosed }) => {
   const [checkedDocs, setCheckedDocs] = useState<boolean[]>(REQUIRED_DOCS.map(() => false));
   const [scoreData, setScoreData] = useState<{ score: number | null; risk: string | null; recommendation: string | null }>({ score: null, risk: null, recommendation: null });
   const { toast } = useToast();
+  const { hospitalId } = useHospitalId();
 
   // New form state
   const [showForm, setShowForm] = useState(false);
@@ -139,7 +141,19 @@ const PmjayPreAuthTab: React.FC<Props> = ({ showNewForm, onFormClosed }) => {
   const searchPatients = async (q: string) => {
     setPatientSearch(q);
     if (q.length < 2) { setPatientResults([]); return; }
-    const { data } = await supabase.from("patients").select("id, full_name, phone").or(`full_name.ilike.%${q}%,phone.ilike.%${q}%`).limit(6);
+    if (!hospitalId) { setPatientResults([]); return; }
+    const term = q.trim();
+    const { data, error } = await supabase
+      .from("patients")
+      .select("id, full_name, uhid, phone")
+      .eq("hospital_id", hospitalId)
+      .or(`full_name.ilike.%${term}%,uhid.ilike.%${term}%,phone.ilike.%${term}%`)
+      .limit(6);
+    if (error) {
+      console.error("Patient search error:", error.message);
+      setPatientResults([]);
+      return;
+    }
     setPatientResults((data || []) as any[]);
   };
 
