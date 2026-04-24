@@ -1,6 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
+const ANALYTICS_QUERY_OPTIONS = {
+  staleTime: 5 * 60 * 1000,
+  gcTime: 30 * 60 * 1000,
+  refetchOnWindowFocus: false,
+  refetchOnReconnect: false,
+};
+
 export interface DateRange {
   from: string;
   to: string;
@@ -46,7 +53,7 @@ export function useRevenueKPIs(range: DateRange) {
         pharmacyCount: pharmaRes.data?.length || 0,
       };
     },
-    refetchInterval: 5 * 60 * 1000,
+    ...ANALYTICS_QUERY_OPTIONS,
   });
 }
 
@@ -77,7 +84,7 @@ export function useRevenueTrend(range: DateRange) {
         collected: vals.collected,
       })).sort((a, b) => a.date.localeCompare(b.date));
     },
-    refetchInterval: 5 * 60 * 1000,
+    ...ANALYTICS_QUERY_OPTIONS,
   });
 }
 
@@ -130,7 +137,7 @@ export function useRevenueBreakdown(range: DateRange) {
         }))
         .sort((a, b) => b.value - a.value);
     },
-    refetchInterval: 5 * 60 * 1000,
+    ...ANALYTICS_QUERY_OPTIONS,
   });
 }
 
@@ -172,7 +179,7 @@ export function usePaymentModes(range: DateRange) {
         }))
         .sort((a, b) => b.total - a.total);
     },
-    refetchInterval: 5 * 60 * 1000,
+    ...ANALYTICS_QUERY_OPTIONS,
   });
 }
 
@@ -222,7 +229,7 @@ export function useInsuranceSummary(range: DateRange) {
           .slice(0, 3),
       };
     },
-    refetchInterval: 5 * 60 * 1000,
+    ...ANALYTICS_QUERY_OPTIONS,
   });
 }
 
@@ -271,7 +278,7 @@ export function useClinicalKPIs(range: DateRange) {
         emergencyP1: edData.filter(e => e.triage_category === "P1").length,
       };
     },
-    refetchInterval: 5 * 60 * 1000,
+    ...ANALYTICS_QUERY_OPTIONS,
   });
 }
 
@@ -307,7 +314,7 @@ export function useOPDTrend(range: DateRange) {
         .map(([date, vals]) => ({ date, ...vals }))
         .sort((a, b) => a.date.localeCompare(b.date));
     },
-    refetchInterval: 5 * 60 * 1000,
+    ...ANALYTICS_QUERY_OPTIONS,
   });
 }
 
@@ -352,7 +359,7 @@ export function useBedOccupancyBreakdown() {
 
       return { segments, wards: wardBreakdown };
     },
-    refetchInterval: 5 * 60 * 1000,
+    ...ANALYTICS_QUERY_OPTIONS,
   });
 }
 
@@ -381,7 +388,7 @@ export function useTopDiagnoses(range: DateRange) {
         .sort((a, b) => b.count - a.count)
         .slice(0, 10);
     },
-    refetchInterval: 5 * 60 * 1000,
+    ...ANALYTICS_QUERY_OPTIONS,
   });
 }
 
@@ -412,7 +419,7 @@ export function useDailyHeatmap(range: DateRange) {
       }
       return allDays;
     },
-    refetchInterval: 5 * 60 * 1000,
+    ...ANALYTICS_QUERY_OPTIONS,
   });
 }
 
@@ -458,7 +465,7 @@ export function useDischargeTAT(range: DateRange) {
 
       return { entries, avgHours, distribution, totalDischarges: entries.length };
     },
-    refetchInterval: 5 * 60 * 1000,
+    ...ANALYTICS_QUERY_OPTIONS,
   });
 }
 

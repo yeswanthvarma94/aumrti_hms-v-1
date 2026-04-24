@@ -2,6 +2,13 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { DateRange } from "./useAnalyticsData";
 
+const ANALYTICS_QUERY_OPTIONS = {
+  staleTime: 5 * 60 * 1000,
+  gcTime: 30 * 60 * 1000,
+  refetchOnWindowFocus: false,
+  refetchOnReconnect: false,
+};
+
 async function getHospitalId(): Promise<string | null> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
@@ -189,7 +196,7 @@ export function useDoctorScores(range: DateRange) {
         } satisfies DoctorScore;
       }).sort((a, b) => b.revenue - a.revenue);
     },
-    refetchInterval: 5 * 60 * 1000,
+    ...ANALYTICS_QUERY_OPTIONS,
   });
 }
 
@@ -281,7 +288,7 @@ export function useDeptPerformance(range: DateRange) {
         revenueShare: totalRevenue > 0 ? Math.round(((deptStats[d.id]?.revenue || 0) / totalRevenue) * 1000) / 10 : 0,
       } satisfies DeptPerformance)).sort((a, b) => b.revenue - a.revenue);
     },
-    refetchInterval: 5 * 60 * 1000,
+    ...ANALYTICS_QUERY_OPTIONS,
   });
 }
 
@@ -340,7 +347,7 @@ export function useDeptDoctors(deptId: string | null, range: DateRange) {
         };
       }).sort((a, b) => b.revenue - a.revenue);
     },
-    refetchInterval: 5 * 60 * 1000,
+    ...ANALYTICS_QUERY_OPTIONS,
   });
 }
 
@@ -412,6 +419,6 @@ export function useDeptTopServices(deptId: string | null, range: DateRange) {
         .sort((a, b) => b.total - a.total)
         .slice(0, 8);
     },
-    refetchInterval: 5 * 60 * 1000,
+    ...ANALYTICS_QUERY_OPTIONS,
   });
 }
