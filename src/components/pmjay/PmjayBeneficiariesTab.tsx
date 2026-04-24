@@ -12,6 +12,7 @@ import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CalendarIcon } from "lucide-react";
+import { useHospitalId } from "@/hooks/useHospitalId";
 
 interface Beneficiary {
   id: string;
@@ -42,6 +43,7 @@ const PmjayBeneficiariesTab: React.FC<Props> = ({ showNewForm, onFormClosed }) =
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { hospitalId } = useHospitalId();
 
   // Form state
   const [patientSearch, setPatientSearch] = useState("");
@@ -82,7 +84,19 @@ const PmjayBeneficiariesTab: React.FC<Props> = ({ showNewForm, onFormClosed }) =
   const searchPatients = async (q: string) => {
     setPatientSearch(q);
     if (q.length < 2) { setPatientResults([]); return; }
-    const { data } = await supabase.from("patients").select("id, full_name, phone").or(`full_name.ilike.%${q}%,phone.ilike.%${q}%`).limit(6);
+    if (!hospitalId) { setPatientResults([]); return; }
+    const term = q.trim();
+    const { data, error } = await supabase
+      .from("patients")
+      .select("id, full_name, uhid, phone")
+      .eq("hospital_id", hospitalId)
+      .or(`full_name.ilike.%${term}%,uhid.ilike.%${term}%,phone.ilike.%${term}%`)
+      .limit(6);
+    if (error) {
+      console.error("Patient search error:", error.message);
+      setPatientResults([]);
+      return;
+    }
     setPatientResults((data || []) as any[]);
   };
 
