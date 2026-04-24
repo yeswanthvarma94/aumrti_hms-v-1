@@ -5,7 +5,9 @@ import OfflineBanner from "./components/OfflineBanner.tsx";
 import { registerServiceWorker } from "./lib/registerSW";
 import "./index.css";
 
-registerServiceWorker();
+if (import.meta.env.PROD) {
+  registerServiceWorker();
+}
 
 createRoot(document.getElementById("root")!).render(
   <ErrorBoundary>

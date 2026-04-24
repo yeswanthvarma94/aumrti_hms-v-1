@@ -6,6 +6,7 @@ import { createPortal } from "react-dom";
 const DEFAULT_TIMEOUT_MIN = 30;
 const WARNING_LEAD_MS = 5 * 60 * 1000; // 5-minute warning before logout
 const MIN_WARNING_MS = 60 * 1000;      // never less than 60s warning
+const ACTIVITY_THROTTLE_MS = 15 * 1000;
 
 // Role-based minimums (overrides hospital setting if stricter)
 const ROLE_TIMEOUT_RULES: Record<string, { min?: number; max?: number; floor?: number }> = {
@@ -35,6 +36,7 @@ const IdleTimer: React.FC = () => {
   const idleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const warningRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const lastActivityResetRef = useRef(0);
   const navigate = useNavigate();
 
   // Load hospital + role config on mount
@@ -126,7 +128,12 @@ const IdleTimer: React.FC = () => {
   useEffect(() => {
     if (timeoutMs === null) return; // disabled
     const events = ["mousemove", "keydown", "click", "scroll", "touchstart"];
-    const handler = () => resetTimer();
+    const handler = () => {
+      const now = Date.now();
+      if (now - lastActivityResetRef.current < ACTIVITY_THROTTLE_MS) return;
+      lastActivityResetRef.current = now;
+      resetTimer();
+    };
     events.forEach((e) => window.addEventListener(e, handler, { passive: true }));
     resetTimer();
     return () => {
