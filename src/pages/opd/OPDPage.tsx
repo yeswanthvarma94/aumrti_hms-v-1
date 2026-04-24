@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -35,6 +35,7 @@ const OPDPage: React.FC = () => {
   const [userId, setUserId] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const realtimeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Resolve internal users.id once (cached via useHospitalId already returns role+hospital_id;
   // we still need users.id for doctor filtering). One-time fetch, then never re-runs.
@@ -82,6 +83,12 @@ const OPDPage: React.FC = () => {
   });
 
   const fetchTokens = useCallback(() => { refetch(); }, [refetch]);
+  const invalidateTokens = useCallback(() => {
+    if (realtimeDebounceRef.current) clearTimeout(realtimeDebounceRef.current);
+    realtimeDebounceRef.current = setTimeout(() => {
+      queryClient.invalidateQueries({ queryKey: ["opd-tokens", hospitalId] });
+    }, 800);
+  }, [hospitalId, queryClient]);
 
   useEffect(() => {
     if (!hospitalId) return;
@@ -107,16 +114,19 @@ const OPDPage: React.FC = () => {
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "opd_tokens", filter: `hospital_id=eq.${hospitalId}` },
-        () => { queryClient.invalidateQueries({ queryKey: ["opd-tokens", hospitalId] }); }
+        () => { invalidateTokens(); }
       )
       .on(
         "postgres_changes",
         { event: "DELETE", schema: "public", table: "opd_tokens", filter: `hospital_id=eq.${hospitalId}` },
-        () => { queryClient.invalidateQueries({ queryKey: ["opd-tokens", hospitalId] }); }
+        () => { invalidateTokens(); }
       )
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [hospitalId, queryClient, today, userRole, userId]);
+    return () => {
+      if (realtimeDebounceRef.current) clearTimeout(realtimeDebounceRef.current);
+      supabase.removeChannel(channel);
+    };
+  }, [hospitalId, queryClient, today, userRole, userId, invalidateTokens]);
 
   const selectedToken = tokens.find((t) => t.id === selectedTokenId) || null;
 

@@ -1,5 +1,5 @@
 import React, { Suspense } from "react";
-import { Outlet, useLocation } from "react-router-dom";
+import { Outlet } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { SidebarProvider, useSidebar } from "./SidebarContext";
 import AppSidebar from "./AppSidebar";
@@ -15,7 +15,6 @@ import IdleTimer from "@/components/auth/IdleTimer";
 const ShellContent: React.FC = () => {
   const { collapsed, mobileOpen, setMobileOpen } = useSidebar();
   const isMobile = useIsMobile();
-  const location = useLocation();
 
   return (
     <div className="h-screen w-screen overflow-hidden bg-background">
@@ -49,7 +48,6 @@ const ShellContent: React.FC = () => {
         )}
       >
         <div
-          key={location.pathname}
           className="h-full w-full animate-in fade-in duration-150"
         >
           <Suspense fallback={
