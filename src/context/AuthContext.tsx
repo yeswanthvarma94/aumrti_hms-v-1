@@ -161,10 +161,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     refetchOnMount: false,
   });
 
-  // Detect "logged in but no profile row" — most common cause of every-module-empty
+  // Detect REAL profile failures only.
+  // We only act when the query has DEFINITIVELY finished:
+  //   - userRecord === null  → query ran and returned no row
+  //   - userQueryError set   → query ran and errored (RLS, network)
+  // We never treat `undefined` (still resolving) as a failure — that race
+  // was causing healthy users to be auto-signed-out right after login.
   useEffect(() => {
     if (!authUserId) return;
     if (userLoading || userFetching) return;
+    // Successful row — clear any prior error.
+    if (userRecord && userRecord.hospital_id) {
+      if (authError) setAuthError(null);
+      errorToastShown.current = false;
+      return;
+    }
+    // Real error from the query.
     if (userQueryError) {
       const msg = (userQueryError as Error).message || "Failed to load your profile.";
       setAuthError(`Profile lookup failed: ${msg}`);
@@ -174,7 +186,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       return;
     }
-    if (!userRecord) {
+    // Definite null (query ran, returned no row).
+    if (userRecord === null) {
       setAuthError("Your account is not linked to any hospital. Please contact admin or sign in again.");
       if (!errorToastShown.current) {
         errorToastShown.current = true;
@@ -182,17 +195,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       return;
     }
-    if (!userRecord.hospital_id) {
+    if (userRecord && !userRecord.hospital_id) {
       setAuthError("Your account has no hospital assigned. Please contact admin.");
       if (!errorToastShown.current) {
         errorToastShown.current = true;
         toast.error("No hospital assigned to your account.", { duration: 8000 });
       }
-      return;
     }
-    // All good — clear any prior error
-    if (authError) setAuthError(null);
-    errorToastShown.current = false;
+    // Otherwise (userRecord === undefined): query hasn't completed yet — do nothing.
   }, [authUserId, userRecord, userLoading, userFetching, userQueryError, authError]);
 
   const defaultHospitalId = userRecord?.hospital_id ?? null;
