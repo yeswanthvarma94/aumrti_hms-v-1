@@ -1,227 +1,78 @@
+# Why no module is fetching data — and how to fix it
 
-# Critical performance audit: why the app frequently lags/freezes and needs hard refresh
+## What I confirmed
 
-## Executive diagnosis
+1. **Supabase client is fine.** `src/integrations/supabase/client.ts` has the URL and anon key hardcoded — there is no missing `.env` issue.
+2. **Every module reads `hospitalId` from `AuthContext`** via `useHospitalId()`. If `hospitalId` is `null`, every query is gated (`enabled: !!hospitalId`) and shows nothing — the page looks "stuck" or empty.
+3. **The whole app's data fetching depends on ONE chain succeeding:**
+   `supabase.auth.getSession()` → look up `users` row by `auth_user_id` → read `hospital_id` → enable all module queries.
+   If any link breaks, **every module appears broken at once** — exactly what you are seeing.
 
-The lag is not caused by one module. It is caused by several app-wide patterns that combine badly:
+## The 3 most likely root causes (in order)
 
-1. **Global mouse/keyboard activity is doing too much work**
-   - `IdleTimer` listens to `mousemove`, `keydown`, `click`, `scroll`, and `touchstart` globally.
-   - Every mouse movement calls `resetTimer()`, which clears and recreates timers.
-   - On a busy clinical app, this can run hundreds of times per minute across every screen.
+### Cause A — `users` row lookup is failing or returning nothing
+In `AuthContext.tsx` (line 87-108) we do:
+```
+.from("users").select(...).eq("auth_user_id", authUserId).maybeSingle()
+```
+If this returns `null` (no row, or RLS blocks SELECT on `users`), then:
+- `hospitalId = null`
+- Every module's query stays disabled
+- `loading` flips to `false` → no spinner, no error, just empty pages
+This perfectly matches "every module is empty / stuck."
 
-2. **Service worker/cache behaviour can make the app look “stuck” until hard refresh**
-   - `src/main.tsx` always calls `registerServiceWorker()`.
-   - In preview it tries to unregister/clear cache, but in production it registers `/sw.js`.
-   - The service worker uses cache-first for static JS/CSS assets.
-   - If the browser has stale cached chunks or a stale service worker controller, the app can load old code until a hard refresh clears it.
-   - This exactly matches the symptom: “if I don’t hard refresh, the app is stuck”.
+A hard refresh sometimes works because `onAuthStateChange` re-fires and the row is re-read with a fresh JWT.
 
-3. **Route navigation force-remounts whole modules**
-   - `AppShell` wraps `<Outlet />` in a keyed container:
-     ```tsx
-     key={location.pathname}
-     ```
-   - This forces the entire page subtree to unmount/remount on every route change.
-   - That re-runs Supabase queries, realtime subscriptions, timers, module initialization, and animations.
+### Cause B — RLS policy on `users` is too strict
+If the `users` table SELECT policy is `auth.uid() = id` (instead of `auth.uid() = auth_user_id`), the lookup silently returns 0 rows for everyone. Same symptom as Cause A.
 
-4. **Realtime subscriptions trigger broad refetch storms**
-   - Several modules subscribe to `postgres_changes` and invalidate/refetch full queries on every event:
-     - IPD: beds + admissions
-     - Lab: lab_orders + lab_order_items
-     - Radiology
-     - Emergency
-     - Dashboard
-     - Dental / AYUSH token queues
-   - When multiple records change, the app can repeatedly refetch large joined datasets.
+### Cause C — Stale auth token in `localStorage`
+The client uses `storageKey: 'aumrti-hms-auth'` with `persistSession: true`. If the refresh token was rotated/revoked (e.g. password reset, RLS change forcing re-auth), `getSession()` returns `null` until the user logs in again — but no error is shown, so the app just sits empty. Hard refresh sometimes triggers a re-auth flow.
 
-5. **Analytics/reporting hooks pull too much data and refresh on intervals**
-   - `useAnalyticsData.ts` and `useDoctorDeptData.ts` have many `refetchInterval: 5 * 60 * 1000`.
-   - Several hooks fetch thousands of rows and aggregate client-side.
-   - They also repeatedly call their own `getHospitalId()` instead of using the cached `AuthContext`.
-   - This is not always visible immediately, but contributes to periodic lag.
+## Fix plan (one pass, safe — no UI changes)
 
-6. **Sidebar prefetching is unsafe/inconsistent**
-   - `AppSidebar` calls `queryClient.prefetchQuery({ queryKey, staleTime })` without a `queryFn`.
-   - Some prefetch keys do not match actual route query keys, e.g. IPD prefetches `["ipd-beds", hospitalId]` while IPD uses `["ipd-beds-admissions", hospitalId]`.
-   - This can create failed prefetches/no-op work on hover and does not actually improve navigation.
+### 1. Make auth failures VISIBLE instead of silent
+In `src/context/AuthContext.tsx`:
+- When `authUserId` exists but the `users` lookup returns `null`, surface a clear toast: "Your account is not linked to a hospital. Please contact admin or re-login." and force a sign-out + redirect to `/login`.
+- When `getSession()` returns `null` on a protected route, redirect to `/login` immediately (today the app sits in a loading limbo).
+- Add `console.error` with the exact error object (not just message) so we can see RLS errors in the browser console.
 
-7. **Development preview performance is especially affected**
-   - Browser profile shows slow dev-time startup:
-     - DOM Content Loaded around 9.4s
-     - FCP around 10.9s
-     - 91 script resources loaded
-   - This is partly Vite/Lovable preview overhead, but the app patterns above make it worse.
+### 2. Add a 5-second auth resolution timeout
+If `loading` is still `true` after 5 seconds, show a "Session error — please log in again" screen with a "Sign out & retry" button. This prevents the "stuck forever" state.
 
-## Fix plan
+### 3. Verify & repair the `users` table RLS policy
+Check the SELECT policy on `public.users`. It MUST be:
+```sql
+CREATE POLICY "Users can read own row"
+ON public.users FOR SELECT
+TO authenticated
+USING (auth_user_id = auth.uid());
+```
+If it currently uses `id = auth.uid()` (common mistake), every lookup returns 0 rows → every module empty. If wrong, ship a migration to correct it.
 
-### 1. Make service worker safe and stop stale-cache lockups
+### 4. Add a one-time auth health check on app boot
+On `AuthProvider` mount, after session resolves:
+- If session exists but `users` row missing → log out and toast.
+- If session exists and `users` row found but `hospital_id` is null → toast "Your account has no hospital assigned" and log out.
+This guarantees the user never lands in a "logged in but invisible" state.
 
-Files:
-- `src/main.tsx`
-- `src/lib/registerSW.ts`
-- `public/sw.js`
+### 5. Add a global "Network/DB error" boundary banner
+A small top-of-screen banner that shows when ANY Supabase query in the last 30s returned a 401/403/500. Today these errors are swallowed per-module, so the user just sees empty cards everywhere.
 
-Changes:
-- Keep service worker disabled/unregistered in Lovable preview and iframe contexts.
-- In production, add a safer update flow:
-  - Detect updated service worker.
-  - Force `skipWaiting` / `clients.claim`.
-  - Reload once only after a new version activates.
-- Add defensive cache cleanup for old `aumrti-hms-*` caches.
-- Do not cache Supabase/API responses.
-- Keep static asset cache safe for hashed files only.
-- Prevent stale JS chunks from causing stuck screens after deployment.
+### 6. Clear stale localStorage on auth mismatch
+If `getSession()` returns null but `localStorage['aumrti-hms-auth']` exists, clear it and redirect to login. This fixes the "hard refresh sometimes works" pattern.
 
-Expected result:
-- Users should not need hard refresh after app updates.
-- Preview should not be polluted by persistent service worker caches.
+## What this will NOT change
+- No UI redesign.
+- No changes to module data-fetching logic.
+- No changes to `useHospitalId` consumers.
+- No changes to `RoleGuard`, `AuthGuard`, sidebar, or routing structure.
 
-### 2. Throttle the global idle timer
+## How we'll verify after fix
+1. Open DevTools → Application → Local Storage → delete `aumrti-hms-auth` → reload. App should redirect to `/login` cleanly (today it hangs).
+2. Log in. Console should show NO red errors from `AuthContext`.
+3. Open Network tab, filter `users?select` — should see ONE request returning 1 row with `hospital_id`.
+4. Navigate to `/opd`, `/ipd`, `/billing` — data should load on every page without hard refresh.
+5. If any module is still empty, the new global error banner will tell us exactly which RLS / 401 is the culprit.
 
-File:
-- `src/components/auth/IdleTimer.tsx`
-
-Changes:
-- Replace “reset timer on every mousemove” with a throttled activity handler.
-- Use refs for timer state so activity does not cause unnecessary React work.
-- Only reset timers at most once every 15–30 seconds while the user is active.
-- Keep the same logout/security behaviour.
-
-Expected result:
-- Large reduction in app-wide background work during normal mouse movement.
-
-### 3. Stop force-remounting the active module on every navigation
-
-File:
-- `src/components/layout/AppShell.tsx`
-
-Changes:
-- Remove:
-  ```tsx
-  key={location.pathname}
-  ```
-  from the route content wrapper.
-- Keep the layout stable.
-- Let React Router mount/unmount only the actual route component.
-
-Expected result:
-- Less repeated initialization, fewer query bursts, fewer subscription resets, smoother route transitions.
-
-### 4. Fix sidebar prefetching
-
-File:
-- `src/components/layout/AppSidebar.tsx`
-
-Changes:
-- Remove unsafe `prefetchQuery` calls that do not provide `queryFn`.
-- Either:
-  - remove hover prefetch entirely, or
-  - replace with explicit prefetch functions only for routes with known query functions.
-- Correct mismatched query keys if prefetch is retained.
-
-Recommended first fix:
-- Remove hover prefetching for now because it is not reliable and can create unnecessary work.
-
-Expected result:
-- No failed/no-op prefetch work on sidebar hover.
-- Less background noise during navigation.
-
-### 5. Debounce realtime invalidation across modules
-
-Files to audit/update:
-- `src/pages/ipd/IPDPage.tsx`
-- `src/pages/lab/LabPage.tsx`
-- `src/pages/radiology/RadiologyPage.tsx`
-- `src/pages/emergency/EmergencyPage.tsx`
-- `src/pages/opd/OPDPage.tsx`
-- `src/pages/dental/DentalPage.tsx`
-- `src/components/ayush/ConsultationTab.tsx`
-- `src/hooks/useDashboardData.ts`
-
-Changes:
-- Add shared debounced invalidation helper or per-file `useRef` debounce.
-- Coalesce bursts of realtime events into one refetch every 500–1000ms.
-- Avoid invalidating broad query families where a narrower cache update is possible.
-- Keep existing realtime functionality; do not remove live updates.
-
-Expected result:
-- No refetch storm when multiple rows update.
-- Better stability in OPD/IPD/Lab/Radiology.
-
-### 6. Optimise analytics/report refresh behaviour
-
-Files:
-- `src/hooks/useAnalyticsData.ts`
-- `src/hooks/useDoctorDeptData.ts`
-
-Changes:
-- Remove or increase aggressive `refetchInterval` values.
-- Use `enabled: !!hospitalId`.
-- Use cached `useHospitalId()`/AuthContext where hooks are inside React components instead of repeated `supabase.auth.getUser()` + `users` lookups.
-- Add reasonable `staleTime` and `gcTime`.
-- Where possible, replace large row fetches with count/head queries or RPC aggregation later.
-
-Expected result:
-- Analytics will not periodically create large client-side processing spikes.
-
-### 7. Clean up non-critical console noise
-
-File:
-- `src/pages/LandingPage.tsx`
-- Possibly `src/components/ui/dialog.tsx`
-
-Observed issue:
-- Console warning:
-  ```text
-  Function components cannot be given refs
-  Check the render method of LandingPage / DialogContent
-  ```
-
-Changes:
-- Verify dialog component usage and any custom wrappers.
-- Fix the ref warning if caused by passing Radix props to a non-forwardRef component.
-
-Expected result:
-- Cleaner console, easier debugging.
-- Not the main freeze cause, but worth fixing.
-
-## Verification plan after implementation
-
-1. Run build/typecheck.
-2. Use browser performance profile before and after:
-   - Check script duration.
-   - Check event listener count.
-   - Check interaction responsiveness.
-3. Navigate across major routes:
-   - `/dashboard`
-   - `/ipd`
-   - `/opd`
-   - `/lab`
-   - `/radiology`
-   - `/billing`
-   - `/analytics`
-4. Confirm:
-   - No hard refresh required after normal reload.
-   - No route freeze after switching modules repeatedly.
-   - Realtime still updates queues/worklists.
-   - Idle logout warning still works.
-   - No service worker registration inside Lovable preview.
-5. Inspect console/network:
-   - No prefetch query errors.
-   - No repeated auth/user lookups on every analytics hook.
-   - No visible realtime refetch storm.
-
-## Priority order
-
-1. Service worker/cache safety.
-2. IdleTimer throttling.
-3. Remove route force-remount key.
-4. Remove/fix sidebar prefetch.
-5. Debounce realtime invalidations.
-6. Optimise analytics intervals.
-7. Clean console warnings.
-
-## Expected impact
-
-These fixes target the app-wide causes instead of patching one module. The biggest improvements should come from service worker cache hardening, IdleTimer throttling, and removing forced route remounting. Together, they should significantly reduce the “stuck until hard refresh” behaviour and make the entire HMS feel more stable.
+Approve and I'll implement all 6 fixes in one pass.
