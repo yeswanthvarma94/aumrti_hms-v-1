@@ -102,6 +102,7 @@ const AyushPage = lazy(() => import("./pages/ayush/AyushPage"));
 const PackagesPage = lazy(() => import("./pages/packages/PackagesPage"));
 const IVFPage = lazy(() => import("./pages/ivf/IVFPage"));
 const SettingsRadiologyPage = lazy(() => import("./pages/settings/SettingsRadiologyPage"));
+const SettingsDiagnosticsPage = lazy(() => import("./pages/settings/SettingsDiagnosticsPage"));
 const SchedulingPage = lazy(() => import("./pages/schedule/SchedulingPage"));
 const AssetsPage = lazy(() => import("./pages/assets/AssetsPage"));
 
@@ -227,6 +228,7 @@ const App = () => (
             <Route path="/settings/api-hub" element={<RG path="/settings"><SM name="API Hub"><APIConfigHubPage /></SM></RG>} />
             <Route path="/settings/icd-codes" element={<RG path="/settings"><SM name="ICD Codes"><SettingsICDCodesPage /></SM></RG>} />
             <Route path="/settings/radiology" element={<RG path="/settings"><SM name="Radiology Settings"><SettingsRadiologyPage /></SM></RG>} />
+            <Route path="/settings/diagnostics" element={<RG path="/settings"><SM name="Diagnostics"><SettingsDiagnosticsPage /></SM></RG>} />
             <Route path="/accounts" element={<RG path="/accounts"><SM name="Accounts"><AccountsPage /></SM></RG>} />
             <Route path="/accounts/setup" element={<RG path="/accounts"><SM name="Opening Balances"><OpeningBalancesPage /></SM></RG>} />
             <Route path="/blood-bank" element={<RG path="/blood-bank"><SM name="Blood Bank"><BloodBankPage /></SM></RG>} />
