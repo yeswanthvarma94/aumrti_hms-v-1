@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { Loader2, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
@@ -7,6 +7,19 @@ import { Button } from "@/components/ui/button";
 const AuthGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { session, loading, authError, forceSignOut, authUserId, hospitalId } = useAuth();
   const currentPath = typeof window !== "undefined" ? window.location.pathname : "/";
+
+  // Only show the recovery screen when authError has been stable for ≥2s.
+  // This prevents transient race conditions (query still loading, brief
+  // undefined states) from kicking healthy users out at every login.
+  const [errorStable, setErrorStable] = useState(false);
+  useEffect(() => {
+    if (!authError) {
+      setErrorStable(false);
+      return;
+    }
+    const t = setTimeout(() => setErrorStable(true), 2000);
+    return () => clearTimeout(t);
+  }, [authError]);
 
   if (loading) {
     return (
@@ -20,9 +33,9 @@ const AuthGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     return <Navigate to="/login" state={{ from: currentPath }} replace />;
   }
 
-  // Logged in via Supabase Auth, but profile lookup failed or returned nothing.
-  // Without this guard the entire app appears empty (no module can fetch data).
-  if (authUserId && !hospitalId && authError) {
+  // Recovery screen: only when error is real, persistent, and we genuinely
+  // have no hospital context. Never on first paint.
+  if (authUserId && !hospitalId && authError && errorStable) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-background p-6">
         <div className="max-w-md w-full rounded-lg border bg-card p-6 text-center space-y-4">
