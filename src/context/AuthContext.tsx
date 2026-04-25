@@ -231,9 +231,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     refetchOnMount: false,
   });
 
+  // Stay in `loading` while the user-record query has not yet produced a result.
+  // This prevents AuthGuard / consumers from rendering with `hospitalId === null`
+  // during the brief window between session resolution and user-record arrival.
   const loading =
     session === undefined ||
-    (!!authUserId && userLoading && !userRecord && userFetching);
+    (!!authUserId && userRecord === undefined && !userQueryError);
 
   const value: AuthContextValue = {
     session: session ?? null,
