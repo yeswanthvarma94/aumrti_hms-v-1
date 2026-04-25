@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/context/AuthContext";
 
 interface Branch {
   id: string;
@@ -24,43 +25,39 @@ const STORAGE_KEY = "selectedBranchId";
 const MULTI_BRANCH_ROLES = ["super_admin", "ceo", "hospital_admin"];
 
 export const BranchProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // Reuse the resolved role + default hospital from AuthContext — no extra
+  // `users` query (which was creating duplicate network calls and churn).
+  const { role, hospitalId: defaultHospitalId, loading: authLoading } = useAuth();
   const [selectedBranchId, setSelectedBranchIdState] = useState<string | null>(
     () => localStorage.getItem(STORAGE_KEY)
   );
   const [branches, setBranches] = useState<Branch[]>([]);
-  const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const queryClient = useQueryClient();
 
   const load = useCallback(async () => {
+    if (authLoading) return;
+    if (!defaultHospitalId) {
+      setBranches([]);
+      setLoading(false);
+      return;
+    }
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { setLoading(false); return; }
-
-      const { data: u } = await supabase
-        .from("users")
-        .select("hospital_id, role")
-        .eq("auth_user_id", user.id)
-        .maybeSingle();
-
-      const userRole = (u?.role as string) || null;
-      setRole(userRole);
-
-      const isMulti = userRole ? MULTI_BRANCH_ROLES.includes(userRole) : false;
+      const isMulti = role ? MULTI_BRANCH_ROLES.includes(role) : false;
 
       let branchList: Branch[] = [];
-      if (isMulti && (userRole === "super_admin" || userRole === "ceo")) {
+      if (isMulti && (role === "super_admin" || role === "ceo")) {
         const { data: hs } = await supabase
           .from("hospitals")
           .select("id, name, state")
           .eq("is_active", true)
           .order("name");
         branchList = (hs as Branch[]) || [];
-      } else if (u?.hospital_id) {
+      } else {
         const { data: h } = await supabase
           .from("hospitals")
           .select("id, name, state")
-          .eq("id", u.hospital_id)
+          .eq("id", defaultHospitalId)
           .maybeSingle();
         branchList = h ? [h as Branch] : [];
       }
@@ -68,7 +65,7 @@ export const BranchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
       const stored = localStorage.getItem(STORAGE_KEY);
       const validStored = stored && branchList.some(b => b.id === stored) ? stored : null;
-      const initial = validStored || u?.hospital_id || branchList[0]?.id || null;
+      const initial = validStored || defaultHospitalId || branchList[0]?.id || null;
       setSelectedBranchIdState(initial);
       if (initial) localStorage.setItem(STORAGE_KEY, initial);
     } catch (e) {
@@ -76,12 +73,10 @@ export const BranchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [authLoading, defaultHospitalId, role]);
 
   useEffect(() => {
     load();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => load());
-    return () => subscription.unsubscribe();
   }, [load]);
 
   const setSelectedBranchId = useCallback((id: string) => {
