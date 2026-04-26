@@ -87,6 +87,9 @@ const IdleTimer: React.FC = () => {
 
   const logout = useCallback(async () => {
     clearAllTimers();
+    // Clear branch override so the next user doesn't inherit our hospital scope
+    localStorage.removeItem("selectedBranchId");
+    window.dispatchEvent(new Event("branch:changed"));
     await supabase.auth.signOut();
     navigate("/login", { state: { message: "Session expired due to inactivity" }, replace: true });
   }, [navigate]);
