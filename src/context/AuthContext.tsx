@@ -108,6 +108,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   });
 
   const defaultHospitalId = userRecord?.hospital_id ?? null;
+  const userRole = userRecord?.role ?? null;
+
+  // Guard: if a stored branch override doesn't belong to this user and they
+  // aren't a super_admin who can switch hospitals, drop the override so we
+  // don't query someone else's hospital (which RLS would block → blank UI).
+  useEffect(() => {
+    if (!userRecord || !branchOverride) return;
+    if (userRole === "super_admin") return;
+    if (branchOverride !== defaultHospitalId) {
+      localStorage.removeItem(STORAGE_KEY);
+      setBranchOverride(null);
+    }
+  }, [userRecord, branchOverride, userRole, defaultHospitalId]);
+
   const hospitalId = branchOverride || defaultHospitalId;
 
   // Hospital branding — cached for 1 hour
