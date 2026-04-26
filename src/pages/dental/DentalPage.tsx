@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -65,7 +65,6 @@ const DentalPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [billingCounts, setBillingCounts] = useState<Record<string, { billed: number; unbilled: number; total: number }>>({});
-  const realtimeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Chart state
   const [chartData, setChartData] = useState<ChartData>({});
@@ -147,18 +146,11 @@ const DentalPage: React.FC = () => {
   // Realtime subscription
   useEffect(() => {
     if (!hospitalId) return;
-    const debouncedFetch = () => {
-      if (realtimeDebounceRef.current) clearTimeout(realtimeDebounceRef.current);
-      realtimeDebounceRef.current = setTimeout(() => fetchTokens(), 800);
-    };
     const channel = supabase
       .channel("dental-tokens-rt")
-      .on("postgres_changes", { event: "*", schema: "public", table: "opd_tokens", filter: `hospital_id=eq.${hospitalId}` }, debouncedFetch)
+      .on("postgres_changes", { event: "*", schema: "public", table: "opd_tokens", filter: `hospital_id=eq.${hospitalId}` }, () => fetchTokens())
       .subscribe();
-    return () => {
-      if (realtimeDebounceRef.current) clearTimeout(realtimeDebounceRef.current);
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [hospitalId, fetchTokens]);
 
   const selectToken = async (token: DentalToken) => {

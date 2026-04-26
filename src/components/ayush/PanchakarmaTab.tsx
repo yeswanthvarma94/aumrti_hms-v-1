@@ -14,7 +14,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Plus, CheckCircle, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useHospitalId } from "@/hooks/useHospitalId";
 
 interface Props {
   showNew: boolean;
@@ -45,7 +44,6 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function PanchakarmaTab({ showNew, onShowNewDone }: Props) {
-  const { hospitalId } = useHospitalId();
   const [schedules, setSchedules] = useState<any[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [showCompleteModal, setShowCompleteModal] = useState(false);
@@ -79,24 +77,15 @@ export default function PanchakarmaTab({ showNew, onShowNewDone }: Props) {
   }, [showNew]);
 
   useEffect(() => {
-    if (patientSearch.length < 2 || !hospitalId) {
+    if (patientSearch.length >= 2) {
+      supabase.from("patients").select("id, full_name, uhid, phone")
+        .or(`full_name.ilike.%${patientSearch}%,uhid.ilike.%${patientSearch}%`)
+        .limit(10)
+        .then(({ data }) => { if (data) setSearchResults(data); });
+    } else {
       setSearchResults([]);
-      return;
     }
-    const term = patientSearch.trim();
-    supabase.from("patients").select("id, full_name, uhid, phone")
-      .eq("hospital_id", hospitalId)
-      .or(`full_name.ilike.%${term}%,uhid.ilike.%${term}%,phone.ilike.%${term}%`)
-      .limit(10)
-      .then(({ data, error }) => {
-        if (error) {
-          console.error("Patient search error:", error.message);
-          setSearchResults([]);
-          return;
-        }
-        setSearchResults(data || []);
-      });
-  }, [patientSearch, hospitalId]);
+  }, [patientSearch]);
 
   const loadSchedules = async () => {
     const { data, error } = await supabase.from("panchakarma_schedules").select("*")

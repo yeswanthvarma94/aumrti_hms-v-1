@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -29,7 +29,6 @@ const LabPage: React.FC = () => {
   const { toast } = useToast();
   const { hospitalId } = useHospitalId();
   const queryClient = useQueryClient();
-  const realtimeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [filterTab, setFilterTab] = useState("all");
   const [showNewOrder, setShowNewOrder] = useState(false);
@@ -69,12 +68,6 @@ const LabPage: React.FC = () => {
   });
 
   const fetchOrders = useCallback(() => { refetch(); }, [refetch]);
-  const invalidateRealtime = useCallback(() => {
-    if (realtimeDebounceRef.current) clearTimeout(realtimeDebounceRef.current);
-    realtimeDebounceRef.current = setTimeout(() => {
-      queryClient.invalidateQueries({ queryKey: ["lab-orders", hospitalId] });
-    }, 800);
-  }, [hospitalId, queryClient]);
 
   // Realtime
   useEffect(() => {
@@ -82,17 +75,14 @@ const LabPage: React.FC = () => {
     const channel = supabase
       .channel("lab-realtime")
       .on("postgres_changes", { event: "*", schema: "public", table: "lab_orders", filter: `hospital_id=eq.${hospitalId}` }, () => {
-        invalidateRealtime();
+        queryClient.invalidateQueries({ queryKey: ["lab-orders", hospitalId] });
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "lab_order_items", filter: `hospital_id=eq.${hospitalId}` }, () => {
-        invalidateRealtime();
+        queryClient.invalidateQueries({ queryKey: ["lab-orders", hospitalId] });
       })
       .subscribe();
-    return () => {
-      if (realtimeDebounceRef.current) clearTimeout(realtimeDebounceRef.current);
-      supabase.removeChannel(channel);
-    };
-  }, [hospitalId, invalidateRealtime]);
+    return () => { supabase.removeChannel(channel); };
+  }, [hospitalId, queryClient]);
 
   const filteredOrders = orders.filter((o) => {
     if (filterTab === "all") return true;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -43,7 +43,6 @@ const RadiologyPage: React.FC = () => {
   const { toast } = useToast();
   const { hospitalId } = useHospitalId();
   const queryClient = useQueryClient();
-  const realtimeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [filterModality, setFilterModality] = useState("all");
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split("T")[0]);
@@ -105,12 +104,6 @@ const RadiologyPage: React.FC = () => {
   });
 
   const fetchOrders = useCallback(() => { refetch(); }, [refetch]);
-  const invalidateRealtime = useCallback(() => {
-    if (realtimeDebounceRef.current) clearTimeout(realtimeDebounceRef.current);
-    realtimeDebounceRef.current = setTimeout(() => {
-      queryClient.invalidateQueries({ queryKey: ["radiology-orders", hospitalId] });
-    }, 800);
-  }, [hospitalId, queryClient]);
 
   // Realtime
   useEffect(() => {
@@ -118,14 +111,11 @@ const RadiologyPage: React.FC = () => {
     const channel = supabase
       .channel("radiology-realtime")
       .on("postgres_changes", { event: "*", schema: "public", table: "radiology_orders", filter: `hospital_id=eq.${hospitalId}` }, () => {
-        invalidateRealtime();
+        queryClient.invalidateQueries({ queryKey: ["radiology-orders", hospitalId] });
       })
       .subscribe();
-    return () => {
-      if (realtimeDebounceRef.current) clearTimeout(realtimeDebounceRef.current);
-      supabase.removeChannel(channel);
-    };
-  }, [hospitalId, invalidateRealtime]);
+    return () => { supabase.removeChannel(channel); };
+  }, [hospitalId, queryClient]);
 
   const selectedOrder = orders.find((o) => o.id === selectedOrderId) || null;
 

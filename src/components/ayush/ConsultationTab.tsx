@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -73,7 +73,6 @@ export default function ConsultationTab({ system, showNew, onShowNewDone }: Prop
   const [hospitalId, setHospitalId] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const realtimeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Form state
   const [complaint, setComplaint] = useState("");
@@ -155,18 +154,11 @@ export default function ConsultationTab({ system, showNew, onShowNewDone }: Prop
   // Realtime
   useEffect(() => {
     if (!hospitalId) return;
-    const debouncedFetch = () => {
-      if (realtimeDebounceRef.current) clearTimeout(realtimeDebounceRef.current);
-      realtimeDebounceRef.current = setTimeout(() => fetchTokens(), 800);
-    };
     const channel = supabase
       .channel(`ayush-tokens-${system}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "opd_tokens", filter: `hospital_id=eq.${hospitalId}` }, debouncedFetch)
+      .on("postgres_changes", { event: "*", schema: "public", table: "opd_tokens", filter: `hospital_id=eq.${hospitalId}` }, () => fetchTokens())
       .subscribe();
-    return () => {
-      if (realtimeDebounceRef.current) clearTimeout(realtimeDebounceRef.current);
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [hospitalId, system, fetchTokens]);
 
   useEffect(() => { loadDrugs(); }, []);

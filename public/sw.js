@@ -1,13 +1,8 @@
-// Aumrti HMS — Service Worker v4
-// Network-first for HTML/navigations. Cache-first only for hashed static assets.
+// Aumrti HMS — Service Worker v3
+// Network-first for HTML/navigations. Cache-first for hashed static assets.
 // Force-takeover + broadcast SW_ACTIVATED so open tabs auto-reload exactly once.
-const CACHE_NAME = 'aumrti-hms-v4';
-const CACHE_PREFIX = 'aumrti-hms-';
+const CACHE_NAME = 'aumrti-hms-v3';
 const STATIC_ASSETS = ['/favicon.ico', '/manifest.json'];
-
-self.addEventListener('message', (event) => {
-  if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
-});
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -20,7 +15,7 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     (async () => {
       const keys = await caches.keys();
-      await Promise.all(keys.filter((k) => k.startsWith(CACHE_PREFIX) && k !== CACHE_NAME).map((k) => caches.delete(k)));
+      await Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)));
       await self.clients.claim();
       const clients = await self.clients.matchAll({ type: 'window' });
       clients.forEach((client) => {
@@ -35,13 +30,25 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(event.request.url);
 
-  // Never intercept auth/API/dynamic routes
-  if (
-    url.pathname.startsWith('/~oauth') ||
-    url.pathname.startsWith('/auth/callback') ||
-    url.pathname.startsWith('/api/') ||
-    url.hostname.includes('supabase.co')
-  ) {
+  // Never intercept OAuth or auth callback routes
+  if (url.pathname.startsWith('/~oauth') || url.pathname.startsWith('/auth/callback')) {
+    return;
+  }
+
+  // Network-first for Supabase API
+  if (url.hostname.includes('supabase.co')) {
+    event.respondWith(
+      fetch(event.request).catch(() =>
+        caches.match(event.request).then(
+          (cached) =>
+            cached ||
+            new Response(JSON.stringify({ error: 'Offline' }), {
+              headers: { 'Content-Type': 'application/json' },
+              status: 503,
+            })
+        )
+      )
+    );
     return;
   }
 
@@ -62,10 +69,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  const isHashedAsset = /\/assets\/[^/]+\.[a-zA-Z0-9_-]{8,}\.(js|css|woff2?|png|jpe?g|webp|svg|ico)$/.test(url.pathname);
-  if (!isHashedAsset) return;
-
-  // Cache-first for immutable hashed static assets only
+  // Cache-first for hashed static assets (JS, CSS, fonts, images)
   event.respondWith(
     caches.match(event.request).then(
       (cached) =>

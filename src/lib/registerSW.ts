@@ -7,7 +7,6 @@
 // don't have to hard-refresh to pick up new chunk hashes.
 
 const RELOAD_FLAG = 'aumrti_sw_reloaded';
-const APP_CACHE_PREFIX = 'aumrti-hms-';
 
 function isPreviewHost(host: string): boolean {
   // Clean allow-list — never depends on ambiguous boolean precedence.
@@ -44,37 +43,9 @@ export function registerServiceWorker() {
     return;
   }
 
-  const cleanupOldCaches = () => {
-    if (!('caches' in window)) return;
-    caches.keys().then((keys) => {
-      keys
-        .filter((key) => key.startsWith(APP_CACHE_PREFIX))
-        .forEach((key) => caches.delete(key));
-    });
-  };
-
-  const reloadOnce = () => {
-    if (sessionStorage.getItem(RELOAD_FLAG)) return;
-    sessionStorage.setItem(RELOAD_FLAG, '1');
-    window.location.reload();
-  };
-
   // Production / published app — register SW and listen for activation
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').then((registration) => {
-      registration.addEventListener('updatefound', () => {
-        const worker = registration.installing;
-        if (!worker) return;
-        worker.addEventListener('statechange', () => {
-          if (worker.state === 'installed' && navigator.serviceWorker.controller) {
-            worker.postMessage({ type: 'SKIP_WAITING' });
-          }
-        });
-      });
-      if (registration.waiting) {
-        registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-      }
-    }).catch((err) => {
+    navigator.serviceWorker.register('/sw.js').catch((err) => {
       console.log('SW registration failed:', err);
     });
   });
@@ -82,14 +53,16 @@ export function registerServiceWorker() {
   // When a new SW takes control, reload exactly once so the page picks up
   // fresh JS chunks. Guarded by sessionStorage so we never loop.
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    cleanupOldCaches();
-    reloadOnce();
+    if (sessionStorage.getItem(RELOAD_FLAG)) return;
+    sessionStorage.setItem(RELOAD_FLAG, '1');
+    window.location.reload();
   });
 
   // Also listen for the explicit SW_ACTIVATED broadcast (covers first install).
   navigator.serviceWorker.addEventListener('message', (event) => {
     if (event.data?.type !== 'SW_ACTIVATED') return;
-    cleanupOldCaches();
-    reloadOnce();
+    if (sessionStorage.getItem(RELOAD_FLAG)) return;
+    sessionStorage.setItem(RELOAD_FLAG, '1');
+    window.location.reload();
   });
 }

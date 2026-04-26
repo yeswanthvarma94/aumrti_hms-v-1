@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useHospitalId } from "@/hooks/useHospitalId";
@@ -46,7 +46,6 @@ export interface AdmissionRow {
 const IPDPage: React.FC = () => {
   const { hospitalId } = useHospitalId();
   const queryClient = useQueryClient();
-  const realtimeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [selectedBedId, setSelectedBedId] = useState<string | null>(null);
   const [admitModal, setAdmitModal] = useState<{ open: boolean; bedId?: string; wardId?: string; bedNumber?: string }>({ open: false });
 
@@ -132,28 +131,19 @@ const IPDPage: React.FC = () => {
   const beds = data?.beds || [];
   const admissions = data?.admissions || [];
   const fetchData = useCallback(() => { refetch(); }, [refetch]);
-  const invalidateRealtime = useCallback(() => {
-    if (realtimeDebounceRef.current) clearTimeout(realtimeDebounceRef.current);
-    realtimeDebounceRef.current = setTimeout(() => {
-      queryClient.invalidateQueries({ queryKey: ["ipd-beds-admissions", hospitalId] });
-    }, 800);
-  }, [hospitalId, queryClient]);
 
   useEffect(() => {
     if (!hospitalId) return;
     const ch = supabase.channel(`ipd-realtime-${hospitalId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "beds", filter: `hospital_id=eq.${hospitalId}` }, () => {
-        invalidateRealtime();
+        queryClient.invalidateQueries({ queryKey: ["ipd-beds-admissions", hospitalId] });
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "admissions", filter: `hospital_id=eq.${hospitalId}` }, () => {
-        invalidateRealtime();
+        queryClient.invalidateQueries({ queryKey: ["ipd-beds-admissions", hospitalId] });
       })
       .subscribe();
-    return () => {
-      if (realtimeDebounceRef.current) clearTimeout(realtimeDebounceRef.current);
-      supabase.removeChannel(ch);
-    };
-  }, [hospitalId, invalidateRealtime]);
+    return () => { supabase.removeChannel(ch); };
+  }, [hospitalId, queryClient]);
 
   const selectedBed = beds.find((b) => b.id === selectedBedId) || null;
 

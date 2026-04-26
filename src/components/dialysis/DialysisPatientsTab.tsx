@@ -8,7 +8,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Search } from "lucide-react";
-import { useHospitalId } from "@/hooks/useHospitalId";
 
 interface Props {
   showRegister: boolean;
@@ -41,7 +40,6 @@ const deriveMachineType = (hbv: string, hcv: string, hiv: string): string => {
 
 const DialysisPatientsTab: React.FC<Props> = ({ showRegister, onCloseRegister, onRefresh }) => {
   const { toast } = useToast();
-  const { hospitalId } = useHospitalId();
   const [dPatients, setDPatients] = useState<any[]>([]);
   const [allPatients, setAllPatients] = useState<any[]>([]);
   const [search, setSearch] = useState("");
@@ -69,29 +67,12 @@ const DialysisPatientsTab: React.FC<Props> = ({ showRegister, onCloseRegister, o
   useEffect(() => { fetchData(); }, []);
 
   useEffect(() => {
-    if (!showRegister || patientSearch.trim().length < 2 || !hospitalId) {
-      setAllPatients([]);
-      return;
+    if (showRegister && allPatients.length === 0) {
+      supabase.from("patients").select("id, full_name, uhid").order("full_name").then(({ data }) => {
+        if (data) setAllPatients(data);
+      });
     }
-    const term = patientSearch.trim();
-    const timer = window.setTimeout(() => {
-      supabase
-        .from("patients")
-        .select("id, full_name, uhid, phone")
-        .eq("hospital_id", hospitalId)
-        .or(`full_name.ilike.%${term}%,uhid.ilike.%${term}%,phone.ilike.%${term}%`)
-        .limit(20)
-        .then(({ data, error }) => {
-          if (error) {
-            console.error("Patient search error:", error.message);
-            setAllPatients([]);
-            return;
-          }
-          setAllPatients(data || []);
-        });
-    }, 300);
-    return () => window.clearTimeout(timer);
-  }, [showRegister, patientSearch, hospitalId]);
+  }, [showRegister]);
 
   const register = async () => {
     if (!patientId) { toast({ title: "Select a patient", variant: "destructive" }); return; }
@@ -139,7 +120,10 @@ const DialysisPatientsTab: React.FC<Props> = ({ showRegister, onCloseRegister, o
     p.patients?.uhid?.toLowerCase().includes(search.toLowerCase())
   );
 
-  const filteredAllPatients = allPatients;
+  const filteredAllPatients = allPatients.filter(p =>
+    p.full_name?.toLowerCase().includes(patientSearch.toLowerCase()) ||
+    p.uhid?.toLowerCase().includes(patientSearch.toLowerCase())
+  );
 
   return (
     <div className="flex h-full overflow-hidden">

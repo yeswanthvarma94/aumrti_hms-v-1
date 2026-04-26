@@ -2,12 +2,10 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { createPortal } from "react-dom";
-import { useAuth } from "@/context/AuthContext";
 
 const DEFAULT_TIMEOUT_MIN = 30;
 const WARNING_LEAD_MS = 5 * 60 * 1000; // 5-minute warning before logout
 const MIN_WARNING_MS = 60 * 1000;      // never less than 60s warning
-const ACTIVITY_THROTTLE_MS = 15 * 1000;
 
 // Role-based minimums (overrides hospital setting if stricter)
 const ROLE_TIMEOUT_RULES: Record<string, { min?: number; max?: number; floor?: number }> = {
@@ -31,49 +29,55 @@ function resolveTimeoutMinutes(hospitalMinutes: number, role: string | null): nu
 }
 
 const IdleTimer: React.FC = () => {
-  const { hospitalId, role } = useAuth();
   const [showWarning, setShowWarning] = useState(false);
   const [countdown, setCountdown] = useState(60);
   const [timeoutMs, setTimeoutMs] = useState<number | null>(null); // null = disabled / loading
   const idleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const warningRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const lastActivityResetRef = useRef(0);
   const navigate = useNavigate();
 
-  // Load hospital timeout config — uses role/hospitalId from AuthContext
-  // (no longer re-queries the `users` table; that was causing query churn).
+  // Load hospital + role config on mount
   useEffect(() => {
     let cancelled = false;
-    if (!hospitalId) {
-      setTimeoutMs(null);
-      return;
-    }
-    if (role) localStorage.setItem("aumrti_user_role", role);
     (async () => {
       try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) { if (!cancelled) setTimeoutMs(null); return; }
+
+        const { data: me } = await supabase
+          .from("users")
+          .select("hospital_id, role")
+          .eq("auth_user_id", user.id)
+          .maybeSingle();
+
+        if (!me) { if (!cancelled) setTimeoutMs(null); return; }
+
+        // Cache role for other uses
+        if (me.role) localStorage.setItem("aumrti_user_role", me.role);
+
         const { data: hosp } = await supabase
           .from("hospitals")
           .select("session_timeout_minutes")
-          .eq("id", hospitalId)
+          .eq("id", me.hospital_id)
           .maybeSingle();
 
         const hospMins = (hosp as any)?.session_timeout_minutes ?? DEFAULT_TIMEOUT_MIN;
 
         // 0 = "Never" (admin only) — disable the timer
-        if (hospMins === 0 && role === "super_admin") {
+        if (hospMins === 0 && me.role === "super_admin") {
           if (!cancelled) setTimeoutMs(null);
           return;
         }
 
-        const finalMins = resolveTimeoutMinutes(hospMins, role);
+        const finalMins = resolveTimeoutMinutes(hospMins, me.role);
         if (!cancelled) setTimeoutMs(finalMins * 60 * 1000);
       } catch {
         if (!cancelled) setTimeoutMs(DEFAULT_TIMEOUT_MIN * 60 * 1000);
       }
     })();
     return () => { cancelled = true; };
-  }, [hospitalId, role]);
+  }, []);
 
   const clearAllTimers = () => {
     if (idleRef.current) clearTimeout(idleRef.current);
@@ -122,12 +126,7 @@ const IdleTimer: React.FC = () => {
   useEffect(() => {
     if (timeoutMs === null) return; // disabled
     const events = ["mousemove", "keydown", "click", "scroll", "touchstart"];
-    const handler = () => {
-      const now = Date.now();
-      if (now - lastActivityResetRef.current < ACTIVITY_THROTTLE_MS) return;
-      lastActivityResetRef.current = now;
-      resetTimer();
-    };
+    const handler = () => resetTimer();
     events.forEach((e) => window.addEventListener(e, handler, { passive: true }));
     resetTimer();
     return () => {
