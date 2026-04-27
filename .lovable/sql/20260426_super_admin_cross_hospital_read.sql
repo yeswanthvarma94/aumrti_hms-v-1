@@ -49,16 +49,31 @@ DECLARE
     'appointments',
     'opd_encounters',
     'opd_tokens',
+    'opd_visits',
     'prescriptions',
     'lab_orders',
     'lab_order_items',
+    'lab_samples',
     'radiology_orders',
+    'radiology_reports',
     'pharmacy_dispensing',
     'audit_log',
     'wards',
     'beds',
     'departments',
-    'clinical_alerts'
+    'clinical_alerts',
+    'staff_attendance',
+    'staff_profiles',
+    'whatsapp_notifications',
+    'chronic_disease_programs',
+    'inventory_items',
+    'inventory_stock',
+    'drug_master',
+    'drug_batches',
+    'patient_consents',
+    'incident_reports',
+    'duty_roster',
+    'shift_master'
   ];
   policy_name text;
 BEGIN
