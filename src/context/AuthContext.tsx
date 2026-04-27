@@ -110,17 +110,53 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const defaultHospitalId = userRecord?.hospital_id ?? null;
   const userRole = userRecord?.role ?? null;
 
-  // Guard: if a stored branch override doesn't belong to this user and they
-  // aren't a super_admin who can switch hospitals, drop the override so we
-  // don't query someone else's hospital (which RLS would block → blank UI).
+  // Validate stored branch override against the active hospital list.
+  // For super_admin/ceo, the override is OK only if it matches a real active
+  // hospital. For everyone else, it must match their own hospital_id.
+  // This prevents a stale localStorage entry from a previous session/user
+  // making every query target the wrong hospital (resulting in blank UIs).
+  const canSwitchHospitals = userRole === "super_admin" || userRole === "ceo";
+
+  const { data: validHospitalIds } = useQuery({
+    queryKey: ["valid-hospital-ids", canSwitchHospitals],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("hospitals")
+        .select("id")
+        .eq("is_active", true);
+      if (error) {
+        console.error("AuthContext: fetch hospitals error:", error.message);
+        return [] as string[];
+      }
+      return (data || []).map((h: { id: string }) => h.id);
+    },
+    enabled: !!userRecord && canSwitchHospitals,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+  });
+
   useEffect(() => {
     if (!userRecord || !branchOverride) return;
-    if (userRole === "super_admin") return;
-    if (branchOverride !== defaultHospitalId) {
+
+    let isValid = false;
+    if (canSwitchHospitals) {
+      // super_admin/ceo: override must be a known active hospital. While the
+      // hospital list is still loading we don't drop the override yet.
+      if (!validHospitalIds) return;
+      isValid = validHospitalIds.includes(branchOverride);
+    } else {
+      isValid = branchOverride === defaultHospitalId;
+    }
+
+    if (!isValid) {
       localStorage.removeItem(STORAGE_KEY);
       setBranchOverride(null);
+      window.dispatchEvent(new Event("branch:changed"));
+      // Drop any cached data fetched against the wrong hospital.
+      queryClient.invalidateQueries();
     }
-  }, [userRecord, branchOverride, userRole, defaultHospitalId]);
+  }, [userRecord, branchOverride, canSwitchHospitals, validHospitalIds, defaultHospitalId, queryClient]);
 
   const hospitalId = branchOverride || defaultHospitalId;
 
