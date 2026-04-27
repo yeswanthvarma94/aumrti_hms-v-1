@@ -1,89 +1,62 @@
-# Fix: Other users / hospitals not loading data
+I understand the failure: the app is connected to Supabase, but many screens are querying the wrong `hospital_id`, so the database correctly returns empty rows.
 
-## Root cause (two separate issues, both contributing)
+What is happening now:
 
-**Issue 1 — Stale branch override in localStorage (UI bug)**
+```text
+Sidebar shows:      Bhimavaram Hospitals
+Actual queries use: 8f3d08b3-8835-42a7-920e-fdf5a78260bc
+User's hospital is: 487db2f4-009b-4976-a95d-0208e36a93f8
+Result:            patients / IPD / dashboard look empty
+```
 
-`AuthContext.tsx` reads `localStorage.selectedBranchId` and uses it as `hospitalId` (overriding the user's real hospital). On sign-out, the app calls `supabase.auth.signOut()` but never clears this key. So when a different user logs in (e.g. `gysk94@gmail.com`), the app keeps using the previous super_admin's `selectedBranchId` (`8f3d08b3-...` = "Aumrti Hospitals"), and:
-
-- `GET /hospitals?id=eq.8f3d08b3-...` → returns `[]` because RLS blocks (the new user doesn't belong to that hospital)
-- All subsequent queries filter by the wrong `hospital_id` → empty results everywhere
-- The user appears to "have no data"
-
-This is exactly what we see in the network logs after the second login attempt (`gysk94@gmail.com`).
-
-**Issue 2 — No super_admin bypass in RLS (data model bug)**
-
-The RLS function `public.get_user_hospital_id()` only ever returns the caller's own `hospital_id`. Every policy on `hospitals`, `users`, `patients`, `bills`, etc. is written as `USING (hospital_id = public.get_user_hospital_id())`. There is **no exception for `super_admin`**. So even a super_admin physically cannot read another hospital's rows or see other hospitals in a branch picker. This contradicts the project's multi-tenant model where super_admin is meant to see across hospitals.
-
-The login page query `GET /hospitals?...&is_active=eq.true` works because there is a separate "Anyone can read hospital branding" policy `TO anon` — but once authenticated, the authenticated policy takes over and limits to one hospital.
+Root cause:
+- The app has two hospital/branch state systems: `AuthContext` and `BranchContext`.
+- `BranchContext` detects the valid branch and updates `localStorage`, but it does not notify `AuthContext` when it silently corrects an invalid stored branch.
+- `AuthContext` keeps using the old `selectedBranchId` from a previous session/branch.
+- Because most pages use `useHospitalId()` from `AuthContext`, they send queries with the stale hospital ID.
+- Supabase RLS then either blocks the data or returns legitimately empty results for that wrong hospital.
 
 ## Fix plan
 
-### Step 1 — Clear branch override on sign-out (frontend, 3 files)
+1. Make branch selection consistent
+   - Update `BranchContext` so whenever it corrects or replaces `selectedBranchId`, it dispatches the same `branch:changed` event used by manual branch switching.
+   - This forces `AuthContext` and all data queries to immediately use the corrected hospital ID.
 
-In every place that calls `supabase.auth.signOut()`, clear the branch keys first and dispatch the `branch:changed` event so `AuthContext` resets immediately:
+2. Prevent stale branch IDs across logins
+   - Update `AuthContext` so stored branch overrides are cleared/revalidated when the authenticated user changes.
+   - For non-super-admin users, only allow their own `hospital_id`.
+   - For super-admin/CEO users, only allow branch IDs that are present in the active hospital list.
 
-- `src/components/layout/AppHeader.tsx` (line 76)
-- `src/components/layout/AppSidebar.tsx` (line 71)
-- `src/components/auth/IdleTimer.tsx` (line 90)
+3. Fix helper functions that can still read stale localStorage
+   - Update `getHospitalIdAsync()` and `src/lib/getHospitalId.ts` so they do not blindly trust `localStorage.selectedBranchId`.
+   - They will first load the current user record and validate whether the override is allowed.
 
-Pattern:
-```ts
-localStorage.removeItem("selectedBranchId");
-window.dispatchEvent(new Event("branch:changed"));
-await supabase.auth.signOut();
-```
+4. Clear stale data caches on branch/user change
+   - Invalidate TanStack Query caches when branch/user changes so pages refetch from the correct hospital instead of showing previous empty results.
 
-Also add a one-shot guard inside `AuthContext` so that whenever `authUserId` changes (new login) and the stored override is **not** equal to the new user's real `hospital_id` and the new user is **not** a super_admin, the override is cleared automatically. This protects against any other code paths that bypass the helper.
+5. Harden sign-out cleanup
+   - Fix the current Supabase auth lock error by making sign-out idempotent and safely clearing `selectedBranchId` before logout.
+   - This prevents `Lock "lock:aumrti-hms-auth" was released because another request stole it` from leaving the app in a half-signed-out state.
 
-### Step 2 — Add super_admin bypass to RLS (one migration)
+6. Expand the super-admin SQL policy script if needed
+   - The earlier SQL script grants cross-hospital read access to several core tables, but some modules query tables not covered by that list, such as `opd_visits`, `staff_attendance`, `whatsapp_notifications`, and `chronic_disease_programs`.
+   - I will update/create the SQL migration so super-admin read access covers all hospital-scoped tables used by the visible modules.
+   - This keeps normal users isolated to their own hospital while letting super-admins view all hospitals.
 
-Create a new security-definer helper and update the two foundational helpers so super_admins can read across hospitals:
+## Files to update
 
-```sql
-CREATE OR REPLACE FUNCTION public.is_super_admin()
-RETURNS boolean
-LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public
-AS $$
-  SELECT EXISTS (
-    SELECT 1 FROM public.users
-    WHERE auth_user_id = auth.uid() AND role = 'super_admin'
-  )
-$$;
-```
+- `src/context/AuthContext.tsx`
+- `src/contexts/BranchContext.tsx`
+- `src/hooks/useHospitalId.ts`
+- `src/lib/getHospitalId.ts`
+- Sign-out handlers if needed: `AppSidebar`, `AppHeader`, `IdleTimer`
+- SQL migration file for super-admin read policies
 
-Then add a permissive SELECT policy on the most-used tables that opens read access when `is_super_admin()` is true — without removing the existing per-hospital policies (Postgres OR-combines them):
+## Expected result
 
-- `public.hospitals` — "Super admins can view all hospitals" FOR SELECT USING (is_super_admin())
-- `public.users` — "Super admins can view all users" FOR SELECT USING (is_super_admin())
-- `public.patients`, `public.bills`, `public.admissions`, `public.appointments`, `public.opd_encounters`, `public.prescriptions`, `public.lab_orders`, `public.radiology_orders`, `public.pharmacy_dispensing`, `public.audit_log` — same pattern
-
-Write-side policies stay strict (writes still require the user's own `hospital_id`); super_admin gets read-only cross-hospital visibility, which matches how the existing `BranchContext` branch picker is designed.
-
-### Step 3 — Verify
-
-After both steps:
-1. Sign in as `gyskumar94@gmail.com` (super_admin) → all hospitals listed in branch picker, can switch branches
-2. Sign out → `selectedBranchId` cleared from localStorage
-3. Sign in as `gysk94@gmail.com` → loads that user's own hospital correctly, no leftover override
-4. Re-check the dashboard / patients / bills queries return rows for each respective hospital
-
-## Files touched
-
-- `src/context/AuthContext.tsx` — add cross-login override reset
-- `src/components/layout/AppHeader.tsx` — clear localStorage on sign-out
-- `src/components/layout/AppSidebar.tsx` — clear localStorage on sign-out
-- `src/components/auth/IdleTimer.tsx` — clear localStorage on sign-out
-- `supabase/migrations/<new>.sql` — `is_super_admin()` + permissive SELECT policies on ~12 core tables
-
-## What is NOT changed
-
-- `get_user_hospital_id()` (still returns own hospital — keeps existing behaviour)
-- All write-side / WITH CHECK policies (super_admin still cannot write to other hospitals)
-- Any UI module logic, billing logic, RoleGuard, AuthGuard, or business workflows
-- The "Anyone can read hospital branding" anon policy (left intact for the login page)
-
-## Open question
-
-Do you want super_admin to also be able to **write** across hospitals (e.g. create a patient in another hospital while branch-switched), or strictly **read-only** cross-hospital access? The plan above is read-only, which is the safer default. If you want full cross-hospital write access, I'll extend the policies to FOR ALL.
+After the fix:
+- Dashboard, Patients, IPD, OPD, Departments, Wards/Beds, and other modules will query the same hospital shown in the sidebar.
+- Switching hospitals will refetch data immediately.
+- Logging out/in with another user will not inherit the previous user's branch.
+- Super-admin users can read across hospitals only where RLS policies permit it.
+- Normal hospital users remain isolated to their own hospital data.
