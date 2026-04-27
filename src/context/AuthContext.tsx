@@ -115,7 +115,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // hospital. For everyone else, it must match their own hospital_id.
   // This prevents a stale localStorage entry from a previous session/user
   // making every query target the wrong hospital (resulting in blank UIs).
-  const canSwitchHospitals = userRole === "super_admin" || userRole === "ceo";
+  const canSwitchHospitals = userRole === "super_admin" || (userRole as string) === "ceo";
 
   const { data: validHospitalIds } = useQuery({
     queryKey: ["valid-hospital-ids", canSwitchHospitals],
