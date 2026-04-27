@@ -53,8 +53,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const prevId = prev && "user" in (prev as object) ? (prev as Session)?.user?.id : null;
         const newId = newSession?.user?.id ?? null;
         if (prevId !== newId) {
-          queryClient.invalidateQueries({ queryKey: ["current-user"] });
-          queryClient.invalidateQueries({ queryKey: ["hospital-record"] });
+          // Different user: drop the previous user's branch override and ALL
+          // cached query data so we don't render data from another hospital.
+          if (typeof window !== "undefined") {
+            localStorage.removeItem(STORAGE_KEY);
+          }
+          queryClient.clear();
         }
         return newSession;
       });
