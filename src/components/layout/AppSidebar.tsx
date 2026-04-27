@@ -68,10 +68,19 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ isMobileOverlay, onClose }) => 
   const isCollapsed = isMobileOverlay ? false : collapsed;
 
   const handleSignOut = async () => {
-    // Clear branch override so the next user doesn't inherit our hospital scope
+    // Clear branch override + cached queries BEFORE signOut so the next user
+    // doesn't inherit our hospital scope or stale data.
     localStorage.removeItem("selectedBranchId");
     window.dispatchEvent(new Event("branch:changed"));
-    await supabase.auth.signOut();
+    queryClient.clear();
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      // The Supabase auth lock can throw "another request stole it" if a
+      // concurrent refresh races with signOut. Local state is already cleared,
+      // so we can safely continue to the login page.
+      console.warn("signOut warning:", err);
+    }
     toast({ title: "Signed out successfully" });
     navigate("/login", { replace: true });
   };

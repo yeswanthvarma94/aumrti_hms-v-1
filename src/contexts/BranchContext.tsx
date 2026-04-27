@@ -70,13 +70,28 @@ export const BranchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const validStored = stored && branchList.some(b => b.id === stored) ? stored : null;
       const initial = validStored || u?.hospital_id || branchList[0]?.id || null;
       setSelectedBranchIdState(initial);
-      if (initial) localStorage.setItem(STORAGE_KEY, initial);
+      if (initial) {
+        const prev = localStorage.getItem(STORAGE_KEY);
+        localStorage.setItem(STORAGE_KEY, initial);
+        // If we just corrected a stale/invalid stored branch, notify the rest
+        // of the app (AuthContext, query consumers) so they refetch against
+        // the correct hospital instead of the previous user's hospital.
+        if (prev !== initial) {
+          window.dispatchEvent(new CustomEvent("branch:changed", { detail: { id: initial } }));
+          queryClient.invalidateQueries();
+        }
+      } else if (localStorage.getItem(STORAGE_KEY)) {
+        // No valid branch for this user — clear any stale override.
+        localStorage.removeItem(STORAGE_KEY);
+        window.dispatchEvent(new Event("branch:changed"));
+        queryClient.invalidateQueries();
+      }
     } catch (e) {
       console.error("BranchContext load:", e);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [queryClient]);
 
   useEffect(() => {
     load();
