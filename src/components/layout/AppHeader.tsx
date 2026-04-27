@@ -76,7 +76,11 @@ const AppHeader: React.FC = () => {
     // Clear branch override so the next user doesn't inherit our hospital scope
     localStorage.removeItem("selectedBranchId");
     window.dispatchEvent(new Event("branch:changed"));
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.warn("signOut warning:", err);
+    }
     toast({ title: "Signed out successfully" });
     navigate("/login", { replace: true });
   };
