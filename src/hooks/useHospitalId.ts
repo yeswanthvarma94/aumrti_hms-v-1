@@ -31,14 +31,39 @@ export function useCurrentUserRecord(_authUserId?: string | null) {
 
 // Standalone async function for non-hook contexts (callable from event handlers)
 export async function getHospitalIdAsync(): Promise<string | null> {
-  const override = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null
-  if (override) return override
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
   const { data } = await supabase
     .from('users')
-    .select('hospital_id')
+    .select('hospital_id, role')
     .eq('auth_user_id', user.id)
     .maybeSingle()
-  return data?.hospital_id || null
+  if (!data) return null
+
+  const override = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null
+  if (!override) return data.hospital_id || null
+
+  const role = (data as any).role as string | null
+  const canSwitch = role === 'super_admin' || role === 'ceo'
+
+  if (!canSwitch) {
+    // Non-admins must always use their own hospital. Drop a stale override.
+    if (override !== data.hospital_id) {
+      localStorage.removeItem(STORAGE_KEY)
+    }
+    return data.hospital_id || null
+  }
+
+  // Admins: only honour the override if it matches an active hospital.
+  const { data: hosp } = await supabase
+    .from('hospitals')
+    .select('id')
+    .eq('id', override)
+    .eq('is_active', true)
+    .maybeSingle()
+  if (!hosp) {
+    localStorage.removeItem(STORAGE_KEY)
+    return data.hospital_id || null
+  }
+  return override
 }
